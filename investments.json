@@ -1,0 +1,10 @@
+[
+  { "company": "Google",    "date": 1998, "k_amount": 10 },
+  { "company": "Greenplum", "date": 2005, "k_amount": 200 },
+  { "company": "Greenplum", "date": 2007, "k_amount": 1500 },
+  { "company": "Greenplum", "date": 2008, "k_amount": 20000 },
+  { "company": "Snowflake", "date": 2011, "k_amount": 150 },
+  { "company": "Snowflake", "date": 2013, "k_amount": 3500 },
+  { "company": "Snowflake", "date": 2015, "k_amount": 30000 }
+]
+
