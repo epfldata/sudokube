@@ -25,6 +25,8 @@ case class BigBinary(val toBigInt: BigInt) {
   /** get bit at position pos */
   def apply(pos: Int) : Int = ((toBigInt >> pos) % 2).toInt
 
+  def valueOf(pos: List[Int]) = pos.reverse.foldLeft(0)((acc, cur) => 2 * acc + apply(cur))
+
   /** get sequence of the n least significant bits
       throws exception if n > toBigInt.length * wordlen
   */
@@ -52,6 +54,23 @@ case class BigBinary(val toBigInt: BigInt) {
       i += 1
     }
     ca.toArray
+  }
+
+  def toPaddedString(n: Int) = {
+    val d = binary_digits
+    var s = ""
+    var i = 0
+    while (i < (n-d)) {
+      if ((n - i) % 8 == 0) s = s + ' '
+      s = s + '0'
+      i += 1
+    }
+    for (c <- toSeq.reverse) {
+      if ((n - i) % 8 == 0) s = s + ' '
+      s = s + (if (c == 0) '0' else '1')
+      i += 1
+    }
+    s
   }
 
   override def toString = {
