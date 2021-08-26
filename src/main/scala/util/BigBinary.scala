@@ -57,7 +57,7 @@ case class BigBinary(val toBigInt: BigInt) {
   }
 
   def toPaddedString(n: Int) = {
-    val d = binary_digits
+    val d = toSeq.length
     var s = ""
     var i = 0
     while (i < (n-d)) {

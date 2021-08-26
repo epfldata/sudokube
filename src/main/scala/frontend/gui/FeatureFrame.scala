@@ -1,21 +1,24 @@
 package frontend.gui
 
-import core.{Rational, SparseSolver}
+
+import core._
+import frontend.schema._
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.DeviationRenderer
 import org.jfree.data.xy.{YIntervalSeries, YIntervalSeriesCollection}
 import org.jfree.ui.RectangleInsets
+import util.BigBinary
 
 import java.awt.{BasicStroke, BorderLayout, Color}
 import javax.swing.JButton
 import scala.swing.BorderPanel.Position.{Center, North, South}
 import scala.swing.ComboBox.stringEditor
 import scala.swing._
-import scala.swing.event.ButtonClicked
+import scala.swing.event.{ButtonClicked, SelectionChanged}
 
-case class FeatureFrame() {
+case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
   val dataset = new YIntervalSeriesCollection
 
   val chart = {
@@ -40,120 +43,164 @@ case class FeatureFrame() {
     chart
   }
 
+  case class DimensionPanel(dimname: String, low: Int, high: Int, isColX: Boolean = false) extends GridBagPanel {
+    var cur = if (isColX) low else high + 1
 
-  var xcolslow = 5
-  var ycolslow = 9
-  var zcolslow = 12
-  var xcolshigh = 8
-  var ycolshigh = 11
-  var zcolshigh = 10
+    def colsList = (cur to high).toList
 
-  def xcolslist = (xcolslow to xcolshigh).toList
-  def ycolslist = (ycolslow to ycolshigh).toList
-  def zcolslist = (zcolslow to zcolshigh).toList
-  val xplus = new Button("+")
-  val xminus = new Button("-")
-  val yplus = new Button("+")
-  val yminus = new Button("-")
-  val zplus = new Button("+")
-  val zminus = new Button("-")
-  val xlabel = new Label("X")
-  val ylabel = new Label("Y")
-  val zlabel = new Label("Z")
+    val plusButton = new Button("+")
+    val minusButton = new Button("-")
+    val dimlabel = new Label(dimname)
 
-  def xcolslabeltext = xcolslow + ":" + xcolshigh
+    def colsToText = cur + ":" + high
 
-  def ycolslabeltext = ycolslow + ":" + ycolshigh
+    val colsLabel = new Label(colsToText)
 
-  def zcolslabeltext = zcolslow + ":" + zcolshigh
+    def filtvalue = {
+      val sel = filterbox.selection.item
+      if (sel == "<all>")
+        List()
+      else sel.toCharArray.map(_ - '0').toList
+    }
 
-  val xcolslabel = new Label(xcolslabeltext)
-  val ycolslabel = new Label(ycolslabeltext)
-  val zcolslabel = new Label(zcolslabeltext)
+    def filtList = {
+      if (!isColX) {
+        val res = (0 until 1 << (high + 1 - cur)).map(v => BigBinary(v).toPaddedString(high + 1 - cur))
+        if (res.size <= 1)
+          List("<all>")
+        else res
+      } else Nil
+    }
 
-  def yfiltlist = {
-    val res = (0 until 1 << (ycolshigh + 1 - ycolslow)).map(_.toBinaryString)
-    if (res.size <= 1)
-      List("<all>")
-    else res
+    val filterbox = new ComboBox[String](filtList)
+
+    listenTo(plusButton, minusButton, filterbox.selection)
+    reactions += {
+      case ButtonClicked(`plusButton`) =>
+        if (cur <= high) {
+          cur = cur + 1
+          colsLabel.text = colsToText
+          filterbox.peer.setModel(ComboBox.newConstantModel(filtList))
+          restart()
+        }
+      case ButtonClicked(`minusButton`) =>
+        if (cur > low) {
+          cur = cur - 1
+          colsLabel.text = colsToText
+          filterbox.peer.setModel(ComboBox.newConstantModel(filtList))
+          restart()
+        }
+      case SelectionChanged(`filterbox`) =>
+        println("----------------------------SELECTTION --------------------------------------------")
+        restart()
+    }
+    val dummyLabel = new Label("")
+    layout(dimlabel) = (0, 0)
+    layout(minusButton) = (1, 0)
+    layout(colsLabel) = (2, 0)
+    layout(plusButton) = (3, 0)
+    filterbox.prototypeDisplayValue = Some(" " * Math.max(10, high + 5 - low))
+    //filterbox.peer.setSize(100, filterbox.preferredSize.height)
+    //dummyLabel.peer.setSize(100, filterbox.preferredSize.height)
+    //filterbox.preferredSize = new Dimension(100, -1)
+    //dummyLabel.preferredSize = new Dimension(100, -1)
+    if (isColX)
+      layout(dummyLabel) = (4, 0)
+    else
+      layout(filterbox) = (4, 0)
   }
 
-  def zfiltlist = {
-    val res = (0 until 1 << (zcolshigh + 1 - zcolslow)).map(_.toBinaryString)
-    if (res.size <= 1)
-      List("<all>")
-    else res
-  }
-
-
-  val yfilt = new ComboBox[String](yfiltlist)
-  val zfilt = new ComboBox[String](zfiltlist)
-
-  def yval = yfilt.selection.item
-  def zval = zfilt.selection.item
   val chartPanel = new BorderPanel {
     peer.add(new ChartPanel(chart))
   }
+
+  val dimMap = Map(
+    0 -> DimensionPanel("X", 0, 8, true),
+    1 -> DimensionPanel("Y", 9, 11),
+    2 -> DimensionPanel("Z", 12, 20))
+
   val innerCP = new GridBagPanel {
-    layout(xlabel) = (0, 0)
-    layout(ylabel) = (0, 1)
-    layout(zlabel) = (0, 2)
-
-    layout(xminus) = (1, 0)
-    layout(yminus) = (1, 1)
-    layout(zminus) = (1, 2)
-
-    layout(xcolslabel) = (2, 0)
-    layout(ycolslabel) = (2, 1)
-    layout(zcolslabel) = (2, 2)
-
-    layout(xplus) = (3, 0)
-    layout(yplus) = (3, 1)
-    layout(zplus) = (3, 2)
-
-    layout(yfilt) = (4, 1)
-    layout(zfilt) = (4, 2)
-
+    dimMap.foreach { case (id, d) => layout(d) = (0, id) }
   }
 
-  val controlPanel = new BorderPanel {
-    layout(innerCP) = Center
+  val controlPanel = new ScrollPane {
+    contents = innerCP
   }
   val mainPanel = new BorderPanel {
-    layout(chartPanel) = North
+    layout(chartPanel) = Center
     layout(controlPanel) = South
   }
   val ui = new MainFrame {
     title = "sudokube"
-    preferredSize = new Dimension(600, 400)
+    preferredSize = new Dimension(600, 550)
     contents = mainPanel
-    listenTo(xplus, xminus, yplus, yminus, zplus, zminus, yfilt, zfilt)
-    reactions += {
-      case ButtonClicked(c) => c match {
-        case `xminus` =>
-          xcolslow = xcolslow - 1
-          xcolslabel.text = xcolslabeltext
-        case `xplus` =>
-          xcolslow = xcolslow + 1
-          xcolslabel.text = xcolslabeltext
-        case `yminus` =>
-          ycolslow = ycolslow - 1
-          ycolslabel.text = ycolslabeltext
-          yfilt.peer.setModel(ComboBox.newConstantModel(yfiltlist))
-        case `yplus` =>
-          ycolslow = ycolslow + 1
-          ycolslabel.text = ycolslabeltext
-          yfilt.peer.setModel(ComboBox.newConstantModel(yfiltlist))
-        case `zminus` =>
-          zcolslow = zcolslow - 1
-          zcolslabel.text = zcolslabeltext
-          zfilt.peer.setModel(ComboBox.newConstantModel(zfiltlist))
-        case `zplus` =>
-          zcolslow = zcolslow + 1
-          zcolslabel.text = zcolslabeltext
-          zfilt.peer.setModel(ComboBox.newConstantModel(zfiltlist))
-      }
-    }
   }
   ui.visible = true
+  var task = new BackgroundTask
+  new Thread(task).start
+
+  def restart(): Unit = {
+    task.stop = true
+    while (!task.finish)
+      Thread.sleep(200)
+    task = new BackgroundTask
+    new Thread(task).start()
+  }
+
+  class BackgroundTask extends Runnable {
+    @volatile var stop = false
+    @volatile var finish = false
+
+    override def run() {
+      val aggdim = dimMap(0)
+      val filtdims = dimMap.filterKeys(_ > 0)
+      val aggcols = aggdim.colsList
+      val filtcols = filtdims.map { case (id, d) => d.colsList }.foldLeft[List[Int]](Nil)(_ ++ _)
+      val filtvalueList = filtdims.map { case (id, d) => d.filtvalue }.foldLeft[List[Int]](Nil)(_ ++ _)
+      val filtvalue = filtvalueList.foldLeft((0, 0)) { case ((sum, power), cur) => (sum + (cur << power), power + 1) }._1
+      val query = aggcols ++ filtcols
+      println("QUERY = " + query.mkString(","))
+      println("AGGCOLS = " + aggcols.mkString(","))
+      println("FILTERCOLS = " + filtcols.mkString(","))
+      println("FILTVALUELIST = " + filtvalueList.mkString(","))
+      println("FILTVALUE = " + filtvalue)
+
+      def cond(id: Int) = (id / (1 << aggcols.length)) == filtvalue
+
+      def callback(s: SparseSolver[Rational]) = {
+        s.propagate_bounds(0 to s.n_vars - 1)
+        val series = new YIntervalSeries("")
+        val allbounds = s.bounds.zipWithIndex
+        //allbounds.foreach { case (r, id) =>
+        //  val selected = cond(id)
+        //  println(selected + "   " + id + " :: " + r)
+        //}
+        val selectedbounds = allbounds.filter {
+          case (r, id) => cond(id)
+        }
+
+        selectedbounds.foreach { case (r, id) =>
+          val selected = cond(id)
+          println(selected + "   " + id + " :: " + r)
+        }
+        selectedbounds.foreach { case (r, id) =>
+          val x = id % (1 << aggcols.length)
+          val ylow = r.lb.get.toDouble
+          val yhigh = r.ub.get.toDouble
+          val ymid = (ylow + yhigh) / 2.0
+          series.add(x, ymid, ylow, yhigh)
+        }
+
+        dataset.removeAllSeries()
+        dataset.addSeries(series)
+        chart.fireChartChanged()
+        Thread.sleep(1000)
+        !stop
+      }
+      import RationalTools._
+      dc.online_agg(query, cheap_size, callback)
+      finish = true
+    }
+  }
+
 }

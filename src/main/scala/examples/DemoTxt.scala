@@ -83,14 +83,14 @@ object DemoTxt {
 
     def draw(sch: schema.Schema, bou: Seq[(Interval[Rational], Int)]) = bou.map{case (r, id) => id.toBinaryString + " :: " + r.format(_.toString)}mkString("\n\n", "\n", "\n\n")
 
-    val display = FeatureDisplay(sch, dc, draw)
-    display.run(xcols, zcols, zval)(50)
+    val display = FeatureFrame(sch, dc, 50)
+
   }
 
   def main(args: Array[String]): Unit = {
     //large()
     feature()
-    //val f = FeatureFrame()
+
   }
 
 }

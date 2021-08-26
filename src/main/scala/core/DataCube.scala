@@ -179,7 +179,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     val s      = SparseSolver[T](query.length, bounds, List(), List())
     var df     = s.df
     var cont   = true
-
+    println("START ONLINE AGGREGATION")
     while((! l.isEmpty) && (df > 0) && cont) {
       println(l.head.accessible_bits)
       s.add2(List(l.head.accessible_bits), fetch2(List(l.head)))
