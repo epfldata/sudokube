@@ -25,6 +25,7 @@ case class SparseSolver[T](
   type Eq_T = (Seq[Int], T)
 
   def gauss(pivs: Seq[Int]) {
+    val pi = new ProgressIndicator(pivs.length, "Gauss")
     for(piv <- pivs.sorted.reverse) {
       val pivot_row = M(piv)
 
@@ -44,6 +45,7 @@ case class SparseSolver[T](
           }
         }
       }
+      pi.step
     }
   }
 
@@ -127,9 +129,9 @@ case class SparseSolver[T](
   */
   protected def full_matrix_simplex(vars: List[Int]) = {
     val objectives = vars.map(x => List((num.one, x)))
-          
+
     val new_bounds = SolverTools.simplex[T](M, bounds, objectives, false)
-      
+
      vars.zip(new_bounds).foreach {
        case (v, i) => bounds(v) = bounds(v).intersect(i)
      }
@@ -141,7 +143,7 @@ case class SparseSolver[T](
     import util.SloppyFractionalInt._
     val bounds = SolverTools.mk_all_non_neg[Int](1 << 1)
     bounds(0) = Interval(Some(1), Some(2))
-    bounds(1) = Interval(Some(3), Some(6)) 
+    bounds(1) = Interval(Some(3), Some(6))
     val s = SparseSolver[Int](1, bounds, List(List()), List(4))
     s.M(1) == SparseRow(3,Map(2 -> 4, 0 -> 1, 1 -> 1))
     s.infer_bound(1, 0) == Interval(Some(-2),Some(1))
@@ -186,13 +188,13 @@ case class SparseSolver[T](
 
       @param vars  the variables that have new bounds that are to be
                    propagated.
-  */ 
+  */
   protected def propagate_bounds0(vars: Seq[Int]) : Seq[Int] = {
-
+    val pi = new ProgressIndicator(det_vars.size, "PropBounds0")
     val result = (for(row <- det_vars) yield {
       val r_vars = M(row).domain.filter(_ != n_vars)
       val i = r_vars.intersect(vars)
-      if(i.size == 0) None
+      val res  = if(i.size == 0) None
       else Some((for(v <- r_vars) yield {
         if((r_vars.length == 1) || (i.size > 1) || (! i.contains(v))) {
 
@@ -203,6 +205,8 @@ case class SparseSolver[T](
         }
         else None
       }).flatten)
+      pi.step
+      res
     }).flatten.flatten.toSet.toList
 
     add_points(result)

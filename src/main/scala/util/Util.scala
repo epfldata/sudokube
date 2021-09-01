@@ -2,13 +2,15 @@
 package util
 
 
-class ProgressIndicator(num_steps: Int) {
+class ProgressIndicator(num_steps: Int, name: String = "") {
   private val one_percent = num_steps.toDouble / 100
   private var done = 0
-
+  print(name + "  ")
   def step {
     done += 1 
     if(done % one_percent < 1) print((done/one_percent).toInt + "%")
+    if(done == num_steps)
+      println()
   }
 }
 

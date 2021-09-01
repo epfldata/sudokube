@@ -69,21 +69,22 @@ object DemoTxt {
 
   def feature() = {
 
-    val ncols = 100
-    val xcols = List(5, 6, 7, 8)
-    val zcols = List(9, 10, 11)
-    val zval = 5
-    val nrows = 10000
+    val ncols = 32
+    val xcols = List(4, 5, 6, 7)
+    val zcols = List(13, 14, 15, 27, 28, 29, 30, 31)
+    val zval = 147
+    println("ZVAL = " + zval.toBinaryString.reverse )
+    val nrows = 1000000
     val sch = schema.StaticSchema.mk(ncols)
 
-    //val dcw = frontend.experiments.Tools.mkDC2(ncols, 0.1, 1.05, nrows, xcols, zcols, zval, Sampling.f1)
+    //val dcw = frontend.experiments.Tools.mkDC2(ncols, 0.2, 1.05, nrows, xcols, zcols, zval, Sampling.f1)
     //dcw.save("trend.dc")
 
     val dc = core.DataCube.load("trend.dc")
+    println("Materialization Schema" + dc.m)
+    def draw(sch: schema.Schema, bou: Seq[(Interval[Rational], Int)]) = bou.map { case (r, id) => id.toBinaryString + " :: " + r.format(_.toString) } mkString("\n\n", "\n", "\n\n")
 
-    def draw(sch: schema.Schema, bou: Seq[(Interval[Rational], Int)]) = bou.map{case (r, id) => id.toBinaryString + " :: " + r.format(_.toString)}mkString("\n\n", "\n", "\n\n")
-
-    val display = FeatureFrame(sch, dc, 50)
+    val display = FeatureFrame(sch, dc, 5)
 
   }
 

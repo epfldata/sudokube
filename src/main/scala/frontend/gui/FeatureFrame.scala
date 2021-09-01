@@ -91,7 +91,6 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
           restart()
         }
       case SelectionChanged(`filterbox`) =>
-        println("----------------------------SELECTTION --------------------------------------------")
         restart()
     }
     val dummyLabel = new Label("")
@@ -115,9 +114,9 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
   }
 
   val dimMap = Map(
-    0 -> DimensionPanel("X", 0, 8, true),
-    1 -> DimensionPanel("Y", 9, 11),
-    2 -> DimensionPanel("Z", 12, 20))
+    0 -> DimensionPanel("Time", 0, 7, true),
+    1 -> DimensionPanel("Product", 8, 15),
+    2 -> DimensionPanel("Location", 16, 31))
 
   val innerCP = new GridBagPanel {
     dimMap.foreach { case (id, d) => layout(d) = (0, id) }
@@ -137,14 +136,18 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
   }
   ui.visible = true
   var task = new BackgroundTask
-  new Thread(task).start
-
+  var thread = new Thread(task)
+  thread.start()
   def restart(): Unit = {
     task.stop = true
-    while (!task.finish)
+    thread.stop()
+    dataset.removeAllSeries()
+    chart.fireChartChanged()
+    //while (!task.finish)
       Thread.sleep(200)
     task = new BackgroundTask
-    new Thread(task).start()
+    thread = new Thread(task)
+      thread.start()
   }
 
   class BackgroundTask extends Runnable {
@@ -153,9 +156,9 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
 
     override def run() {
       val aggdim = dimMap(0)
-      val filtdims = dimMap.filterKeys(_ > 0)
+      val filtdims = dimMap.filterKeys(_ > 0).toList.sortBy(_._1)
       val aggcols = aggdim.colsList
-      val filtcols = filtdims.map { case (id, d) => d.colsList }.foldLeft[List[Int]](Nil)(_ ++ _)
+      val filtcols = filtdims.map{ case (id, d) => d.colsList }.foldLeft[List[Int]](Nil)(_ ++ _)
       val filtvalueList = filtdims.map { case (id, d) => d.filtvalue }.foldLeft[List[Int]](Nil)(_ ++ _)
       val filtvalue = filtvalueList.foldLeft((0, 0)) { case ((sum, power), cur) => (sum + (cur << power), power + 1) }._1
       val query = aggcols ++ filtcols
@@ -173,16 +176,16 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
         val allbounds = s.bounds.zipWithIndex
         //allbounds.foreach { case (r, id) =>
         //  val selected = cond(id)
-        //  println(selected + "   " + id + " :: " + r)
+        //  println(selected + "   " + id + " :: " + BigBinary(id).toPaddedString(32) + " ==> " + r + " :: " + BigBinary(r.lb.get.toInt).toPaddedString(32))
         //}
         val selectedbounds = allbounds.filter {
           case (r, id) => cond(id)
         }
 
-        selectedbounds.foreach { case (r, id) =>
-          val selected = cond(id)
-          println(selected + "   " + id + " :: " + r)
-        }
+        //selectedbounds.foreach { case (r, id) =>
+        //  val selected = cond(id)
+        //  println(selected + "   " + id.toBinaryString + " :: " + r.lb.get.toInt.toBinaryString)
+        //}
         selectedbounds.foreach { case (r, id) =>
           val x = id % (1 << aggcols.length)
           val ylow = r.lb.get.toDouble
@@ -194,7 +197,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
         dataset.removeAllSeries()
         dataset.addSeries(series)
         chart.fireChartChanged()
-        Thread.sleep(1000)
+        //Thread.sleep(1000)
         !stop
       }
       import RationalTools._

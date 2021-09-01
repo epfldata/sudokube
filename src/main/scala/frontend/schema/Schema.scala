@@ -37,9 +37,11 @@ trait Schema extends Serializable {
       val r = columnList.map { case (key, c) => (key, c.sample(sampling_f)) }
       val key = encode_tuple(r)
       val filter = key.valueOf(filterCols)
-      val value = (if(filter == filterVal) key.valueOf(trendCols) * 100.0 / (1 << trendCols.length) else 0.0) + scala.util.Random.nextInt(10)
-      out.println(key.toPaddedString(n_bits) + " -> " + value)
-      (key, value.toInt)
+      var value = scala.util.Random.nextInt(10)
+      if (filter == filterVal)
+        value += (key.valueOf(trendCols) * 100) / (1 << trendCols.length)
+      //if(value > 0 ) out.println(key.toPaddedString(n_bits) + " -> " + value)
+      (key, value)
     }
   }
 
