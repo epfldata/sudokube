@@ -38,7 +38,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
     plot.setRenderer(renderer)
     // change the auto tick unit selection to integer units only...
     val yAxis = plot.getRangeAxis.asInstanceOf[NumberAxis]
-    yAxis.setAutoRangeIncludesZero(false)
+    yAxis.setAutoRangeIncludesZero(true)
     yAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits)
     chart
   }
@@ -116,7 +116,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
   val dimMap = Map(
     0 -> DimensionPanel("Time", 0, 7, true),
     1 -> DimensionPanel("Product", 8, 15),
-    2 -> DimensionPanel("Location", 16, 31))
+    2 -> DimensionPanel("Location", 16, 23))
 
   val innerCP = new GridBagPanel {
     dimMap.foreach { case (id, d) => layout(d) = (0, id) }
@@ -162,7 +162,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
       val filtvalueList = filtdims.map { case (id, d) => d.filtvalue }.foldLeft[List[Int]](Nil)(_ ++ _)
       val filtvalue = filtvalueList.foldLeft((0, 0)) { case ((sum, power), cur) => (sum + (cur << power), power + 1) }._1
       val query = aggcols ++ filtcols
-      println("QUERY = " + query.mkString(","))
+      println("\nQUERY = " + query.mkString(","))
       println("AGGCOLS = " + aggcols.mkString(","))
       println("FILTERCOLS = " + filtcols.mkString(","))
       println("FILTVALUELIST = " + filtvalueList.mkString(","))
@@ -182,10 +182,10 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
           case (r, id) => cond(id)
         }
 
-        //selectedbounds.foreach { case (r, id) =>
-        //  val selected = cond(id)
-        //  println(selected + "   " + id.toBinaryString + " :: " + r.lb.get.toInt.toBinaryString)
-        //}
+        selectedbounds.foreach { case (r, id) =>
+          val selected = cond(id)
+          println(selected + "   " + id + " :: " + id.toBinaryString + " ==> " + r + " :: " +  r.ub.get.toInt.toBinaryString)
+        }
         selectedbounds.foreach { case (r, id) =>
           val x = id % (1 << aggcols.length)
           val ylow = r.lb.get.toDouble

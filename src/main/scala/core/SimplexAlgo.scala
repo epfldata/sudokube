@@ -247,7 +247,7 @@ class SimplexAlgo[T](
         it_cnt += 1
         next_col = pick_col
       }
-      print(it_cnt + " ") // number of pivot operations executed.
+      //print(it_cnt + " ") // number of pivot operations executed.
 
       /*
       println("Optimal value: " + M(0)(n_vars))

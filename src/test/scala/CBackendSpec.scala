@@ -4,6 +4,7 @@ import org.scalatest._
 class CBackendSpec extends FlatSpec with Matchers {
   import frontend._
   import frontend.schema._
+  import frontend.generators._
   import frontend.experiments.Tools._
   import backend._
   import core._
@@ -28,7 +29,7 @@ class CBackendSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     for(it <- 1 to 50) {
-      val R   = schema.TupleGenerator(100, Sampling.f1).toList
+      val R   = TupleGenerator(schema, 100, Sampling.f1).toList
       val c   = CBackend.b.mk(n_bits, R.toIterator)
       val q1  = Util.rnd_choose(n_bits,    6)
       val q2  = Util.rnd_choose(q1.length, 3)

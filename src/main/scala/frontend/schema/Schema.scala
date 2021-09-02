@@ -20,50 +20,6 @@ trait Schema extends Serializable {
   def decode_tuple(i: BigBinary): Seq[(String, Any)] =
     columnList.map { case (key, c) => (key, c.decode(i)) }
 
-  case class TrendGenerator(n: Int, sampling_f: Int => Int, trendCols: List[Int], filterCols: List[Int], filterVal : Int) extends Iterator[(BigBinary, Int)] {
-    private var i = 0
-    val out = new PrintWriter("basecube.txt")
-    def hasNext = {
-      val res = (i < n)
-      if(!res) out.close()
-      res
-    }
-
-    def next = {
-      if (i % 10000 == 0) print(".")
-      if ((n >= 100) && (i % (n / 100) == 0)) print((100 * i) / n + "%")
-      i += 1
-
-      val r = columnList.map { case (key, c) => (key, c.sample(sampling_f)) }
-      val key = encode_tuple(r)
-      val filter = key.valueOf(filterCols)
-      var value = scala.util.Random.nextInt(10)
-      if (filter == filterVal)
-        value += (key.valueOf(trendCols) * 100) / (1 << trendCols.length)
-      //if(value > 0 ) out.println(key.toPaddedString(n_bits) + " -> " + value)
-      (key, value)
-    }
-  }
-
-
-  /** returns an iterator for sampling a relation. */
-  case class TupleGenerator(n: Int, sampling_f: Int => Int
-                           ) extends Iterator[(BigBinary, Int)] {
-    private var i = 0
-
-    def hasNext = (i < n)
-
-    def next = {
-      if (i % 10000 == 0) print(".")
-      if ((n >= 100) && (i % (n / 100) == 0)) print((100 * i) / n + "%")
-      i += 1
-
-      val r = columnList.map { case (key, c) => (key, c.sample(sampling_f)) }
-
-      (encode_tuple(r), scala.util.Random.nextInt(10))
-    }
-  }
-
   def read(filename: String, measure_key: Option[String] = None
           ): List[(BigBinary, Int)] = {
 

@@ -6,7 +6,7 @@ import core._
 import combinatorics._
 import util._
 import backend._
-
+import generators._
 
 object Tools {
   def qq(qsize: Int) = (0 to qsize - 1).toList
@@ -26,37 +26,15 @@ object Tools {
   }
 
   def mkDC(n_bits: Int,
-    rf: Double,
-    base: Double,
-    n_rows: Int,
-    sampling_f: Int => Int = Sampling.f1,
-    be: Backend[_] = CBackend.b
-  ) = {
+           rf: Double,
+           base: Double,
+           n_rows: Int,
+           sampling_f: Int => Int = Sampling.f1,
+           be: Backend[_] = CBackend.b,
+           vg: ValueGenerator = RandomValueGenerator(10)
+          ) = {
     val sch = schema.StaticSchema.mk(n_bits)
-    val R   = sch.TupleGenerator(n_rows, sampling_f)
-    println("mkDC: Creating maximum-granularity cuboid...")
-    val fc  = be.mk(n_bits, R)
-    println("...done")
-    val m   = RandomizedMaterializationScheme(n_bits, rf, base)
-    val dc = new DataCube(m); dc.build(fc)
-//    val dc = new JailBrokenDataCube(m, fc)
-//    assert(dc.getCuboids.last == fc)
-    dc
-  }
-
-
-  def mkDC2(n_bits: Int,
-            rf: Double,
-            base: Double,
-            n_rows: Int,
-            trendCols: List[Int],
-            filterCols: List[Int],
-            filterVal: Int,
-            sampling_f: Int => Int = Sampling.f1,
-            be: Backend[_] = CBackend.b
-           ) = {
-    val sch = schema.StaticSchema.mk(n_bits)
-    val R = sch.TrendGenerator(n_rows, sampling_f, trendCols, filterCols, filterVal)
+    val R = TupleGenerator(sch, n_rows, sampling_f)
     println("mkDC: Creating maximum-granularity cuboid...")
     val fc = be.mk(n_bits, R)
     println("...done")

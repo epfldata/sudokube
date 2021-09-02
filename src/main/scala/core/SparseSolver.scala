@@ -247,12 +247,13 @@ case class SparseSolver[T](
         case None => None
       }
     }
-
+    val pi = new ProgressIndicator(vars.length, "Simplex")
     for(i <- vars) yield {
       val intv = Interval(run_my_simplex(i, false), run_my_simplex(i, true))
       bounds(i) = bounds(i).intersect(intv)
+      pi.step
     }
-    println // a.algo wrote a single unterminated line
+    //println // a.algo wrote a single unterminated line
     add_points(vars)
   }
 
