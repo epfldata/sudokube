@@ -4,7 +4,7 @@ import backend._
 import planning.ProjectionMetaData
 import util._
 import java.io._
-
+import solver._
 
 /** To create a DataCube, must either
     (1) call DataCube.build(full_cube) or
@@ -123,7 +123,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** Gets rid of the Payload box. */
-  protected def fetch2[T](pms: List[ProjectionMetaData]
+   def fetch2[T](pms: List[ProjectionMetaData]
   )(implicit num: Fractional[T]) : Seq[T] = {
     fetch(pms).map(p => num.fromInt(p.sm.toInt))
   }
@@ -171,12 +171,13 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   def online_agg[T](
     query: List[Int],
     cheap_size: Int,
-    callback: SparseSolver[T] => Boolean // returns whether to continue
+    callback: SparseSolver[T] => Boolean, // returns whether to continue
+    sliceFunc: Int => Boolean = _ => true  // determines what variables to filter
   )(implicit num: Fractional[T]) {
 
     var l      = m.prepare_online_agg(query, cheap_size)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
-    val s      = SparseSolver[T](query.length, bounds, List(), List())
+    val s      = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df     = s.df
     var cont   = true
     println("START ONLINE AGGREGATION")

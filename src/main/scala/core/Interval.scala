@@ -28,7 +28,7 @@ case class Interval[T](
   // test at interval construction time.
   cautiously(ub, lb, num.minus) match {
     case Some(x) if num.lt(x, num.zero) =>
-      throw new Exception("Broken interval [" + lb + ", " + ub + "]")
+      throw new IllegalStateException("Broken interval [" + lb + ", " + ub + "]")
     case _ => {}
   }
 

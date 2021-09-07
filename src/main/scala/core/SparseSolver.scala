@@ -1,5 +1,6 @@
 //package ch.epfl.data.sudokube
 package core
+import core.solver.DualSimplex
 import util._
 
 
@@ -7,8 +8,9 @@ case class SparseSolver[T](
   val n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[T]],
   private val projections: List[List[Int]],
-  private val v: Seq[T]
-)(implicit num: Fractional[T]) {
+  private val v: Seq[T],
+  sliceFunc: Int => Boolean = _ => true
+)(implicit num: Fractional[T]){
 
   assert(n_bits < 31)
   val n_vars = 1 << n_bits

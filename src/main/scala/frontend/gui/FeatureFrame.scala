@@ -201,7 +201,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
         !stop
       }
       import RationalTools._
-      dc.online_agg(query, cheap_size, callback)
+      dc.online_agg(query, cheap_size, callback, cond)
       finish = true
     }
   }

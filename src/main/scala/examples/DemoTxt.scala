@@ -80,29 +80,29 @@ object DemoTxt {
 
 
     //  --------------CUBE DATA GENERATION-------------
-    val vgs = collection.mutable.ArrayBuffer[ValueGenerator]()
-    vgs += ConstantValueGenerator(50)
-    vgs += RandomValueGenerator(50)
-    vgs += SinValueGenerator(List(0, 1, 2, 3), List(13, 17), 0, 1, 2)
-    vgs += SinValueGenerator(List(1, 3, 5), List(12, 25, 32), 0, 1, 4)
-    vgs += SinValueGenerator(List(1, 5, 7), List(11, 12), 0, 1, 8)
-    vgs += SinValueGenerator(List(1, 2, 5), List(20, 22), 0, 1, 8)
-
-    vgs += TrendValueGenerator(List(4, 5, 6, 7), List(13, 14, 15, 19, 20, 21, 22, 23), 147, 1, 15*256)
-    vgs += TrendValueGenerator(List(6, 7), List(22, 23), 3, -1, 20)
-    //vgs += TrendValueGenerator( List(4, 5, 6, 7), List(), 0, 1, 10)
-    //vgs += TrendValueGenerator( List(6, 7), List(13,14,15),5, 1, 1)
-    vgs += TrendValueGenerator(List(2, 3, 4, 5, 6, 7), List(15), 0, -1, 30)
-    val vg = SumValueGenerator(vgs)
-
-    val R = TupleGenerator2(sch, n_rows, Sampling.f1, vg)
-    println("mkDC: Creating maximum-granularity cuboid...")
-    val fc = CBackend.b.mk(n_bits, R)
-    println("...done")
-    val m = RandomizedMaterializationScheme(n_bits, 0.4, 1.1)
-    val dcw = new DataCube(m);
-    dcw.build(fc)
-    dcw.save("trend.dc")
+    //val vgs = collection.mutable.ArrayBuffer[ValueGenerator]()
+    //vgs += ConstantValueGenerator(50)
+    //vgs += RandomValueGenerator(50)
+    //vgs += SinValueGenerator(List(0, 1, 2, 3), List(13, 17), 0, 1, 2)
+    //vgs += SinValueGenerator(List(1, 3, 5), List(12, 25, 32), 0, 1, 4)
+    //vgs += SinValueGenerator(List(1, 5, 7), List(11, 12), 0, 1, 8)
+    //vgs += SinValueGenerator(List(1, 2, 5), List(20, 22), 0, 1, 8)
+    //
+    //vgs += TrendValueGenerator(List(4, 5, 6, 7), List(13, 14, 15, 19, 20, 21, 22, 23), 147, 1, 15*256)
+    //vgs += TrendValueGenerator(List(6, 7), List(22, 23), 3, -1, 20)
+    ////vgs += TrendValueGenerator( List(4, 5, 6, 7), List(), 0, 1, 10)
+    ////vgs += TrendValueGenerator( List(6, 7), List(13,14,15),5, 1, 1)
+    //vgs += TrendValueGenerator(List(2, 3, 4, 5, 6, 7), List(15), 0, -1, 30)
+    //val vg = SumValueGenerator(vgs)
+    //
+    //val R = TupleGenerator2(sch, n_rows, Sampling.f1, vg)
+    //println("mkDC: Creating maximum-granularity cuboid...")
+    //val fc = CBackend.b.mk(n_bits, R)
+    //println("...done")
+    //val m = RandomizedMaterializationScheme(n_bits, 0.4, 1.1)
+    //val dcw = new DataCube(m);
+    //dcw.build(fc)
+    //dcw.save("trend.dc")
     // ----------------- END CUBE DATA GENERATION ----------
 
     val dc = core.DataCube.load("trend.dc")

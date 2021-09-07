@@ -7,15 +7,18 @@ import breeze.linalg._
 case class SparseRow[T](n: Int, data: Map[Int, T]
 )(implicit num: Numeric[T]) {
 
+  def evaluate(values: Map[Int, T]) = {
+    data.map { case (i, coef) => num.times(coef, values.getOrElse(i, num.zero))}.sum
+  }
   def apply(i: Int) : T = {
-    assert(i < n)
+    //assert(i < n)
     data.getOrElse(i, num.zero)
   }
 
   def *(x: T) = SparseRow[T](n, data.mapValues(v => num.times(x, v)))
 
   def plus2(that: SparseRow[T]) : SparseRow[T] = {
-    assert(n == that.n)
+    //assert(n == that.n)
 
     // merge
     val l = (data.toList ++ that.data.toList).groupBy(_._1).mapValues(
@@ -27,7 +30,7 @@ case class SparseRow[T](n: Int, data: Map[Int, T]
 
   // this is about 25% faster that plus2, not a big deal
   def +(that: SparseRow[T]) : SparseRow[T] = {
-    assert(n == that.n)
+    //assert(n == that.n)
     val l = this.data.filter { case (v, _) => ! that.data.contains(v)  } ++
             that.data.map { case (v, x) => {
               val y = num.plus(apply(v), x)
@@ -65,7 +68,7 @@ case class SparseRow[T](n: Int, data: Map[Int, T]
 */
 
 
-case class SparseMatrix[T](n_rows: Int, n_cols: Int
+case class SparseMatrix[T](n_rows: Int, var n_cols: Int
 )(implicit num: Numeric[T]) {
 
   val data = Util.mkAB[Option[SparseRow[T]]](n_rows, _ => None)
