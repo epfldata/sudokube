@@ -7,8 +7,8 @@ import breeze.linalg._
 case class SparseRow[T](n: Int, data: Map[Int, T]
 )(implicit num: Numeric[T]) {
 
-  def evaluate(values: Map[Int, T]) = {
-    data.map { case (i, coef) => num.times(coef, values.getOrElse(i, num.zero))}.sum
+  def evaluate(values: Int => T) = {
+    data.map { case (i, coef) => num.times(coef, values(i))}.sum
   }
   def apply(i: Int) : T = {
     //assert(i < n)
@@ -38,6 +38,8 @@ case class SparseRow[T](n: Int, data: Map[Int, T]
             }}.flatten
      SparseRow(n, l.toMap)
   }
+
+  def dropCol(x: Int) = SparseRow(n-1, data.filterKeys(_ != x))
 
   /** nonempty columns, not sorted */
   def domain : List[Int] = data.toList.map(_._1)

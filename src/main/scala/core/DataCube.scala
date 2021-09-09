@@ -177,7 +177,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     var l      = m.prepare_online_agg(query, cheap_size)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
-    val s      = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
+    val s      = SparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df     = s.df
     var cont   = true
     println("START ONLINE AGGREGATION")

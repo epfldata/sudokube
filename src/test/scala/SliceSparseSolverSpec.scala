@@ -100,7 +100,7 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
   }
 
   "SliceSparseSolver[Rational] test 2" should "work" in {
-    //TODO: Wrong test??
+
     import RationalTools._
     val bounds = SolverTools.mk_all_non_neg[Rational](1 << 3)
     val s = new SliceSparseSolver[Rational](3, bounds, l2, v2.map(Rational(_, 1)))
@@ -108,8 +108,8 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
     s.propagate_bounds(0 to 7)
 
     s.compute_bounds
-
-    assert(s.bounds.toList == r4)
+    val bs =  List(Interval(Some(0),Some(10)), Interval(Some(0),Some(10)), Interval(Some(0),Some(10)), Interval(Some(0),Some(10)), Interval(Some(0),Some(14)), Interval(Some(0),Some(14)), Interval(Some(0),Some(16)), Interval(Some(0),Some(20)))
+    assert(s.bounds.toList == bs.map(IntervalTools.i2r(_)))
   }
 
   "SliceSparseSolver[Double] test 2" should "work" in {

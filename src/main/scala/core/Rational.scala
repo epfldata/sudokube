@@ -2,7 +2,7 @@ package core
 
 
 sealed class Rational(_a: Long, _b: Long) extends Ordered[Rational] {
-
+  assert(_b != 0)
   private def gcd(c: Long, d: Long) : Long = if(d == 0) c else gcd(d, c % d)
 
   private val g = gcd(math.abs(_a), math.abs(_b))
@@ -11,13 +11,23 @@ sealed class Rational(_a: Long, _b: Long) extends Ordered[Rational] {
 
   def +(that: Rational): Rational = {
     val g = gcd(b, that.b)
-    Rational((a * that.b / g) + (that.a * b / g), b * that.b / g)
+    Rational((a * (that.b / g)) + (that.a * (b / g)), b * (that.b / g))
   }
 
   def -(that: Rational): Rational = this + Rational(-that.a, that.b)
   def *(that: Rational): Rational = Rational(a * that.a, b * that.b)
   def /(that: Rational): Rational = Rational(a * that.b, b * that.a)
 
+  //def *(that: Rational): Rational = {
+  //  val g1 = gcd(that.a, b)
+  //  val g2 = gcd(a, that.b)
+  //  Rational((a/g2) * (that.a/g1), (b/g1) * (that.b/g2))
+  //}
+  //def /(that: Rational): Rational = {
+  //  val g1 = gcd(that.b, b)
+  //  val g2 = gcd(a, that.a)
+  //  Rational((a/g2) * (that.b/g1), (b/g1) * (that.a/g2))
+  //}
   def negate: Rational = Rational(-a, b)
 
   def compare(that: Rational): Int =

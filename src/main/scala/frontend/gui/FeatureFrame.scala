@@ -22,7 +22,7 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
   val dataset = new YIntervalSeriesCollection
 
   val chart = {
-    val chart = ChartFactory.createXYLineChart("", "Time", "Sales", dataset,
+    val chart = ChartFactory.createXYLineChart("", sch.columnList.head._1, "Sales", dataset,
       PlotOrientation.VERTICAL,
       false, false, false
     )
@@ -40,11 +40,14 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
     val yAxis = plot.getRangeAxis.asInstanceOf[NumberAxis]
     yAxis.setAutoRangeIncludesZero(true)
     yAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits)
+
+    val xAxis = plot.getDomainAxis.asInstanceOf[NumberAxis]
+    xAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits)
     chart
   }
 
   case class DimensionPanel(dimname: String, low: Int, high: Int, isColX: Boolean = false) extends GridBagPanel {
-    var cur = if (isColX) low else high + 1
+    var cur = if (isColX) high-1 else high + 1
 
     def colsList = (cur to high).toList
 
@@ -113,10 +116,9 @@ case class FeatureFrame(sch: Schema, dc: DataCube, cheap_size: Int) {
     peer.add(new ChartPanel(chart))
   }
 
-  val dimMap = Map(
-    0 -> DimensionPanel("Time", 0, 7, true),
-    1 -> DimensionPanel("Product", 8, 15),
-    2 -> DimensionPanel("Location", 16, 23))
+  val dimMap = sch.columnList.zipWithIndex.map{case ((n, ce), id) => {
+    id -> DimensionPanel(n, ce.bits.min, ce.bits.max, id == 0)
+  }}.toMap
 
   val innerCP = new GridBagPanel {
     dimMap.foreach { case (id, d) => layout(d) = (0, id) }
