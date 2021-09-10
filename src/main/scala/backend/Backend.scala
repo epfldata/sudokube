@@ -80,8 +80,8 @@ abstract class Backend[MEASURES_T] {
   }
 
 
-  def  readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt) : Cuboid
-  def writeCuboid(id: Int, c: Cuboid)
+  def  readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid
+  def writeCuboid(id: Int, c: Cuboid, name_prefix: String): Unit
 
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Int)]) : SparseCuboid

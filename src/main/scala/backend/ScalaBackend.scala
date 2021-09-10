@@ -11,14 +11,9 @@ object ScalaBackend extends Backend[Payload] {
   protected type DENSE_T  = Array[Payload]
   protected type SPARSE_T = Seq[(BigBinary, Payload)]
 
-  def readCuboid(
-    id: Int,
-    sparse: Boolean,
-    n_bits: Int,
-    size: BigInt // dummy, not used here but needed in CBackend
-  ) : Cuboid = {
+  def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
     val ois = new ObjectInputStream(
-      new FileInputStream("cub_" + id + ".ssuk"))
+      new FileInputStream(s"$name_prefix/cub_" + id + ".ssuk"))
 
     val c = if(sparse) {
       val data = ois.readObject.asInstanceOf[SPARSE_T]
@@ -32,9 +27,9 @@ object ScalaBackend extends Backend[Payload] {
 
     c
   }
-  def writeCuboid(id: Int, c: Cuboid) {
+  def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
     val oos = new ObjectOutputStream(
-      new FileOutputStream("cub_" + id + ".ssuk"))
+      new FileOutputStream(s"$name_prefix/cub_" + id + ".ssuk"))
 
     if(c.isInstanceOf[SparseCuboid])
          oos.writeObject(c.asInstanceOf[SparseCuboid].data)

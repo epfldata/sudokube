@@ -32,14 +32,13 @@ class CBackend extends Backend[Payload] {
   @native protected def writeSCuboid0(filename: String, s_id: Int)
   @native protected def writeDCuboid0(filename: String, d_id: Int)
 
-  def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt
-  ) : Cuboid = {
-    val filename = "cub_" + id + ".csuk"
+  def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
+    val filename = s"$name_prefix/cub_" + id + ".csuk"
     if(sparse) SparseCuboid(n_bits, readSCuboid0(filename, n_bits, size.toInt))
     else        DenseCuboid(n_bits, readDCuboid0(filename, n_bits, size.toInt))
   }
-  def writeCuboid(id: Int, c: Cuboid) {
-    val filename = "cub_" + id + ".csuk"
+  def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
+    val filename = s"$name_prefix/cub_" + id + ".csuk"
     println("CBackend::writeCuboid: Writing cuboid as " + filename)
 
     if(c.isInstanceOf[SparseCuboid])
