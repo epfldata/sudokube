@@ -69,16 +69,17 @@ object CubeData {
           l = l.tail
         }
       }
-      println(
-        dcloadtime / (1000 * 1000) + "\t" +
-          Profiler.durations("Naive")._2 / (1000 * 1000) + "\t" +
-          Profiler.durations("Solver")._2 / (1000 * 1000) + "\t" +
-          Profiler.durations("Fetch")._2 / (1000 * 1000) + "\t" +
-          Profiler.durations("SolverAdd")._2 / (1000 * 1000) + "\t" +
-          Profiler.durations("Gauss")._2 / (1000 * 1000) + "\t" +
-          Profiler.durations("ComputeBounds")._2 / (1000 * 1000)
-      )
+      val result = dcloadtime / (1000 * 1000) + "\t" +
+        Profiler.durations("Naive")._2 / (1000 * 1000) + "\t" +
+        Profiler.durations("Solver")._2 / (1000 * 1000) + "\t" +
+        Profiler.durations("Fetch")._2 / (1000 * 1000) + "\t" +
+        Profiler.durations("SolverAdd")._2 / (1000 * 1000) + "\t" +
+        Profiler.durations("Gauss")._2 / (1000 * 1000) + "\t" +
+        Profiler.durations("ComputeBounds")._2 / (1000 * 1000)
+      println(result)
+      pw.println(result)
     }
+    pw.close()
     //Profiler.print()
   }
 

@@ -164,15 +164,9 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_dFetch0
   jintArray result = env->NewIntArray(size * 3);
   if (result == NULL) return NULL; // out of memory error thrown
 
-  jint fill[size * 3];
-  for (int i = 0; i < size; i++) {
-    fill[i*3]   = p[i].lb;
-    fill[i*3+1] = p[i].sm;
-    fill[i*3+2] = p[i].ub;
-  }
-  // TODO: do we really need to copy the data structure?
-  // Can we just cast it as
-  // jint *fill = (int *)p; -- I didn't try it.
+  //Can't declare large array in stack. Stack out of bounds
+
+   jint *fill = (jint *)p; //SBJ: Checked addresses and they match
 
   env->SetIntArrayRegion(result, 0, size * 3, fill);
   return result;
