@@ -14,8 +14,10 @@ trait Schema extends Serializable {
   def columnList: List[(String, ColEncoder[_])]
   protected def encode_column(key: String, v: Any) : BigBinary
 
-  def encode_tuple(t: Seq[(String, Any)]): BigBinary =
-    (t.map { case (key, v) => encode_column(key, v) }).sum
+  def encode_tuple(t: Seq[(String, Any)]): BigBinary = {
+    val cols = Profiler("EncodeColumn"){(t.map { case (key, v) => encode_column(key, v) })}
+      Profiler("ColumnSum"){cols.sum}
+  }
 
   def decode_tuple(i: BigBinary): Seq[(String, Any)] =
     columnList.map { case (key, c) => (key, c.decode(i)) }

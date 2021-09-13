@@ -41,26 +41,38 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     println("Creating build plan...")
 
-    val build_plan = m.create_build_plan()
 
-    println("Projecting...")
+    val cores = Runtime.getRuntime.availableProcessors/2
+    val par_build_plan = m.create_parallel_build_plan(cores)
+    println(s"Projecting using $cores cores...")
 
     // puts a ref to the same object into all fields of the array.
     val ab = Util.mkAB[Cuboid](m.projections.length, _ => full_cube)
     val backend = full_cube.backend
-    val pi = new ProgressIndicator(build_plan.length)
+    val pi = new ProgressIndicator(par_build_plan.map(_.length).sum)
+    val full_cube_id = par_build_plan.head.head._2
+    ab(full_cube_id) = full_cube
 
-    build_plan.foreach {
-      case (_, id, -1) => ab(id) = full_cube
-      case (s, id, parent_id) => {
-        val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s).toArray
-        ab(id)   = ab(parent_id).rehash(mask)
+    val threadBuffer = par_build_plan.map { build_plan =>
+      new Thread {
+        override def run(): Unit = {
+          build_plan.foreach {
+            case (_, id, -1) => ()
+            case (s, id, parent_id) => {
+              val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s).toArray
+              ab(id) = ab(parent_id).rehash(mask)
 
-        // completion status updates
-        if(ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
-        pi.step
+              // completion status updates
+              //if(ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
+              pi.step
+            }
+          }
+        }
       }
     }
+
+    threadBuffer.foreach(_.start())
+    threadBuffer.foreach(_.join())
     cuboids = ab.toArray
     println
 

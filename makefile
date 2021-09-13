@@ -1,6 +1,5 @@
-LIBS_HOME=/usr/local/Cellar/scala/2.12.7/libexec/lib
-CP=$(LIBS_HOME)/scala-library.jar
-JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
+CP=~/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.7.jar
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_281.jdk/Contents/Home
 
 all:
 	javah -cp $(CP):target/scala-2.12/classes:. backend.CBackend

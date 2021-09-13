@@ -53,9 +53,9 @@ class SliceSparseSolver[T](
 
   /* Tries to updates bound and returns  true if successful */
   def my_infer_bound(x: Int, y: Int): Boolean = {
-    val prof = Profiler.start(s"My infer bound")
-    val row = M(x)
-    /*
+     Profiler.noprofile(s"My infer bound") {
+       val row = M(x)
+       /*
      s y + cj xj = B
       y = 1/s *  (B + (-cj) xj)
 
@@ -63,44 +63,44 @@ class SliceSparseSolver[T](
      min y when max xj for cj > 0 and min xj for cj < 0 WHEN s > 0
     */
 
-    val maxVal = row.data.map {
-      case (`n_vars`, bi) => bi
-      case (`y`, _) => num.zero
-      case (j, cj) if num.gt(cj, num.zero) => num.times(num.negate(cj), minVals(j))
-      case (j, cj) if num.lt(cj, num.zero) => num.times(num.negate(cj), maxVals(j))
-    }.sum
+       val maxVal = row.data.map {
+         case (`n_vars`, bi) => bi
+         case (`y`, _) => num.zero
+         case (j, cj) if num.gt(cj, num.zero) => num.times(num.negate(cj), minVals(j))
+         case (j, cj) if num.lt(cj, num.zero) => num.times(num.negate(cj), maxVals(j))
+       }.sum
 
-    val minVal = row.data.map {
-      case (`n_vars`, bi) => bi
-      case (`y`, _) => num.zero
-      case (j, cj) if num.gt(cj, num.zero) => num.times(num.negate(cj), maxVals(j))
-      case (j, cj) if num.lt(cj, num.zero) => num.times(num.negate(cj), minVals(j))
-    }.sum
+       val minVal = row.data.map {
+         case (`n_vars`, bi) => bi
+         case (`y`, _) => num.zero
+         case (j, cj) if num.gt(cj, num.zero) => num.times(num.negate(cj), maxVals(j))
+         case (j, cj) if num.lt(cj, num.zero) => num.times(num.negate(cj), minVals(j))
+       }.sum
 
-    val scale = row.data(y)
-    val (newMinVal, newMaxVal) = if (num.gt(scale, num.zero)) {
-      (num.div(minVal, scale), num.div(maxVal, scale))
-    } else {
-      (num.div(maxVal, scale), num.div(minVal, scale))
-    }
+       val scale = row.data(y)
+       val (newMinVal, newMaxVal) = if (num.gt(scale, num.zero)) {
+         (num.div(minVal, scale), num.div(maxVal, scale))
+       } else {
+         (num.div(maxVal, scale), num.div(minVal, scale))
+       }
 
 
-    assert(num.gteq(newMaxVal, newMinVal))
+       assert(num.gteq(newMaxVal, newMinVal))
 
-    var updated = false
-    if(num.gt(newMinVal, minVals(y))){
-      assert(num.gteq(newMinVal, num.zero))
-      minVals(y) = newMinVal
-      updated = true
-    }
-    if(num.lt(newMaxVal, maxVals(y))){
-      assert(num.gteq(newMaxVal, num.zero))
-      maxVals(y) = newMaxVal
-      updated = true
-    }
-    assert(num.gteq(maxVals(y), minVals(y)))
-    prof()
-    updated
+       var updated = false
+       if (num.gt(newMinVal, minVals(y))) {
+         assert(num.gteq(newMinVal, num.zero))
+         minVals(y) = newMinVal
+         updated = true
+       }
+       if (num.lt(newMaxVal, maxVals(y))) {
+         assert(num.gteq(newMaxVal, num.zero))
+         maxVals(y) = newMaxVal
+         updated = true
+       }
+       assert(num.gteq(maxVals(y), minVals(y)))
+       updated
+     }
   }
 
   override protected def propagate_bounds0(vars: Seq[Int]): Seq[Int] = {
@@ -133,27 +133,24 @@ class SliceSparseSolver[T](
     }/$n_vars")
 
     if (df > 30) {
-      val p1 = Profiler.start("Super Prop Bounds")
-      super.propagate_bounds(all_vars) //use all vars bounds as input.
-      p1()
+      val p1 = Profiler.noprofile("Super Prop Bounds") {
+        super.propagate_bounds(all_vars) //use all vars bounds as input.
+      }
     } else if (df > 0) {
-      val p2 = Profiler.start("Simplex Bounds")
-      simplex_bounds(obj_vars)
-      p2()
+      val p2 = Profiler.noprofile("Simplex Bounds") {
+        simplex_bounds(obj_vars)
+      }
     } else {
-      val p3 = Profiler.start("Linear Bounds")
-      linear_propagate_bounds()
-      p3()
+      val p3 = Profiler.noprofile("Linear Bounds") {
+        linear_propagate_bounds()
+      }
     }
-    val p4 = Profiler.start("To Interval Bounds")
+
     (0 until n_vars).foreach { v =>
       bounds(v) = Interval(Some(minVals(v)), Some(maxVals(v)))
     }
-    p4()
 
-    val p5 = Profiler.start("Add points")
     add_points((0 until n_vars))
-    p5()
 
   }
 
@@ -200,13 +197,11 @@ class SliceSparseSolver[T](
      */
     def run_my_simplex(obj_var: Int, maximize: Boolean) {
 
-      val prof = Profiler.start(s"RunSimplex max=$maximize")
 
-      val initProf = Profiler.start(s"Simplex Initialization")
-      val simplex = new DualSimplex[T](n_vars, det_vars, constraints)
+
+      val simplex = Profiler.noprofile(s"Simplex Initialization"){new DualSimplex[T](n_vars, det_vars, constraints)}
       //if (df > 30)
       simplex.iter_limit = 20
-      initProf()
       simplex.maxVals = maxVals
       simplex.minVals = minVals
       simplex.set_simple_objective(obj_var, maximize)
@@ -219,7 +214,6 @@ class SliceSparseSolver[T](
       iterations += simplex.it_cnt
       //println(s"Simplex constraints = ${simplex.n_constraints}  orig_eqns = ${n_det_vars}  vars = ${simplex.n_vars}  orig_vars = ${n_vars} free = ${simplex.freeRows},  total freed = ${simplex.totalFreed}")
       //println(s"Current basis =" + simplex.base_v.mkString(" "))
-      prof()
     }
 
 
@@ -230,13 +224,13 @@ class SliceSparseSolver[T](
     }
 
     val pi = new ProgressIndicator(vars.length, "Simplex")
-    val minP = Profiler.start("RunSimplex")
-    for (i <- simplex_obj_vars) yield {
-      run_my_simplex(i, false)
-      run_my_simplex(i, true)
-      pi.step
-    }
-    minP()
+     Profiler.noprofile("RunSimplex") {
+       for (i <- simplex_obj_vars) yield {
+         run_my_simplex(i, false)
+         run_my_simplex(i, true)
+         pi.step
+       }
+     }
     if (vars.length > df)
       linear_propagate_bounds()
 

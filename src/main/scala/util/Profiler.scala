@@ -3,7 +3,18 @@ package util
 object Profiler {
   var startTimers = collection.mutable.Map[String, Long]()
   var durations = collection.mutable.Map[String, (Long, Long)]()
-
+  def apply[T](name: String)(func : => T): T = profile(name)(func)
+  def noprofile[T](name: String)(func: => T): T = func
+  def profile[T](name: String)(func: => T): T = {
+    val startTime = System.nanoTime()
+    val res = func
+    val endTime = System.nanoTime()
+    val curDur = durations.getOrElse(name, (0L, 0L))
+    val newDur = (curDur._1 + 1, curDur._2 + (endTime - startTime))
+    durations += name -> newDur
+    res
+  }
+  /*
   def start(name: String) = {
     val end = () => {
       val et = System.nanoTime()
@@ -14,7 +25,7 @@ object Profiler {
     startTimers += (name -> System.nanoTime())
     end
   }
-
+*/
   def resetAll() = {
     startTimers = startTimers.empty
     durations = durations.empty
@@ -33,6 +44,6 @@ object Profiler {
   }
   def print() = {
     val L = durations.keys.map(_.length).max + 2
-    durations.map { case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c * 1000)} us" }.foreach(println)
+    durations.toList.sortBy(_._2._2).map { case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c * 1000)} us" }.foreach(println)
   }
 }

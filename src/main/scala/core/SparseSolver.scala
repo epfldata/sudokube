@@ -152,7 +152,6 @@ case class SparseSolver[T](
   }}}
   */
   protected def infer_bound(row: Int, v: Int) : Interval[T] = {
-    val p1 = Profiler.start("SUPER infer bound")
     // println("infer_bound(" + row + ", " + v + ")")
 
     val b  = M(row)(n_vars)
@@ -180,7 +179,6 @@ case class SparseSolver[T](
     val scaling_factor : T = num.div(num.one, M(row)(v))
 
     val minus1 : T         = num.negate(num.one)  // == -1
-    p1()
     (IntervalTools.point(b) + (s * minus1)) * scaling_factor
   }
 
@@ -262,9 +260,7 @@ case class SparseSolver[T](
   def compute_bounds {
     // even if df == 0, we initially haven't restricted the bounds or
     // set the solved vars: call propagate_bounds for this.
-    val p1 = Profiler.start("CB PB")
     propagate_bounds(0 to n_vars - 1)
-    p1()
     if((df > 0) && (df < 30)) {
 /*
       try   { simplex_add }

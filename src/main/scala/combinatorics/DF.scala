@@ -45,7 +45,7 @@ object DF {
   }
 
   /** as in Solver */
-  def compute_df0(n: Int, l: List[List[Int]]) : BigInt = {
+  def compute_df0(n: Int, l: List[List[Int]]) : (BigInt, BigInt) = {
     val eqs = l.map(Bits.group_values(_, 0 to (n - 1)
                  ).map(x => x.map(_.toInt))).flatten
     val det_vars = collection.mutable.Set[Int]()
@@ -53,7 +53,7 @@ object DF {
     for(eq <- eqs)
       if(!det_vars.contains(eq.last)) det_vars.add(eq.last)
 
-    (1 << n) - det_vars.size
+    (det_vars.size, (1 << n) - det_vars.size)
   }
 
   /** Density function of the degrees of freedom.

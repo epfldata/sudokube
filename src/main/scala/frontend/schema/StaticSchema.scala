@@ -1,6 +1,8 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
 
+import util.{BigBinary, Profiler}
+
 
 abstract class Dim(val name: String) extends Serializable {
   def n_bits : Int
@@ -22,6 +24,19 @@ case class LD[T](
     vals.zipWithIndex.map{ case (k, i) => (k, i) }.toMap
   private val reverse_map: Map[Int, T] =
     vals.zipWithIndex.map{ case (k, i) => (i, k) }.toMap
+
+  override def encode(v: T): BigBinary = if(v.isInstanceOf[Int] && n_bits == 1) {
+    val vi = v.asInstanceOf[Int]
+    Profiler("LD Encode") {
+      val res1 = if (vi == 0)
+        BigBinary(0)
+      else
+        BigBinary(BigInt(1) << bits.head)
+      //val res2 =  super.encode(v)
+      //assert(res1 == res2)
+      res1
+    }
+  } else super.encode(v)
 
   def encode_locally(key: T) : Int = vanity_map(key)
   def decode_locally(i: Int) : T   = reverse_map(i)
@@ -59,9 +74,11 @@ class StaticSchema(top_level: List[Dim]) extends Schema {
 
   val n_bits = root.bits.length
   val columnList = root.leaves.map(c => (c.name, c))
+  val colMap = columnList.toMap
 
   protected def encode_column(key: String, v: Any) = {
-    columnList.toMap.apply(key).encode_any(v)
+    val encoder = Profiler("ColMap") {colMap(key)}
+      Profiler("EncodeAny"){encoder.encode_any(v)}
   }
 }
 

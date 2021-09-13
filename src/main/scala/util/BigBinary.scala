@@ -30,7 +30,17 @@ case class BigBinary(val toBigInt: BigInt) {
   /** get sequence of the n least significant bits
       throws exception if n > toBigInt.length * wordlen
   */
-  protected def toSeqN(n: Int) : Seq[Int] = (0 to n - 1).map(apply(_))
+  protected def toSeqN(n: Int) : Seq[Int] = {
+     var bi = toBigInt % (1 << n)
+     var n2 = n
+     var l1 = List[Int]()
+     while(n2 > 0) {
+       l1 = (bi % 2).toInt :: l1
+       bi = bi >> 1
+       n2 -= 1
+     }
+     l1.reverse
+   }
 
   def toSeq : Seq[Int] = {
     def toSeq0(i: BigInt) : List[Int] = {

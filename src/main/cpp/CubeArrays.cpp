@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <errno.h>
-
+#include <mutex>
 #include "Keys.h"
 #include "Payload.h"
 
@@ -31,9 +31,12 @@ std::vector<void *>  registry(0);
 */
 std::vector<long> sz_registry(0);
 
+std::mutex registryMutex;
 // append cuboid to registry, used both in dense and sparse case.
 int r_add(void *p, long size)
 {
+  std::unique_lock<std::mutex> lock(registryMutex);
+
   registry.push_back(p);
   sz_registry.push_back(size);
   return registry.size() - 1;

@@ -155,14 +155,10 @@ class DualSimplex[T](
       Map(v + 1 -> num.negate(num.one))
     }
     tableau(0) = SparseRow[T](n_vars + 1, l)
-    val fixRowProfiler = Profiler.start("Fix Row")
     if (maximize) isOptimal = false
-    fixRow(0)
-    fixRowProfiler()
+    Profiler.noprofile("Fix Row") { fixRow(0)}
+    Profiler.noprofile("Make Dual Feasible"){makeDualFeasible()}
 
-    val dFeas = Profiler.start("Make Dual Feasible")
-    makeDualFeasible()
-    dFeas()
   }
 
 
@@ -417,9 +413,7 @@ class DualSimplex[T](
       while (next_row != None && !terminate && it_cnt < iter_limit) {
 
         val row = next_row.get
-        val colProfile = Profiler.start("PickCol")
-        val col = D_pick_col(row).get
-        colProfile()
+        val col = Profiler.noprofile("PickCol"){D_pick_col(row).get}
 
         if (terminate)
           break
@@ -429,14 +423,11 @@ class DualSimplex[T](
         //if(debug) println(M(row).data.filterKeys(k => k == 0 || k == col))
         //if (debug) println("Pivoting at col " + col + " / row " + row)
 
-        val pivProfile = Profiler.start("Pivot")
-        pivot(row, col)
-        pivProfile()
+        Profiler.noprofile("Pivot"){pivot(row, col)}
 
         it_cnt += 1
-        val rowProfile = Profiler.start("PickRow")
-        next_row = D_pick_row
-        rowProfile()
+
+        next_row = Profiler.noprofile("PickRow"){D_pick_row}
         //if (debug) (0 to n_constraints).foreach { printRow }
         //debug = it_cnt > 50
         //if (debug) {

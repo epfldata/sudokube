@@ -111,10 +111,20 @@ object DemoTxt {
 
   }
 
+  def parPlan() = {
+    val m = RandomizedMaterializationScheme(100, 0.1, 1.05)
+    println(m.projections.size)
+    val seq = m.create_build_plan()
+    val par = m.create_parallel_build_plan(8)
+
+    println(seq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n"))
+
+    par.foreach(pseq => println(pseq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n")))
+  }
   def main(args: Array[String]): Unit = {
     //large()
-    feature()
-
+    //feature()
+    parPlan()
   }
 
 }

@@ -7,7 +7,7 @@ class ProgressIndicator(num_steps: Int, name: String = "") {
   private var done = 0
   private val startTime = System.nanoTime()
   print(name + "  ")
-  def step {
+  def step  = this.synchronized {
     done += 1 
     if(done % one_percent < 1) print((done/one_percent).toInt + "%")
     if(done == num_steps) {

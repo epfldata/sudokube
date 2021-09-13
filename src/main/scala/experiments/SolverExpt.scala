@@ -28,9 +28,9 @@ object SolverExpt {
   }
 
   def callback(s: SparseSolver[Rational]) = {
-    val p1 = Profiler.start("Callback PB")
+    val p1 = Profiler.noprofile("Callback PB"){
     s.propagate_bounds(0 to s.n_vars - 1)
-    p1()
+    }
     val selectedbounds = getSelectedBounds(s)
 
     selectedbounds.foreach { case (r, id) =>
@@ -54,20 +54,18 @@ object SolverExpt {
     if(readOnlyFullCuboid) l = List(l.last)
     while ((!l.isEmpty) && (df > 0) && cont) {
       println(l.head.accessible_bits)
-      val p0 = Profiler.start("Add2")
-      s.add2(List(l.head.accessible_bits), dc.fetch2(List(l.head)))
-      p0()
-      if (df != s.df) { // something added
-        val p1 = Profiler.start("GAUSS DET VAR")
-        s.gauss(s.det_vars)
-        p1()
-        val p2 = Profiler.start("COMPUTE BOUND")
-        s.compute_bounds
-        p2()
 
-        val p3 = Profiler.start("CALLBACK")
+      Profiler.noprofile("Add2"){s.add2(List(l.head.accessible_bits), dc.fetch2(List(l.head)))}
+
+      if (df != s.df) { // something added
+        val p1 = Profiler.noprofile("GAUSS DET VAR") {
+          s.gauss(s.det_vars)
+        }
+        val p2 = Profiler.noprofile("COMPUTE BOUND") {
+          s.compute_bounds
+        }
+
         cont = callback(s)
-        p3()
         df = s.df
       }
       l = l.tail

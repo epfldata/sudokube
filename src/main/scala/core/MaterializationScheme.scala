@@ -99,6 +99,41 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     build_plan.reverse
   }
 
+  def create_parallel_build_plan(nthreads: Int) = {
+    val ps = projections.zipWithIndex.sortBy(_._1.length).reverse.toList
+    assert(ps.head._1.length == n_bits)
+
+    // the edges (_2, _3) form a tree rooted at the full cube
+    var build_plan = collection.mutable.Map[Int, List[(Set[Int], Int, Int)]]()
+    build_plan ++=  (0 until nthreads).map{tid => tid -> List((ps.head._1.toSet, ps.head._2, -1))}
+
+    val thread_size = collection.mutable.Map[Int, Int]().withDefaultValue(0)
+    val pi = new ProgressIndicator(ps.tail.length)
+
+    ps.tail.foreach {
+      case((l: List[Int]), (i: Int)) => {
+        val s = l.toSet
+
+        // first match is cheapest
+        val y = build_plan.mapValues(_.find{ case (s2, _, _) => s.subsetOf(s2) })
+        val y2 = y.tail.foldLeft(y.head){
+          case (acc@(_, None), cur) => cur
+          case (acc, cur@(_, None)) => acc
+          case (acc@(tida, Some((sa, _, _))), cur@(tidc, Some((sc, _, _)))) =>
+              if(sc.size < sa.size) cur
+              else if((sc.size == sa.size) && thread_size(tidc) < thread_size(tida)) cur
+              else acc
+        }
+        val (tid, Some((s2, j, pj))) = y2
+        build_plan(tid) = (s, i, j) :: build_plan(tid)
+        thread_size(tid) += 1
+        pi.step
+      }
+    }
+    println
+    build_plan.values.map(_.reverse).toList
+  }
+
 
   /** projection without filtering.
       renormalizes: for each element of the result, .accessible_bits is
@@ -275,6 +310,8 @@ case class RandomizedMaterializationScheme(
     println("1")
     r
   }
-} // end MaterializationScheme 
+  println("Total = "+ projections.length)
+} // end MaterializationScheme
+
 
 

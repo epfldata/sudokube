@@ -7,9 +7,10 @@ import combinatorics._
 import util._
 import backend._
 import generators._
-
+import scala.util.Random
 object Tools {
   def qq(qsize: Int) = (0 to qsize - 1).toList
+  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize)
 
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
@@ -28,7 +29,7 @@ object Tools {
   def mkDC(n_bits: Int,
            rf: Double,
            base: Double,
-           n_rows: Int,
+           n_rows: Long,
            sampling_f: Int => Int = Sampling.f1,
            be: Backend[_] = CBackend.b,
            vg: ValueGenerator = RandomValueGenerator(10)
@@ -36,11 +37,11 @@ object Tools {
     val sch = schema.StaticSchema.mk(n_bits)
     val R = TupleGenerator(sch, n_rows, sampling_f)
     println("mkDC: Creating maximum-granularity cuboid...")
-    val fc = be.mk(n_bits, R)
+    val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
     val m = RandomizedMaterializationScheme(n_bits, rf, base)
     val dc = new DataCube(m);
-    dc.build(fc)
+    Profiler("Projections"){dc.build(fc)}
     //    val dc = new JailBrokenDataCube(m, fc)
     //    assert(dc.getCuboids.last == fc)
     dc
@@ -75,16 +76,28 @@ object minus1_adv {
 
       a.get(q.length - 1) match {
         case Some(m1) => {
-          val df = DF.compute_df0(q.length, m1.map(_.accessible_bits))
+          val (detsize, df) = DF.compute_df0(q.length, m1.map(_.accessible_bits))
 
           val worst_proj_cost = m1.map(_.mask.length).max
-          val   avg_proj_cost = m1.map(_.mask.length).sum.toDouble/m1.length
+          val avg_proj_cost = m1.map(_.mask.length).sum.toDouble/m1.length
+          val sum_proj_cost = avg_proj_cost + Math.log(m1.length)/Math.log(2)
           val  best_proj_cost = m1.map(_.mask.length).min
+
+         val n = Math.log(df.toDouble)/Math.log(2)
+          val m = Math.log(detsize.toDouble)/Math.log(2)
+          val v = 0  //V is the avg non-zero entry per row. Best case : 1 , Worst Case N
+          val gauss_cost = 2*m + v //log cost of Gaussing elimination log(M^2 V) .
+
+          val expected_cost = Math.max(sum_proj_cost, gauss_cost)
           pw.write(n + "\t" + rf + "\t" + base + "\t" + qsize + "\t"
                 + full_cost + "\t"
                 + worst_proj_cost + "\t"
                 + avg_proj_cost + "\t"
                 + best_proj_cost + "\t"
+                + sum_proj_cost + "\t"
+                + gauss_cost + "\t"
+                + expected_cost + "\t"
+                + m1.length + "\t"
                 + df + "\n")
         }
         case None     => {
@@ -156,7 +169,7 @@ object exp_e_df {
     val bounds = SolverTools.mk_all_non_neg(1 << q.length)
     val df1 = Solver(q.length, bounds, l, v).df
 */
-    val df2 = DF.compute_df0(qsize, l)
+    val df2 = DF.compute_df0(qsize, l)._2
     // assert(df1 == df2)
     df2
   }
