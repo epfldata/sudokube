@@ -108,7 +108,7 @@ void dense_print(int d_id, int n_bits) {
 }
 
 
-void *read_cb(const char *filename, int byte_size) {
+void *read_cb(const char *filename, unsigned long long byte_size) {
   unsigned char *b = (unsigned char *)malloc(byte_size);
   FILE *fp = fopen(filename, "r");
   assert(fp != NULL);
