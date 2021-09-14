@@ -60,53 +60,59 @@ object minus1_adv {
       the query in full compared to the worst size cube
       of size |q| - 1?
   */
-  def apply(n: Int, rf: Double, base: Double, qsize: Int, n_it: Int) = {
-    val pw = new PrintWriter(new File("m1_adv_" + n + "_" + rf
-      + "_" + base + "_" + qsize + "_" + n_it + ".csv" ))
-
+  def apply(nbits: Int, rf: Double, base: Double, lognrows: Int, qsize: Int, num_it: Int) = {
+    val pw = new PrintWriter(new File("expdata/m1_adv_" + nbits + "_" + rf
+      + "_" + base + "_" + lognrows + "_" + qsize + "_" + num_it + ".csv"))
+    pw.println(s"nbits,rf,base,lognrows,qsize,full_cost,worst_proj_cost,avg_proj_cost,best_proj_cost,sum_proj_cost," +
+    "gauss_cost,expected_solver_cost,#proj,#df")
+    def cost(bits: Int) = Math.min(lognrows, bits)
     var accum_full_cost = 0
 
-    for(i <- 1 to n_it) {
+    for(i <- 1 to num_it) {
       val q = Tools.qq(qsize)
-      val m = RandomizedMaterializationScheme(n, rf, base)
+      val m = RandomizedMaterializationScheme(nbits, rf, base)
 
-      val a = m.prepare(q, qsize - 1, n).groupBy(_.accessible_bits.length)
-      val full_cost = a(q.length).head.mask.length
+      val a = m.prepare(q, qsize - 1, nbits).groupBy(_.accessible_bits.length)
+      val full_cost = cost(a(q.length).head.mask.length)
       accum_full_cost += full_cost
 
       a.get(q.length - 1) match {
         case Some(m1) => {
           val (detsize, df) = DF.compute_df0(q.length, m1.map(_.accessible_bits))
 
-          val worst_proj_cost = m1.map(_.mask.length).max
-          val avg_proj_cost = m1.map(_.mask.length).sum.toDouble/m1.length
-          val sum_proj_cost = avg_proj_cost + Math.log(m1.length)/Math.log(2)
-          val  best_proj_cost = m1.map(_.mask.length).min
+          val worst_proj_cost = cost(m1.map(_.mask.length).max)
+          val avg_proj_cost = cost((m1.map(_.mask.length).sum.toDouble/m1.length).toInt)
+          val sum_proj_cost = cost((avg_proj_cost + Math.log(m1.length)/Math.log(2)).toInt)
+          val  best_proj_cost = cost(m1.map(_.mask.length).min)
 
-         val n = Math.log(df.toDouble)/Math.log(2)
+         //val n = Math.log(df.toDouble)/Math.log(2)
           val m = Math.log(detsize.toDouble)/Math.log(2)
           val v = 0  //V is the avg non-zero entry per row. Best case : 1 , Worst Case N
           val gauss_cost = 2*m + v //log cost of Gaussing elimination log(M^2 V) .
 
           val expected_cost = Math.max(sum_proj_cost, gauss_cost)
-          pw.write(n + "\t" + rf + "\t" + base + "\t" + qsize + "\t"
-                + full_cost + "\t"
-                + worst_proj_cost + "\t"
-                + avg_proj_cost + "\t"
-                + best_proj_cost + "\t"
-                + sum_proj_cost + "\t"
-                + gauss_cost + "\t"
-                + expected_cost + "\t"
-                + m1.length + "\t"
+          pw.write(nbits + "," + rf + "," + base + "," + lognrows + "," + qsize + ","
+                + full_cost + ","
+                + worst_proj_cost + ","
+                + avg_proj_cost + ","
+                + best_proj_cost + ","
+                + sum_proj_cost + ","
+                + gauss_cost + ","
+                + expected_cost + ","
+                + m1.length + ","
                 + df + "\n")
         }
         case None     => {
           // no improvement -- we need to use the full cube
-          pw.write(n + "\t" + rf + "\t" + base + "\t" + qsize + "\t"
-                + full_cost + "\t"
-                + full_cost + "\t"
-                + full_cost + "\t"
-                + full_cost + "\t"
+          pw.write(nbits + "," + rf + "," + base + "," + lognrows + "," + qsize + ","
+                + full_cost + ","
+                + full_cost + ","
+                + full_cost + ","
+                + full_cost + ","
+                + full_cost + ","
+                + 0 + ","
+                + full_cost + ","
+                + 1 + ","
                 + 0 + "\n")
         }
       }
@@ -114,7 +120,7 @@ object minus1_adv {
     }
     pw.close
 
-    println(accum_full_cost.toDouble / n_it)
+    println(accum_full_cost.toDouble / num_it)
   }
 }
 

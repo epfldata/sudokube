@@ -26,7 +26,7 @@ case class SparseSolver[T](
   type Eq_T = (Seq[Int], T)
 
   def gauss(pivs: Seq[Int]) {
-    val pi = new ProgressIndicator(pivs.length, "Gauss")
+    //val pi = new ProgressIndicator(pivs.length, "Gauss")
     for(piv <- pivs.sorted.reverse) {
       val pivot_row = M(piv)
 
@@ -46,7 +46,7 @@ case class SparseSolver[T](
           }
         }
       }
-      pi.step
+      //pi.step
     }
   }
 
@@ -190,7 +190,7 @@ case class SparseSolver[T](
                    propagated.
   */
   protected def propagate_bounds0(vars: Seq[Int]) : Seq[Int] = {
-    val pi = new ProgressIndicator(det_vars.size, "PropBounds0")
+    //val pi = new ProgressIndicator(det_vars.size, "PropBounds0")
     val result = (for(row <- det_vars) yield {
       val r_vars = M(row).domain.filter(_ != n_vars)
       val i = r_vars.intersect(vars)
@@ -205,7 +205,7 @@ case class SparseSolver[T](
         }
         else None
       }).flatten)
-      pi.step
+      //pi.step
       res
     }).flatten.flatten.toSet.toList
 
@@ -247,11 +247,11 @@ case class SparseSolver[T](
         case None => None
       }
     }
-    val pi = new ProgressIndicator(vars.length, "Simplex")
+    //val pi = new ProgressIndicator(vars.length, "Simplex")
     for(i <- vars) yield {
       val intv = Interval(run_my_simplex(i, false), run_my_simplex(i, true))
       bounds(i) = bounds(i).intersect(intv)
-      pi.step
+      //pi.step
     }
     //println // a.algo wrote a single unterminated line
     add_points(vars)

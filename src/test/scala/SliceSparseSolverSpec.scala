@@ -202,8 +202,8 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
 
     s1.compute_bounds
     s2.compute_bounds
-    assert(s1.cumulative_interval_span.get.toInt <= 1832)
-    assert(s2.cumulative_interval_span.get.toInt <= 1620)
+    assert(s1.cumulative_interval_span.get.toInt == 1832)
+    assert(s2.cumulative_interval_span.get.toInt == 1620)
   }
 
 
