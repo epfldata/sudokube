@@ -18,6 +18,8 @@ abstract class Cuboid {
     assert(mask.length == n_bits)
     val res_n_bits = mask.sum
     val size_dense = Big.pow2(res_n_bits)
+
+    //TODO: rehash to sparse first, check size and then rehash to dense if large enough
     if(size_dense <= size) rehash_to_dense( mask)
     else                   rehash_to_sparse(mask)
   }

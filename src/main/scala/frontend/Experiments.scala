@@ -10,7 +10,7 @@ import generators._
 import scala.util.Random
 object Tools {
   def qq(qsize: Int) = (0 to qsize - 1).toList
-  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize)
+  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize).sorted
 
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
@@ -65,7 +65,7 @@ object minus1_adv {
       + "_" + base + "_" + lognrows + "_" + qsize + "_" + num_it + ".csv"))
     pw.println(s"nbits,rf,base,lognrows,qsize,full_cost,worst_proj_cost,avg_proj_cost,best_proj_cost,sum_proj_cost," +
     "gauss_cost,expected_solver_cost,#proj,#df")
-    def cost(bits: Int) = Math.min(lognrows, bits)
+    def cost(bits: Int) = bits //Math.min(lognrows, bits)
     var accum_full_cost = 0
 
     for(i <- 1 to num_it) {

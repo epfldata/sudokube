@@ -4,14 +4,17 @@ import core.{DataCube, Rational, SolverTools, SparseSolver}
 import frontend._
 import frontend.experiments._
 import planning.ProjectionMetaData
-import util.Profiler
+import util.{Profiler, VaryingTimer}
 
 import java.io.PrintStream
 
 object CubeData {
 
-  def mkCube(n_row_log: Int) = {
+
+
+  def mkCube(log: Int) = {
     Profiler.resetAll()
+    n_row_log = log
     val name = s"${sampling}_d${n_bits}_${rf}_${base}_n${n_row_log}"
     val nrows = 1L << n_row_log
 
@@ -20,7 +23,7 @@ object CubeData {
       case "S2" => Sampling.f2(_)
     }
 
-    val dc = Profiler("mkDC") {
+     dc = Profiler("mkDC") {
       Tools.mkDC(n_bits, rf, base, nrows, sampling_f)
     }
     Profiler("Save DC") {
@@ -49,80 +52,115 @@ object CubeData {
     Profiler.print()
   }
 
-  def expt(qsize: Int, iters: Int) {
+  def expt(qsizes: Seq[Int], iters: Int) {
     import core.RationalTools._
-    val pw = new PrintStream(s"expdata/expt_${sampling}_${n_bits}_${rf}_${base}_${n_row_log}_${qsize}.csv")
-    val cheap_size = 50
-    val header = s"NBits,rf,Base,logNrows,Qsize, NaiveTotalTime(ms), NaiveMaxDimFetched, NaiveInit(ms), NaiveFetch(ms), SolverTotalTime(ms),SolverMaxDimFetched, SolverRounds, SolverInitTime(ms),SolverFetch(ms),SolverAdd(ms),SolverGauss(ms),SolverComputeBounds(ms)"
+    val pw = new PrintStream(s"expdata/expt_${sampling}_${n_bits}_${rf}_${base}_${n_row_log}_timedata.csv")
+    val pwstat = new PrintStream(s"expdata/expt_${sampling}_${n_bits}_${rf}_${base}_${n_row_log}_statdata.csv")
+    val header = s"NBits,rf,Base,logNrows,Qsize,IterNum, NaiveTotalTime(ms), NaiveMaxDimFetched, NaiveInit(ms), NaiveFetch(ms), SolverTotalTime(ms),SolverMaxDimFetched, SolverRounds, SolverInitTime(ms),SolverFetch(ms),SolverAdd(ms),SolverGauss(ms),SolverComputeBounds(ms)"
+    val headerStat = s"NBits,rf,Base,logNrows,Qsize,IterNum, TimeElapsed(ms),#df,#solved,CumIntSpan"
     pw.println(header)
-    (0 until iters).foreach { it =>
-      Profiler.resetAll()
-      var naiveDimFetched = 0
-      var solverDimFetched = 0
-      var solverRounds = 0
+    pwstat.println(headerStat)
 
-      val query = Tools.rand_q(n_bits, qsize)
+    qsizes.foreach { qsize =>
+      val cheap_size = 2 * qsize
+
+      (0 until iters).foreach { iternum =>
+
+        Profiler.resetAll()
+        var naiveDimFetched = 0
+        var solverDimFetched = 0
+        var solverRounds = 0
+
+        val query = Tools.rand_q(n_bits, qsize)
 
 
-      val naiveRes = Profiler("Naive") {
-        val naivePlan = Profiler("NaiveInit") {
-          dc.m.prepare(query, n_bits, n_bits)
-        }
-        naiveDimFetched = naivePlan.head.mask.length
-        Profiler("NaiveFetch") {
-          dc.fetch2(naivePlan)
-        }
-      }
-
-      val solverRes = Profiler("Solver") {
-        var l = Profiler("Init") {
-          dc.m.prepare_online_agg(query, cheap_size)
-        }
-        val bounds = Profiler("Init") {
-          SolverTools.mk_all_non_neg[Rational](1 << query.length)
-        }
-        val s = Profiler("Init") {
-          SparseSolver[Rational](query.length, bounds, Nil, Nil, _ => true)
-        }
-        var df = s.df
-        while (!(l.isEmpty) && (df > 0)) {
-          solverRounds += 1
-          if (l.head.mask.length > solverDimFetched)
-            solverDimFetched = l.head.mask.length
-          println(l.head.accessible_bits)
-          val fetched = Profiler("Fetch") {
-            dc.fetch2(List(l.head))
+        val naiveRes = Profiler("Naive") {
+          val naivePlan = Profiler("NaiveInit") {
+            dc.m.prepare(query, n_bits, n_bits)
           }
-          Profiler("SolverAdd") {
-            s.add2(List(l.head.accessible_bits), fetched)
+          naiveDimFetched = naivePlan.head.mask.length
+          Profiler("NaiveFetch") {
+            dc.fetch2(naivePlan)
           }
-          if (df != s.df) {
-            Profiler("Gauss") {
-              s.gauss(s.det_vars)
+        }
+
+        val stg = Profiler("Solver") {
+          var l = Profiler("Init") {
+            dc.m.prepare_online_agg(query, cheap_size)
+          }
+          val bounds = Profiler("Init") {
+            SolverTools.mk_all_non_neg[Rational](1 << query.length)
+          }
+          val s = Profiler("Init") {
+            SparseSolver[Rational](query.length, bounds, Nil, Nil, _ => true)
+          }
+          var df = s.df
+
+          val statsGatherer = new VaryingTimer(s.getStats, s"$qsize $iternum")
+          statsGatherer.start
+
+          while (!(l.isEmpty) && (df > 0)) {
+
+            if (s.shouldFetch(l.head.accessible_bits)) {
+              solverRounds += 1
+              if (l.head.mask.length > solverDimFetched)
+                solverDimFetched = l.head.mask.length
+
+
+              println(l.head.accessible_bits)
+              val fetched = Profiler("Fetch") {
+                dc.fetch2(List(l.head))
+              }
+              Profiler("SolverAdd") {
+                s.add2(List(l.head.accessible_bits), fetched)
+              }
+              if (df != s.df) {
+                Profiler("Gauss") {
+                  s.gauss(s.det_vars)
+                }
+                Profiler("ComputeBounds") {
+                  s.compute_bounds
+                }
+                df = s.df
+              }
+            } else {
+              println(s"Preemptively skipping fetch of cuboid ${l.head.accessible_bits}")
             }
-            Profiler("ComputeBounds") {
-              s.compute_bounds
-            }
-            df = s.df
+            l = l.tail
+            Profiler.print()
           }
-          l = l.tail
+          println("Remaining cuboids = "+l.size)
+          statsGatherer.finish()
+          statsGatherer
         }
-      }
 
-      val result = s"$n_bits, $rf, $base, $n_row_log,${qsize}," +
-        Profiler.durations("Naive")._2 / (1000 * 1000) + "," + naiveDimFetched + "," +
-        Profiler.durations("NaiveInit")._2 / (1000 * 1000) + "," +
-        Profiler.durations("NaiveFetch")._2 / (1000 * 1000) + "," +
-        Profiler.durations("Solver")._2 / (1000 * 1000) + "," + solverDimFetched + "," + solverRounds + "," +
-        Profiler.durations("Init")._2 / (1000 * 1000) + "," +
-        Profiler.durations("Fetch")._2 / (1000 * 1000) + "," +
-        Profiler.durations("SolverAdd")._2 / (1000 * 1000) + "," +
-        Profiler.durations("Gauss")._2 / (1000 * 1000) + "," +
-        Profiler.durations("ComputeBounds")._2 / (1000 * 1000)
-      println(result)
-      pw.println(result)
+        val result = s"$n_bits,$rf,$base,$n_row_log,${qsize},${iternum},  " +
+          Profiler.durations("Naive")._2 / (1000 * 1000) + "," + naiveDimFetched + "," +
+          Profiler.durations("NaiveInit")._2 / (1000 * 1000) + "," +
+          Profiler.durations("NaiveFetch")._2 / (1000 * 1000) + ",  " +
+          Profiler.durations("Solver")._2 / (1000 * 1000) + "," + solverDimFetched + "," + solverRounds + "," +
+          Profiler.durations("Init")._2 / (1000 * 1000) + "," +
+          Profiler.durations("Fetch")._2 / (1000 * 1000) + "," +
+          Profiler.durations("SolverAdd")._2 / (1000 * 1000) + "," +
+          Profiler.durations("Gauss")._2 / (1000 * 1000) + "," +
+          Profiler.durations("ComputeBounds")._2 / (1000 * 1000)
+        println("\n\n\n" + result)
+        pw.println(result)
+
+        stg.stats.map{kv =>
+         val statres = s"$n_bits,$rf,$base,$n_row_log,${qsize},${iternum},  " +
+            s"${kv._1}, ${kv._2._1}, ${kv._2._2}, ${kv._2._3}"
+          println(statres)
+          pwstat.println(statres)
+        }
+
+        println("\n\n\n")
+
+
+      }
     }
     pw.close()
+    pwstat.close()
     //Profiler.print()
   }
 
@@ -159,10 +197,18 @@ object CubeData {
   }
 
   def main(args: Array[String]) {
-    mkCube(15)
-    System.out.flush()
-    System.err.flush()
-    Profiler.print()
+    //n_row_log = 30
+    //(1 to 10).foreach { i => minus1_adv(n_bits, rf, base, n_row_log, i, 100)}
+    //mkCube(20)
+    loadDC(20)
+    //loadDC(20)
+    //loadDC(15)
+    //println("Zeros naive = " + dc.naive_eval(List(0,1,2,3)).zipWithIndex.filter(_._1 == 0).mkString(" "))
+    expt(10 to 10, 1)
+    //(1 to 10).foreach{i => expt(i, 1)}
+    //System.out.flush()
+    //System.err.flush()
+    //Profiler.print()
 
 
   }

@@ -121,6 +121,23 @@ object Bits {
       for(j <- 0 to n_vals2 - 1) yield (ii + BigBinary(j).pup(bits2))
     }
   }
+
+  /**
+   * Returns the maximum value in each group as defined above.
+   */
+  def max_group_values(bits: Seq[Int], universe: Seq[Int]): Seq[Int] = {
+    assert(bits.toSet.subsetOf(universe.toSet))
+    val bits2 = Util.complement(universe, bits)
+    val n_vals1 = 1 << bits.length
+    val n_vals2 = 1 << (universe.length - bits.length)
+    val jj = BigBinary(n_vals2 -1).pup(bits2)
+    //all ones
+
+    for(i <- 0 to n_vals1 - 1) yield {
+      val ii = BigBinary(i).pup(bits)
+      (ii + jj).toInt
+    }
+  }
 }
 
 

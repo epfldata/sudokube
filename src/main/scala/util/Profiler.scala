@@ -2,14 +2,14 @@ package util
 
 object Profiler {
   var startTimers = collection.mutable.Map[String, Long]()
-  var durations = collection.mutable.Map[String, (Long, Long)]()
+  var durations = collection.mutable.Map[String, (Long, Long)]() withDefaultValue((0L, 0L))
   def apply[T](name: String)(func : => T): T = profile(name)(func)
   def noprofile[T](name: String)(func: => T): T = func
   def profile[T](name: String)(func: => T): T = {
     val startTime = System.nanoTime()
     val res = func
     val endTime = System.nanoTime()
-    val curDur = durations.getOrElse(name, (0L, 0L))
+    val curDur = durations(name)
     val newDur = (curDur._1 + 1, curDur._2 + (endTime - startTime))
     durations += name -> newDur
     res

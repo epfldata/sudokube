@@ -73,10 +73,20 @@ case class SparseSolver[T](
     new_pivots
   }
 
+  def getStats = (df, solved_vars.size, cumulative_interval_span.map(num.toInt(_)).getOrElse(-1))
+
   def cumulative_interval_span : Option[T] = {
     val l = bounds.toList.map(_.span)
     if(l.contains(None)) None
     else Some(l.flatten.sum)
+  }
+
+  /**
+   * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
+   * */
+  def shouldFetch(dims: List[Int]) = {
+    val new_basis_vars = Bits.max_group_values(dims, 0 until n_bits)
+    new_basis_vars.foldLeft(false)((acc, cur) => acc || M.data(cur) == None) //at least one new basis var
   }
 
   def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] =

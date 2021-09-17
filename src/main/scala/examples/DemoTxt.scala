@@ -11,9 +11,10 @@ object DemoTxt {
 
     val sch = new schema.DynamicSchema
     val R = sch.read("investments.json", Some("k_amount"))
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .5, 1.2))
+    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .0000000008, 10))
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 
+    /*
     Exploration.col_names(sch)
 
     val q1 = sch.columns("company").bits.toList
@@ -26,7 +27,20 @@ object DemoTxt {
     val q2 = sch.columns("date").bits.toList.drop(grp_bits)
     Exploration.nat_decode_dim(sch, "date", grp_bits).zip(dc.naive_eval(q2)).filter(
       x => (x._1(0) >= 1996) && (x._1(0) < 2020))
+  */
 
+    val q = List(0, 12, 1)
+
+    // solves to df=2 using only 2-dim cuboids
+    val s = dc.solver[Rational](q, 2)
+    s.compute_bounds
+
+    // runs up to the full cube
+    dc.naive_eval(q)
+
+    // this one need to run up to the full cube
+    val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable)
+    od.l_run(q, 2)
   }
 
   def shoppen() = {
@@ -122,9 +136,11 @@ object DemoTxt {
     par.foreach(pseq => println(pseq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n")))
   }
   def main(args: Array[String]): Unit = {
+    investment()
+
     //large()
     //feature()
-    parPlan()
+    //parPlan()
   }
 
 }
