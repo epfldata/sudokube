@@ -21,7 +21,7 @@ case class SparseSolver[T](
   def df = n_vars - n_det_vars
   protected def free_vars = (0 to n_vars - 1).filter(x => M.data(x) == None)
   def det_vars  = (0 to n_vars - 1).filter(x => M.data(x) != None)
-  var solved_vars = Set[Int]()
+  val solved_vars = collection.mutable.BitSet()
 
   type Eq_T = (Seq[Int], T)
 
@@ -105,7 +105,7 @@ case class SparseSolver[T](
     val point_intervals = vars.filter(v => bounds(v).isPoint)
 
     val new_eqs : Seq[Eq_T] = point_intervals.map(v => {
-      solved_vars = solved_vars + v
+      solved_vars += v
       (Vector(v), bounds(v).lb.get)
     })
 
@@ -210,7 +210,7 @@ case class SparseSolver[T](
 
           val old_bounds = bounds(v)
           bounds(v) = bounds(v).intersect(infer_bound(row, v))
-          if(r_vars.length == 1) solved_vars = solved_vars + v
+          if(r_vars.length == 1) solved_vars +=  v
           if(old_bounds != bounds(v)) Some(v) else None
         }
         else None
