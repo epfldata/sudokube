@@ -402,7 +402,7 @@ class DualSimplex[T](
   //def printRow(i : Int) = println(s"DUAL $i :: basis = ${if (i > 0) base_v(i - 1) else "N/A"} -> " + M(i).evaluate(sol) + " <== " + M(i))
 
   var it_cnt = 0 // iteration count
-  var iter_limit = 10
+  var iter_limit = 1000
 
   def dual_algo {
 

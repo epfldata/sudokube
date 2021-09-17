@@ -4,6 +4,8 @@ import planning._
 import util._
 import combinatorics._
 
+import scala.collection.{BitSet}
+
 
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 
@@ -104,16 +106,15 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     assert(ps.head._1.length == n_bits)
 
     // the edges (_2, _3) form a tree rooted at the full cube
-    var build_plan = collection.mutable.Map[Int, List[(Set[Int], Int, Int)]]()
-    build_plan ++=  (0 until nthreads).map{tid => tid -> List((ps.head._1.toSet, ps.head._2, -1))}
+    var build_plan = collection.mutable.Map[Int, List[(BitSet, Int, Int)]]()
+    build_plan ++=  (0 until nthreads).map{tid => tid -> List((BitSet(ps.head._1:_*), ps.head._2, -1))}
 
     val thread_size = collection.mutable.Map[Int, Int]().withDefaultValue(0)
     val pi = new ProgressIndicator(ps.tail.length)
 
     ps.tail.foreach {
       case((l: List[Int]), (i: Int)) => {
-        val s = l.toSet
-
+        val s = BitSet(l :_*)
         // first match is cheapest
         val y = build_plan.mapValues(_.find{ case (s2, _, _) => s.subsetOf(s2) })
         val y2 = y.tail.foldLeft(y.head){

@@ -59,7 +59,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
           build_plan.foreach {
             case (_, id, -1) => ()
             case (s, id, parent_id) => {
-              val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s).toArray
+              val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s.toSet).toArray
               ab(id) = ab(parent_id).rehash(mask)
 
               // completion status updates
