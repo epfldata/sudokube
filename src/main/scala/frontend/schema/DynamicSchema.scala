@@ -33,22 +33,25 @@ class DynamicSchema extends Schema {
   ) extends ColEncoder[T] with RegisterIdx {
 
     /* protected */
-    var vals = List[T]()
+    var encode_map = collection.mutable.Map[T, Int]()
+    var decode_map = collection.mutable.ArrayBuffer[T]()
     init_vals.foreach { encode_locally(_) }
 
     /** returns index in collection vals. */
     def encode_locally(v: T) : Int = {
-      val pos = vals.indexWhere(_ == v)
-      if(pos >= 0) pos
-      else {
-        vals = vals ++ List(v)
-        registerIdx(vals.length - 1)
-        vals.length - 1
-      }
+        if (encode_map.isDefinedAt(v))
+          encode_map(v)
+        else {
+          val newpos = encode_map.size
+          encode_map  += (v -> newpos)
+          decode_map += v
+          registerIdx(newpos)
+          newpos
+        }
     }
 
     //def decode_locally(i: Int, default: T): T = vals.getOrElse(i, default)
-    def decode_locally(i: Int): T = vals(i)
+    def decode_locally(i: Int): T = decode_map(i)
   }
 
   /** A natural number-valued column.

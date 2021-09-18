@@ -2,9 +2,11 @@
 package frontend
 package schema
 
+import breeze.io.CSVReader
 import util._
 import util.BigBinaryTools._
 import combinatorics.Big
+
 import java.io._
 
 
@@ -23,9 +25,20 @@ trait Schema extends Serializable {
     columnList.map { case (key, c) => (key, c.decode(i)) }
 
   def read(filename: String, measure_key: Option[String] = None
-          ): List[(BigBinary, Int)] = {
+          ): Seq[(BigBinary, Int)] = {
 
-    val items = JsonReader.read(filename)
+    val items = {
+      if(filename.endsWith("json"))
+        JsonReader.read(filename)
+      else if(filename.endsWith("csv")){
+
+        val csv = Profiler("CSVRead"){CSVReader.read(new FileReader(filename))}
+        val header = csv.head
+        val rows = Profiler("AddingColNames"){csv.tail.map(vs => header.zip(vs).toMap)}
+        rows
+      } else
+        throw new UnsupportedOperationException("Only CSV or JSON supported")
+    }
 
     if (measure_key == None) {
       items.map(l => (encode_tuple(l.toList), 1))
