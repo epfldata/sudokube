@@ -21,6 +21,8 @@ object FD_Model {
   def cube_layer_storage(n: Int, m: Int, k: Int) : BigInt =
     (0 to k).map(l => lcomb(n, m, k, l) * Big.pow2(l)).sum
 
+
+  //SBJ: Same as comb(n, k)
   def cube_layer_n_cuboids(n: Int, m: Int, k: Int) : BigInt =
     (0 to k).map(l => lcomb(n, m, k, l)).sum
 

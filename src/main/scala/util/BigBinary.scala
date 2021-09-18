@@ -112,8 +112,14 @@ case class BigBinary(val toBigInt: BigInt) {
       }}}
   */
   def pup(bit_indexes: Seq[Int]) : BigBinary =
-    BigBinary(toSeqN(bit_indexes.length).zip(bit_indexes).map{
-      case (b, i) => BigInt(b) << i }.sum)
+    if(bit_indexes.isInstanceOf[Range]) {
+     BigBinary(toBigInt <<  bit_indexes.head)
+    }
+    else {
+      BigBinary(toSeqN(bit_indexes.length).zip(bit_indexes).map {
+        case (b, i) => BigInt(b) << i
+      }.sum)
+    }
 }
 
 

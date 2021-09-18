@@ -217,10 +217,13 @@ int srehash(int s_id, int *mask, int masklen)
   int new_rows = watermark + 1;
   //printf("End srehash (compressing from %lu to %d)\n", rows, new_rows);
 
-  // TODO: Now reallocate and copy into a memory region that fits just
-  // new_rows many rows.
+  rec* correct_new_store = (rec *)calloc(new_rows, sizeof(rec));
+  size_t numMB = new_rows * sizeof(rec)/(1000 * 1000);
 
-  unsigned id = r_add(newstore, new_rows);
+
+  memcpy(correct_new_store, newstore, new_rows * sizeof(rec));
+  free(newstore);
+  unsigned id = r_add(correct_new_store, new_rows);
 
   #ifdef VERBOSE
   char filename[80];
