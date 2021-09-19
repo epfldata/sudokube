@@ -28,6 +28,14 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       Bits.mk_list_mask[Int]((0 to m.n_bits - 1), bits.toSet).toArray)).toArray
   }
 
+  /**
+   * Builds this cube using the base_cuboid of another DataCube
+   */
+  def buildFrom(that: DataCube): Unit = {
+    val full_cube = that.cuboids.last
+    build(full_cube)
+  }
+
   /** build each cuboid from a smallest that subsumes it -- using
       MaterializationScheme.create_build_plan().
       has to be called explicitly, otherwise no data is created.

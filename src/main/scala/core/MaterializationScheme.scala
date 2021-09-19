@@ -244,7 +244,11 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     prepare(query, cheap_size, n_bits).sortBy(_.mask.length)
   }
 }
-
+object MaterializationScheme {
+  def only_base_cuboid(n_bits: Int) = new MaterializationScheme(n_bits) {
+    override val projections: IndexedSeq[List[Int]] = Vector((0 until n_bits).toList)
+  }
+}
 
 /** TODO: also support the construction from a previously stored
     materialization scheme.

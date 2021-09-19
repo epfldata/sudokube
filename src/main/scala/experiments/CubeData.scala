@@ -197,19 +197,28 @@ object CubeData {
   }
 
   def main(args: Array[String]) {
+    import core.RationalTools._
     //n_row_log = 30
     //(1 to 10).foreach { i => minus1_adv(n_bits, rf, base, n_row_log, i, 100)}
-    //mkCube(20)
-    loadDC(20)
+    //mkCube(15)
     //loadDC(20)
-    //loadDC(15)
+    //loadDC(20)
+    //loadDC(6)
     //println("Zeros naive = " + dc.naive_eval(List(0,1,2,3)).zipWithIndex.filter(_._1 == 0).mkString(" "))
-    expt(10 to 10, 1)
+    //expt(10 to 10, 1)
     //(1 to 10).foreach{i => expt(i, 1)}
     //System.out.flush()
     //System.err.flush()
     //Profiler.print()
 
+    mkCube(15)
+    //loadDC(15)
+    val q = List(63, 62, 61, 60).sorted
+    val s = dc.solver[Rational](q, 3)
+    s.compute_bounds
+    println("DF = "+s.df)
+    s.bounds.foreach(println)
+    println(dc.naive_eval(q).mkString("   "))
 
   }
 }

@@ -18,7 +18,7 @@ extern int s2drehash(            int s_id, int d_bits, int *mask, int masklen);
 extern int   drehash(int n_bits, int d_id, int d_bits, int *mask, int masklen);
 
 extern int      mk(int n_bits);
-extern void     add(int s_id, int n_bits, key_type &key, int v);
+extern void     add(int s_id, int n_bits, byte *key, int v);
 extern void     freeze(int s_id);
 extern payload *fetch(int d_id);
 extern int      sz(int id);
@@ -73,9 +73,8 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add
 
   // the key is transmitted as an array of bytes (0 to 255).
 
-  assert(keylen <= KEY_BYTES);
   assert(n_bits <= keylen * 8);
-  key_type ckey;
+  byte ckey[keylen];
   for(int i = 0; i < keylen; i++) ckey[i] = keybody[i];
 
   add(s_id, n_bits, ckey, v);

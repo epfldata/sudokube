@@ -111,15 +111,22 @@ case class BigBinary(val toBigInt: BigInt) {
       ab.pup(List(0, 0))    = a+b
       }}}
   */
-  def pup(bit_indexes: Seq[Int]) : BigBinary =
-    if(bit_indexes.isInstanceOf[Range]) {
-     BigBinary(toBigInt <<  bit_indexes.head)
+  def pup(bit_indexes: Seq[Int]): BigBinary = {
+    if (bit_indexes.isInstanceOf[Range]) {
+      //Assumes there are no ones in toBigInt beyond bit_indexes.length
+      BigBinary(toBigInt << bit_indexes.head)
     }
     else {
-      BigBinary(toSeqN(bit_indexes.length).zip(bit_indexes).map {
-        case (b, i) => BigInt(b) << i
-      }.sum)
+      val bi = bit_indexes.foldLeft((toBigInt, BigInt(0))) {
+        case ((num, res), idx) =>
+          val dig = num % 2
+          val newres = res + (dig << idx)
+          val newnum = num >> 1
+          (newnum, newres)
+      }
+      BigBinary(bi._2)
     }
+  }
 }
 
 

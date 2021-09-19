@@ -1,12 +1,39 @@
 package examples
 
+import backend.CBackend
 import frontend.generators._
 import frontend.gui.FeatureFrame
+import util.{BigBinary, Profiler}
 
 object DemoTxt {
 
   import frontend._, backend._, core._, core.RationalTools._
 
+  def test() = {
+    val data  = (0 to 15).map(i => BigBinary(i) -> i)
+    val nbits = 10
+    val dc = new DataCube(RandomizedMaterializationScheme(nbits, 1, 1))
+    dc.build(CBackend.b.mk(nbits, data.toIterator))
+    dc.save("test")
+  }
+  def loadtest(): Unit = {
+    core.DataCube.load("test")
+  }
+
+  def iowa(): Unit = {
+    val sch = new schema.DynamicSchema
+    //val name = "Iowa200k"
+    //val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
+    val name = "Iowa2M"
+    val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
+    println("NBITS =" + sch.n_bits)
+    Profiler.print()
+
+    val dc  = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
+    Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
+    Profiler.print()
+    dc.save(name+"_base")
+  }
   def investment(): Unit = {
 
     val sch = new schema.DynamicSchema
@@ -32,8 +59,8 @@ object DemoTxt {
     val q = List(0, 12, 1)
 
     // solves to df=2 using only 2-dim cuboids
-    val s = dc.solver[Rational](q, 2)
-    s.compute_bounds
+    //val s = dc.solver[Rational](q, 2)
+    //s.compute_bounds
 
     // runs up to the full cube
     dc.naive_eval(q)
@@ -135,9 +162,23 @@ object DemoTxt {
 
     par.foreach(pseq => println(pseq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n")))
   }
-  def main(args: Array[String]): Unit = {
-    investment()
 
+  def sample(n: Int): Unit = {
+    val map = collection.mutable.HashMap[Int, Int]() withDefaultValue(0)
+    (1 to n).foreach{  i =>
+      val s = Sampling.f2(1 << 20)
+      map(s) += 1
+    }
+    //map.foreach(println)
+    println(map.size)
+    map.filter(_._2 > 4).foreach(println)
+  }
+  def main(args: Array[String]): Unit = {
+    //iowa()
+    test()
+    //loadtest()
+    //investment()
+  //sample(1000)
     //large()
     //feature()
     //parPlan()

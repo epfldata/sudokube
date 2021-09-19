@@ -1,9 +1,9 @@
 #include<stdio.h>
 #include<assert.h>
 #include "Keys.h"
+#include <cstring>
 
-
-void print_key(int n_bits, unsigned char *key) {
+void print_key(int n_bits, byte *key) {
   for(int pos = n_bits - 1; pos >= 0; pos--) {
     int b = (key[pos / 8] >> (pos % 8)) % 2;
     if(b) printf("1");
@@ -11,15 +11,15 @@ void print_key(int n_bits, unsigned char *key) {
   }
 }
 
-bool compare_keys(key_type &k1, key_type &k2) {
-  for(int i = KEY_BYTES - 1; i >= 0; i--) {
+bool compare_keys(const byte *k1, const byte *k2, int numkeybytes)  {
+  for(int i = numkeybytes - 1; i >= 0; i--) {
     if(k1[i] < k2[i]) return true;
     if(k1[i] > k2[i]) return false;
   }
   return false;
 }
 
-void fromLong(unsigned char *key, unsigned long long _lkey) {
+void fromLong(unsigned char *key, unsigned long long _lkey, int numkeybytes) {
   int pos = 0;
   unsigned long long lkey = _lkey;
 
@@ -27,7 +27,7 @@ void fromLong(unsigned char *key, unsigned long long _lkey) {
   // Even though this algo does not break in case key isn't initialized to
   // zeroes, other algorithms may -- think what happens if _lkey is small
   // and some relevant bytes of key don't get written to.
-  for(int i = 0; i < KEY_BYTES; i++) key[i] = 0;
+  memset(key, 0, numkeybytes);
 
 /*
   while(lkey > 0) {
@@ -44,7 +44,7 @@ void fromLong(unsigned char *key, unsigned long long _lkey) {
   }
 }
 
-unsigned long long toLong(int n_bits, unsigned char *key) {
+unsigned long long toLong(int n_bits, byte *key) {
   unsigned long long r = 0;
   for(int pos = 0; pos < n_bits; pos++) {
     int b = (key[pos / 8] >> (pos % 8)) % 2;
@@ -53,10 +53,12 @@ unsigned long long toLong(int n_bits, unsigned char *key) {
   return r;
 }
 
-void project_key(int n_bits, key_type &from_key, int *mask, key_type &to_key)
+void project_key(int n_bits, byte *from_key, int *mask, byte* to_key)
 {
+    //we assume to_keys has length at least n_bits/8 + 1 bytes
+
   // IMPORTANT: to_key must be all zeroes!
-  for(int i = 0; i < KEY_BYTES; i++) to_key[i] = 0;
+    memset(to_key, 0, n_bits/8 + 1);
 
   //printf("pk: ");
   //print_key(n_bits, from_key); printf(" ");

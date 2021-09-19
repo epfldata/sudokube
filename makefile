@@ -3,7 +3,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_281.jdk/Contents/Home
 
 all:
 	javah -cp $(CP):target/scala-2.12/classes:. backend.CBackend
-	g++ -dynamiclib -O3 -I/usr/include -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin -I. src/main/cpp/CBackend.cpp src/main/cpp/CubeArrays.cpp src/main/cpp/Keys.cpp -o libCBackend.dylib
+	g++ -std=c++11 -dynamiclib -O3 -I/usr/include -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin -I. src/main/cpp/CBackend.cpp src/main/cpp/CubeArrays.cpp src/main/cpp/Keys.cpp -o libCBackend.dylib
 
 clean:
 	rm -f libCBackend.dylib backend_CBackend.h time_test
