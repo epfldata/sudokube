@@ -15,15 +15,8 @@ case class TupleGenerator(sch: Schema, n: Long, sampling_f: Int => Int,
     if ((n >= 100) && (i % (n / 100) == 0)) print((100 * i) / n + "%")
     i += 1
 
-    //val r = sch.columnList.map { case (key, c) => (key, c.sample(sampling_f)) }
-    val key = Profiler("EncodeKey"){
-      //sch.encode_tuple(r)
-      //calculating from MSB to LSB
-      //TODO: Fix HACK!!!
-      BigBinary((0 until sch.n_bits).foldLeft(BigInt(0)){ case (acc, cur) =>
-        (acc << 1) + sampling_f(2)
-        })
-    }
+    val r = sch.columnList.map { case (key, c) => (key, c.sample(sampling_f)) }
+    val key =  sch.encode_tuple(r)
     //val key =
     val value = value_f(key)
     (key, value)

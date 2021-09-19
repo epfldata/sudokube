@@ -45,7 +45,7 @@ class CBackendSpec extends FlatSpec with Matchers {
       assert(r1 == r3, "FAILURE direct !=  to_dense(q1).to_dense(q2)")
 
       val r4 = ScalaBackend.mk(n_bits, R.toIterator).rehash_to_dense(
-        qmask).fetch.toList
+        qmask).fetch.toList.map(p => new Payload(p.sm, None))
 
       assert(r1 == r4, "FAILURE C != Scala")
 

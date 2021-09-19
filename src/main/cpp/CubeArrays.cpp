@@ -101,7 +101,8 @@ void freeze(int s_id)
   unsigned long long rows = store->size();
   size_t recSize = keySize + sizeof(int);
   byte **newstore = (byte **)calloc(rows, recSize);
-  fprintf(stderr, "\nfreeze calloc : %llu MB\n", rows * recSize/(1000 * 1000));
+  size_t sizeMB = rows * recSize/(1000 * 1000);
+  if(sizeMB > 100) fprintf(stderr, "\nfreeze calloc : %lu MB\n", sizeMB);
 
   for(int r = 0; r < rows; r++) {
       memcpy(getKey(newstore, r, recSize), (*store)[r].key.data(), keySize);
