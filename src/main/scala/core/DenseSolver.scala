@@ -72,7 +72,7 @@ case class DenseSolver(
   def gauss() { DenseSolverTools.gauss_oncols(M, det_vars.toSeq) }
 
   val eqs_sparse: List[(Seq[Int], Payload)] =
-    SolverTools.mk_constraints(projections, n_bits, v).toList
+    SolverTools.mk_constraints(n_bits, projections, v).toList
 
 
   add(eqs_sparse)
@@ -89,20 +89,19 @@ case class DenseSolver(
     // remove the determined vars. The Simplex implementation adds its own
     // slack vars.
     val M2 = M(::, free_vars ++ List(n_vars)).toDenseMatrix
-
-    val objectives = (0 to df - 1).map(x => List((1.0, x)))
+    val M2_sparse = SparseMatrixTools.fromDenseMatrix(M2)
 
     val bounds0 = Util.filterIndexes(bounds, free_vars)
+    val objectives = (0 to df - 1).map(x => List((1.0, x)))
 
-    val M2_sparse = SparseMatrixTools.fromDenseMatrix(M2)
-    val s2: Seq[Interval[Double]] =
+    val new_bounds: Seq[Interval[Double]] =
       DenseSolverTools.simplex(M2_sparse, bounds0, objectives, true)
 
-    free_vars.zip(s2).foreach { case(v, i) =>
+    free_vars.zip(new_bounds).foreach { case(v, i) =>
       bounds(v) = bounds(v).intersect(i)
     }
 
-    val point_intervals = free_vars.zip(s2).filter{
+    val point_intervals = free_vars.zip(new_bounds).filter{
         case (_, Interval(Some(lb), Some(ub))) => lb == ub
         case _ => false
       }

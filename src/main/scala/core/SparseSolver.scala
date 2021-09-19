@@ -12,6 +12,19 @@ package core
     The constructor does Gaussian elimination but no further solving.
 
     The recommended use is to call compute_bounds.
+
+    {{{
+    import core._
+    import RationalTools._
+    val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8), List(List(0,1), List(2)), List(2,2,2,2,4,4))
+    scala> s.M
+    res0: core.SparseMatrix[core.Rational] =
+    1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
+    1.0   0.0   0.0   0.0  1.0  0.0  0.0  0.0  2.0
+    0.0   1.0   0.0   0.0  0.0  1.0  0.0  0.0  2.0
+    0.0   0.0   1.0   0.0  0.0  0.0  1.0  0.0  2.0
+    -1.0  -1.0  -1.0  0.0  0.0  0.0  0.0  1.0  -2.0
+    }}}
 */
 case class SparseSolver[T](
   val n_bits: Int,
@@ -97,9 +110,8 @@ case class SparseSolver[T](
       projections and v.
       Also used in DataCube.online_agg().
   */
-  def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] = {
-    add(SolverTools.mk_constraints(a, n_bits, b))
-  }
+  def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] =
+    add(SolverTools.mk_constraints(n_bits, a, b))
 
   // We do gaussian elimination in the constructor.
   gauss(add2(projections, v))
