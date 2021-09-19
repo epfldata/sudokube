@@ -160,14 +160,14 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_dFetch0
                             // fetch, and it's not deallocated. That's
                             // kind of a mem leak.
  
-  jintArray result = env->NewIntArray(size * 3);
+  jintArray result = env->NewIntArray(size);
   if (result == NULL) return NULL; // out of memory error thrown
 
   //Can't declare large array in stack. Stack out of bounds
 
    jint *fill = (jint *)p; //SBJ: Checked addresses and they match
 
-  env->SetIntArrayRegion(result, 0, size * 3, fill);
+  env->SetIntArrayRegion(result, 0, size, fill);
   return result;
 }
 

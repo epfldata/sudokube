@@ -54,11 +54,11 @@ object Payload {
       <min, sm, max>.
   */
   def decode_fetched(a: Array[Int]): Array[Payload] = {
-    (for(i <- 0 to (a.length / 3) - 1) yield {
-      val intv =
-        if(a(i*3) <= a(i*3+2)) Some(Interval[Double](Some(a(i*3)), Some(a(i*3+2))))
-        else                   None
-      new Payload(a(i*3+1).toDouble, intv)
+    (for(i <- 0 until a.length) yield {
+      val intv =  None
+        //if(a(i*3) <= a(i*3+2)) Some(Interval[Double](Some(a(i*3)), Some(a(i*3+2))))
+        //else                   None
+      new Payload(a(i).toDouble, intv)
     }).toArray
   }
 }
