@@ -41,8 +41,6 @@ case class SparseSolver[T](
     for(piv <- pivs.sorted.reverse) {
       val pivot_row = M(piv)
 
-      if(pivot_row(piv) != num.one)
-        println(piv + " " + pivot_row(piv) + "\n " + M)
       assert(pivot_row(piv) == num.one)
 
       for(other_row <- piv + 1 to n_vars - 1) {
@@ -99,9 +97,9 @@ case class SparseSolver[T](
       projections and v.
       Also used in DataCube.online_agg().
   */
-  def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] =
-    add(a.map(util.Bits.group_values(_, 0 to (n_bits - 1)).map(
-      x => x.map(_.toInt))).flatten.zip(b))
+  def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] = {
+    add(SolverTools.mk_constraints(a, n_bits, b))
+  }
 
   // We do gaussian elimination in the constructor.
   gauss(add2(projections, v))
@@ -138,7 +136,7 @@ case class SparseSolver[T](
     val bounds0 = util.Util.filterIndexes(bounds, free_vars)
     val objectives = (0 to df - 1).map(x => List((num.one, x)))
 
-    val new_bounds = SolverTools.simplex[T](M2, bounds0, objectives, true)
+    val new_bounds = DenseSolverTools.simplex[T](M2, bounds0, objectives, true)
 
     free_vars.zip(new_bounds).foreach {
       case(v, i) => bounds(v) = bounds(v).intersect(i)
@@ -153,7 +151,7 @@ case class SparseSolver[T](
   protected def full_matrix_simplex(vars: List[Int]) = {
     val objectives = vars.map(x => List((num.one, x)))
           
-    val new_bounds = SolverTools.simplex[T](M, bounds, objectives, false)
+    val new_bounds = DenseSolverTools.simplex[T](M, bounds, objectives, false)
       
      vars.zip(new_bounds).foreach {
        case (v, i) => bounds(v) = bounds(v).intersect(i)

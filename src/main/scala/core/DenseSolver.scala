@@ -5,7 +5,7 @@ import backend.Payload
 
 
 /** The main solver; uses Gaussian elimination and linear programming.
-    These two algos can be found in SolverTools.
+    These two algos can be found in DenseSolverTools.
 
     @param n_bits       the length of the query. The query consists of
                         the bits 0 ... n_bits - 1.
@@ -14,7 +14,7 @@ import backend.Payload
                         projections, in the same order as in the list
                         projections.
 */
-case class Solver(
+case class DenseSolver(
   n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[Double]],
   projections: List[List[Int]],
@@ -69,15 +69,10 @@ case class Solver(
     println("done (" + eqs_filtered.length + ")")
   }
 
-  def gauss() { SolverTools.gauss_oncols(M, det_vars.toSeq) }
+  def gauss() { DenseSolverTools.gauss_oncols(M, det_vars.toSeq) }
 
-  /** Here we encode the constraints that represent the aggregation
-      relationships between the available cube projections and the
-      query cube we want to construct.
-  */
   val eqs_sparse: List[(Seq[Int], Payload)] =
-    projections.map(Bits.group_values(_, 0 to (n_bits - 1)).map(
-      x => x.map(_.toInt))).flatten.zip(v)
+    SolverTools.mk_constraints(projections, n_bits, v).toList
 
 
   add(eqs_sparse)
@@ -101,7 +96,7 @@ case class Solver(
 
     val M2_sparse = SparseMatrixTools.fromDenseMatrix(M2)
     val s2: Seq[Interval[Double]] =
-      SolverTools.simplex(M2_sparse, bounds0, objectives, true)
+      DenseSolverTools.simplex(M2_sparse, bounds0, objectives, true)
 
     free_vars.zip(s2).foreach { case(v, i) =>
       bounds(v) = bounds(v).intersect(i)
@@ -117,14 +112,14 @@ case class Solver(
 
     if(! new_eqs.isEmpty) {
       add(new_eqs)
-      gauss // we could run SolverTools.gauss_oncols(M, newly_det_vars)
+      gauss // we could run DenseSolverTools.gauss_oncols(M, newly_det_vars)
     }
   }
 
-  /** infers bounds for solved variables. See SolverTools.solved().
+  /** infers bounds for solved variables. See DenseSolverTools.solved().
   */
   def bound_from_solved() = {
-    val x : Seq[(Int, Int)] = SolverTools.solved(M)
+    val x : Seq[(Int, Int)] = DenseSolverTools.solved(M)
 
     x.foreach {
       case (row, v) => {
@@ -220,7 +215,7 @@ case class Solver(
       try {
         val M_sparse = SparseMatrixTools.fromDenseMatrix(M)
         val new_bounds =
-          SolverTools.simplex(M_sparse, bounds, objectives, false).toArray
+          DenseSolverTools.simplex(M_sparse, bounds, objectives, false).toArray
 
         val paired = det_vars_ordered.zip(new_bounds)
 
@@ -241,6 +236,6 @@ case class Solver(
 
     bounds.toArray
   }
-} // end Solver
+} // end DenseSolver
 
 

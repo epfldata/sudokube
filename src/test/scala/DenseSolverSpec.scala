@@ -1,6 +1,6 @@
 import org.scalatest._
 import core._
-import SolverTools._
+import DenseSolverTools._
 import backend.Payload
 import planning.ProjectionMetaData
 
@@ -9,26 +9,26 @@ class SolverSpec extends FlatSpec with Matchers {
   val v = Array(2,2,2,2,2,2,2,2).map(x => new Payload(x, None))
 
   "removeSolved() test 1" should "work" in {
-    val b = SolverTools.mk_all_non_neg[Double](1 << 3)
-    val s = Solver(3, b, List(List(0,1), List(1,2)), v)
+    val b = DenseSolverTools.mk_all_non_neg[Double](1 << 3)
+    val s = DenseSolver(3, b, List(List(0,1), List(1,2)), v)
     s.gauss
     s.simplex_add
     s.compute_det_bounds
 
-    assert(SolverTools.removeSolved(s.M, s.free_vars)._1 ==
+    assert(DenseSolverTools.removeSolved(s.M, s.free_vars)._1 ==
       Vector(0, 1, 2, 3, 4, 5, 6, 7))
   }
 
   "removeSolved() test 2" should "work" in {
     val b = SolverTools.mk_all_non_neg[Double](1 << 3)
-    val s = Solver(3, b, List(List(0,1), List(1,2)), v)
+    val s = DenseSolver(3, b, List(List(0,1), List(1,2)), v)
     s.gauss
     s.simplex_add
     s.compute_det_bounds
 
     s.M(2,0) = 0
     s.gauss
-    assert(SolverTools.removeSolved(s.M, s.free_vars)._1 ==
+    assert(DenseSolverTools.removeSolved(s.M, s.free_vars)._1 ==
       Vector(0, 1, 2, 3, 5, 6, 7))
   }
 
@@ -37,7 +37,7 @@ class SolverSpec extends FlatSpec with Matchers {
 
     // the base data/solution is: Array(1,7,3,0,10,2,4,20)
     val v = Array[Double](11,9,7,20,8,3,12,24).map(x => new Payload(x, None))
-    val s = Solver(3, b, List(List(0,1), List(1,2)), v)
+    val s = DenseSolver(3, b, List(List(0,1), List(1,2)), v)
 
     assert(s.bounds.toList == List(Interval(None,Some(8.0)), Interval(None,Some(8.0)), Interval(None,Some(3.0)), Interval(None,Some(3.0)), Interval(None,Some(11.0)), Interval(None,Some(9.0)), Interval(None,Some(7.0)), Interval(None,Some(20.0))))
 
@@ -96,7 +96,7 @@ class SolverSpec extends FlatSpec with Matchers {
     val l = List(List(2), List(1), List(0), List())
     val v = Array[Double](10, 26, 14, 22, 16, 20, 36).map(x => new Payload(x, None))
     val bounds = SolverTools.mk_all_non_neg[Double](1 << 3)
-    val s = Solver(3, bounds, l, v)
+    val s = DenseSolver(3, bounds, l, v)
     s.simplex_add
     s.compute_det_bounds
 
@@ -133,8 +133,8 @@ class SolverSpec extends FlatSpec with Matchers {
     val b1 = SolverTools.mk_all_non_neg[Double](1 << 3)
     val b2 = SolverTools.mk_all_non_neg[Double](1 << 3)
 
-    val s1 = Solver(3, b1, l1.map(_.accessible_bits), v1)
-    val s2 = Solver(3, b2, l2.map(_.accessible_bits), v2)
+    val s1 = DenseSolver(3, b1, l1.map(_.accessible_bits), v1)
+    val s2 = DenseSolver(3, b2, l2.map(_.accessible_bits), v2)
 
     assert(s1.compute_bounds.toList == s2.compute_bounds.toList)
   }
@@ -148,7 +148,7 @@ val v = Array(new Payload(4, Some(Interval(None,     Some(5)))),
               new Payload(1, Some(Interval(Some(0),  Some(6)))),
               new Payload(1, Some(Interval(Some(1),  Some(2)))),
               new Payload(0, Some(Interval(Some(-3), Some(4)))))
-val s = Solver(2, ab, List(List(0), List(1)), v)
+val s = DenseSolver(2, ab, List(List(0), List(1)), v)
 */
 }
 
