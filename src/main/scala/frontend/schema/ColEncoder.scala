@@ -41,34 +41,35 @@ trait ColEncoder[T] extends Serializable {
   }
 
   /**
-    returns, for each valuation of a q_bits.length - bit number,
+    returns, for each valuation of a number of q_bits.length bits,
     the decoded values possible for it.
     Example:
     {{{
-      scala> val o = fs.m("origin")
+      // for animals_sch, see the DynamicSchema documentation
+      scala> val o = animals_sch.columns("origin")
       o: frontend.ColEncoder[_] = frontend.DynamicSchema\$MemCol@6f3487d0
 
-      scala> o.asInstanceOf[fs.MemCol[Option[String]]].vals
-      res0: List[Option[String]] = List(None, Some(Japan), Some(North pole))
+      scala> o.asInstanceOf[animals_sch.MemCol[Option[String]]].vals
+      res0: List[Option[String]] = List(None, Some(North Pole), Some(South America))
 
       scala> o.bits
-      res1: Seq[Int] = List(13, 20)
+      res1: Seq[Int] = List(1, 11)
 
-      scala> o.decode_dim(List(13,20))
-      res2: Option[Seq[Seq[Any]]] = Vector(Vector(None),             // 0
-                                           Vector(Some(Japan)),      // 1
-                                           Vector(Some(North pole)), // 2
-                                           Vector())                 // 3
+      scala> o.decode_dim(List(1, 11))
+      res2: Option[Seq[Seq[Any]]] = Vector(Vector(None),                // 0
+                                           Vector(Some(North Pole)),    // 1
+                                           Vector(Some(South America)), // 2
+                                           Vector())                    // 3
 
-      scala> o.decode_dim(List(13))
+      scala> o.decode_dim(List(1))
       res3: Option[Seq[Seq[Any]]] =
-        Vector(Vector(None, Some(North pole)), // least sign. bit is 0
-               Vector(Some(Japan)))            // least sign. bit is 1
+        Vector(Vector(None, Some(South America)), // least sign. bit is 0
+               Vector(Some(North Pole)))          // least sign. bit is 1
 
-      scala> o.decode_dim(List(20))
+      scala> o.decode_dim(List(11))
       res4: Option[Seq[Seq[Any]]] =
-        Vector(Vector(None, Some(Japan)),     // most sign. bit is 0
-               Vector(Some(North pole)))      // most sign. bit is 1
+        Vector(Vector(None, Some(North Pole)),    // most sign. bit is 0
+               Vector(Some(South America)))       // most sign. bit is 1
     }}}
   */
   def decode_dim(q_bits: List[Int]) : Seq[Seq[T]] = {

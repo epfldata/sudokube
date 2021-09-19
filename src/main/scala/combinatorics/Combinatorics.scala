@@ -47,11 +47,14 @@ object Combinatorics {
     if(n < k) BigInt(0)
     else (BigInt(n - k + 1) to n).product / factorial(k)
   }
+
+  /// the naive implementation of n choose k.
   def comb_naive(n: Int, k: Int) : BigInt = {
     if(n < k) BigInt(0)
     else factorial(n) / (factorial(k) * factorial(n - k))
   }
 
+  /// print Pascal's triangle to screen.
   def pascals_triangle(n_max: Int) = {
     for(n <- 0 to n_max) {
       for(k <- 0 to n) {
@@ -79,7 +82,10 @@ object Combinatorics {
     else      comb(m, l) * comb(n - m, k - l)
   }
 
-  /** {{{
+  /** for fixed n and m, shows lcomb(n, m, k, l) with l, k plotted on the
+      x and y axes, respectively. Shows nicely how lcomb is a product of
+      combs. Zeroes are not displayed.
+      {{{
       scala> lcomb_diamond(10, 4)
            1 
            6      4 
@@ -106,9 +112,27 @@ object Combinatorics {
     }
   }
 
+  /** Given a set of n elements of which m have a special label,
+      in how many ways can we pick k elements such that *at least*
+      l of them have the label?
+
+    Sums up the values in the row of the lcomb_diamond to the right of a field.
+    Example:
+    lcomb_sup(10, 4, 3, 1) = lcomb(10, 4, 3, 1) + lcomb(10, 4, 3, 2) +
+       lcomb(10, 4, 3, 3) = 60 + 36 + 4 = 100
+  */
   def lcomb_sup(n: Int, m: Int, k: Int, l: Int) =
     (l to m).map(l0 => lcomb(n, m, k, l0)).sum
 
+  /** Given a set of n elements of which m have a special label,
+      in how many ways can we pick k elements such that *at most*
+      l of them have the label?
+
+    Sums up the values in the row of the lcomb_diamond to the left of a field.
+    Example:
+    lcomb_inf(10, 4, 3, 1) = lcomb(10, 4, 3, 1) + lcomb(10, 4, 3, 0) =
+       60 + 20 = 80
+  */
   def lcomb_inf(n: Int, m: Int, k: Int, l: Int) =
     (0 to l).map(l0 => lcomb(n, m, k, l0)).sum
 
@@ -120,53 +144,56 @@ object Combinatorics {
       {{{
       complete_cube_storage(m, d) == Big.pow(m+1, d)
       }}}
+      This is the faster way to implement it.
+      The implementation below shows the definition.
   */
   def complete_cube_storage(m: Int, d: Int) =
     (0 to d).map(k => comb(d, k) * Big.pow(m, k).toBigInt).sum
 
 
-  // a slower version of f0
+  /*
+  /// The naive implementation of f0; this is slow.
   def f1(n: Int, m: Int, k: Int, l: Int): Double = {
     lcomb(n, m, k, l).toDouble / comb(n, k).toDouble
   }
+  */
 
   /** When we randomly choose k elements from an
       n-element set of which m elements have a special label,
       the probability that exactly l of the chosen elements have that label.
 
-      lcomb(n, m, k, l) / comb(n, k)
-      or
+      Example:
+      {{{
+      f0(10, 4, 2, 1) == 24.0 / (15 + 24 + 6) = 0.533333
+      }}}
+
+      Per definition, this is
+      {{{
+      lcomb(n, m, k, l).toDouble / comb(n, k).toDouble
+      }}}
+      but this is slow to compute. We optimize it as
+      {{{
       fac(m) * fac(n-m) * fac(k) * fac(n-k) /
-      (fac(l) * fac(m-l) * fac(n) * fac(k-l) * fac(n-m-k+l)) 
+      (fac(l) * fac(m-l) * fac(n) * fac(k-l) * fac(n-m-k+l))
+      }}}
+      and further.
+      Big.ratio divides two products given as lists of values to be multiplied.
   */
   def f0(n: BigInt, m: BigInt, k: BigInt, l: BigInt): BigDecimal = {
     assert(n >= k)
-    //println("f0(" + n + ", " + m + ", " + k + ", " + l + ")")
     print(".")
 
     if((m < l) || (n-m < k-l)) 0.0
-    else if (m <= k) {
-
-      val zl = ((m-l+Big.one) to m) ++ ((k-l+Big.one) to k) ++
-               ((n-m-k+l+Big.one) to (n-k))
-      val nenner = (Big.one to l) ++ ((n-m+Big.one) to n)
-
-      //println("f0(" + n + ", " + m + ", " + k + ", " + l + ")  " +
-      //        "case 1:  " + zl.length)
-      assert(zl.length == nenner.length) // in each case, m+l values
-
-      Big.ratio(zl, nenner)
-    }
     else {
-      val zl = ((m-l+Big.one) to m) ++ ((k-l+Big.one) to k) ++
-               ((n-m-k+l+Big.one) to (n-m))
-      val nenner = (Big.one to l) ++ ((n-k+Big.one) to n)
+      val (a, b) = if (m <= k) (m, k) else (k, m)
 
-      //println("f0(" + n + ", " + m + ", " + k + ", " + l + ")  " +
-      //        "case 2:  " + zl.length)
-      assert(zl.length == nenner.length) // in each case, k+l values
+      val numerator = ((m-l+Big.one) to m) ++ ((k-l+Big.one) to k) ++
+                      ((n-m-k+l+Big.one) to (n-b))
+      val denominator = (Big.one to l) ++ ((n-a+Big.one) to n)
+
+      assert(numerator.length == denominator.length) // in each case, a+l values
       
-      Big.ratio(zl, nenner)
+      Big.ratio(numerator, denominator)
     }
   }
 
@@ -193,6 +220,35 @@ object Combinatorics {
       exp_relevant(3,2,2,1,2) == 2
       exp_relevant(3,2,2,1,3) == 3
       }}}
+
+      The interpretation is that
+      * n is the number of dimensions in the data cube,
+      * m is the number of dimensions of the query,
+      * we materialize k0 randomly picked cuboids of k dimensions,
+      * how many of these cuboids contain at least l query dimensions
+        (i.e. have at least l dimensions after projection to the query
+         dimensions)?
+
+      Example:
+      {{{
+      scala> exp_relevant(20, 8, 15, 7, 10)
+      res0: BigDecimal = 3.06501547987616099071207430340557307943
+      scala> DF.df_df(8, 7, 3)
+      res1: Map[BigInt,Int] = Map(32 -> 56)
+      }}}
+      So if we materialize ten 15-dimensional projections of a 20-dimensional
+      data cube, there are in expectation about three cuboids whose
+      projection to an 8-dimensional query is at least 7-dimensional.
+      If there are three such cuboids, and we use only these to build the LP
+      instance, there are exactly 32 degrees of freedom.
+
+      If we pick 20 such cuboids,
+      {{{
+      scala> exp_relevant(20, 8, 15, 8, 20)
+      res2: BigDecimal = 1.02167182662538699690402476780185763528115...
+      }}}
+      (out of the comb(20,15) == 15504 that exist), we can expect there to
+      be one cuboid that covers the query completely.
   */
   def exp_relevant(n: Int, m: Int, k: Int, l: Int, k0: Int) : BigDecimal = {
     assert(k0 <= comb(n, k))
@@ -223,11 +279,13 @@ object Combinatorics {
   }
 
 
+  /** I don't remember what this is, but it obviously means p_fail.
+      I assume the "fail" refers to this being too slow to be useful.
+  */
   def pfail(n: Int, m: Int, k: Int, l: Int, k0: Int) : BigDecimal = {
     val n0 : BigInt = comb(n, k)
     val m0 : BigInt = lcomb_sup(n, m, k, l)
     val result = f0(n0, m0, k0, 0)
-    //println("pfail(" + n + ", " + m + ", " + k + ", " + l + ", " + k0 + ") = " + result)
     result
   }
 
@@ -286,6 +344,8 @@ object Combinatorics {
       @param intersect_cost_f returns the weight of the intersection of a
              set of such set representations
       @return the weight of the unions of the represented sets
+
+      For an example, see DF.compute_df().
   */
   def incl_excl[T](l: List[T], intersect_cost_f: List[T] => BigInt) : BigInt = {
     (for(i <- 1 to l.length) yield {

@@ -22,6 +22,8 @@ object Tools {
     fc: Cuboid
   ) extends DataCube(m) with Serializable {
     build(fc)
+
+    /// here one can access the cuboids directly
     def getCuboids = cuboids
   }
 
@@ -240,6 +242,7 @@ object exp_error_bounds {
 
 import core._
 import RationalTools._
+import frontend._
 import frontend.experiments._
 
 val n_bits = 60
@@ -268,7 +271,7 @@ for(d <- (1 to 12).map(_ * 2)) {
       case _ => {}
     }
     prev_span = cumu
-    prev_l = Some(s.df)
+    //prev_l = Some(s.df)
   }
 }
 

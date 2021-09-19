@@ -21,13 +21,21 @@ object Bits {
     result
   }
 
-  /** {{{
-      scala> def f = Bits.mk_project_f(BigBinary(5), 4)
-      f: BigBinary => BigBinary
-      scala> (0 to 9).map(x => f(BigBinary(x)))
-      res0: scala.collection.immutable.IndexedSeq[BigBinary] =
-        Vector(0, 1, 0, 1, 10, 11, 10, 11, 0, 1)
+  /** Returns a function for projecting a BigBinary b  using a mask (i.e. keeping those bits
+      of b that are 1 in mask, and dropping the others), considering the mx least significant
+      bits.
+      For example,
+      {{{
+      val abcde = 22 // five arbitrary bits, e.g. 10110
+
+      assert(abcde < 32)
+      val bce   = (abcde >> 2) % 4 << 1 + (abcde % 2)
+      val mask = BigBinary(13)   // 13 is 1101
+      val mx    = 4    // mx needs to be at least 4 since the mask is 4 bits
+      def f = Bits.mk_project_f(mask, mx) 
+      assert(f(BigBinary(abcde)) == BigBinary(bce))
       }}}
+      So, informally, Bits.mk_project_f(1101, 4)(abcde) = bce, where a,b,c,d,e are bits.
   */
   def mk_project_f(mask: BigBinary, mx: Int) : BigBinary => BigBinary = {
     (i: BigBinary) => {

@@ -1,0 +1,13 @@
+[
+  { "name": "polar bear",
+    "origin": "North Pole",
+    "fur": { "color": "white", "soft": "very" },
+    "danger": 10
+  },
+
+  { "name": "capybara",
+    "origin": "South America",
+    "danger": -2,
+    "friends": [ { "nordelta": 0 }, { "anaconda": 1 } ]
+  }
+]

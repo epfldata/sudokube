@@ -145,6 +145,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       bit depths of relevant projections (as provided by
       MaterializationScheme.prepare_online_agg()).
 
+      @param cheap_size is the number of dimensions up to which cuboids
+             can be prepared for the initial iteration. cheap_size refers
+             to the actual dimensionality of the cuboid, not to their
+             dimensionality after projection to dimensions occurring in the
+             query.
+
   Example:
   {{{
     import frontend.experiments.Tools._
@@ -208,6 +214,14 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 object DataCube {
   /** creates and loads a DataCube.
       @param filename is the name of the metadata file.
+
+      Example:
+      {{{
+      val dc = frontend.experiments.Tools.mkDC(10, 0.5, 1.8, 100,
+        backend.ScalaBackend)
+      dc.save("hello")
+      core.DataCube.load("hello", backend.ScalaBackend)
+      }}}
   */
   def load(filename: String, be: Backend[Payload] = CBackend.b) : DataCube = {
     val ois = new ObjectInputStream(new FileInputStream(filename))
@@ -222,12 +236,5 @@ object DataCube {
   }
 }
 
-
-/*
-val dc = frontend.experiments.Tools.mkDC(10, 0.5, 1.8, 100,
-  backend.ScalaBackend)
-dc.save("hello")
-core.DataCube.load("hello", backend.ScalaBackend)
-*/
 
 

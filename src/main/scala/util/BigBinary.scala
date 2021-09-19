@@ -37,9 +37,17 @@ case class BigBinary(val toBigInt: BigInt) {
     }
 
     assert(toBigInt >= 0)
-    toSeq0(toBigInt)
+    if(toBigInt == 0) List(0) else toSeq0(toBigInt)
   }
 
+  /** Example:
+      {{{
+      scala> val x = (10 << 16) + (3<<8) + 255
+      x: Int = 656383
+      scala> BigBinary(x).toCharArray(24).map(_.toInt)
+      res0: Array[Int] = Array(255, 3, 10)
+      }}}
+  */
   def toCharArray(n_bits: Int) : Array[Char] = {
     val space = math.ceil(n_bits.toDouble/8).toInt
     val ca = Util.mkAB[Char](space, _ => 0)
@@ -54,6 +62,7 @@ case class BigBinary(val toBigInt: BigInt) {
     ca.toArray
   }
 
+  // converts the number to a binary string, without leading zeroes.
   override def toString = {
     val d = binary_digits
     var s = ""

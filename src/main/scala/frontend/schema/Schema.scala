@@ -8,6 +8,7 @@ import java.io._
 
 
 trait Schema extends Serializable {
+  // abstract members
   def n_bits: Int
   def columnList: List[(String, ColEncoder[_])]
   protected def encode_column(key: String, v: Any) : BigBinary

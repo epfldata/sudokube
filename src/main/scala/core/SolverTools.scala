@@ -109,11 +109,24 @@ object SolverTools {
   }
 
   /** Simplex algorithm with constraints from <M>. The objectives are,
-      individually, maximizing and minimizing each of the variables in <vids>.
+      individually, maximizing and minimizing each of the <objectives>.
       There are two modes; <with_slack> adds slack variables, so the rows of
       <M> are assumed to be <= inequalities. When <with_slack> is false,
       we assume that the slack variables are in <M>, and so the rows of <M>
       are interpreted at equations.
+
+      This uses the Apache Solver, which has numerical stability issues,
+      causing it to claim some scenarios infeasible that aren't, specifically
+      when the smallest and largest feasible values for a variable coincide
+      (which is important since that's a solved variabel, which we are aiming
+      for).
+
+      @param objectives is a collection of objectives. An objective is
+             a polynomial, which is represented as a list of
+             (coefficient, variable id pairs).
+      @bounds contain upper and lower bounds on the variables, which are
+              turned into constraints. The i-th bound is for the i-th
+              variable which corresponds to the i-th column in <M>.
   */
   def simplex[T](M: SparseMatrix[T],
               bounds: Seq[Interval[T]],
@@ -136,6 +149,7 @@ object SolverTools {
       else l.tail.foldLeft(l.head)(plus)
     }
 
+    // returns a polynomial of type Expression
     def mk_poly(l: List[(Double, Int)]) = esum(l.map(x => vars(x._2) *  x._1))
 
     val constraints : Seq[Constraint] =

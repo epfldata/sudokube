@@ -1,19 +1,22 @@
 //package ch.epfl.data.sudokube
 package core
-import util._
-import breeze.linalg._
+import breeze.linalg.DenseMatrix
 
 
+/// For use in SparseMatrix
 case class SparseRow[T](n: Int, data: Map[Int, T]
 )(implicit num: Numeric[T]) {
 
+  /// fetch i-th item in row
   def apply(i: Int) : T = {
     assert(i < n)
     data.getOrElse(i, num.zero)
   }
 
+  /// multiplies each value in the row with x.
   def *(x: T) = SparseRow[T](n, data.mapValues(v => num.times(x, v)))
 
+  /// sums up two row vectors
   def plus2(that: SparseRow[T]) : SparseRow[T] = {
     assert(n == that.n)
 
@@ -25,7 +28,9 @@ case class SparseRow[T](n: Int, data: Map[Int, T]
     SparseRow(n, l)
   }
 
-  // this is about 25% faster that plus2, not a big deal
+  /** same behavior as plus2.
+      This is about 25% faster than plus2, not a big deal
+  */
   def +(that: SparseRow[T]) : SparseRow[T] = {
     assert(n == that.n)
     val l = this.data.filter { case (v, _) => ! that.data.contains(v)  } ++
@@ -68,11 +73,13 @@ case class SparseRow[T](n: Int, data: Map[Int, T]
 case class SparseMatrix[T](n_rows: Int, n_cols: Int
 )(implicit num: Numeric[T]) {
 
-  val data = Util.mkAB[Option[SparseRow[T]]](n_rows, _ => None)
+  val data : collection.mutable.ArrayBuffer[Option[SparseRow[T]]] =
+    util.Util.mkAB[Option[SparseRow[T]]](n_rows, _ => None)
 
   /** throws an exception in case the row is missing. */
   def apply(row: Int) : SparseRow[T] = data(row).get
 
+  /// convert to breeze DenseMatrix
   def toDenseMatrix : DenseMatrix[Double] = {
     val active_rows = data.filter(_ != None)
     val M = DenseMatrix.zeros[Double](active_rows.length, n_cols)
@@ -89,7 +96,7 @@ case class SparseMatrix[T](n_rows: Int, n_cols: Int
   override def toString = toDenseMatrix.toString
 
   /** projects a matrix to a subset of its columns.
-      The order of the elements of cols matters! One can reorder columns
+      The order of the elements of cols matters! One can reorder columns.
   */
   def select_cols(cols: Seq[Int]) : SparseMatrix[T] = {
     val new_n_cols = cols.length
@@ -112,7 +119,48 @@ case class SparseMatrix[T](n_rows: Int, n_cols: Int
 }
 
 
+/** import SparseMatrixImplicits._ and SparseMatrix[T: Fractional] has methods
+    axpy and pivot.
+*/
+object SparseMatrixImplicits {
+
+  implicit class SparseMatrixFractionalOps[T](
+    M: SparseMatrix[T])(implicit num: Fractional[T]) {
+
+    /** row_to -= row_from * (row_to(piv_col) / row_from(piv_col))
+    */
+    def axpy(i_to: Int, i_from: Int, piv_col: Int) {
+      val row_to = M(i_to)
+
+      if(row_to(piv_col) != num.zero) {
+        val row_from = M(i_from)
+        val factor: T = num.negate(num.div(row_to(piv_col), row_from(piv_col)))
+        M.data(i_to) = Some(row_to + row_from * factor)
+      }
+
+      // assert(M(i_to)(piv_col) == num.zero)
+    }
+
+    /** The method was moved here from SimplexAlgo and isn't perfectly named.
+        Makes a pivot by applying axpy of row with all other rows.
+    */
+    def pivot(row: Int, col: Int) {
+      val piv_row = M(row)
+      assert(piv_row(col) != num.zero)
+
+      if(piv_row(col) != num.one)
+        M.data(row) = Some(piv_row * num.div(num.one, piv_row(col)))
+
+      for(i <- 0 to (M.n_rows - 1))
+        if(row != i)
+          M.axpy(i, row, col)
+    }
+  }
+}
+
+
 object SparseMatrixTools {
+  /// converts a breeze DenseMatrix to a SparseMatrix
   def fromDenseMatrix[T: Fractional](M: DenseMatrix[T]) : SparseMatrix[T] = {
     val sparse_M = SparseMatrix[T](M.rows, M.cols)
     for(row <- 0 to M.rows - 1) {

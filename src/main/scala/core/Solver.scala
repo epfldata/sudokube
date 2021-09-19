@@ -100,7 +100,8 @@ case class Solver(
     val bounds0 = Util.filterIndexes(bounds, free_vars)
 
     val M2_sparse = SparseMatrixTools.fromDenseMatrix(M2)
-    val s2: Seq[Interval[Double]] = SolverTools.simplex(M2_sparse, bounds0, objectives, true)
+    val s2: Seq[Interval[Double]] =
+      SolverTools.simplex(M2_sparse, bounds0, objectives, true)
 
     free_vars.zip(s2).foreach { case(v, i) =>
       bounds(v) = bounds(v).intersect(i)

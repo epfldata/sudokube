@@ -3,55 +3,86 @@ package combinatorics
 import util._
 
 
-/** Stuff for calculating degrees of freedom.
+/** Tools for calculating the degrees of freedom of a sudokube LP instance
+    (the number or variables minus the number of linearly independent
+    equations).
 */
 object DF {
   import Combinatorics.incl_excl
 
-  /** build all the n_bits-bit integers in which the bits in bits1 
+  /** build all the n-bit integers in which the free_bits
       (0 being the least significant bit)
-      take various values and the remaining bits are one.
+      take values from {0,1} and the remaining bits are one.
+
+      Example: expand *1*11 into {01011, 01111, 11011, 11111}
       {{{
       scala> mk_det(5, List(2,4))
       res1: IndexedSeq[(Int, BigBinary)] = Vector((0,1011), (1,1111), (2,11011), (3,11111))
       }}}
+
+      We assume n can be large but free_bits.length is small.
   */
-  def mk_det(n_bits: Int, bits1: Seq[Int]) : IndexedSeq[(Int, BigBinary)]= {
-    assert(bits1.length <= n_bits)
-    val ones  = BigBinary((Big.pow2(n_bits - bits1.length)) - 1)
-    val bits2 = Util.complement(0 to n_bits - 1, bits1)
+  def mk_det(n: Int, free_bits: Seq[Int]) : IndexedSeq[(Int, BigBinary)]= {
+    assert(free_bits.length <= n)
+    val ones  = BigBinary((Big.pow2(n - free_bits.length)) - 1)
+    val bits2 = Util.complement(0 to n - 1, free_bits)
     val x     = ones.pup(bits2)
-    val sz    = 1 << bits1.length
-    for(i <- 0 to sz - 1) yield (i, BigBinary(i).pup(bits1) + x)
+    val sz    = 1 << free_bits.length // there are not too many free_bits
+                                      // to compute pow2 in this way.
+    for(i <- 0 to sz - 1) yield (i, BigBinary(i).pup(free_bits) + x)
   }
 
 
-  /** compute degrees of freedom for <n> query bits and a set of cuboids l.
-      Example:
+  /** compute degrees of freedom for <n> query bits and a set of cuboids l
+      that have already been projected down to the query bits (i.e. the sets
+      in l contain only query bits and the query bits have been normalized
+      to 0 .. n-1).
+
+      Examples:
       {{{
-      compute_df(3, List(List(0,1), List(0,2)))
+      compute_df(3, List(List(0,1,2))) == 0
+      compute_df(3, List(List(0,1), List(0,2), List(1,2))) == 1
+      compute_df(3, List(List(0,1), List(0,2))) == 2
       }}}
+      In the first case, the cuboid covers all the query bits, so df=0.
   */
   def compute_df(n: Int, l: List[List[Int]]) : BigInt = {
+    // n-1 in binary
     val ones = BigBinary(Big.pow2(n) - 1)
 
-    // marks free bits with 1
+    // marks free bits with 1; converts sets to binary representation
+    // Example: for l = List(List(0,1), List(0,2)),  l2 = List(11, 101)
     val l2 : List[BigBinary] = l.map(ones.pup(_))
 
+    /* 2^(number of overlapping bits)
+       Example:
+       cost(List(011, 101)) = 2^((111 & 011 & 101 = 001).hamming_weight) = 2^1
+    */
     def cost(l: List[BigBinary]) : BigInt =
       Big.pow2(l.foldLeft(ones)(_&_).hamming_weight)
 
+    // incl_excl[BigBinary](List(11, 101), cost _) = 6
     Big.pow2(n) - incl_excl[BigBinary](l2, cost _)
   }
 
-  /** as in Solver */
+  /** computes the same result as compute_df, but implemented as in Solver.
+      {{{
+      assert(DF.compute_df(n, l) == DF.compute_df0(n, l))
+      }}}
+
+      Note: compute_df avoids enumerating the equations and is faster.
+  */
   def compute_df0(n: Int, l: List[List[Int]]) : BigInt = {
+    // Enumerate the equations as collections of variables.
     val eqs = l.map(Bits.group_values(_, 0 to (n - 1)
                  ).map(x => x.map(_.toInt))).flatten
-    val det_vars = collection.mutable.Set[Int]()
 
-    for(eq <- eqs)
-      if(!det_vars.contains(eq.last)) det_vars.add(eq.last)
+    /* We can compute the determined vars as the set of vars of maximal
+       (or minimal) index of each equation. This is due to the special
+       structure of the equations we construct here.
+    */
+    val det_vars = collection.mutable.Set[Int]()
+    for(eq <- eqs) det_vars.add(eq.last)
 
     (1 << n) - det_vars.size
   }
@@ -59,7 +90,11 @@ object DF {
   /** Density function of the degrees of freedom.
       Computes the distribution of degrees of freedom of the sets of
       of cardinality <l> of <k>-size subsets of a set of size <n>.
-      For example, h(5,3,2) == Map(20 -> 30, 18 -> 15)
+
+      For example, for n=5, k=3, l=2,
+      {{{
+      df_df(5,3,2) == Map(20 -> 30, 18 -> 15)
+      }}}
       because there are comb(comb(n, k).toInt, l) = 45 two-element sets
       of 3-element subsets of a 5-element set, and 30 of them have 20
       degrees of freedom and the remaining 15 have 18 degrees of freedom.
@@ -93,7 +128,9 @@ object DF {
 
 
 /*
+I renamed h to df_df.
 def h = df_df
+
 h(n, n-1, np) = 2^(n - np)
 h(6,5,0) == Map(64 -> 1)
 h(6,5,1) == Map(32 -> 6)

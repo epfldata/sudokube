@@ -35,7 +35,7 @@ class SolverSpec extends FlatSpec with Matchers {
   "Solver test 1" should "work" in {
     val b = util.Util.mkAB[Interval[Double]](8, _ => Interval(None, None))
 
-    // the solution is: Array(1,7,3,0,10,2,4,20)
+    // the base data/solution is: Array(1,7,3,0,10,2,4,20)
     val v = Array[Double](11,9,7,20,8,3,12,24).map(x => new Payload(x, None))
     val s = Solver(3, b, List(List(0,1), List(1,2)), v)
 

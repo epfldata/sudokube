@@ -36,6 +36,9 @@ object SloppyFractionalInt {
 
 object Util {
 
+  /** makes a sz-element ArrayBuffer and initializes each i-th field with
+      init_v(i).
+  */
   def mkAB[T](sz: Int, init_v: Int => T) = {
     val ab = collection.mutable.ArrayBuffer[T]()
     ab ++= (0 to sz - 1).map(init_v(_))
