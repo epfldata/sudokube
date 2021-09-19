@@ -42,19 +42,34 @@ case class SparseSolver[T](
 
   def df = n_vars - n_det_vars   // remaining degrees of freedom
   protected def free_vars = (0 to n_vars - 1).filter(x => M.data(x) == None)
+
+  // these are the variables x for which we have a row M(x).
   def det_vars  = (0 to n_vars - 1).filter(x => M.data(x) != None)
+
+  /// for these we know an exact value.
   var solved_vars = Set[Int]()
 
   /** Gaussian elimination.
+
+      The assumption is that the rows <pivs> have just been added, and before
+      that
       This implementation is intentionally limited in that it requires that
       the pivot fields have value one. That doesn't make the algorithm
       simpler, but it's a guaranteed property.
   */
   def gauss(pivs: Seq[Int]) {
     for(piv <- pivs.sorted.reverse) {
-      val pivot_row = M(piv)
 
-      assert(pivot_row(piv) == num.one)
+      assert(M(piv)(piv) == num.one)
+
+      for(col <- (piv - 1) to 0 by -1) {
+        val c = M(piv)(col)
+        if((c != 0) && (M.data(col) != None)) {
+          M.data(piv) = Some(M(piv) + M(col) * num.negate(c))
+        }
+      }
+
+      val pivot_row = M(piv)
 
       for(other_row <- piv + 1 to n_vars - 1) {
 
