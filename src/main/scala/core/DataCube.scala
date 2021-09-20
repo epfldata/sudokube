@@ -182,7 +182,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     val l      = m.prepare(query, max_fetch_dim, max_fetch_dim)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
-    SparseSolver[T](query.length, bounds, l.map(_.accessible_bits), fetch2(l))
+    new SliceSparseSolver[T](query.length, bounds, l.map(_.accessible_bits), fetch2(l))
   }
 
   /** lets us provide a callback function that is called for increasing
@@ -221,16 +221,15 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     var l      = m.prepare_online_agg(query, cheap_size)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
-    val s      = SparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
+    val s      = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df     = s.df
     var cont   = true
     println("START ONLINE AGGREGATION")
     while((! l.isEmpty) && (df > 0) && cont) {
-      println(l.head.accessible_bits)
-      s.add2(List(l.head.accessible_bits), fetch2(List(l.head)))
-      if(df != s.df) {  // something added
-                 // TODO: we can determine this without fetching the cuboid
+      if (s.shouldFetch(l.head.accessible_bits)) { // something can be added
+        println(l.head.accessible_bits)
 
+        s.add2(List(l.head.accessible_bits), fetch2(List(l.head)))
         s.gauss(s.det_vars)
         s.compute_bounds
         cont = callback(s)

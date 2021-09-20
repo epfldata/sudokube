@@ -96,8 +96,11 @@ class SliceSparseSolver[T](
       if (total == num.zero) {
         solved_vars ++= vars
         vars.foreach { v =>
-          if (M.data(v) == None)
+          if (M.data(v) == None) {  //Do not replace existing equation
             M.data(v) = Some(SparseRow(n_vars + 1, Map(v -> num.one)))
+            n_det_vars += 1
+            new_pivots = v :: new_pivots
+          }
         }
       } else if (!maxFetchedVars.contains(lv)) { //Replace eqn even if we have the solver solution
         maxFetchedVars += lv
