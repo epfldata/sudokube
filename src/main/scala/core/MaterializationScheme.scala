@@ -104,10 +104,10 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   def create_parallel_build_plan(nthreads: Int) = {
     val ps = projections.zipWithIndex.sortBy(_._1.length).reverse.toList
     assert(ps.head._1.length == n_bits)
-
+    import collection.mutable.ArrayBuffer
     // the edges (_2, _3) form a tree rooted at the full cube
-    var build_plan = collection.mutable.Map[Int, List[(BitSet, Int, Int)]]()
-    build_plan ++=  (0 until nthreads).map{tid => tid -> List((BitSet(ps.head._1:_*), ps.head._2, -1))}
+    var build_plan = collection.mutable.Map[Int,  ArrayBuffer[(BitSet, Int, Int)]]()
+    build_plan ++=  (0 until nthreads).map{tid => tid -> ArrayBuffer((BitSet(ps.head._1:_*), ps.head._2, -1))}
 
     val thread_size = collection.mutable.Map[Int, Int]().withDefaultValue(0)
     val pi = new ProgressIndicator(ps.tail.length)
@@ -115,24 +115,49 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     ps.tail.foreach {
       case((l: List[Int]), (i: Int)) => {
         val s = BitSet(l :_*)
-        // first match is cheapest
-        val y = build_plan.mapValues(_.find{ case (s2, _, _) => s.subsetOf(s2) })
+        // binary search for good parent. Not always the best parent
+        val y = build_plan.mapValues { threadplan =>
+
+          var idxB = threadplan.size - 1
+          var idxA = 0
+          var mid = (idxA + idxB)/2
+          var cub = threadplan(mid)
+          while(idxA <= idxB) {
+            mid = (idxA + idxB)/2
+            cub = threadplan(mid)
+              if(s.subsetOf(cub._1)) {
+                idxA = mid + 1
+              } else {
+                idxB = mid - 1
+              }
+          }
+          var newiter = mid
+          while(s.subsetOf(cub._1) && newiter < threadplan.size - 1) {
+            newiter = newiter + 1
+            cub = threadplan(newiter)
+          }
+          while(!s.subsetOf(cub._1)) {
+            newiter = newiter - 1
+            cub = threadplan(newiter)
+          }
+          //println(s"\nA=$idxA B=$idxB  mid=$mid  newmid=$newiter i=$i")
+          cub
+        }
         val y2 = y.tail.foldLeft(y.head){
-          case (acc@(_, None), cur) => cur
-          case (acc, cur@(_, None)) => acc
-          case (acc@(tida, Some((sa, _, _))), cur@(tidc, Some((sc, _, _)))) =>
+          case (acc@(tida, (sa, _, _)), cur@(tidc, (sc, _, _))) =>
               if(sc.size < sa.size) cur
               else if((sc.size == sa.size) && thread_size(tidc) < thread_size(tida)) cur
               else acc
         }
-        val (tid, Some((s2, j, pj))) = y2
-        build_plan(tid) = (s, i, j) :: build_plan(tid)
+        val (tid, (s2, j, pj)) = y2
+        assert(s.subsetOf(s2))
+        build_plan(tid) += ((s, i, j))
         thread_size(tid) += 1
         pi.step
       }
     }
     println
-    build_plan.values.map(_.reverse).toList
+    build_plan.values.toList
   }
 
 

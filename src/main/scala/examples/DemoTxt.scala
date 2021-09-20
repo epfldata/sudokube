@@ -1,38 +1,65 @@
 package examples
 
 import backend.CBackend
+import breeze.io.{CSVReader, CSVWriter}
 import frontend.generators._
 import frontend.gui.FeatureFrame
 import util.{BigBinary, Profiler}
+
+import java.io.{FileReader, FileWriter}
 
 object DemoTxt {
 
   import frontend._, backend._, core._, core.RationalTools._
 
   def test() = {
-    val data  = (0 to 15).map(i => BigBinary(i) -> i)
+    val data = (0 to 15).map(i => BigBinary(i) -> i)
     val nbits = 10
     val dc = new DataCube(RandomizedMaterializationScheme(nbits, 1, 1))
     dc.build(CBackend.b.mk(nbits, data.toIterator))
     dc.save("test")
   }
+
   def loadtest(): Unit = {
-    core.DataCube.load("test")
-  }
+    val dc = core.DataCube.load("test")
+    println(dc.naive_eval(List(3,4,5,6)).mkString("  "))
+}
 
   def iowa(): Unit = {
     val sch = new schema.DynamicSchema
-    //val name = "Iowa200k"
+    val name = "Iowa200k_cols6"
     //val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
-    val name = "Iowa2M"
+    //val name = "Iowa2M"
     val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
     println("NBITS =" + sch.n_bits)
+    sch.columnList.map(kv => kv._1 -> kv._2.bits.length).foreach(println)
     Profiler.print()
 
     val dc  = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
     Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
     Profiler.print()
     dc.save(name+"_base")
+  }
+  def iowa2() = {
+    val rf = Math.pow(2, -115)
+    val base = 1.5
+    val dcBase = DataCube.load("Iowa200k_base")
+    val dc = new DataCube(RandomizedMaterializationScheme(dcBase.m.n_bits, rf, base))
+    dc.buildFrom(dcBase)
+    dc.save("Iowa200_all")
+  }
+  def iowa3() = {
+    val name = "Iowa200k"
+    val dir = "/Users/sachin/Downloads"
+    val cols = Vector(1, 2, 11, 13, 17, 18).map(_ - 1)
+    val pathin = s"$dir/$name.csv"
+    val pathout = s"$dir/${name}_cols${cols.length}.csv"
+    val csvin = CSVReader.read(new FileReader(pathin))
+
+    val csvout = csvin.map(row => cols.map(c => row(c)))
+    CSVWriter.write(new FileWriter(pathout), csvout)
+    println(csvout.head)
+
   }
   def investment(): Unit = {
 
@@ -174,8 +201,8 @@ object DemoTxt {
     map.filter(_._2 > 4).foreach(println)
   }
   def main(args: Array[String]): Unit = {
-    //iowa()
-    test()
+    iowa()
+    //test()
     //loadtest()
     //investment()
   //sample(1000)

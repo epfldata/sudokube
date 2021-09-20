@@ -14,15 +14,7 @@ abstract class Cuboid {
   def rehash_to_dense( mask: MASK_T): Cuboid
 
   /** smart rehash */
-  def rehash(mask: MASK_T): Cuboid = {
-    assert(mask.length == n_bits)
-    val res_n_bits = mask.sum
-    val size_dense = Big.pow2(res_n_bits)
-
-    //TODO: rehash to sparse first, check size and then rehash to dense if large enough
-    if(size_dense <= size) rehash_to_dense( mask)
-    else                   rehash_to_sparse(mask)
-  }
+  def rehash(mask: MASK_T): Cuboid
 
   def backend: Backend[_]
 }
@@ -42,6 +34,15 @@ abstract class Backend[MEASURES_T] {
 
     /** size in # rows */
     def size = sSize(data)
+
+    override def rehash(mask: MASK_T): Cuboid = {
+      assert(mask.length == n_bits)
+      val res_n_bits = mask.sum
+      val size_dense = Big.pow2(res_n_bits)
+      val sparse_cuboid = rehash_to_sparse(mask)
+      if (size_dense <= sparse_cuboid.size) rehash_to_dense(mask)
+      else sparse_cuboid
+    }
 
     def rehash_to_dense(mask: MASK_T) = {
       assert(mask.length == n_bits)
@@ -63,6 +64,10 @@ abstract class Backend[MEASURES_T] {
   ) extends Cuboid {
 
     def size = Big.pow2(n_bits)
+
+
+    /** smart rehash */
+    override def rehash(mask: MASK_T): Cuboid = rehash_to_dense(mask)
 
     def rehash_to_dense(mask: MASK_T) = {
       assert(mask.length == n_bits)

@@ -39,7 +39,7 @@ class CBackend extends Backend[Payload] {
   }
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
     val filename = s"$name_prefix/cub_" + id + ".csuk"
-    println("CBackend::writeCuboid: Writing cuboid as " + filename)
+    //println("CBackend::writeCuboid: Writing cuboid as " + filename)
 
     if(c.isInstanceOf[SparseCuboid])
          writeSCuboid0(filename, c.asInstanceOf[SparseCuboid].data)

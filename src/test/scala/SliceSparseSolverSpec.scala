@@ -163,7 +163,19 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
 
     s1.compute_bounds
     s2.compute_bounds
+
+    val bs = List(
+      Interval(Some(0.0),Some(8.0)),
+    Interval(Some(4.0),Some(4.0)),
+    Interval(Some(0.0),Some(8.0)),
+    Interval(Some(2.0),Some(2.0)),
+    Interval(Some(16.0),Some(24.0)),
+    Interval(Some(0.0),Some(0.0)),
+    Interval(Some(5.0),Some(13.0)),
+    Interval(Some(0.0),Some(0.0)))
+
     assert(s1.bounds.toList == s2.bounds.toList)
+    assert(s1.bounds.toList == bs)
   }
 
   "Simplex on the free variables" should "not be sufficient" in {

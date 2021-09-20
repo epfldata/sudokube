@@ -49,7 +49,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     println("Creating build plan...")
 
-    val parallel = false
+    val parallel = true
     val ab = Util.mkAB[Cuboid](m.projections.length, _ => full_cube)
     if(parallel) {
       val cores = Runtime.getRuntime.availableProcessors / 2

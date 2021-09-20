@@ -7,7 +7,7 @@ case class SparseSolver[T](
   val n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[T]],
   private val projections: List[List[Int]],
-  private val v: Seq[T],
+  private val values: Seq[T],
   sliceFunc: Int => Boolean = _ => true
 )(implicit num: Fractional[T]){
 
@@ -93,7 +93,7 @@ case class SparseSolver[T](
     add(a.map(Bits.group_values(_, 0 to (n_bits - 1)).map(
       x => x.map(_.toInt))).flatten.zip(b))
 
-  gauss(add2(projections, v))
+  gauss(add2(projections, values))
 
   /** returns which new equations for solved variables were added.
       This is a subset of the input sequence vars.

@@ -125,7 +125,6 @@ class DualSimplex[T](
   }
 
   def run(v: Int, maximize: Boolean): Unit = {
-    set_simple_objective(v, maximize)
     it_cnt = 0
     terminate = false
     dual_algo
@@ -350,15 +349,6 @@ class DualSimplex[T](
 
     assert(!res.isEmpty)
 
-    val maxR = res.foldLeft[Option[(Int, T, T)]](None) {
-      case (None, cur) => Some(cur)
-      case (acc@Some((_, _, accratio)), cur@(_, _, curratio)) =>
-        if (num.gt(curratio, accratio))
-          Some(cur)
-        else
-          acc
-    }
-
     val minR = res.foldLeft[Option[(Int, T, T)]](None) {
       case (None, cur) => Some(cur)
       case (acc@Some((_, aa, accratio)), cur@(_, ca, curratio)) =>
@@ -370,9 +360,27 @@ class DualSimplex[T](
           acc
     }
 
-    if (maxR.get._3 == num.zero || (minR.get._3 == num.zero && it_cnt >= iter_limit)) {
-      terminate = true
-    }
+
+    //val maxR = res.foldLeft[Option[(Int, T, T)]](None) {
+    //  case (None, cur) => Some(cur)
+    //  case (acc@Some((_, _, accratio)), cur@(_, _, curratio)) =>
+    //    if (num.gt(curratio, accratio))
+    //      Some(cur)
+    //    else
+    //      acc
+    //}
+
+    /*
+    Early terminate with max 0 gives tight bounds only if this is the only row with negative b
+    Early terminate with min 0  usually never gives tight bounds
+    Right now we want Simplex to be maximally accurate, so no early termination
+     */
+
+    //if (maxR.get._3 == num.zero || (minR.get._3 == num.zero && it_cnt >= iter_limit)) {
+    //  terminate = true
+    //}
+
+
     //if(debug) println("max = "+maxR+ " min = "+minR)
     minR.map(_._1)
   } //find j that minimizes c_j/a_rj
@@ -409,14 +417,12 @@ class DualSimplex[T](
     //debug = true
     var next_row = D_pick_row
     //if (debug) (0 to n_constraints).foreach { printRow}
-    breakable {
-      while (next_row != None && !terminate && it_cnt < iter_limit) {
+
+      while (next_row != None && it_cnt < iter_limit) {
 
         val row = next_row.get
         val col = Profiler.noprofile("PickCol"){D_pick_col(row).get}
 
-        if (terminate)
-          break
         // throws an exception if there's no suitable
         // col. in that case, there is no feasible solution
         //if(debug) printRow(0)
@@ -435,7 +441,6 @@ class DualSimplex[T](
         //  debug = false
         //}
       }
-    }
     //print(it_cnt + "  ")
 
   }
