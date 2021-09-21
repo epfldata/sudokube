@@ -28,6 +28,8 @@ object DemoTxt {
   def iowa(): Unit = {
     val sch = new schema.DynamicSchema
     val name = "Iowa200k_cols6"
+    val rf = 0.1
+    val base = 1.4
     //val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
     //val name = "Iowa2M"
     val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
@@ -35,10 +37,10 @@ object DemoTxt {
     sch.columnList.map(kv => kv._1 -> kv._2.bits.length).foreach(println)
     Profiler.print()
 
-    val dc  = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
+    val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
     Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
     Profiler.print()
-    dc.save(name+"_base")
+    dc.save2(s"${name}_${rf}_$base")
   }
   def iowa2() = {
     val rf = Math.pow(2, -115)

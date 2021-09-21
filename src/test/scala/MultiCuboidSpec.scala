@@ -93,7 +93,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
       }
       assert(cub1.size == cub2.size)
     }
-    //removeCuboid(name)
+    removeCuboid(name)
   }
 
   "MultiCuboid save and load " should " work for medium data medium cuboids " in {

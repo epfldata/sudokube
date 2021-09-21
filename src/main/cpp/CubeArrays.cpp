@@ -12,11 +12,12 @@
 //#define VERBOSE
 
 
-// SparseRecord
-struct initrec {
-    std::string key;
-    unsigned int val;
 
+const int tempKeySize = 40;
+
+struct tempRec {
+    byte key[tempKeySize];
+    int val;
 };
 
 /*
@@ -97,7 +98,7 @@ struct {
    as long as this is appendable/a vector, must not call rehash on it.
 */
 int mk(int n_bits) {
-    return globalRegistry.r_add(new std::vector<initrec>(), 0, bitsToBytes(n_bits));
+    return globalRegistry.r_add(new std::vector<tempRec>(), 0, bitsToBytes(n_bits));
 }
 
 /* appends one record to an appendable (not yet frozen) sparse representation.
@@ -107,21 +108,20 @@ int mk(int n_bits) {
    sparse representation when we freeze it.
 */
 void add(int s_id, int n_bits, byte *key, int v) {
-    initrec myrec;
+    tempRec myrec;
     int numbytes = bitsToBytes(n_bits);
-    myrec.key.reserve(numbytes);
     memcpy(&myrec.key[0], key, numbytes);
     myrec.val = v;
 
     //SBJ: Currently no other thread should be running. So no locks
-    std::vector<initrec> *p = (std::vector<initrec> *) globalRegistry.ptr_registry[s_id];
+    std::vector<tempRec> *p = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
     p->push_back(myrec); // makes a copy of myrec
     globalRegistry.numrows_registry[s_id]++;
 }
 
 void freeze(int s_id) {
     //SBJ: No other threads. No locks
-    std::vector<initrec> *store = (std::vector<initrec> *) globalRegistry.ptr_registry[s_id];
+    std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
     short keySize = globalRegistry.keysz_registry[s_id];
     unsigned int rows = store->size();
     size_t recSize = keySize + sizeof(int);
@@ -130,14 +130,14 @@ void freeze(int s_id) {
     if (sizeMB > 100) fprintf(stderr, "\nfreeze calloc : %lu MB\n", sizeMB);
 
     for (int r = 0; r < rows; r++) {
-        memcpy(getKey(newstore, r, recSize), (*store)[r].key.data(), keySize);
+        memcpy(getKey(newstore, r, recSize), &(*store)[r].key[0], keySize);
         memcpy(getVal(newstore, r, recSize), &((*store)[r].val), sizeof(int));
     }
 
 #ifdef VERBOSE
     printf("\nFREEZE keySize = %d  recSize = %d\n", keySize, recSize);
     for (unsigned i = 0; i < rows; i++) {
-        print_key(10, getKey(newstore, i, recSize)); //hard coded 20 bits
+        print_key(10, getKey(newstore, i, recSize)); //hard coded 10 bits
         printf(" ");
         printf(" %u ", *getVal(newstore, i, recSize));
         printf("\n");
@@ -354,12 +354,6 @@ int srehash(int s_id, int *mask, int masklen) {
     byte **store = (byte **) ptr;
     int recSize = keySize + sizeof(int);
 
-    const int tempKeySize = 40;
-
-    struct tempRec {
-        byte key[tempKeySize];
-        int val;
-    };
 
     const int tempRecSize = sizeof(tempRec);
 

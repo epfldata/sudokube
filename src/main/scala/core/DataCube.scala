@@ -252,10 +252,11 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   def solver[T](query: List[Int], max_fetch_dim: Int
   )(implicit num: Fractional[T]) : SparseSolver[T] = {
 
-    val l      = m.prepare(query, max_fetch_dim, max_fetch_dim)
+    val l      = Profiler("SolverPrepare"){m.prepare(query, max_fetch_dim, max_fetch_dim)}
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
-    new SliceSparseSolver[T](query.length, bounds, l.map(_.accessible_bits), fetch2(l))
+    val data = Profiler("SolverFetch"){fetch2(l)}
+    Profiler("SolverConstructor"){new SliceSparseSolver[T](query.length, bounds, l.map(_.accessible_bits), data)}
   }
 
   /** lets us provide a callback function that is called for increasing
@@ -323,8 +324,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       the query. Does not involve a solver.
   */
   def naive_eval(query: List[Int]) : Array[Double] = {
-    val l = m.prepare(query, m.n_bits, m.n_bits)
-    fetch(l).map(p => p.sm)
+    val l = Profiler("NaivePrepare"){m.prepare(query, m.n_bits, m.n_bits)}
+    Profiler("NaiveFetch"){fetch(l).map(p => p.sm)}
   }
 } // end DataCube
 
