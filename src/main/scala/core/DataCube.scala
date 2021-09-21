@@ -3,8 +3,11 @@ package core
 import backend._
 import planning.ProjectionMetaData
 import util._
+
 import java.io._
 import solver._
+
+import scala.collection.mutable.ArrayBuffer
 
 /** To create a DataCube, must either
     (1) call DataCube.build(full_cube) or
@@ -56,7 +59,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       val par_build_plan = Profiler("CreateBuildPlan") {
         m.create_parallel_build_plan(cores)
       }
-      println(s"Projecting using $cores cores...")
+      println(s"Projecting using $cores threads")
 
       // puts a ref to the same object into all fields of the array.
       val backend = full_cube.backend
@@ -129,6 +132,27 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }).toArray
   }
 
+  def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
+    cuboids = new Array[Cuboid](m.projections.length)
+    val parallelism =  Runtime.getRuntime.availableProcessors / 2
+    println(s"Reading cuboids from disk using $parallelism threads")
+    val threadBuffer = multicuboidLayout.zipWithIndex.groupBy(_._2 % parallelism).values.map { mcs =>
+      new Thread {
+        override def run(): Unit = {
+          mcs.foreach {
+            case ((idList, sparseList, nbitsList, sizeList), mcid) =>
+              val filename = parentDir + s"/multicube_$mcid.csuk"
+              //WARNING Converting size of cuboid from BigInt to Int
+              val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
+              cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
+            case x => assert(false)
+          }
+        }
+      }
+    }
+    threadBuffer.foreach(_.start())
+    threadBuffer.foreach(_.join())
+  }
   /** write the DataCube's metadata and cuboid data to a file.
 
       @param filename is the filename used for the metadata.
@@ -151,6 +175,55 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     oos.writeObject(l)
     oos.close
   }
+
+  final val threshold = 1000 * 1000 * 10
+
+  def save2(filename: String) {
+    val be = cuboids(0).backend
+    val file = new File("cubedata/"+filename+"/"+filename+".dc2")
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+
+    def cubTotalSize(cub: Cuboid) = cub.size * (cub.n_bits/8 + 5)
+     val multiCuboids =  cuboids.zipWithIndex.foldLeft((Map[Int, Cuboid]() :: Nil) -> BigInt(0) ) {
+       case ((list,total), (cub, id)) => if((total + cubTotalSize(cub)) < threshold) {
+         ((list.head + (id -> cub)) :: list.tail) -> (total + cubTotalSize(cub) )
+       } else {
+         (Map(id -> cub) :: list) -> cubTotalSize(cub)
+       }
+     }._1
+
+    type MultiCuboid = Map[Int, Cuboid]
+    def extractCuboidData(mc: MultiCuboid) = {
+      mc.foldLeft((List[Int](), List[Boolean](), List[Int](), List[BigInt]())) {
+        case ((idList, sparseList, nbitsList, sizeList), (id, cub)) =>
+          (id :: idList, cub.isInstanceOf[be.SparseCuboid] :: sparseList, cub.n_bits :: nbitsList, cub.size :: sizeList)
+      }
+    }
+
+    val oos = new ObjectOutputStream(new FileOutputStream(file))
+    oos.writeObject(m)
+    val multiCuboidLayoutData = multiCuboids.map(extractCuboidData)
+    oos.writeObject(multiCuboidLayoutData)
+    oos.close
+
+    val parallelism =  Runtime.getRuntime.availableProcessors / 2
+    println(s"Writing cuboids to disk using $parallelism threads")
+    val threadTasks =  multiCuboids.zipWithIndex.groupBy(_._2 % parallelism).values.map{ multicuboids =>
+      new Thread {
+        override def run(): Unit = {
+          multicuboids.map { case (mc, mcid) =>
+            val filename = file.getParent + s"/multicube_$mcid.csuk"
+            //layout data is written in reverse order, so we reverse it here too
+            be.writeMultiCuboid(filename, mc.values.toArray.reverse)
+        }
+      }
+    }}
+
+    threadTasks.foreach(_.start())
+    threadTasks.foreach(_.join())
+  }
+
 
 
   /** This is the only place where we transfer data from C into Scala.
@@ -230,6 +303,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
         println(l.head.accessible_bits)
 
         s.add2(List(l.head.accessible_bits), fetch2(List(l.head)))
+        //TODO: Probably gauss not required if newly added varibales are first rewritten in terms of non-basic
         s.gauss(s.det_vars)
         s.compute_bounds
         cont = callback(s)
@@ -262,6 +336,19 @@ object DataCube {
 
     val dc = new DataCube(m)
     dc.load(be, l, file.getParent)
+
+    dc
+  }
+
+  def load2(filename: String, be: Backend[Payload] = CBackend.b) : DataCube = {
+    val file = new File("cubedata/"+filename+"/"+filename+".dc2")
+    val ois = new ObjectInputStream(new FileInputStream(file))
+    val m = ois.readObject.asInstanceOf[MaterializationScheme]
+    val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int],List[Boolean], List[Int], List[BigInt])]]
+    ois.close
+
+    val dc = new DataCube(m)
+    dc.load2(be, multiCuboidLayoutData, file.getParent)
 
     dc
   }

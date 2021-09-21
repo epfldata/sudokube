@@ -32,15 +32,42 @@ class CBackend extends Backend[Payload] {
   @native protected def writeSCuboid0(filename: String, s_id: Int)
   @native protected def writeDCuboid0(filename: String, d_id: Int)
 
+  @native protected def readMultiCuboid0(filename: String, isSparseArray: Array[Boolean],
+                                         nbitsArray: Array[Int], sizeArray: Array[Int]): Array[Int]
+
+  @native protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int])
+
+
+  override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean], nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = {
+    val backend_id_array = readMultiCuboid0(filename, isSparseArray, nbitsArray, sizeArray)
+    (0 until idArray.length).map { i =>
+      val cub = isSparseArray(i) match {
+        case true => SparseCuboid(nbitsArray(i), backend_id_array(i))
+        case false => DenseCuboid(nbitsArray(i), backend_id_array(i))
+      }
+      idArray(i) -> cub
+    }.toMap
+  }
+
+  override def writeMultiCuboid(filename: String, cuboidsArray: Array[Cuboid]): Unit = {
+    val isSparseArray = cuboidsArray.map(_.isInstanceOf[SparseCuboid])
+    val backend_id_array = cuboidsArray.map {
+      case SparseCuboid(_, data) => data
+      case DenseCuboid(_, data) => data
+    }
+    writeMultiCuboid0(filename, isSparseArray, backend_id_array)
+  }
+
   def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
     val filename = s"$name_prefix/cub_" + id + ".csuk"
+    //WARNING: data not same as id. Do not use data returned by CBackend as id
     if(sparse) SparseCuboid(n_bits, readSCuboid0(filename, n_bits, size.toInt))
     else        DenseCuboid(n_bits, readDCuboid0(filename, n_bits, size.toInt))
   }
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
     val filename = s"$name_prefix/cub_" + id + ".csuk"
     //println("CBackend::writeCuboid: Writing cuboid as " + filename)
-
+    //WARNING: data not same as id. Do not pass id to CBackend
     if(c.isInstanceOf[SparseCuboid])
          writeSCuboid0(filename, c.asInstanceOf[SparseCuboid].data)
     else writeDCuboid0(filename, c.asInstanceOf[DenseCuboid].data)

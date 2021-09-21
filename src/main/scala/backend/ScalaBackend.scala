@@ -11,6 +11,12 @@ object ScalaBackend extends Backend[Payload] {
   protected type DENSE_T  = Array[Payload]
   protected type SPARSE_T = Seq[(BigBinary, Payload)]
 
+
+  override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean],
+                               nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = ???
+
+  override def writeMultiCuboid(filename: String, cuboidsArray: Array[Cuboid]): Unit = ???
+
   def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
     val ois = new ObjectInputStream(
       new FileInputStream(s"$name_prefix/cub_" + id + ".ssuk"))

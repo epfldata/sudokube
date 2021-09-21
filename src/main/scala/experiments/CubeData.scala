@@ -106,7 +106,6 @@ object CubeData {
               if (l.head.mask.length > solverDimFetched)
                 solverDimFetched = l.head.mask.length
 
-
               println(l.head.accessible_bits)
               val fetched = Profiler("Fetch") {
                 dc.fetch2(List(l.head))
@@ -114,7 +113,8 @@ object CubeData {
               Profiler("SolverAdd") {
                 s.add2(List(l.head.accessible_bits), fetched)
               }
-              if (df != s.df) {
+              //TODO: Probably gauss not required if newly added variables are first rewritten in terms of non-basic
+
                 Profiler("Gauss") {
                   s.gauss(s.det_vars)
                 }
@@ -122,7 +122,7 @@ object CubeData {
                   s.compute_bounds
                 }
                 df = s.df
-              }
+
             } else {
               println(s"Preemptively skipping fetch of cuboid ${l.head.accessible_bits}")
             }

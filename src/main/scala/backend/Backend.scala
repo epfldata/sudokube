@@ -86,8 +86,10 @@ abstract class Backend[MEASURES_T] {
     def backend = be_this
   }
 
+  def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean], nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid]
+  def writeMultiCuboid(filename: String, cuboidsArray: Array[Cuboid]): Unit
 
-  def  readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid
+  def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String): Unit
 
 

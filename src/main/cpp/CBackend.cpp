@@ -20,7 +20,7 @@ extern int   drehash(int n_bits, int d_id, int d_bits, int *mask, int masklen);
 extern int      mk(int n_bits);
 extern void     add(int s_id, int n_bits, byte *key, int v);
 extern void     freeze(int s_id);
-extern payload *fetch(int d_id);
+extern payload *fetch(int d_id, unsigned int& size);
 extern int      sz(int id);
 
 extern int   readSCuboid(const char *filename, int n_bits, int size);
@@ -28,7 +28,8 @@ extern int   readDCuboid(const char *filename, int n_bits, int size);
 extern void writeSCuboid(const char *filename, int s_id);
 extern void writeDCuboid(const char *filename, int d_id);
 
-
+extern void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[], int id_array[], int numCuboids);
+extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int ids[], int numCuboids);
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
@@ -64,6 +65,30 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
   env->ReleaseStringUTFChars(filename, str);
 }
 
+JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
+        (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JnbitsArray, jintArray JsizeArray) {
+    jsize numCuboids = env->GetArrayLength(JisSparseArray);
+    const char* filename = env->GetStringUTFChars(Jfilename, 0);
+    jboolean* isSparseArray = env->GetBooleanArrayElements(JisSparseArray, 0);
+    jint* nbitsArray = env->GetIntArrayElements(JnbitsArray, 0);
+    jint* sizeArray = env->GetIntArrayElements(JsizeArray, 0);
+    int idsArray[numCuboids];
+    readMultiCuboid(filename, nbitsArray, sizeArray, isSparseArray, idsArray, numCuboids);
+    jintArray result = env->NewIntArray(numCuboids);
+    if (result == NULL) return NULL; // out of memory error thrown
+    env->SetIntArrayRegion(result, 0, numCuboids, idsArray);
+    return result;
+
+}
+
+JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
+        (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JidArray){
+    jsize numCuboids = env->GetArrayLength(JisSparseArray);
+    const char* filename = env->GetStringUTFChars(Jfilename, 0);
+    jboolean* isSparseArray = env->GetBooleanArrayElements(JisSparseArray, 0);
+    jint* idArray = env->GetIntArrayElements(JidArray, 0);
+    writeMultiCuboid(filename, isSparseArray, idArray, numCuboids);
+}
 
 JNIEXPORT void JNICALL Java_backend_CBackend_add
 (JNIEnv* env, jobject obj, jint s_id, jint n_bits, jintArray key, jint v)
@@ -154,8 +179,8 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 JNIEXPORT jintArray JNICALL Java_backend_CBackend_dFetch0
 (JNIEnv *env, jobject obj, int d_id)
 {
-  unsigned long long size = 1LL << sz(d_id);
-  payload *p = fetch(d_id); // fetch does not copy, but in general, we
+  unsigned int size;
+  payload *p = fetch(d_id, size); // fetch does not copy, but in general, we
                             // first build the cuboid #d_id just for this
                             // fetch, and it's not deallocated. That's
                             // kind of a mem leak.

@@ -111,6 +111,22 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
 JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
   (JNIEnv *, jobject, jstring, jint);
 
+/*
+ * Class:     backend_CBackend
+ * Method:    readMultiCuboid0
+ * Signature: (Ljava/lang/String;[Z[I[I)[I
+ */
+JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
+  (JNIEnv *, jobject, jstring, jbooleanArray, jintArray, jintArray);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    writeMultiCuboid0
+ * Signature: (Ljava/lang/String;[Z[I)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
+  (JNIEnv *, jobject, jstring, jbooleanArray, jintArray);
+
 #ifdef __cplusplus
 }
 #endif
