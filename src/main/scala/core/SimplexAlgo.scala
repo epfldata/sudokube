@@ -105,13 +105,21 @@ object SimplexAlgo_Aux {
 }
 
 
-
+/**
+    @param n_vars   all vars, including artificial vars
+    @param _base_v  make sure the artificial vars are among them.
+*/
 class SimplexAlgo[T](
-  n_vars: Int, // all vars, including artificial vars
-  _base_v: Seq[Int], // make sure the artificial vars are among them.
+  n_vars: Int,
+  _base_v: Seq[Int],
   artificial_vars: Seq[Int],
   constraints: List[(List[(Int, T)], T)]
 )(implicit num: Fractional[T]) {
+
+  import SparseMatrixImplicits._
+
+  val n_constraints = constraints.length
+  val M             = SparseMatrix[T](n_constraints + 1, n_vars + 1)
 
   /** has as many elements as constraints does. */
   /* protected */ val base_v = mkAB[Int](constraints.length, _base_v(_))
@@ -122,12 +130,13 @@ class SimplexAlgo[T](
       if(M(0)(i) != Rational(0,1)) {
         val row = get_row(i).get // this variable may only occur in one row
         assert(row == r + 1)
-        axpy(0, row, i)
+        M.axpy(0, row, i)
       }
   }
 
+  /// set objective to maximize/minimize variable obj_var.
   def set_simple_objective(obj_var: Int, maximize: Boolean) {
-    val bigM = num.fromInt(1000)
+    val bigM = num.fromInt(1000) // TODO: 1000 may be too small
     val o0 = if(maximize) num.one else num.negate(num.one)
     val objective : List[(Int, T)] =
       (obj_var, o0) ::
@@ -136,9 +145,6 @@ class SimplexAlgo[T](
     set_objective(objective)
     init_objective
   }
-
-  val n_constraints = constraints.length
-  val M             = SparseMatrix[T](n_constraints + 1, n_vars + 1)
 
   private def mk_constraint(l: List[(Int, T)], b: T) = {
     assert(num.gteq(b, num.zero))
@@ -155,33 +161,6 @@ class SimplexAlgo[T](
   def set_objective(objective: List[(Int, T)]) {
     M.data(0) = mk_constraint(objective.map(x => (x._1, num.negate(x._2))),
                 num.zero)
-  }
-
-  protected def axpy(i_to: Int, i_from: Int, piv_col: Int) {
-    val r_to = M(i_to)
-
-    if(r_to(piv_col) != num.zero) { // something to do
-      val r_from = M(i_from)
-      val factor: T = num.negate(num.div(r_to(piv_col), r_from(piv_col)))
-      M.data(i_to) = Some(r_to + r_from * factor)
-
-      assert(M(i_to)(piv_col) == num.zero)
-
-      // M(0)(n_vars) may be negative, the other M(.)(n_vars) mustn't.
-      assert((i_to == 0) || num.gteq(M(i_to)(n_vars), num.zero))
-    }
-  }
-
-  def pivot(row: Int, col: Int) {
-    val piv_row = M(row)
-    assert(num.gt(piv_row(col), num.zero))
-
-    if(piv_row(col) != num.one)
-      M.data(row) = Some(piv_row * num.div(num.one, piv_row(col)))
-
-    for(i <- 0 to n_constraints) if(row != i) axpy(i, row, col)
-
-    base_v(row - 1) = col  // basis variable swap
   }
 
   /** picks the column for which the objective has the smallest value,
@@ -240,9 +219,17 @@ class SimplexAlgo[T](
         val row = pick_row(col).get
         // throws an exception if there's no suitable
         // row. in that case, there is no upper bound.
+
+        assert(num.gt(M(row)(col), num.zero))
   
         //println("Pivoting at col " + col + " / row " + row)
-        pivot(row, col)
+        M.pivot(row, col)
+
+        base_v(row - 1) = col  // basis variable swap
+
+        // M(0)(n_vars) may be negative, the other M(.)(n_vars) mustn't.
+        assert((1 to M.n_rows - 1).forall(
+          i => num.gteq(M(i)(n_vars), num.zero)))
 
         it_cnt += 1
         next_col = pick_col

@@ -30,17 +30,7 @@ case class BigBinary(val toBigInt: BigInt) {
   /** get sequence of the n least significant bits
       throws exception if n > toBigInt.length * wordlen
   */
-  protected def toSeqN(n: Int) : Seq[Int] = {
-     var bi = toBigInt % (1 << n)
-     var n2 = n
-     var l1 = List[Int]()
-     while(n2 > 0) {
-       l1 = (bi % 2).toInt :: l1
-       bi = bi >> 1
-       n2 -= 1
-     }
-     l1.reverse
-   }
+  protected def toSeqN(n: Int) : Seq[Int] = (0 to n - 1).map(apply(_))
 
   def toSeq : Seq[Int] = {
     def toSeq0(i: BigInt) : List[Int] = {
@@ -49,9 +39,17 @@ case class BigBinary(val toBigInt: BigInt) {
     }
 
     assert(toBigInt >= 0)
-    toSeq0(toBigInt)
+    if(toBigInt == 0) List(0) else toSeq0(toBigInt)
   }
 
+  /** Example:
+      {{{
+      scala> val x = (10 << 16) + (3<<8) + 255
+      x: Int = 656383
+      scala> BigBinary(x).toCharArray(24).map(_.toInt)
+      res0: Array[Int] = Array(255, 3, 10)
+      }}}
+  */
   def toCharArray(n_bits: Int) : Array[Char] = {
     val space = math.ceil(n_bits.toDouble/8).toInt
     val ca = Util.mkAB[Char](space, _ => 0)
@@ -66,6 +64,7 @@ case class BigBinary(val toBigInt: BigInt) {
     ca.toArray
   }
 
+  // converts the number to a binary string of size n with leading zeroes.
   def toPaddedString(n: Int) = {
     val d = toSeq.length
     var s = ""
@@ -83,6 +82,7 @@ case class BigBinary(val toBigInt: BigInt) {
     s
   }
 
+  // converts the number to a binary string, without leading zeroes.
   override def toString = {
     val d = binary_digits
     var s = ""

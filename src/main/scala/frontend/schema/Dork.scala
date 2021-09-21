@@ -1,3 +1,5 @@
+// Isolated a serialization bug
+
 package frontend.schema.dork
 import java.io._
 
@@ -30,7 +32,8 @@ object Tst {
     oos.close
 
     val ois = new ObjectInputStream(new FileInputStream("moo"))
-    val b2 = ois.readObject.asInstanceOf[B]
+    val b0 = ois.readObject // throws ClassCastException
+    val b2 = b0.asInstanceOf[B]
     ois.close
     b2
   }

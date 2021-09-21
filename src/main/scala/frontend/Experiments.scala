@@ -23,6 +23,8 @@ object Tools {
     fc: Cuboid
   ) extends DataCube(m) with Serializable {
     build(fc)
+
+    /// here one can access the cuboids directly
     def getCuboids = cuboids
   }
 
@@ -78,7 +80,8 @@ object minus1_adv {
 
       a.get(q.length - 1) match {
         case Some(m1) => {
-          val (detsize, df) = DF.compute_df0(q.length, m1.map(_.accessible_bits))
+          val df = DF.compute_df0(q.length, m1.map(_.accessible_bits))
+          val detsize = (1 << q.length) - df
 
           val worst_proj_cost = cost(m1.map(_.mask.length).max)
           val avg_proj_cost = cost((m1.map(_.mask.length).sum.toDouble/m1.length).toInt)
@@ -175,7 +178,7 @@ object exp_e_df {
     val bounds = SolverTools.mk_all_non_neg(1 << q.length)
     val df1 = Solver(q.length, bounds, l, v).df
 */
-    val df2 = DF.compute_df0(qsize, l)._2
+    val df2 = DF.compute_df0(qsize, l)
     // assert(df1 == df2)
     df2
   }
@@ -263,6 +266,7 @@ object exp_error_bounds {
 
 import core._
 import RationalTools._
+import frontend._
 import frontend.experiments._
 
 val n_bits = 60
@@ -291,7 +295,7 @@ for(d <- (1 to 12).map(_ * 2)) {
       case _ => {}
     }
     prev_span = cumu
-    prev_l = Some(s.df)
+    //prev_l = Some(s.df)
   }
 }
 

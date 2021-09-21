@@ -8,7 +8,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
   import backend._
   import util._
   import RationalTools._
-
+  import core.SparseMatrixImplicits._
 
   "SimplexAlgo" should "not crash when there are no constraints" in {
     val qsize = 1
@@ -130,7 +130,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
   4  1.0   1.0   0.0  0.0  1.0  8.0
   */
 
-  a.pivot(1, 0)
+  a.M.pivot(1, 0)
   /* scala> a.tableau
      0    1     2     3    4    #
   Z  0.0  -1.0  2.0   0.0  0.0  12.0
@@ -139,7 +139,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
   4  0.0  1.0   -1.0  0.0  1.0  2.0
   */
 
-  a.pivot(3, 1)
+  a.M.pivot(3, 1)
   /* scala> a.tableau
      0    1    2     3    4     #
   Z  0.0  0.0  1.0   0.0  1.0   14.0
@@ -166,10 +166,10 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
   val a2 = new SimplexAlgo[Rational](8, 2 to 7, List(), constraints)
   a2.set_objective(objective)
 
-  a2.pivot(1,1)
-  a2.pivot(2,0)
-  a2.pivot(3,2)
-  a2.pivot(4,3)
+  a2.M.pivot(1,1)
+  a2.M.pivot(2,0)
+  a2.M.pivot(3,2)
+  a2.M.pivot(4,3)
 
   //println(a2.tableau)
   /*
@@ -202,8 +202,8 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
 
     val a = SimplexAlgo_Aux.mk_tableau(8, det_vars, eqs)
     a.set_simple_objective(0, true)
-    a.pivot(6,2)
-    a.pivot(1,0)
+    a.M.pivot(6,2)
+    a.M.pivot(1,0)
     assert(a.algo.get.toInt == 6)
   }
 

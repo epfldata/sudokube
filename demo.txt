@@ -5,7 +5,8 @@ import frontend._, backend._, core._, core.RationalTools._
 
 val sch = new schema.DynamicSchema
 val R   = sch.read("investments.json", Some("k_amount"))
-val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .5, 1.2))
+//val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .5, 1.2))
+val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .0000000008, 10))
 dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 
 Exploration.col_names(sch)
@@ -21,11 +22,21 @@ val q = sch.columns("date").bits.toList.drop(grp_bits)
 Exploration.nat_decode_dim(sch, "date", grp_bits).zip(dc.naive_eval(q)).filter(
   x => (x._1(0) >= 1996) && (x._1(0) < 2020))
 
+val q = List(0,12,1) // Both company dimensions 0, 12 plus the first date dim
 
-// exploration example -- unknown file
+// solves to df=2 using only 2-dim cuboids
+val s = dc.solver[Rational](List(0,12,1), 2)
+s.compute_bounds
+
+dc.naive_eval(q)
+
+
+
+// exploration example
+// Shoppen.json is a list of shops in Amsterdam from https://open.data.amsterdam.nl/
 
 val sch = new schema.DynamicSchema
-val R   = sch.read("../json/Shoppen.json")
+val R   = sch.read("Shoppen.json")
 val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .005, 1.02))
 dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 

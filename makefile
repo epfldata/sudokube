@@ -1,3 +1,7 @@
+# This is for compiling the c code into a library.
+# The Scala code needs to be compiled first since javah needs the bytecode
+# to generate the c header file for JNI integration.
+
 CP=~/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.7.jar
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_281.jdk/Contents/Home
 
