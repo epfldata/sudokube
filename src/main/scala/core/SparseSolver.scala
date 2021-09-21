@@ -16,7 +16,8 @@ package core
     {{{
     import core._
     import RationalTools._
-    val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8), List(List(0,1), List(2)), List(2,2,2,2,4,4))
+    val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8),
+                                   List(List(0,1), List(2)), List(2,2,2,2,4,4))
     scala> s.M
     res0: core.SparseMatrix[core.Rational] =
     1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
