@@ -186,7 +186,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
     printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "r");
     assert(fp != NULL);
-    byte *buffer_array[numCuboids];
+    byte **buffer_array = new byte*[numCuboids];
     for (int i = 0; i < numCuboids; i++) {
         bool sparse = isSparse_array[i];
         int n_bits = n_bits_array[i];
@@ -224,6 +224,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
         }
     }
     globalRegistry.multi_r_add(buffer_array, size_array, n_bits_array, id_array, numCuboids);
+    delete buffer_array;
 }
 
 void *read_cb(const char *filename, unsigned long long byte_size) {

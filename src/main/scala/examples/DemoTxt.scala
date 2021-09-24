@@ -2,6 +2,8 @@ package examples
 
 import backend.CBackend
 import breeze.io.{CSVReader, CSVWriter}
+import combinatorics.Combinatorics.comb
+import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.FeatureFrame
 import util.{BigBinary, Profiler}
@@ -25,22 +27,69 @@ object DemoTxt {
     println(dc.naive_eval(List(3,4,5,6)).mkString("  "))
 }
 
+  def solve(dc: DataCube)(qsize: Int) = {
+    Profiler.resetAll()
+
+    val q= Tools.rand_q(dc.m.n_bits, qsize)
+    println("Query ="+q)
+
+    val solver = Profiler("Solver"){
+      val s = Profiler("SolverInit"){dc.solver[Rational](q, qsize-1)}
+      Profiler("SolverCB"){s.compute_bounds}
+      s
+    }
+    val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
+    val res2 = Profiler("Naive"){dc.naive_eval(q)}.mkString(" ")
+    println(res1)
+    println(res2)
+    println("DF = " + solver.df)
+    Profiler.print()
+  }
+
+  def printMatStats(ms: MaterializationScheme) = {
+    val m = ms.asInstanceOf[RandomizedMaterializationScheme]
+    (0 until m.n_bits).foreach{ d =>
+      val total = comb(m.n_bits, d)
+      val nproj = m.n_proj_d(d)
+      println(s" $d :: $nproj/$total ")
+    }
+  }
+
+  def solve2(dc: DataCube)(q: List[Int]) = {
+    Profiler.resetAll()
+
+    println("Query ="+q)
+
+    val solver = Profiler("Solver"){
+      val s = Profiler("SolverInit"){dc.solver[Rational](q, q.size-1)}
+      Profiler("SolverCB"){s.compute_bounds}
+      s
+    }
+    val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
+    val res2 = Profiler("Naive"){dc.naive_eval(q)}.mkString(" ")
+    println(res1)
+    println(res2)
+    println("DF = " + solver.df)
+    Profiler.print()
+  }
+
+
   def iowa(): Unit = {
     val sch = new schema.DynamicSchema
     val name = "Iowa200k_cols6"
     val rf = 0.1
     val base = 1.4
-    //val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
+    val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
     //val name = "Iowa2M"
-    val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
+    //val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
     println("NBITS =" + sch.n_bits)
-    sch.columnList.map(kv => kv._1 -> kv._2.bits.length).foreach(println)
+    sch.columnList.map(kv => kv._1 -> kv._2.bits).foreach(println)
     Profiler.print()
 
-    val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
-    Profiler.print()
-    dc.save2(s"${name}_${rf}_$base")
+    //val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+    //Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
+    //Profiler.print()
+    //dc.save2(s"${name}_${rf}_$base")
   }
   def iowa2() = {
     val rf = Math.pow(2, -115)

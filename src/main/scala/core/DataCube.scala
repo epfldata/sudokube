@@ -361,7 +361,7 @@ object DataCube {
     val m = ois.readObject.asInstanceOf[MaterializationScheme]
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int],List[Boolean], List[Int], List[BigInt])]]
     ois.close
-
+    println("MultiCuboidLayout loaded")
     val dc = new DataCube(m)
     dc.load2(be, multiCuboidLayoutData, file.getParent)
 

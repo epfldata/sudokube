@@ -190,7 +190,7 @@ class DualSimplex[T](
         val maxPosCoeff = posCoeffs.foldLeft(posCoeffs.head) {
           case (acc@(_, ca), cur@(j, cc)) => if (num.gt(cc, ca)) cur else if (cc == ca && j > nv) cur else acc
         }
-        val bigM2 = keyCoeffs.map {
+        val bigM = keyCoeffs.map {
           case (0, _) => num.zero
           case (j, coeff) if num.lt(coeff, num.zero) => {
             //assert(num.gteq(solution(j), minVals(j-1)))
@@ -201,7 +201,6 @@ class DualSimplex[T](
             num.times(coeff, maxVals(j-1))
           }
         }.sum
-        val bigM = num.fromInt(num.toInt(bigM2) + 1)
 
 
         //val bigM = posCoeffs.map { case (j, _) => maxVals(j - 1) }.sum
@@ -220,7 +219,12 @@ class DualSimplex[T](
 
         //val gap = num.fromInt(num.toInt(gap2) - 1)
         //assert(num.lteq(gap, num.zero))
-        assert(num.gteq(bigM, num.zero))
+        //if(num.lt(bigM, num.zero)) {
+        //  println("bigM = " + bigM +  " Const  = " + tableau(0)(0) +  " CoeffMinMax " + keyCoeffs.map{case (k, coeff) => k -> (coeff, minVals(k-1),maxVals(k-1))})
+        //}
+
+        //It is okay for BigM to be negative.
+        //assert(num.gteq(bigM, num.zero))
 
         //assert(num.lteq(bigM, num.fromInt(1000)))
         //assert(num.gteq(gap, num.fromInt(-1000)))
@@ -347,6 +351,7 @@ class DualSimplex[T](
       filter { case (j, a_rj) => j > 0 && num.lt(a_rj, num.zero) }. //filter negative a_rj
       map { case (j, a_rj) => (j, a_rj, num.div(obj(j), a_rj)) } // compute ratio c_j/a_rj (both cj and a_rj are negative)
 
+    if(res.isEmpty) println(row)
     assert(!res.isEmpty)
 
     val minR = res.foldLeft[Option[(Int, T, T)]](None) {

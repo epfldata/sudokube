@@ -4,7 +4,8 @@ import planning._
 import util._
 import combinatorics._
 
-import scala.collection.{BitSet}
+import scala.collection.BitSet
+import scala.collection.mutable.ArrayBuffer
 
 
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {

@@ -107,6 +107,7 @@ case class SparseSolver[T](
     new_pivots
   }
 
+  //Warning CUM INT SPAN may overflow
   def getStats = (df, solved_vars.size, cumulative_interval_span.map(num.toInt(_)).getOrElse(-1))
 
   /**
