@@ -9,7 +9,7 @@ import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.FeatureFrame
 import util._
-
+import core.SolverTools._
 import java.io.{FileReader, FileWriter}
 import scala.collection.mutable.ArrayBuffer
 
@@ -19,12 +19,15 @@ object DemoTxt {
 
   def uniformSolver(): Unit = {
     val solver = new UniformSolver[Rational](3)
+    val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
+
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
-    //solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
+    solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
     //solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
     val result = solver.solve()
     println(result)
+    println("Error = " + error(actual, result.toArray))
   }
 
   def test() = {
@@ -283,8 +286,8 @@ object DemoTxt {
   }
 
   def main(args: Array[String]): Unit = {
-    //uniformSolver()
-    iowa()
+    uniformSolver()
+    //iowa()
     //test()
     //loadtest()
     //investment()

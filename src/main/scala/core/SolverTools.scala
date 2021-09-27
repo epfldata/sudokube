@@ -3,6 +3,13 @@ package core
 
 
 object SolverTools {
+
+  def error(naive: Array[Double], solver: Array[Double]) = {
+    val length = naive.length
+    val deviation = (0 until length).map(i => Math.abs(naive(i) - solver(i))).sum
+    val sum = naive.sum
+    deviation / sum
+  }
   /// creates initial intervals [0, +\infty) for each variable.
   def mk_all_non_neg[T](n_bits: Int)(implicit num: Numeric[T]
   ): collection.mutable.ArrayBuffer[Interval[T]] = {

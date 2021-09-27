@@ -5,6 +5,7 @@ import solver._
 import util._
 import RationalTools._
 import breeze.linalg.DenseVector
+import SolverTools._
 import frontend.experiments.Tools
 
 
@@ -28,19 +29,13 @@ class UniformSolverExpt(dc: DataCube) {
     result
   }
 
-  def error(naive: Array[Double], solver: DenseVector[Double]) = {
-    val length = naive.length
-    val deviation = (0 until length).map(i => Math.abs(naive(i) - solver(i))).sum
-    val sum = naive.sum
-    deviation / sum
-  }
 
   def compare(q: List[Int]) = {
     Profiler.resetAll()
     val naiveRes = dc.naive_eval(q)
     val solverRes = uniform_solve(q)
     Profiler.print()
-    val err = error(naiveRes, solverRes)
+    val err = error(naiveRes, solverRes.toArray)
     println("Error = " + err)
   }
 
