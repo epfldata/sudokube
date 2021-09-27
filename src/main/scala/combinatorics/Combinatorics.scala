@@ -327,6 +327,20 @@ object Combinatorics {
     mk_comb1(n, k, 0)
   }
 
+  def mk_comb_bi(n: Int, k: Int) : List[BigInt] = {
+    def rec(num: BigInt, ones: Int, dims: Int): List[BigInt] = {
+      if (ones == dims)
+        List(((num + 1) << dims) - 1)
+      else if (ones == 0)
+        List(num << dims)
+      else {
+        val num2 = num << 1
+        rec(num2, ones, dims - 1) ++ rec(num2 + 1, ones - 1, dims - 1)
+      }
+    }
+    rec(0, k, n)
+  }
+
   /** Returns combinations of elements from a given set.
       {{{
       scala> mk_comb(List("A","B","C"), 2)

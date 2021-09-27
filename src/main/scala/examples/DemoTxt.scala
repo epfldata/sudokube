@@ -3,16 +3,29 @@ package examples
 import backend.CBackend
 import breeze.io.{CSVReader, CSVWriter}
 import combinatorics.Combinatorics.comb
+import core.solver.UniformSolver
+import experiments.UniformSolverExpt
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.FeatureFrame
-import util.{BigBinary, Profiler}
+import util._
 
 import java.io.{FileReader, FileWriter}
+import scala.collection.mutable.ArrayBuffer
 
 object DemoTxt {
 
   import frontend._, backend._, core._, core.RationalTools._
+
+  def uniformSolver(): Unit = {
+    val solver = new UniformSolver[Rational](3)
+    solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
+    solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
+    //solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
+    //solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
+    val result = solver.solve()
+    println(result)
+  }
 
   def test() = {
     val data = (0 to 15).map(i => BigBinary(i) -> i)
@@ -24,22 +37,28 @@ object DemoTxt {
 
   def loadtest(): Unit = {
     val dc = core.DataCube.load("test")
-    println(dc.naive_eval(List(3,4,5,6)).mkString("  "))
-}
+    println(dc.naive_eval(List(3, 4, 5, 6)).mkString("  "))
+  }
 
   def solve(dc: DataCube)(qsize: Int) = {
     Profiler.resetAll()
 
-    val q= Tools.rand_q(dc.m.n_bits, qsize)
-    println("Query ="+q)
+    val q = Tools.rand_q(dc.m.n_bits, qsize)
+    println("Query =" + q)
 
-    val solver = Profiler("Solver"){
-      val s = Profiler("SolverInit"){dc.solver[Rational](q, qsize-1)}
-      Profiler("SolverCB"){s.compute_bounds}
+    val solver = Profiler("Solver") {
+      val s = Profiler("SolverInit") {
+        dc.solver[Rational](q, qsize - 1)
+      }
+      Profiler("SolverCB") {
+        s.compute_bounds
+      }
       s
     }
     val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
-    val res2 = Profiler("Naive"){dc.naive_eval(q)}.mkString(" ")
+    val res2 = Profiler("Naive") {
+      dc.naive_eval(q)
+    }.mkString(" ")
     println(res1)
     println(res2)
     println("DF = " + solver.df)
@@ -48,7 +67,7 @@ object DemoTxt {
 
   def printMatStats(ms: MaterializationScheme) = {
     val m = ms.asInstanceOf[RandomizedMaterializationScheme]
-    (0 until m.n_bits).foreach{ d =>
+    (0 until m.n_bits).foreach { d =>
       val total = comb(m.n_bits, d)
       val nproj = m.n_proj_d(d)
       println(s" $d :: $nproj/$total ")
@@ -58,15 +77,21 @@ object DemoTxt {
   def solve2(dc: DataCube)(q: List[Int]) = {
     Profiler.resetAll()
 
-    println("Query ="+q)
+    println("Query =" + q)
 
-    val solver = Profiler("Solver"){
-      val s = Profiler("SolverInit"){dc.solver[Rational](q, q.size-1)}
-      Profiler("SolverCB"){s.compute_bounds}
+    val solver = Profiler("Solver") {
+      val s = Profiler("SolverInit") {
+        dc.solver[Rational](q, q.size - 1)
+      }
+      Profiler("SolverCB") {
+        s.compute_bounds
+      }
       s
     }
     val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
-    val res2 = Profiler("Naive"){dc.naive_eval(q)}.mkString(" ")
+    val res2 = Profiler("Naive") {
+      dc.naive_eval(q)
+    }.mkString(" ")
     println(res1)
     println(res2)
     println("DF = " + solver.df)
@@ -79,7 +104,9 @@ object DemoTxt {
     val name = "Iowa200k_cols6"
     val rf = 0.1
     val base = 1.4
-    val R = Profiler("Sch.Read"){sch.read(s"/Users/sachin/Downloads/$name.csv")}
+    val R = Profiler("Sch.Read") {
+      sch.read(s"/Users/sachin/Downloads/$name.csv")
+    }
     //val name = "Iowa2M"
     //val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
     println("NBITS =" + sch.n_bits)
@@ -91,6 +118,7 @@ object DemoTxt {
     //Profiler.print()
     //dc.save2(s"${name}_${rf}_$base")
   }
+
   def iowa2() = {
     val rf = Math.pow(2, -115)
     val base = 1.5
@@ -99,6 +127,7 @@ object DemoTxt {
     dc.buildFrom(dcBase)
     dc.save("Iowa200_all")
   }
+
   def iowa3() = {
     val name = "Iowa200k"
     val dir = "/Users/sachin/Downloads"
@@ -112,6 +141,7 @@ object DemoTxt {
     println(csvout.head)
 
   }
+
   def investment(): Unit = {
 
     val sch = new schema.DynamicSchema
@@ -242,8 +272,8 @@ object DemoTxt {
   }
 
   def sample(n: Int): Unit = {
-    val map = collection.mutable.HashMap[Int, Int]() withDefaultValue(0)
-    (1 to n).foreach{  i =>
+    val map = collection.mutable.HashMap[Int, Int]() withDefaultValue (0)
+    (1 to n).foreach { i =>
       val s = Sampling.f2(1 << 20)
       map(s) += 1
     }
@@ -251,12 +281,14 @@ object DemoTxt {
     println(map.size)
     map.filter(_._2 > 4).foreach(println)
   }
+
   def main(args: Array[String]): Unit = {
+    //uniformSolver()
     iowa()
     //test()
     //loadtest()
     //investment()
-  //sample(1000)
+    //sample(1000)
     //large()
     //feature()
     //parPlan()

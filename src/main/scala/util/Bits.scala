@@ -146,6 +146,48 @@ object Bits {
       (ii + jj).toInt
     }
   }
+
+  /**
+  Converts sequence of ints representing bit positions to a (Big)Int.
+  TODO: Use BigInt
+   **/
+  def toInt(bits: Seq[Int]) = {
+    bits.foldLeft(0){ (acc, cur) => acc + (1 << cur)
+    }
+  }
+
+  /**
+   * Extract bit positions that are set in the binary representation of i
+   */
+  def fromInt(i: Int) = {
+    var i2 = i
+    var result = List[Int]()
+    var pos = 0
+    while(i2 > 0) {
+      if((i2 % 2) == 1)
+        result = pos :: result
+      pos += 1
+      i2 = i2 >> 1
+    }
+    result
+  }
+
+  //un-projects the number i to bits represented by idxes. Choosing idxes = 2^i - 1 should have no effect.
+  def pupInt(i: Int, idxes: Int) = {
+    var i2 = i
+    var idx2 = idxes
+    var shift = 0
+    var result = 0
+    while (idx2 > 0) {
+      if ((idx2 % 2) == 1) {
+        result += (i2 % 2) << shift
+        i2 = i2 >> 1
+      }
+      shift += 1
+      idx2 = idx2 >> 1
+    }
+    result
+  }
 }
 
 
