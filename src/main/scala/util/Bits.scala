@@ -84,7 +84,7 @@ object Bits {
       res3: Seq[Int] = List(1, 0, 1)
       }}}
   */
-  def mk_list_mask[T](universe: Seq[T], selection: Set[T]) : Seq[Int] = {
+  def mk_list_mask[T](universe: IndexedSeq[T], selection: Set[T]) : IndexedSeq[Int] = {
     universe.map(x => if(selection.contains(x)) 1 else 0)
   }
 
@@ -98,7 +98,7 @@ object Bits {
         Vector(0, 1, 0, 1, 10, 11, 10, 11, 0, 1)
       }}}
   */
-  def mk_bits_mask[T](universe: Seq[T], selection: Set[T]) : BigInt = {
+  def mk_bits_mask[T](universe: IndexedSeq[T], selection: Set[T]) : BigInt = {
     mk_list_mask(universe, selection).zipWithIndex.map{
       case (b, i) => (b: BigInt) << i
     }.sum
@@ -172,8 +172,25 @@ object Bits {
     result
   }
 
+  def project(i: Int, idxes: Int): Int = {
+    var idx2 = idxes
+    var result = 0
+    var i2 = i
+    var pos = 0
+    while (i2 > 0 && idx2 > 0) {
+
+      if((idx2 % 2) == 1) {
+        result += (i2 % 2) << pos
+        pos += 1
+      }
+      i2 = i2 >> 1
+      idx2 = idx2 >> 1
+    }
+    result
+  }
+
   //un-projects the number i to bits represented by idxes. Choosing idxes = 2^i - 1 should have no effect.
-  def pupInt(i: Int, idxes: Int) = {
+  def unproject(i: Int, idxes: Int) = {
     var i2 = i
     var idx2 = idxes
     var shift = 0

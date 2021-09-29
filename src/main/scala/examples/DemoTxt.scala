@@ -28,6 +28,7 @@ object DemoTxt {
     val result = solver.solve()
     println(result)
     println("Error = " + error(actual, result.toArray))
+    solver.verifySolution()
   }
 
   def test() = {
@@ -129,6 +130,13 @@ object DemoTxt {
     val dc = new DataCube(RandomizedMaterializationScheme(dcBase.m.n_bits, rf, base))
     dc.buildFrom(dcBase)
     dc.save("Iowa200_all")
+  }
+
+  def prepare(): Unit = {
+    val m = RandomizedMaterializationScheme(48, 0.1, 1.4)
+    val m2 = new MyRM(m)
+    m2.prepare((0 to 7).toList, 7, 7)
+    Profiler.print()
   }
 
   def iowa3() = {
@@ -288,6 +296,7 @@ object DemoTxt {
   def main(args: Array[String]): Unit = {
     uniformSolver()
     //iowa()
+    //prepare()
     //test()
     //loadtest()
     //investment()

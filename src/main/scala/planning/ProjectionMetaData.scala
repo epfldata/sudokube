@@ -13,13 +13,13 @@ import combinatorics._
 case class ProjectionMetaData(
   accessible_bits: List[Int],
   accessible_bits0: List[Int],
-  mask: List[Int],
+  mask: IndexedSeq[Int],
   id: Int = -1 // TODO: implement everywhere
 ) {
   assert(accessible_bits.length == mask.filter(_ == 1).length)
-  private val indexed_mask = mask.zip((0 to mask.length - 1))
-  val   accessible_bit_indexes = indexed_mask.filter(_._1 == 1).map(_._2)
-  val inaccessible_bit_indexes = indexed_mask.filter(_._1 == 0).map(_._2)
+  private val indexed_mask = mask
+  val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
+
 
   val n_inaccessible_bits = mask.filter(_ == 0).length
   val cost_factor = Big.pow2(n_inaccessible_bits)

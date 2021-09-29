@@ -182,7 +182,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         val ab0 = x.intersect(q)                          // unnormalized
         val ab = ab0.map(y => q.indexWhere(z => z == y))  // normalized
 
-        ProjectionMetaData(ab, ab0, Bits.mk_list_mask(x, q.toSet).toList, id)
+        ProjectionMetaData(ab, ab0, Bits.mk_list_mask(x.toIndexedSeq, q.toSet), id)
       }
     }
   }
@@ -344,6 +344,71 @@ case class RandomizedMaterializationScheme(
   }
   println("Total = "+ projections.length)
 } // end MaterializationScheme
+
+class MyRM(that: RandomizedMaterializationScheme) extends MaterializationScheme(that.n_bits) {
+
+  /** the metadata describing each projection in this scheme. */
+  override val projections: IndexedSeq[List[Int]] = that.projections
+
+  override def prepare(query: List[Int], cheap_size: Int, max_fetch_dim: Int
+             ) : List[ProjectionMetaData] = {
+
+    /* NOTE: finding the cheapest might not always preserve the one with the
+       best sort order if we use storage with hierarchical sorting in bit order.
+       Needs to be revisited should we ever have cuboids of varying sort
+       orders.
+    */
+    val qp1: List[ProjectionMetaData] = {
+
+      val t1 = Profiler("qp1 t1"){qproject(query)}
+      val t2 = Profiler("qp1 t2"){t1.filter(_.mask.length <= max_fetch_dim)}
+      val t3 = Profiler("qp1 t3"){t2.groupBy(_.accessible_bits)}
+      val t4 = Profiler("qp1 t4") {
+        t3.mapValues(l =>
+          l.sortBy(_.mask.length).toList.head // find cheapest: min mask.length
+        ).toList.map(_._2)
+      }
+      t4
+    }
+
+    // remove those that are subsumed and the subsumer is cheap.
+    val qp2 = {
+      val t1 = Profiler("qp2 t1"){qp1.filter(x => !qp1.exists(y => y.dominates(x, cheap_size))
+      )}
+      val t2 = Profiler("qp2 t2"){t1.sortBy(-_.accessible_bits.length) }// high-dimensional ones first
+      t2
+    }
+    println("prepare = " + qp2.map(_.accessible_bits))
+
+    /*
+        println(qp2.length + " cuboids selected; cuboid sizes (bits->stored dimensions/cost->cuboid count): "
+          + qp2.groupBy(_.accessible_bits.length).mapValues(x =>
+          x.map(_.mask.length  // rather than _.cost_factor
+          ).groupBy(y => y).mapValues(_.length)).toList.sortBy(_._1))
+    */
+
+    qp2
+  }
+
+  override def qproject(q: Seq[Int]) : Seq[ProjectionMetaData] = {
+    val PI = Profiler("QP zip"){projections.zipWithIndex}
+    val qBS = BitSet(q :_*)
+    val qIS = qBS.toIndexedSeq
+    Profiler("QP PImap"){PI.map{
+      case (x, id) => {
+        val xBS = Profiler("QP xBS"){BitSet(x :_*)}
+        val ab0 = Profiler("QP ab0"){xBS.intersect(qBS)}                       // unnormalized
+        val ab = Profiler("QP ab"){qIS.indices.filter(i => ab0.contains(qIS(i)))}  // normalized
+        val mask = Profiler("QP mask"){ Bits.mk_list_mask(x.toIndexedSeq, qBS.toSet)}
+        val abL = Profiler("QP abL"){ ab.toList}
+        val ab0L = Profiler("QL ab0L") {ab0.toList}
+        Profiler("PMD"){ProjectionMetaData(abL, ab0L, mask, id)}
+      }
+    }
+    }
+
+  }
+}
 
 
 

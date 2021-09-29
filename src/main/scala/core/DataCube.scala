@@ -73,7 +73,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
             build_plan.foreach {
               case (_, id, -1) => ()
               case (s, id, parent_id) => {
-                val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s.toSet).toArray
+                val mask = Bits.mk_list_mask[Int](m.projections(parent_id).toIndexedSeq, s.toSet).toArray
                 ab(id) = ab(parent_id).rehash(mask)
 
                 // completion status updates
@@ -101,7 +101,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       build_plan.foreach {
         case (_, id, -1) => ab(id) = full_cube
         case (s, id, parent_id) => {
-          val mask = Bits.mk_list_mask[Int](m.projections(parent_id), s).toArray
+          val mask = Bits.mk_list_mask[Int](m.projections(parent_id).toIndexedSeq, s).toArray
           ab(id)   = ab(parent_id).rehash(mask)
 
           // completion status updates
@@ -235,6 +235,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     (for(pm <- pms) yield {
       val c = cuboids(pm.id).rehash_to_dense(pm.mask.toArray)
+      val maskString = pm.mask.mkString("")
+      println(s"Fetch mask=$maskString  maskLen = ${pm.mask.length}  origSize=${cuboids(pm.id).size}  newSize=${c.size}")
       c.asInstanceOf[backend.DenseCuboid].fetch.asInstanceOf[Array[Payload]]
     }).flatten.toArray
   }
@@ -359,6 +361,7 @@ object DataCube {
     val file = new File("cubedata/"+filename+"/"+filename+".dc2")
     val ois = new ObjectInputStream(new FileInputStream(file))
     val m = ois.readObject.asInstanceOf[MaterializationScheme]
+    println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int],List[Boolean], List[Int], List[BigInt])]]
     ois.close
     println("MultiCuboidLayout loaded")

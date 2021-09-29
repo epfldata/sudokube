@@ -1,13 +1,13 @@
 package core
 
 
-sealed class Rational(_a: Long, _b: Long) extends Ordered[Rational] {
+sealed class Rational(_a: BigInt, _b: BigInt) extends Ordered[Rational] {
   assert(_b != 0)
-  private def gcd(c: Long, d: Long) : Long = if(d == 0) c else gcd(d, c % d)
+  private def gcd(c: BigInt, d: BigInt) : BigInt = if(d == 0) c else gcd(d, c % d)
 
-  private val g = gcd(math.abs(_a), math.abs(_b))
+  private val g = gcd(_a.abs, _b.abs)
   val a = (if(_b < 0) -1 else 1) * _a / g
-  val b = math.abs(_b / g)
+  val b = (_b / g).abs
 
   def +(that: Rational): Rational = {
     val g = gcd(b, that.b)
@@ -31,7 +31,7 @@ sealed class Rational(_a: Long, _b: Long) extends Ordered[Rational] {
   def negate: Rational = Rational(-a, b)
 
   def compare(that: Rational): Int =
-    math.signum((this.a * that.b) - (that.a * this.b)).toInt
+   ((this.a * that.b) - (that.a * this.b)).signum
 
   override def equals(that: Any) = {
     if(that.isInstanceOf[Rational]) {
@@ -42,15 +42,16 @@ sealed class Rational(_a: Long, _b: Long) extends Ordered[Rational] {
   }
 
   override def toString = if(b == 1) a.toString else a + "/" + b
-  def toDouble = a.toDouble / b
-  def toFloat  = a.toFloat / b
+  def toDouble = a.toDouble / b.toDouble
+  def toFloat  = a.toFloat / b.toFloat
   def toInt    = (a / b).toInt
-  def toLong   = a.toLong / b
+  def toLong   = (a / b).toLong
 }
 
 
 object Rational {
-  def apply(a: Long, b: Long) = new Rational(a, b)
+  def apply(a: BigInt, b: BigInt) = new Rational(a, b)
+  def abs(x: BigInt) = if(x > 0) x else -x
 }
 
 

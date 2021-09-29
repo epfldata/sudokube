@@ -224,7 +224,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
         }
     }
     globalRegistry.multi_r_add(buffer_array, size_array, n_bits_array, id_array, numCuboids);
-    delete buffer_array;
+    delete[] buffer_array;
 }
 
 void *read_cb(const char *filename, unsigned long long byte_size) {
