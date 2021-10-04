@@ -23,7 +23,7 @@ class CBackendSpec extends FlatSpec with Matchers {
   "CBackend first projecting to an intermediate query and then down to a lower-dimensional query in three different ways" should "always yield the same result as directly projecting down to the lower-dimensional query" in {
 
     def mk_mask(d: Int, l: List[Int]) =
-      Bits.mk_list_mask[Int](0 to d - 1, l.toSet).toArray
+      Bits.mk_list_mask(0 to d - 1, l.toSet).toArray
 
     val n_bits = 70
     val schema = StaticSchema.mk(n_bits)

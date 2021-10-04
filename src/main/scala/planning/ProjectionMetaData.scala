@@ -11,18 +11,17 @@ import combinatorics._
     @param mask               in the mask, the least significant bit comes first
 */
 case class ProjectionMetaData(
-  accessible_bits: List[Int],
-  accessible_bits0: List[Int],
-  mask: IndexedSeq[Int],
+  accessible_bits: Seq[Int],
+  accessible_bits0: Iterable[Int],
+  mask: Seq[Int],
   id: Int = -1 // TODO: implement everywhere
 ) {
-  assert(accessible_bits.length == mask.filter(_ == 1).length)
-  private val indexed_mask = mask
-  val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
+  //assert(accessible_bits.length == mask.filter(_ == 1).length)
+  lazy val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
 
 
-  val n_inaccessible_bits = mask.filter(_ == 0).length
-  val cost_factor = Big.pow2(n_inaccessible_bits)
+  lazy val n_inaccessible_bits = mask.filter(_ == 0).length
+  lazy val cost_factor = Big.pow2(n_inaccessible_bits)
 
   def read_cost(upto: BigBinary) : BigInt = {
     val ones = BigBinary((Big.pow2(n_inaccessible_bits)) - 1)

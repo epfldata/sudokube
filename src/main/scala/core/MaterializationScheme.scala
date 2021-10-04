@@ -182,7 +182,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         val ab0 = x.intersect(q)                          // unnormalized
         val ab = ab0.map(y => q.indexWhere(z => z == y))  // normalized
 
-        ProjectionMetaData(ab, ab0, Bits.mk_list_mask(x.toIndexedSeq, q.toSet), id)
+        ProjectionMetaData(ab, ab0, Bits.mk_list_mask(x, q.toSet), id)
       }
     }
   }
@@ -392,18 +392,14 @@ class MyRM(that: RandomizedMaterializationScheme) extends MaterializationScheme(
 
   override def qproject(q: Seq[Int]) : Seq[ProjectionMetaData] = {
     val PI = Profiler("QP zip"){projections.zipWithIndex}
-    val qBS = BitSet(q :_*)
+    val qBS = q.toSet
     val qIS = qBS.toIndexedSeq
-    Profiler("QP PImap"){PI.map{
-      case (x, id) => {
-        val xBS = Profiler("QP xBS"){BitSet(x :_*)}
-        val ab0 = Profiler("QP ab0"){xBS.intersect(qBS)}                       // unnormalized
-        val ab = Profiler("QP ab"){qIS.indices.filter(i => ab0.contains(qIS(i)))}  // normalized
-        val mask = Profiler("QP mask"){ Bits.mk_list_mask(x.toIndexedSeq, qBS.toSet)}
-        val abL = Profiler("QP abL"){ ab.toList}
-        val ab0L = Profiler("QL ab0L") {ab0.toList}
-        Profiler("PMD"){ProjectionMetaData(abL, ab0L, mask, id)}
-      }
+    Profiler("QP PImap"){PI.map{ xid =>
+          val ab0 = xid._1.toSet.intersect(qBS)                      // unnormalized
+          val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))  // normalized
+          val mask =  Bits.mk_list_mask(xid._1, qBS)
+          ProjectionMetaData(ab, ab0, mask, xid._2)
+
     }
     }
 

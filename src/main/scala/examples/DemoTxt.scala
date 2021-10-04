@@ -18,17 +18,28 @@ object DemoTxt {
   import frontend._, backend._, core._, core.RationalTools._
 
   def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3)
-    val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
+    //val solver = new UniformSolver[Rational](3)
+    //val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
+    //
+    //solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
+    //solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
+    //solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
+    ////solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
+    //val result = solver.solve()
+    //println(result)
+    //println("Error = " + error(actual, result.toArray))
+    //solver.verifySolution()
 
-    solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
-    solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
-    solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
-    //solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
-    val result = solver.solve()
-    println(result)
-    println("Error = " + error(actual, result.toArray))
-    solver.verifySolution()
+
+    val solver = new UniformSolver[Rational](4)
+    List(220721,84949,94282,36864,110130,42358,47570,18534,22,0,12,0,10,0,6).map(i => Rational(i, 1)).zipWithIndex.foreach{
+      case (v, i) =>
+        solver.sumValues(i) = v
+        solver.knownSums += i
+    }
+
+    val res = solver.solve()
+    println(res)
   }
 
   def test() = {
@@ -294,9 +305,9 @@ object DemoTxt {
   }
 
   def main(args: Array[String]): Unit = {
-    uniformSolver()
+    //uniformSolver()
     //iowa()
-    //prepare()
+    prepare()
     //test()
     //loadtest()
     //investment()

@@ -40,7 +40,7 @@ object SolverTools {
   */
   def mk_constraints[PayloadT](
     n_bits: Int,
-    projections: Seq[List[Int]],
+    projections: Seq[Seq[Int]],
     v: Seq[PayloadT]): Seq[(Seq[Int], PayloadT)] =
     projections.map(util.Bits.group_values(_, 0 to (n_bits - 1)).map(
       x => x.map(_.toInt))).flatten.zip(v)

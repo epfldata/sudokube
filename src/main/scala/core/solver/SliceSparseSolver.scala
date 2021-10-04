@@ -6,7 +6,7 @@ import util._
 class SliceSparseSolver[T](
                             nb: Int,
                             bs: collection.mutable.ArrayBuffer[Interval[T]],
-                            ps: List[List[Int]],
+                            ps: Seq[Seq[Int]],
                             vs: Seq[T],
                             sf: Int => Boolean = _ => true,
                           )(implicit num: Fractional[T]) extends SparseSolver[T](nb, bs, Nil, Nil, sf) {
@@ -122,7 +122,7 @@ class SliceSparseSolver[T](
   /**
    * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
    * */
-  override def shouldFetch(dims: List[Int]): Boolean = {
+  override def shouldFetch(dims: Seq[Int]): Boolean = {
     val new_basis_vars = Bits.max_group_values(dims, 0 until n_bits)
     new_basis_vars.foldLeft(false)((acc, cur) => acc || !maxFetchedVars.contains(cur)) //at least one new basis var
   }

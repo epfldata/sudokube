@@ -64,7 +64,7 @@ class UniformSolver[T](val qsize: Int)(implicit num: Fractional[T]) {
     sumValues(row) = sum
   }
 
-  def add(cols: List[Int], values: Array[T]) = {
+  def add(cols: Seq[Int], values: Array[T]) = {
     val eqnColSet = Bits.toInt(cols)
     fetchedCuboids = (eqnColSet -> values.map(num.toDouble(_))) :: fetchedCuboids
     val length = cols.length

@@ -84,7 +84,7 @@ object Bits {
       res3: Seq[Int] = List(1, 0, 1)
       }}}
   */
-  def mk_list_mask[T](universe: IndexedSeq[T], selection: Set[T]) : IndexedSeq[Int] = {
+  def mk_list_mask(universe: Seq[Int], selection: Set[Int]) : Seq[Int] = {
     universe.map(x => if(selection.contains(x)) 1 else 0)
   }
 
@@ -98,7 +98,7 @@ object Bits {
         Vector(0, 1, 0, 1, 10, 11, 10, 11, 0, 1)
       }}}
   */
-  def mk_bits_mask[T](universe: IndexedSeq[T], selection: Set[T]) : BigInt = {
+  def mk_bits_mask(universe: Seq[Int], selection: Set[Int]) : BigInt = {
     mk_list_mask(universe, selection).zipWithIndex.map{
       case (b, i) => (b: BigInt) << i
     }.sum

@@ -86,7 +86,7 @@ object Util {
       lists_lt(List(1,5,2,6,3,6), List(1,5,1,9,9,9)) =>  <
       }}}
   */
-  def lists_lt(l1: List[Int], l2: List[Int]) = {
+  def lists_lt(l1: Seq[Int], l2: Seq[Int]) = {
     val i = l1.zip(l2).indexWhere((x: (Int, Int)) => x._1 != x._2)
     l1(i) < l2(i)
   }

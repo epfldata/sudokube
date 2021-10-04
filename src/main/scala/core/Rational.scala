@@ -3,14 +3,14 @@ package core
 
 sealed class Rational(_a: BigInt, _b: BigInt) extends Ordered[Rational] {
   assert(_b != 0)
-  private def gcd(c: BigInt, d: BigInt) : BigInt = if(d == 0) c else gcd(d, c % d)
 
-  private val g = gcd(_a.abs, _b.abs)
+  private val g = _a.gcd(_b)
+
   val a = (if(_b < 0) -1 else 1) * _a / g
   val b = (_b / g).abs
 
   def +(that: Rational): Rational = {
-    val g = gcd(b, that.b)
+    val g = b.gcd(that.b)
     Rational((a * (that.b / g)) + (that.a * (b / g)), b * (that.b / g))
   }
 

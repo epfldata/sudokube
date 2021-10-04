@@ -72,7 +72,7 @@ object DF {
 
       Note: compute_df avoids enumerating the equations and is faster.
   */
-  def compute_df0(n: Int, l: List[List[Int]]) : BigInt = {
+  def compute_df0(n: Int, l: Seq[Seq[Int]]) : BigInt = {
     // Enumerate the equations as collections of variables.
     val eqs = l.map(Bits.group_values(_, 0 to (n - 1)
                  ).map(x => x.map(_.toInt))).flatten

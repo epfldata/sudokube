@@ -147,8 +147,8 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
     // correct query result:
     // val v0 = Array(8.0, 4.0, 0.0, 2.0, 16.0, 0.0, 13.0, 0.0)
 
-    val l1 = List(ProjectionMetaData(List(0, 2),List(3, 9),Vector(1, 1),23), ProjectionMetaData(List(0, 1),List(3, 4),Vector(1, 1),26))
-    val l2 = List(ProjectionMetaData(List(1),List(4),Vector(1),10), ProjectionMetaData(List(0, 2),List(3, 9),Vector(1, 1),23), ProjectionMetaData(List(),List(),Vector(),0), ProjectionMetaData(List(0, 1),List(3, 4),Vector(1, 1),26), ProjectionMetaData(List(0),List(3),Vector(1),9), ProjectionMetaData(List(2),List(9),Vector(1),5))
+    val l1 = List(ProjectionMetaData(List(0, 2),List(3, 9),List(1, 1),23), ProjectionMetaData(List(0, 1),List(3, 4),List(1, 1),26))
+    val l2 = List(ProjectionMetaData(List(1),List(4),List(1),10), ProjectionMetaData(List(0, 2),List(3, 9),List(1, 1),23), ProjectionMetaData(List(),List(),List(),0), ProjectionMetaData(List(0, 1),List(3, 4),List(1, 1),26), ProjectionMetaData(List(0),List(3),List(1),9), ProjectionMetaData(List(2),List(9),List(1),5))
 
     def f(x: Double, y: Double) = Some(Interval(Some(x), Some(y)))
 

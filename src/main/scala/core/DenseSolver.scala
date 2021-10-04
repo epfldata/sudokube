@@ -17,7 +17,7 @@ import backend.Payload
 case class DenseSolver(
   n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[Double]],
-  projections: List[List[Int]],
+  projections: Seq[Seq[Int]],
   v: Array[Payload]
 ) {
   assert(n_bits < 31)

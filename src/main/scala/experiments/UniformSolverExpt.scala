@@ -81,7 +81,7 @@ object UniformSolverExpt {
    val dc = core.DataCube.load2("Iowa200k_cols6_2p-30_2")
     import SloppyFractionalInt._
    val expt = new UniformSolverExpt[Rational](dc)
-   val query = List(2, 10, 23, 32, 35, 46)
+   val query = List(0, 18, 39, 42, 45)
     val (res1, res2) = expt.compare(query)
     ()
     //var line = io.StdIn.readLine("\nEnter Query : ")

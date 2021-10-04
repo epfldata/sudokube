@@ -29,7 +29,7 @@ package core
 case class SparseSolver[T](
   val n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[T]],
-  private val projections: List[List[Int]],
+  private val projections: Seq[Seq[Int]],
   private val values: Seq[T],
   sliceFunc: Int => Boolean = _ => true
 )(implicit num: Fractional[T]){
@@ -113,7 +113,7 @@ case class SparseSolver[T](
   /**
    * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
    * */
-  def shouldFetch(dims: List[Int]) = {
+  def shouldFetch(dims: Seq[Int]) = {
     val new_basis_vars = util.Bits.max_group_values(dims, 0 until n_bits)
     new_basis_vars.foldLeft(false)((acc, cur) => acc || M.data(cur) == None) //at least one new basis var
   }
@@ -122,7 +122,7 @@ case class SparseSolver[T](
       projections and v.
       Also used in DataCube.online_agg().
   */
-  def add2(a: Seq[List[Int]], b: Seq[T]) : Seq[Int] =
+  def add2(a: Seq[Seq[Int]], b: Seq[T]) : Seq[Int] =
     add(SolverTools.mk_constraints(n_bits, a, b))
 
   // We do gaussian elimination in the constructor.
