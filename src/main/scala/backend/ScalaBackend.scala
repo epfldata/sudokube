@@ -44,7 +44,7 @@ object ScalaBackend extends Backend[Payload] {
     oos.close
   }
 
-  def mk(n_bits: Int, it: Iterator[(BigBinary, Int)]) : SparseCuboid = {
+  def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid = {
     val a : SPARSE_T = it.toList.map(x => (x._1, Payload.mk(x._2)))
     val mask = (1 to n_bits).map(_ => 1).toArray // dummy for deduplication
     SparseCuboid(n_bits, sRehash(a, mask))

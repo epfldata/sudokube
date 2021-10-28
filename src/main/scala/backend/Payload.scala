@@ -15,7 +15,7 @@ import core.Interval
     TODO: This is ugly.
 */
 class Payload(var sm: Double, var i: Option[Interval[Double]]) {
-
+  var smLong = 0L //Hack to avoid precision error
   /** an aggregation function for payload with the same key (a hash collision).
       Used only in the Backend package.
   */
@@ -52,13 +52,16 @@ object Payload {
       Triples are contatenated; an array of n triples is communicated as
       a flat array of 3*n elements. The order inside the triple is
       <min, sm, max>.
+   SBJ: Not true anymore. Kept like this for backward compatibility
   */
-  def decode_fetched(a: Array[Int]): Array[Payload] = {
+  def decode_fetched(a: Array[Long]): Array[Payload] = {
     (for(i <- 0 until a.length) yield {
       val intv =  None
         //if(a(i*3) <= a(i*3+2)) Some(Interval[Double](Some(a(i*3)), Some(a(i*3+2))))
         //else                   None
-      new Payload(a(i).toDouble, intv)
+      val p = new Payload(a(i).toDouble, intv)
+      p.smLong = a(i)
+      p
     }).toArray
   }
 }

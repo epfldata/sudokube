@@ -25,8 +25,8 @@ trait Schema extends Serializable {
   def decode_tuple(i: BigBinary): Seq[(String, Any)] =
     columnList.map { case (key, c) => (key, c.decode(i)) }
 
-  def read(filename: String, measure_key: Option[String] = None, map_value : Object => Int = _.asInstanceOf[Int]
-          ): Seq[(BigBinary, Int)] = {
+  def read(filename: String, measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long]
+          ): Seq[(BigBinary, Long)] = {
 
     val items = {
       if(filename.endsWith("json"))
@@ -42,12 +42,12 @@ trait Schema extends Serializable {
     }
 
     if (measure_key == None) {
-      items.map(l => (encode_tuple(l.toList), 1))
+      items.map(l => (encode_tuple(l.toList), 1L))
     }
     else {
       items.map(l => {
         val x = l.toMap
-        val measure = x.get(measure_key.get).map(map_value).getOrElse(0)
+        val measure = x.get(measure_key.get).map(map_value).getOrElse(0L)
         (encode_tuple((x - measure_key.get).toList), measure)
       })
     }

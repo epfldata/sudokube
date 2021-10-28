@@ -4,6 +4,7 @@
 //typedef unsigned char key_type[KEY_BYTES];
 
 typedef unsigned char byte;
+typedef int64_t value_t;
 
 /*
 // sufficient for 80 dimensions

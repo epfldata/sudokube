@@ -4,23 +4,15 @@
 #include "Keys.h"
 
 
-/* TODO: here the base type is unsigned;
-   in fetch() we send it as a int, and
-   on the Scala side it becomes a double.
-*/
-struct payload {
-  unsigned lb, sm, ub; // min, sum, max
-};
-
 extern int   srehash(            int s_id,             int *mask, int masklen);
 extern int d2srehash(int n_bits, int d_id,             int *mask, int masklen);
 extern int s2drehash(            int s_id, int d_bits, int *mask, int masklen);
 extern int   drehash(int n_bits, int d_id, int d_bits, int *mask, int masklen);
 
 extern int      mk(int n_bits);
-extern void     add(int s_id, int n_bits, byte *key, int v);
+extern void     add(int s_id, int n_bits, byte *key, value_t v);
 extern void     freeze(int s_id);
-extern payload *fetch(int d_id, unsigned int& size);
+extern value_t *fetch(int d_id, unsigned int& size);
 extern int      sz(int id);
 
 extern int   readSCuboid(const char *filename, int n_bits, int size);
@@ -42,7 +34,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
-{ 
+{
   const char *str = env->GetStringUTFChars(filename, 0);
   int result = readDCuboid(str, n_bits, size);
   env->ReleaseStringUTFChars(filename, str);
@@ -51,7 +43,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
 
 JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint s_id)
-{ 
+{
   const char *str = env->GetStringUTFChars(filename, 0);
   writeSCuboid(str, s_id);
   env->ReleaseStringUTFChars(filename, str);
@@ -59,7 +51,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
 
 JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint d_id)
-{ 
+{
   const char *str = env->GetStringUTFChars(filename, 0);
   writeDCuboid(str, d_id);
   env->ReleaseStringUTFChars(filename, str);
@@ -91,7 +83,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
 }
 
 JNIEXPORT void JNICALL Java_backend_CBackend_add
-(JNIEnv* env, jobject obj, jint s_id, jint n_bits, jintArray key, jint v)
+(JNIEnv* env, jobject obj, jint s_id, jint n_bits, jintArray key, jlong v)
 {
   jsize keylen  = env->GetArrayLength(key);
   jint* keybody = env->GetIntArrayElements(key, 0);
@@ -176,23 +168,26 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 }
 
 
-JNIEXPORT jintArray JNICALL Java_backend_CBackend_dFetch0
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
 (JNIEnv *env, jobject obj, int d_id)
 {
   unsigned int size;
-  payload *p = fetch(d_id, size); // fetch does not copy, but in general, we
+  value_t *p = fetch(d_id, size); // fetch does not copy, but in general, we
                             // first build the cuboid #d_id just for this
                             // fetch, and it's not deallocated. That's
                             // kind of a mem leak.
- 
-  jintArray result = env->NewIntArray(size);
+
+  jlongArray result = env->NewLongArray(size);
   if (result == NULL) return NULL; // out of memory error thrown
 
   //Can't declare large array in stack. Stack out of bounds
+    jlong *fill;
+    if (sizeof(jlong) != sizeof(value_t))
+        fill = nullptr;
+    else
+        fill = (jlong *) p;
 
-   jint *fill = (jint *)p; //SBJ: Checked addresses and they match
-
-  env->SetIntArrayRegion(result, 0, size, fill);
+  env->SetLongArrayRegion(result, 0, size, fill);
   return result;
 }
 

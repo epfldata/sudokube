@@ -1,15 +1,20 @@
 package core.solver
 
-import breeze.linalg.{DenseMatrix, DenseVector, inv, scale, strictlyUpperTriangular}
+import breeze.linalg.{DenseMatrix, DenseVector, inv}
 import combinatorics.Combinatorics
+import core.solver.Strategy.{CoMoment, CoMomentFrechet, FrechetMid, FrechetUpper, HalfPowerD, LowVariance, Strategy, Zero}
 import util.{BigBinary, Bits, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
-class UniformSolver[T: ClassTag](val qsize: Int)(implicit num: Fractional[T]) {
+object Strategy extends Enumeration {
+  type Strategy = Value
+  val CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+}
+class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
   var allowNegative = false
-  var setSimpleDefault = false
+
   val N = 1 << qsize
   assert(qsize < 31)
   val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
@@ -43,21 +48,22 @@ class UniformSolver[T: ClassTag](val qsize: Int)(implicit num: Fractional[T]) {
         delta(row) = num.zero
       else {
         val n = BigBinary(row).hamming_weight
-        val lb = lowerBound(row)
-        val ub = upperBound(row)
-        delta(row) = num.div(num.plus(lb, ub), num.fromInt(2))
+        val lb = num.abs(num.minus(lowerBound(row), sumValues(row)))
+        val ub = num.abs(num.minus(upperBound(row), sumValues(row)))
+        delta(row) = num.times(num.max(lb, ub), num.fromInt(1 << n))
       }
     }
-    var h = 1
-    while (h < N) {
-      (0 until N by h * 2).foreach { i =>
-        (i until i + h).foreach { j =>
-          delta(j) = num.max(delta(j), delta(j + h))
-        }
-      }
-      h *= 2
-    }
-    num.toDouble(num.div(delta.sum,sumValues(0)))
+    //var h = 1
+    //while (h < N) {
+    //  (0 until N by h * 2).foreach { i =>
+    //    (i until i + h).foreach { j =>
+    //      delta(j) = num.minus(delta(j), delta(j + h))
+    //    }
+    //  }
+    //  h *= 2
+    //}
+    //num.toDouble(num.div(delta.map(num.abs).sum,sumValues(0)))
+    num.toDouble(num.div(delta.sum, sumValues(0)))
   }
 
   def lowerBound(row: Int) = {
@@ -70,50 +76,79 @@ class UniformSolver[T: ClassTag](val qsize: Int)(implicit num: Fractional[T]) {
     val combMin = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).min
     combMin
   }
-  def setDefaultValue(row: Int) = {
-    if (setSimpleDefault) {
-      val lb = lowerBound(row)
-      val ub = upperBound(row)
-      //println(s"Bounds for $row = ($lb, $ub)")
-      sumValues(row) =  num.div(num.plus(lb, ub), num.fromInt(2))
-    } else {
-      val n = BigBinary(row).hamming_weight
 
-      def getMeanProduct(colSet: Int) =
-        Bits.fromInt(colSet).map { c =>
-          num.div(sumValues(1 << c), sumValues(0))
-        }.product
+  def setDefaultValueCoMoment(row: Int, withUpperBound: Boolean) = {
+    val n = BigBinary(row).hamming_weight
+    val N1 = 1 << n
 
-      //Special case for means
-      val sum = if (n == 1) num.div(sumValues(0), num.fromInt(2)) else (1 to n).map { k =>
+    def getMeanProduct(colSet: Int) =
+      Bits.fromInt(colSet).map { c =>
+        num.div(sumValues(1 << c), sumValues(0))
+      }.product
 
-        //WARNING: Converting BigInt to Int. Ensure that query does not involve more than 30 bits
-        val combs = Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i.toInt, row))
-        val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
-        //TODO: Can simplify further if parents were unknown and default values were used for them
-        num.times(sign, combs.map { i =>
-          num.times(sumValues(row - i), getMeanProduct(i))
-        }.sum)
-      }.sum
-      val combMin = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).min
-      /*
-      try {
-        assert(num.gteq(sum, num.zero))
-        assert(num.lteq(sum, sumValues(0)))
-      } catch {
-        case _ =>
-          println(s"Row = $row Sum = ${num.toDouble(sum)}")
-          sumValues.indices.foreach(i => println(s"$i -> ${sumValues(i)}"))
-          throw new IllegalStateException
+    //Special case for means
+    val sum = if (n == 1) num.div(sumValues(0), num.fromInt(2)) else (1 to n).map { k =>
+
+      //WARNING: Converting BigInt to Int. Ensure that query does not involve more than 30 bits
+      val combs = Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i.toInt, row))
+      val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
+      //TODO: Can simplify further if parents were unknown and default values were used for them
+      num.times(sign, combs.map { i =>
+        num.times(sumValues(row - i), getMeanProduct(i))
+      }.sum)
+    }.sum
+    val ub = upperBound(row)
+    sumValues(row) = if(withUpperBound) num.min(sum, ub) else sum
+  }
+
+  def setDefaultValueLowVariance(row: Int) = {
+    val n = BigBinary(row).hamming_weight
+    val N1 = 1 << n
+
+    val array = new Array[T](N1)
+    array.indices.foreach { i =>
+      array(i) = if(i == array.indices.last) num.zero else {
+        val j = Bits.unproject(i, row)
+        sumValues(j)
       }
-      */
+    }
+    var h = 1
+    while (h < N1) {
+      (0 until N1 by h * 2).foreach { i =>
+        (i until i + h).foreach { j =>
+          if(h == 1) {
+            array(j) = num.minus(array(j), array(j + h))
+            array(j+h) = num.negate(array(j+h))
+          } else {
+            array(j) = num.minus(array(j+h), array(j))
+          }
+        }
+      }
+      h *= 2
+    }
+    sumValues(row) = num.div(array.sum, num.fromInt(N1))
+  }
 
-      sumValues(row) = num.min(sum, combMin)
+  def setDefaultValue(row: Int) = {
+    val n = BigBinary(row).hamming_weight
+    val N1 = 1 << n
+
+    strategy match {
+      case CoMoment => setDefaultValueCoMoment(row, false)
+      case CoMomentFrechet => setDefaultValueCoMoment(row, true)
+      case Zero => sumValues(row) = num.zero
+      case HalfPowerD => sumValues(row) = num.div(sumValues(0), num.fromInt(1 << n))
+      case FrechetUpper => sumValues(row) = upperBound(row)
+      case FrechetMid => sumValues(row) = num.div(num.plus(upperBound(row), lowerBound(row)), num.fromInt(2))
+      case LowVariance => setDefaultValueLowVariance(row)
     }
   }
 
   def fillMissing() = {
-    val toSolve = Profiler("Solve Filter") {
+
+  import core.solver.Strategy.Strategy
+
+  val toSolve = Profiler("Solve Filter") {
       hamming_order.filter((!knownSums.contains(_)))
     }
     //println("Predicting values for " + toSolve.mkString(" "))
@@ -147,7 +182,10 @@ class UniformSolver[T: ClassTag](val qsize: Int)(implicit num: Fractional[T]) {
     while (h < N) {
       (0 until N by h * 2).foreach { i =>
         (i until i + h).foreach { j =>
-          result(j) = num.minus(result(j), result(j + h))
+          val diff = num.minus(result(j), result(j + h))
+           strategy match {
+            case _ => result(j) = diff
+          }
         }
       }
       h *= 2

@@ -235,8 +235,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
     (for(pm <- pms) yield {
       val c = cuboids(pm.id).rehash_to_dense(pm.mask.toArray)
-      val maskString = pm.mask.mkString("")
-      println(s"Fetch mask=$maskString  maskLen = ${pm.mask.length}  origSize=${cuboids(pm.id).size}  newSize=${c.size}")
+      //val maskString = pm.mask.mkString("")
+      //println(s"Fetch mask=$maskString  maskLen = ${pm.mask.length}  origSize=${cuboids(pm.id).size}  newSize=${c.size}")
       c.asInstanceOf[backend.DenseCuboid].fetch.asInstanceOf[Array[Payload]]
     }).flatten.toArray
   }
@@ -244,7 +244,13 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /** Gets rid of the Payload box. */
    def fetch2[T](pms: List[ProjectionMetaData]
   )(implicit num: Fractional[T]) : Seq[T] = {
-    fetch(pms).map(p => num.fromInt(p.sm.toInt))
+
+    fetch(pms).map(p => {
+      val long = p.smLong
+      val upper = (long >> 31).toInt
+      val lower = (long & Int.MaxValue).toInt
+      num.plus(num.times(num.fromInt(upper), num.plus(num.fromInt(Int.MaxValue), num.one)), num.fromInt(lower))
+    })
   }
 
   /** returns a solver for a given query. One needs to explicitly compute
@@ -327,7 +333,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   */
   def naive_eval(query: List[Int]) : Array[Double] = {
     val l = Profiler("NaivePrepare"){m.prepare(query, m.n_bits, m.n_bits)}
-    Profiler("NaiveFetch"){fetch(l).map(p => p.sm)}
+    Profiler("NaiveFetch"){fetch(l).map(p => p.sm.toDouble)}
   }
 } // end DataCube
 

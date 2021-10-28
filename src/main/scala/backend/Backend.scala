@@ -93,7 +93,7 @@ abstract class Backend[MEASURES_T] {
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String): Unit
 
 
-  def mk(n_bits: Int, it: Iterator[(BigBinary, Int)]) : SparseCuboid
+  def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid
 
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
   protected def sSize(data: SPARSE_T) : BigInt

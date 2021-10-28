@@ -20,9 +20,9 @@ class CBackend extends Backend[Payload] {
                                    mask: Array[Int]): Int
   @native protected def mk0(n_bits: Int): Int
   @native protected def sSize0(id: Int): Int
-  @native protected def dFetch0(d_id: Int): Array[Int]
+  @native protected def dFetch0(d_id: Int): Array[Long]
 
-  @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Int)
+  @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def freeze(s_id: Int)
 
   @native protected def  readSCuboid0(filename: String,
@@ -73,10 +73,10 @@ class CBackend extends Backend[Payload] {
     else writeDCuboid0(filename, c.asInstanceOf[DenseCuboid].data)
   }
 
-  def mk(n_bits: Int, it: Iterator[(BigBinary, Int)]) : SparseCuboid = {
+  def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid = {
     val data = mk0(n_bits)
 
-    def add_one(x: (BigBinary, Int)) = {
+    def add_one(x: (BigBinary, Long)) = {
       val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
       add(data, n_bits, ia_key, x._2)
     }

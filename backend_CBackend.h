@@ -58,18 +58,18 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
 /*
  * Class:     backend_CBackend
  * Method:    dFetch0
- * Signature: (I)[I
+ * Signature: (I)[J
  */
-JNIEXPORT jintArray JNICALL Java_backend_CBackend_dFetch0
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
   (JNIEnv *, jobject, jint);
 
 /*
  * Class:     backend_CBackend
  * Method:    add
- * Signature: (II[II)V
+ * Signature: (II[IJ)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_add
-  (JNIEnv *, jobject, jint, jint, jintArray, jint);
+  (JNIEnv *, jobject, jint, jint, jintArray, jlong);
 
 /*
  * Class:     backend_CBackend

@@ -249,7 +249,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val qp2 = qp1.filter(x => ! qp1.exists(y => y.dominates(x, cheap_size))
     ).sortBy(- _.accessible_bits.length) // high-dimensional ones first
 
-    println("prepare = " + qp2.map(_.accessible_bits))
+    //println("prepare = " + qp2.map(_.accessible_bits))
 
 /*
     println(qp2.length + " cuboids selected; cuboid sizes (bits->stored dimensions/cost->cuboid count): "

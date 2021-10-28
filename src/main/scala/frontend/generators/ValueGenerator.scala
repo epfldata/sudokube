@@ -7,21 +7,21 @@ import java.io.PrintStream
 
 trait ValueGenerator {
   val out = new PrintStream("basecube.txt")
-  def apply(k: BigBinary): Int
-  def applyWithLog(k: BigBinary): Int = {
+  def apply(k: BigBinary): Long
+  def applyWithLog(k: BigBinary): Long = {
     val v = apply(k)
     if(v != 0) out.println(k + " -> " + v + " :: " + v.toBinaryString)
     v
   }
 }
 
-case class ConstantValueGenerator(n: Int) extends ValueGenerator {
-  override def apply(k: BigBinary): Int = n
+case class ConstantValueGenerator(n: Long) extends ValueGenerator {
+  override def apply(k: BigBinary): Long = n
 }
 
-case class RandomValueGenerator(n: Int) extends ValueGenerator {
+case class RandomValueGenerator(n: Long) extends ValueGenerator {
   val r = new scala.util.Random()
-  override def apply(k: BigBinary): Int = r.nextInt(n+1)
+  override def apply(k: BigBinary): Long = (r.nextDouble()* n).toLong
 }
 
 /**
@@ -33,30 +33,34 @@ case class RandomValueGenerator(n: Int) extends ValueGenerator {
  * @param yscale : scale factor for trend
  */
 case class TrendValueGenerator(xcols : List[Int], zcols: List[Int], zval: Int, yslope: Double, yscale: Double) extends ValueGenerator {
-  override def apply(k: BigBinary): Int = {
+  override def apply(k: BigBinary): Long = {
     val z = k.valueOf(zcols)
     val x = k.valueOf(xcols)
     if(z == zval)
       Sampling.t1(x+1, yslope, yscale)/(1 << xcols.length)
     else
-      0
+      0L
   }
 }
 case class SinValueGenerator(xcols : List[Int], zcols: List[Int], zval: Int, yslope: Double, yscale: Double) extends ValueGenerator {
-  override def apply(k: BigBinary): Int = {
+  override def apply(k: BigBinary): Long = {
     val z = k.valueOf(zcols)
     val x = k.valueOf(xcols)
     if(z == zval)
-      (yscale * yslope * (1 - Math.cos(Math.PI * 2 * x / (1 << xcols.length)))).toInt
+      (yscale * yslope * (1 - Math.cos(Math.PI * 2 * x / (1 << xcols.length)))).toLong
     else
-      0
+      0L
   }
+}
+
+case class ValueMapper(vg: ValueGenerator, f: Long => Long) extends ValueGenerator {
+  override def apply(k: BigBinary): Long = f(vg(k))
 }
 
 /**
  * Produces linear sum of individual value generators
  */
 case class SumValueGenerator(vs: Seq[ValueGenerator]) extends ValueGenerator {
-  override def apply(k: BigBinary): Int = vs.map(_.apply(k)).sum
+  override def apply(k: BigBinary): Long = vs.map(_.apply(k)).sum
 }
 

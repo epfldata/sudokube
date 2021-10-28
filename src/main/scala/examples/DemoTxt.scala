@@ -10,6 +10,8 @@ import frontend.generators._
 import frontend.gui.FeatureFrame
 import util._
 import core.SolverTools._
+import core.solver.Strategy.{CoMoment}
+
 import java.io.{FileReader, FileWriter}
 import scala.collection.mutable.ArrayBuffer
 
@@ -18,13 +20,13 @@ object DemoTxt {
   import frontend._, backend._, core._, core.RationalTools._
 
   def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3)
+    val solver = new UniformSolver[Rational](3, CoMoment)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
-    solver.setSimpleDefault = true
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
     solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
     //solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
+    println(solver.sumValues.mkString(" "))
     val result = solver.fastSolve().map(_.toDouble)
     println(result.mkString(" "))
     println("Error = " + error(actual, result.toArray))
@@ -44,7 +46,7 @@ object DemoTxt {
   }
 
   def test() = {
-    val data = (0 to 15).map(i => BigBinary(i) -> i)
+    val data = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val nbits = 10
     val dc = new DataCube(RandomizedMaterializationScheme(nbits, 1, 1))
     dc.build(CBackend.b.mk(nbits, data.toIterator))
@@ -117,11 +119,11 @@ object DemoTxt {
 
   def iowa(): Unit = {
     val sch = new schema.DynamicSchema
-    val name = "Iowa200k_cols6"
-    val rf = 0.1
-    val base = 1.4
+    val name = "Iowa200k"
+    val rf = Math.pow(2, -195)
+    val base = 2
     val R = Profiler("Sch.Read") {
-      sch.read(s"/Users/sachin/Downloads/$name.csv")
+      sch.read(s"/Users/sachin/Downloads/$name.csv", Some("Volume Sold (Liters)"), o => (o.asInstanceOf[String].toDouble * 100).toLong)
     }
     //val name = "Iowa2M"
     //val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
@@ -129,10 +131,10 @@ object DemoTxt {
     sch.columnList.map(kv => kv._1 -> kv._2.bits).foreach(println)
     Profiler.print()
 
-    //val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    //Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
-    //Profiler.print()
-    //dc.save2(s"${name}_${rf}_$base")
+    val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+    Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
+    Profiler.print()
+    dc.save2(s"${name}_volL_2p-195_2")
   }
 
   def iowa2() = {
@@ -295,7 +297,7 @@ object DemoTxt {
   }
 
   def sample(n: Int): Unit = {
-    val map = collection.mutable.HashMap[Int, Int]() withDefaultValue (0)
+    val map = collection.mutable.HashMap[Long, Int]() withDefaultValue (0)
     (1 to n).foreach { i =>
       val s = Sampling.f2(1 << 20)
       map(s) += 1
@@ -307,8 +309,8 @@ object DemoTxt {
 
   def main(args: Array[String]): Unit = {
     //uniformSolver()
-    //iowa()
-    prepare()
+    iowa()
+    //prepare()
     //test()
     //loadtest()
     //investment()

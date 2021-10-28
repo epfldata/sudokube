@@ -24,7 +24,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val n_bits = 10
     val schema = StaticSchema.mk(n_bits)
 
-    val R = (0 to 15).map(i => BigBinary(i) -> i).toIterator
+    val R = (0 to 15).map(i => BigBinary(i) -> i.toLong).toIterator
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
     val m = RandomizedMaterializationScheme(schema.n_bits, 1, 1)

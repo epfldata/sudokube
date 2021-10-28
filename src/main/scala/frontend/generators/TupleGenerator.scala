@@ -5,7 +5,7 @@ import frontend.schema._
 
 /** returns an iterator for sampling a relation. */
 case class TupleGenerator(sch: Schema, n: Long, sampling_f: Int => Int,
-                          value_f: ValueGenerator = RandomValueGenerator(10)) extends Iterator[(BigBinary, Int)] {
+                          value_f: ValueGenerator = RandomValueGenerator(10)) extends Iterator[(BigBinary, Long)] {
   private var i = 0L
 
   def hasNext = (i < n)
@@ -27,7 +27,7 @@ case class TupleGenerator(sch: Schema, n: Long, sampling_f: Int => Int,
  * Same as TupleGenerator, but it tries to balance values evenly for column 0
  * */
 case class TupleGenerator2(sch: Schema, n: Long, sampling_f: Int => Int,
-                           value_f: ValueGenerator = RandomValueGenerator(10)) extends Iterator[(BigBinary, Int)] {
+                           value_f: ValueGenerator = RandomValueGenerator(10)) extends Iterator[(BigBinary, Long)] {
   private var i = 0
 
   def hasNext = (i < n)

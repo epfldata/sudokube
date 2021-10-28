@@ -12,7 +12,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
   "CBackend simple absolute test" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =
-      CBackend.b.mk(d, l.map(x => (BigBinary(x._1), x._2)).toIterator)
+      CBackend.b.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
 
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
     val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
