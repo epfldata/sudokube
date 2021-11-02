@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
 
   val fileout = new PrintStream("expdata/UniformSolverExpt.csv")
-  val strategies = List(Strategy.CoMoment) //Strategy.values.toList
+  val strategies = List(Strategy.CoMoment, Strategy.Cumulant) //Strategy.values.toList
   fileout.println("QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve ErrMax $a, USolve Err $a").mkString(", "))
   println("Uniform Solver of type "+ implicitly[ClassTag[T]])
 
@@ -63,7 +63,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
       val res = Profiler(s"USolve Solve ${s.strategy}") {
         s.fastSolve()
       }
-      println("Total = "+ res.sum)
+      //println("Total = "+ res.sum)
       //s.verifySolution()
       s.strategy -> (s.solution, s.errMax, s.dof)
     }
@@ -144,11 +144,11 @@ object UniformSolverExptRandom {
   def main(args: Array[String]) = {
     //val dc = core.DataCube.load2("Iowa200k_cols6_0.1_1.4")
     //val dc = core.DataCube.load2("Iowa200k_cols6_2p-30_2")
-    //val dc = core.DataCube.load2("Iowa200k_sales_2p-193_2")
-    val dc = core.DataCube.load2("Random-10")
+    val dc = core.DataCube.load2("Iowa200k_sales_2p-193_2")
+    //val dc = core.DataCube.load2("Random-10")
     val expt = new UniformSolverExpt(dc)
-    val iters = 1
-    (4 to 4).foreach{qsize => (0 until iters).foreach(_ => expt.rnd_compare(qsize))}
+    val iters = 100
+    (4 to 12).foreach{qsize => (0 until iters).foreach(_ => expt.rnd_compare(qsize))}
 
     //var line = io.StdIn.readLine("\nEnter QuerySize : ")
     //while(line != "stop") {

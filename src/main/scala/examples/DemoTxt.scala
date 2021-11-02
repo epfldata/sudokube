@@ -10,7 +10,7 @@ import frontend.generators._
 import frontend.gui.FeatureFrame
 import util._
 import core.SolverTools._
-import core.solver.Strategy.{CoMoment}
+import core.solver.Strategy.{CoMoment, Cumulant}
 
 import java.io.{FileReader, FileWriter}
 import scala.collection.mutable.ArrayBuffer
@@ -20,7 +20,7 @@ object DemoTxt {
   import frontend._, backend._, core._, core.RationalTools._
 
   def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3, CoMoment)
+    val solver = new UniformSolver[Rational](3, Cumulant)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))

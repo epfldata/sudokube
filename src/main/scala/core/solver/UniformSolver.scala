@@ -2,7 +2,7 @@ package core.solver
 
 import breeze.linalg.{DenseMatrix, DenseVector, inv}
 import combinatorics.Combinatorics
-import core.solver.Strategy.{CoMoment, CoMomentFrechet, FrechetMid, FrechetUpper, HalfPowerD, LowVariance, Strategy, Zero}
+import core.solver.Strategy.{CoMoment, CoMomentFrechet, Cumulant, FrechetMid, FrechetUpper, HalfPowerD, LowVariance, Strategy, Zero}
 import util.{BigBinary, Bits, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Cumulant, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
   var allowNegative = false
@@ -77,7 +77,44 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     combMin
   }
 
-  def setDefaultValueCoMoment(row: Int, withUpperBound: Boolean) = {
+  def getDefaultValueCumulant(row: Int) = {
+    def addElem(a: Int, parts: List[List[Int]]) = {
+      def rec(before: List[List[Int]], cur: List[List[Int]], acc:List[List[List[Int]]] ): List[List[List[Int]]] = cur match {
+        case Nil =>  (List(a)::before):: acc
+        case h :: t =>
+          val acc2  = ((a :: h) :: (before ++ t)) :: acc
+          rec(before :+ h, t, acc2)
+      }
+      rec(Nil, parts, Nil)
+    }
+    def allParts(l: List[Int]) : List[List[List[Int]]] = l match {
+      case h :: Nil => List(List(List(h)))
+      case h :: t => {
+        val pt = allParts(t)
+        pt.flatMap(p => addElem(h, p))
+      }
+    }
+
+    val colSet = Bits.fromInt(row)
+    val partitions = allParts(colSet)
+    val sum = partitions.map {
+      case parts if parts.length > 1 =>
+        val n = parts.length
+        val sign = if(n % 2 == 0) 1 else -1
+        assert(n <= 13) //TODO: Expand to beyond Int limits
+        val fact = Combinatorics.factorial(n-1).toInt
+
+        val prod = parts.map { case p =>
+          val r2 = p.map(1 << _).sum
+          num.div(sumValues(r2), sumValues(0))
+        }.product
+        num.times(num.fromInt(fact * sign), prod)
+      case _ => num.zero
+    }.sum
+    num.times(sum, sumValues(0))
+  }
+
+  def getDefaultValueCoMoment(row: Int, withUpperBound: Boolean) = {
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
 
@@ -98,10 +135,10 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       }.sum)
     }.sum
     val ub = upperBound(row)
-    sumValues(row) = if(withUpperBound) num.min(sum, ub) else sum
+   if(withUpperBound) num.min(sum, ub) else sum
   }
 
-  def setDefaultValueLowVariance(row: Int) = {
+  def getDefaultValueLowVariance(row: Int) = {
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
 
@@ -126,22 +163,24 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       }
       h *= 2
     }
-    sumValues(row) = num.div(array.sum, num.fromInt(N1))
+   num.div(array.sum, num.fromInt(N1))
   }
 
   def setDefaultValue(row: Int) = {
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
 
-    strategy match {
-      case CoMoment => setDefaultValueCoMoment(row, false)
-      case CoMomentFrechet => setDefaultValueCoMoment(row, true)
-      case Zero => sumValues(row) = num.zero
-      case HalfPowerD => sumValues(row) = num.div(sumValues(0), num.fromInt(1 << n))
-      case FrechetUpper => sumValues(row) = upperBound(row)
-      case FrechetMid => sumValues(row) = num.div(num.plus(upperBound(row), lowerBound(row)), num.fromInt(2))
-      case LowVariance => setDefaultValueLowVariance(row)
+    val value = strategy match {
+      case Cumulant => getDefaultValueCumulant(row)
+      case CoMoment => getDefaultValueCoMoment(row, false)
+      case CoMomentFrechet => getDefaultValueCoMoment(row, true)
+      case Zero =>  num.zero
+      case HalfPowerD =>  num.div(sumValues(0), num.fromInt(1 << n))
+      case FrechetUpper => upperBound(row)
+      case FrechetMid =>  num.div(num.plus(upperBound(row), lowerBound(row)), num.fromInt(2))
+      case LowVariance => getDefaultValueLowVariance(row)
     }
+    sumValues(row) = value
   }
 
   def fillMissing() = {
