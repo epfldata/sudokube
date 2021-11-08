@@ -1,20 +1,20 @@
 //package ch.epfl.data.sudokube
-package frontend.schema
+package frontend.schema.encoders
+import frontend.schema.RegisterIdx
 import util._
-
 
 /** Implements a mapping between a local encoder/decoder (which maps between
     numbers 0..(bits.length - 1) and values of type T) and
     a global encoder/decoder that assumes the local values are encoded in bits
     located at indexes "bits".
-*/
+ */
 trait ColEncoder[T] extends Serializable {
   // abstract members
   def bits: Seq[Int]
   def encode_locally(v: T) : Int
   def decode_locally(i: Int): T
   def maxIdx : Int
-
+  def queries(): Set[List[Int]]
   def encode(v: T) : BigBinary = BigBinary(encode_locally(v)).pup(bits)
   def encode_any(v: Any) : BigBinary = encode(v.asInstanceOf[T])
 
@@ -26,22 +26,22 @@ trait ColEncoder[T] extends Serializable {
       }
     }.flatten.sum
 
-/*
-    val mask = BigBinary(bits.map(x => Big.pow2(x)).sum)
-    val f = Bits.mk_project_f(mask, bits.max + 1)
     /*
-    private val f = Bits.mk_project_f(
-      Bits.mk_list_mask(0 to bits.max, bits.toSet))
+        val mask = BigBinary(bits.map(x => Big.pow2(x)).sum)
+        val f = Bits.mk_project_f(mask, bits.max + 1)
+        /*
+        private val f = Bits.mk_project_f(
+          Bits.mk_list_mask(0 to bits.max, bits.toSet))
+        */
+
+        val y = f(i).toInt
     */
 
-    val y = f(i).toInt
-*/
-
-    decode_locally(y) 
+    decode_locally(y)
   }
 
   /**
-    returns, for each valuation of a number of q_bits.length bits,
+  returns, for each valuation of a number of q_bits.length bits,
     the decoded values possible for it.
     Example:
     {{{
@@ -71,7 +71,7 @@ trait ColEncoder[T] extends Serializable {
         Vector(Vector(None, Some(North Pole)),    // most sign. bit is 0
                Vector(Some(South America)))       // most sign. bit is 1
     }}}
-  */
+   */
   def decode_dim(q_bits: List[Int]) : Seq[Seq[T]] = {
     val relevant_bits = bits.intersect(q_bits)
     val idxs = relevant_bits.map(x => bits.indexWhere(x == _))
@@ -85,12 +85,12 @@ trait ColEncoder[T] extends Serializable {
   }
 
   /** randomly generate a value
-      @param sampling function: given range, picks a value in 0 to range - 1
+  @param sampling function: given range, picks a value in 0 to range - 1
       Examples can be found in object Sampling
 
       TODO: the range may be smaller. We may not be using all the expressible indexes
       given that many bits.
-  */
+   */
   def sample(sampling_f: Int => Int): T =
     decode_locally(sampling_f(maxIdx + 1))
 }

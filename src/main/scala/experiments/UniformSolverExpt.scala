@@ -6,7 +6,7 @@ import util._
 import RationalTools._
 import breeze.linalg.DenseVector
 import SolverTools._
-import core.solver.Strategy.Strategy
+import core.solver.Strategy.{CoMomentFrechet, Strategy}
 import frontend.experiments.Tools
 
 import java.io.PrintStream
@@ -16,9 +16,9 @@ import scala.reflect.ClassTag
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
 
   val fileout = new PrintStream("expdata/UniformSolverExpt.csv")
-  val strategies = List(Strategy.CoMoment, Strategy.Cumulant) //Strategy.values.toList
+  val strategies = List(Strategy.CoMoment, Strategy.CoMomentFrechet, Strategy.Avg) //Strategy.values.toList
   fileout.println("QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve ErrMax $a, USolve Err $a").mkString(", "))
-  println("Uniform Solver of type "+ implicitly[ClassTag[T]])
+  println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
   //  println("Query = " + q)
@@ -43,6 +43,21 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
   //  (naiveRes, s.solution.toArray)
   //}
 
+  def fastSum(naive: Array[Double]): Array[Double] = {
+    val result = naive.clone()
+    val N = naive.size
+    var h = 1
+    while (h < N) {
+      (0 until N by h * 2).foreach { i =>
+        (i until i + h).foreach { j =>
+          val sum = result(j) + result(j + h)
+          result(j) = sum
+        }
+      }
+      h *= 2
+    }
+    result
+  }
   def uniform_solve(q: List[Int]) = {
 
     val l = Profiler("USolve Prepare") {
@@ -65,6 +80,11 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
       }
       //println("Total = "+ res.sum)
       //s.verifySolution()
+      val tot = s.sumValues(0)
+      val num = implicitly[Fractional[T]]
+      println(s.strategy)
+      println(s.sumValues.map(k => num.toInt(num.times(num.fromInt(1000), num.div(k, tot)))).mkString(" "))
+      println()
       s.strategy -> (s.solution, s.errMax, s.dof)
     }
     result
@@ -74,6 +94,10 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
     println("Query = " + q)
     Profiler.resetAll()
     val naiveRes = dc.naive_eval(q)
+    val naiveCum = fastSum(naiveRes)
+    println("Naive")
+    println(naiveCum.map(x => (x * 1000.0/naiveCum(0)).toInt).mkString(" "))
+    println()
     val solverRes = uniform_solve(q)
 
     //Profiler.print()
@@ -86,6 +110,11 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
     val prec =  1000.0
     println("Naive = " +  naiveRes.takeRight(10).map(v => (v * prec /total).toInt/prec).mkString(" "))
     solverRes.foreach {case (algo, (sol, _, _)) => println(s"USolve ${algo} = " +  sol.takeRight(10).map(v => (v * prec /total).toInt/prec).mkString(" "))}
+
+    //def pad(n: Int, s: String) = s + (" "*(n-s.length))
+    //println(pad(20, "Naive = ") +  naiveRes.mkString(" "))
+    //solverRes.foreach {case (algo, (sol, _, _)) => println(pad(20, s"USolve ${algo} = ") +  sol.mkString(" "))}
+
     println("\n")
 
       val nfetch = Profiler.durations("NaiveFetch")._2/1000

@@ -6,6 +6,7 @@ import breeze.io.CSVReader
 import util._
 import util.BigBinaryTools._
 import combinatorics.Big
+import frontend.schema.encoders.ColEncoder
 
 import java.io._
 
@@ -57,7 +58,10 @@ trait Schema extends Serializable {
       read()!
    */
   def save(filename: String) {
-    val oos = new ObjectOutputStream(new FileOutputStream(filename))
+    val file = new File("cubedata/"+filename+"/"+filename+".sch")
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+    val oos = new ObjectOutputStream(new FileOutputStream(file))
     oos.writeObject(this)
     oos.close
   }
@@ -95,7 +99,8 @@ trait Schema extends Serializable {
 
 object Schema {
   def load(filename: String): Schema = {
-    val ois = new ObjectInputStream(new FileInputStream(filename))
+    val file = new File("cubedata/"+filename+"/"+filename+".sch")
+    val ois = new ObjectInputStream(new FileInputStream(file))
     val sch = ois.readObject.asInstanceOf[Schema]
     ois.close
     sch

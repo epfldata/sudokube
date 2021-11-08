@@ -11,8 +11,11 @@ import frontend.gui.FeatureFrame
 import util._
 import core.SolverTools._
 import core.solver.Strategy.{CoMoment, Cumulant}
+import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol}
+import frontend.schema.{DynamicSchema, LD2, StructuredDynamicSchema}
 
 import java.io.{FileReader, FileWriter}
+import java.util.Date
 import scala.collection.mutable.ArrayBuffer
 
 object DemoTxt {
@@ -123,18 +126,18 @@ object DemoTxt {
     val rf = Math.pow(2, -195)
     val base = 2
     val R = Profiler("Sch.Read") {
-      sch.read(s"/Users/sachin/Downloads/$name.csv", Some("Volume Sold (Liters)"), o => (o.asInstanceOf[String].toDouble * 100).toLong)
+      sch.read(s"/Users/sachin/Downloads/$name.csv", Some("Sale (Dollars)"), o => (o.asInstanceOf[String].toDouble * 100).toLong)
     }
     //val name = "Iowa2M"
     //val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
     println("NBITS =" + sch.n_bits)
-    sch.columnList.map(kv => kv._1 -> kv._2.bits).foreach(println)
+    sch.columnList.map(kv => kv._1 -> kv._2.bits.length).sortBy(_._2).foreach(println)
     Profiler.print()
-
-    val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
-    Profiler.print()
-    dc.save2(s"${name}_volL_2p-195_2")
+    //
+    //val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+    //Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
+    //Profiler.print()
+    //dc.save2(s"${name}_volL_2p-195_2")
   }
 
   def iowa2() = {
@@ -307,9 +310,77 @@ object DemoTxt {
     map.filter(_._2 > 4).foreach(println)
   }
 
+  def iowa4() = {
+    val date = new LD2[Date]("Date", new DateCol(2012))
+
+    val county = new LD2[String]("County Number", new MemCol)
+    val city = new LD2[String]("City", new MemCol)
+    val zip = new LD2[String]("Zip Code", new MemCol)
+    val storeloc = new LD2[(Double, Double)]("Store Location", new PositionCol((-96.63, 40.38), 2))
+    val store = new LD2[String]("Store Number", new MemCol)
+    val locDims = Vector(county, city, zip, storeloc, store)
+
+    val item = new LD2[Int]("Item Number", new MemCol)
+    val category = new LD2[String]("Category", new NestedMemCol(s => (s.take(3), s.drop(3))))
+    val vendor = new LD2[String]("Vendor Number", new MemCol)
+    val itemDims = Vector(item, category, vendor)
+
+    val measure = Some("Sale (Dollars)")
+
+    def measureF(s: String) = (s.toDouble * 100).toLong
+
+    val sch = new StructuredDynamicSchema(Vector(date) ++ locDims ++ itemDims)
+    val name = "Iowa200k"
+    val file = s"/Users/sachin/Downloads/$name.tsv"
+    val R = sch.read(file, measure, measureF)
+
+    sch.columnVector.foreach(_.encoder.refreshBits)
+    sch.save("Iowa4")
+
+    val dateQ = date.encoder.queries
+    val locQ = locDims.map(_.encoder.queries).reduce(_ union _)
+    val itemQ = itemDims.map(_.encoder.queries).reduce(_ union _)
+
+    println("Date queries = " + dateQ.size)
+    println("Item queries = " + itemQ.size)
+    println("Location queries = " + locQ.size)
+    println("Total bits = " + sch.n_bits)
+
+    val rf = Math.pow(10, -9)
+    val base = Math.pow(10, 0.15)
+    val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+    Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
+    Profiler.print()
+    dc.save2(s"Iowa4")
+  }
+
+  def iowa41() = {
+    val sch = StructuredDynamicSchema.load("Iowa4")
+    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    val dc = DataCube.load2("Iowa4")
+    val date = sch.columnVector(0)
+    val locDims = (1 to 5).map(i => sch.columnVector(i))
+    val itemDims = (6 to 8).map(i => sch.columnVector(i))
+
+    val dateQ = date.encoder.queries
+    val locQ = locDims.map(_.encoder.queries).reduce(_ union _)
+    val itemQ = itemDims.map(_.encoder.queries).reduce(_ union _)
+
+    println("Date queries = " + dateQ.size)
+    println("Item queries = " + itemQ.size)
+    println("Location queries = " + locQ.size)
+
+    val queries = dateQ.flatMap(q1 => locQ.flatMap(q2 => itemQ.map(q3 => q1 ++ q2 ++ q3))).groupBy(_.size)
+    println("All Queries ")
+    queries.filter(kv => kv._1 >= 4 &&  kv._1 <= 12).map{case (k, v) => k -> v.size}.toList.sortBy(_._1).foreach(println)
+    val expt = new UniformSolverExpt(dc)
+    expt.compare(List(24, 25, 26, 27, 28, 46))
+    //queries.filter(kv => kv._1 >= 4 &&  kv._1 <= 10).toList.sortBy(_._1).foreach { case (k, v) => v.foreach(q => expt.compare(q.sorted))}
+
+  }
   def main(args: Array[String]): Unit = {
     //uniformSolver()
-    iowa()
+    iowa41()
     //prepare()
     //test()
     //loadtest()

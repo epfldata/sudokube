@@ -1,6 +1,7 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
 
+import frontend.schema.encoders.ColEncoder
 import util.{BigBinary, Profiler}
 
 
@@ -20,6 +21,8 @@ case class LD[T](
 ) extends Dim(name) with ColEncoder[T] {
 
   def set_bits(offset: Int) { bits = (offset to offset + n_bits - 1) }
+
+  override def queries(): Set[List[Int]] = Set()
 
   private val vanity_map: Map[T, Int] =
     vals.zipWithIndex.map{ case (k, i) => (k, i) }.toMap
@@ -83,7 +86,7 @@ class BD(override val name: String, children: List[Dim]
     })
 
     scala>  val col = Schema1.columnList.toMap.apply("Year")
-    col: frontend.schema.ColEncoder[_] = LD(Year,5,Range 1990 to 2021)
+    col: frontend.schema.encoders.ColEncoder[_] = LD(Year,5,Range 1990 to 2021)
 
     scala>  col.bits
     res0: Seq[Int] = Range 0 to 4
@@ -132,7 +135,7 @@ object StaticSchema {
       val Schema2 = StaticSchema.mk(26, 5, (x: Int) => (x + 64).toChar.toString)
 
       scala>  val col2 = Schema2.columnList(2)
-      col2: (String, frontend.schema.ColEncoder[_]) = (B,LD(B,5,Range 0 to 31))
+      col2: (String, frontend.schema.encoders.ColEncoder[_]) = (B,LD(B,5,Range 0 to 31))
       }}}
   */
   def mk(n_cols: Int,

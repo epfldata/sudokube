@@ -1,6 +1,7 @@
 package frontend.schema
+import frontend.schema.encoders.ColEncoder
 import util.BigBinary
-
+/*
 case class MigrosSchema(prod_bits: Int, time_bits: Int, loc_bits: Int) extends Schema {
   override def n_bits: Int = prod_bits + time_bits + loc_bits
 
@@ -21,3 +22,4 @@ case class MigrosSchema(prod_bits: Int, time_bits: Int, loc_bits: Int) extends S
   override def columnList: List[(String, ColEncoder[_])] = colMap.toList
   override protected def encode_column(key: String, v: Any): BigBinary = colMap(key).encode_any(v)
 }
+*/

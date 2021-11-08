@@ -1,5 +1,6 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
+import frontend.schema.encoders.{ColEncoder, MemCol, NatCol}
 import util._
 import util.BigBinaryTools._
 
@@ -44,9 +45,9 @@ import util.BigBinaryTools._
 
     // show domains of columns
     scala> val domains = animals_sch.columns.toList.map { case (key, c) => {
-      if(c.isInstanceOf[animals_sch.NatCol])
+      if(c.isInstanceOf[NatCol])
            (key, "Nat(0.." + ((1 << c.bits.length) - 1) + ")")
-      else (key, c.asInstanceOf[animals_sch.MemCol[_]].vals.toString)
+      else (key, c.asInstanceOf[MemCol[_]].decode_map.toString)
     }}
     domains: List[(String, String)] = List(
       (danger,Nat(0..15)),
@@ -62,64 +63,9 @@ import util.BigBinaryTools._
     See also the documentation for ColEncoder.decode_dim for a continuation of
     this example.
 */
-class DynamicSchema extends Schema {
-  protected var bitpos = 0
+class DynamicSchema extends Schema with BitPosRegistry {
+
   def n_bits = bitpos
-
-  /** manages an expanding collection of global bit indexes. */
-  trait RegisterIdx {
-    var maxIdx = 0
-    var bits : List[Int] = List[Int](bitpos)
-    bitpos += 1
-
-    def registerIdx(i: Int) {
-      if(i > maxIdx) maxIdx = i
-
-      while(i >= (1 << bits.length)) {
-        bits = bits ++ List(bitpos)
-        bitpos += 1
-      }
-    }
-
-  }
-
-  /** The domain of the column is elements of type T and NULL (None). */
-  class MemCol[T](init_vals: List[T] = List[T]()
-  ) extends ColEncoder[T] with RegisterIdx {
-
-    /* protected */
-    var encode_map = collection.mutable.Map[T, Int]()
-    var decode_map = collection.mutable.ArrayBuffer[T]()
-    init_vals.foreach { encode_locally(_) }
-
-    /** returns index in collection vals. */
-    def encode_locally(v: T) : Int = {
-        if (encode_map.isDefinedAt(v))
-          encode_map(v)
-        else {
-          val newpos = encode_map.size
-          encode_map  += (v -> newpos)
-          decode_map += v
-          registerIdx(newpos)
-          newpos
-        }
-    }
-
-    //def decode_locally(i: Int, default: T): T = vals.getOrElse(i, default)
-    def decode_locally(i: Int): T = decode_map(i)
-  }
-
-  /** A natural number-valued column.
-      The column bits represent the natural number directly, and
-      no map needs to be stored.
-      NatCol does not have a way or representing NULL values --
-      the default value is zero.
-  */
-  class NatCol extends ColEncoder[Int] with RegisterIdx {
-    def encode_locally(v: Int) : Int = { registerIdx(v); v }
-    def decode_locally(i: Int) = i
-  }
-
 
   val columns = collection.mutable.Map[String, ColEncoder[_]]()
   /* protected */
@@ -135,18 +81,18 @@ class DynamicSchema extends Schema {
       // create a bit for the sign, where 0 is nonnegative
       val sgn_enc = if(vi < 0) {
         val sgn_key = "-" + key
-        val sgn_c = columns.getOrElse(sgn_key, new NatCol)
+        val sgn_c = columns.getOrElse(sgn_key, {val colenc  = new NatCol(); colenc.setRegistry(this); colenc})
         columns(sgn_key) = sgn_c
         sgn_c.encode_any(1)
       } else BigBinary(0)
 
-      val c = columns.getOrElse(key, new NatCol)
+      val c = columns.getOrElse(key, {val colenc  = new NatCol(); colenc.setRegistry(this); colenc})
       columns(key) = c
       c.encode_any(math.abs(vi)) + sgn_enc
     }
     else {
       val c = columns.getOrElse(key,
-        new MemCol[Option[String]](List[Option[String]](None)))
+        {val colenc = new MemCol[Option[String]]( List[Option[String]](None)); colenc.setRegistry(this); colenc})
       columns(key) = c
       c.encode_any(Some(v))
     }

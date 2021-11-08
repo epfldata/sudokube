@@ -2,7 +2,7 @@ package core.solver
 
 import breeze.linalg.{DenseMatrix, DenseVector, inv}
 import combinatorics.Combinatorics
-import core.solver.Strategy.{CoMoment, CoMomentFrechet, Cumulant, FrechetMid, FrechetUpper, HalfPowerD, LowVariance, Strategy, Zero}
+import core.solver.Strategy.{Strategy, CoMoment}
 import util.{BigBinary, Bits, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
@@ -10,11 +10,11 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Cumulant, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Cumulant, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
   var allowNegative = false
-
+  import Strategy._
   val N = 1 << qsize
   assert(qsize < 31)
   val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
@@ -77,6 +77,11 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     combMin
   }
 
+  def getDefaultValueAvg(row: Int) = {
+    val n = BigBinary(row).hamming_weight
+    val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).sum
+    num.div(combSum, num.fromInt(2 * n))
+  }
   def getDefaultValueCumulant(row: Int) = {
     def addElem(a: Int, parts: List[List[Int]]) = {
       def rec(before: List[List[Int]], cur: List[List[Int]], acc:List[List[List[Int]]] ): List[List[List[Int]]] = cur match {
@@ -171,6 +176,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val N1 = 1 << n
 
     val value = strategy match {
+      case Avg => getDefaultValueAvg(row)
       case Cumulant => getDefaultValueCumulant(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
@@ -223,6 +229,14 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         (i until i + h).foreach { j =>
           val diff = num.minus(result(j), result(j + h))
            strategy match {
+             case CoMomentFrechet =>
+               if(num.lt(diff, num.zero)) {
+                 result(j+h) = result(j)
+                 result(j) = num.zero
+               } else if(num.lt(result(j+h), num.zero)){
+                 result(j+h) = num.zero
+               } else
+                   result(j) = diff
             case _ => result(j) = diff
           }
         }
