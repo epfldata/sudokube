@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
 
   val fileout = new PrintStream("expdata/UniformSolverExpt.csv")
-  val strategies = List(Strategy.CoMoment, Strategy.CoMomentFrechet, Strategy.Avg) //Strategy.values.toList
+  val strategies = List(Strategy.CoMoment, Strategy.CoMomentFrechet) //Strategy.values.toList
   fileout.println("QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve ErrMax $a, USolve Err $a").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
@@ -90,7 +90,8 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
     result
   }
 
-  def compare(q: List[Int]) = {
+  def compare(qu: List[Int]) = {
+    val q = qu.sorted
     println("Query = " + q)
     Profiler.resetAll()
     val naiveRes = dc.naive_eval(q)

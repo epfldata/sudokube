@@ -3,3 +3,5 @@ target
 *.csuk
 *.dc
 *.txt
+expdata/*
+cubedata/*

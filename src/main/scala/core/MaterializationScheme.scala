@@ -322,8 +322,7 @@ case class RandomizedMaterializationScheme(
     else c.toInt
 
     // upper bound on number of cuboids of any given dimensionality
-    //if(np0 > 10000) 10000 else np0
-    np0
+    if(np0 > 10000) 10000 else np0
   }
 
   println("Creating materialization scheme...")

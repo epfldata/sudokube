@@ -35,7 +35,7 @@ class StructuredDynamicSchema(top_level: Vector[Dim2]) extends Serializable with
       read()!
    */
   def save(filename: String) {
-    val file = new File("cubedata/"+filename+"/"+filename+".sdsch")
+    val file = new File("cubedata/schema/"+filename+".sdsch")
     if(!file.exists())
       file.getParentFile.mkdirs()
     val oos = new ObjectOutputStream(new FileOutputStream(file))
@@ -69,7 +69,7 @@ class StructuredDynamicSchema(top_level: Vector[Dim2]) extends Serializable with
 
 object StructuredDynamicSchema {
   def load(filename: String): StructuredDynamicSchema = {
-    val file = new File("cubedata/"+filename+"/"+filename+".sdsch")
+    val file = new File("cubedata/schema/"+filename+".sdsch")
     val ois = new ObjectInputStream(new FileInputStream(file))
     val sch = ois.readObject.asInstanceOf[StructuredDynamicSchema]
     ois.close
