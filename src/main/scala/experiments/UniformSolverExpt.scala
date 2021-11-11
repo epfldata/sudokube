@@ -13,11 +13,11 @@ import java.io.PrintStream
 import scala.reflect.ClassTag
 
 
-class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
+class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverExpt") {
 
-  val fileout = new PrintStream("expdata/UniformSolverExpt.csv")
+  val fileout = new PrintStream(s"expdata/$name.csv")
   val strategies = List(Strategy.CoMoment, Strategy.CoMomentFrechet) //Strategy.values.toList
-  fileout.println("QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve ErrMax $a, USolve Err $a").mkString(", "))
+  fileout.println("Query, QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve Err $a").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -78,45 +78,37 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
       val res = Profiler(s"USolve Solve ${s.strategy}") {
         s.fastSolve()
       }
-      //println("Total = "+ res.sum)
-      //s.verifySolution()
-      val tot = s.sumValues(0)
-      val num = implicitly[Fractional[T]]
-      println(s.strategy)
-      println(s.sumValues.map(k => num.toInt(num.times(num.fromInt(1000), num.div(k, tot)))).mkString(" "))
-      println()
-      s.strategy -> (s.solution, s.errMax, s.dof)
+      s
     }
     result
   }
 
   def compare(qu: List[Int]) = {
     val q = qu.sorted
-    println("Query = " + q)
+    println("Query = " + qu)
     Profiler.resetAll()
     val naiveRes = dc.naive_eval(q)
     val naiveCum = fastSum(naiveRes)
-    println("Naive")
-    println(naiveCum.map(x => (x * 1000.0/naiveCum(0)).toInt).mkString(" "))
-    println()
-    val solverRes = uniform_solve(q)
 
+    val solverRes = uniform_solve(q)
+    val num = implicitly[Fractional[T]]
     //Profiler.print()
 
-    val errors = solverRes.map{case (algo, (sol, emax, _)) => algo -> (emax, error(naiveRes, sol))}
-    val dof = solverRes.head._2._3
+
+    val errors = solverRes.map{s => s.strategy ->  error(naiveRes, s.solution)}
+    val dof = solverRes.head.dof
+    val knownSums = solverRes.head.knownSums
+
     println("DOF = " + dof)
     println("Errors = " + errors.map(_._2).mkString("   "))
-    val total = naiveRes.sum
-    val prec =  1000.0
-    println("Naive = " +  naiveRes.takeRight(10).map(v => (v * prec /total).toInt/prec).mkString(" "))
-    solverRes.foreach {case (algo, (sol, _, _)) => println(s"USolve ${algo} = " +  sol.takeRight(10).map(v => (v * prec /total).toInt/prec).mkString(" "))}
 
-    //def pad(n: Int, s: String) = s + (" "*(n-s.length))
-    //println(pad(20, "Naive = ") +  naiveRes.mkString(" "))
-    //solverRes.foreach {case (algo, (sol, _, _)) => println(pad(20, s"USolve ${algo} = ") +  sol.mkString(" "))}
-
-    println("\n")
+    val prec = 1000.0
+    //val allcums = naiveCum.indices.map { i =>
+    //  val n = (naiveCum(i) * prec/ naiveCum(0)).toInt
+    //  val ssv = solverRes.map(s => num.toInt(num.times(num.fromInt(prec.toInt), num.div(s.sumValues(i), s.sumValues(0)))))
+    //  (i, n, ssv)
+    //}
+    //allcums.sortBy{case (i, n, ssv) => Math.abs(ssv.head - n)}.map{case (i, n, ssv) => s"$i ${knownSums(i)} ==> $n     ${ssv.mkString(" ")}"}.foreach(println)
 
       val nfetch = Profiler.durations("NaiveFetch")._2/1000
       val ufetch = Profiler.durations("USolve Fetch")._2/1000
@@ -126,11 +118,11 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube) {
         math.floor(v*prec)/prec
       }
 
-      val resultrow = s"${q.size},$dof,$nfetch, $ufetch," +
-        errors.map{case (algo, (errMax, err)) =>
+      val resultrow = s"${qu.mkString(":")},${q.size},$dof,$nfetch, $ufetch," +
+        errors.map{case (algo, err) =>
           val uadd = Profiler.durations(s"USolve Add $algo")._2/1000
           val usolve= Profiler.durations(s"USolve Solve $algo")._2/1000
-          s"${uadd},${usolve}, ${round(errMax)}, ${round(err)}"
+          s"${uadd},${usolve},${round(err)}"
         }.mkString(", ")
     fileout.println(resultrow)
 

@@ -9,6 +9,21 @@ import backend._
 import generators._
 import scala.util.Random
 object Tools {
+
+  //For Randomized Materialization Scheme so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
+  def params(nbits: Int, colWith1: Int) = {
+    /*
+      x * y^(n-4) = 10^4
+      x * y^(n-c1) = 1
+
+      logy = (c1-4)/4
+      logx = -(n-c1)  logy
+     */
+    val logy = 4.0/(colWith1-4)
+    val logx = -(nbits-colWith1) * logy
+    (logx, logy)
+  }
+
   def qq(qsize: Int) = (0 to qsize - 1).toList
   def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize).sorted
 
