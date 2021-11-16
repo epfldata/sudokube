@@ -27,7 +27,7 @@ class StructuredDynamicSchema(top_level: Vector[Dim2]) extends Serializable with
   root.setRegistry(this)
   def n_bits: Int = bitpos
   val columnVector: Vector[LD2[_]] = root.leaves
-  def encode_column(idx: Int, v: Any): BigBinary = columnVector(idx).encoder.encode_any(v)
+  def encode_column(idx: Int, v: Any): BigBinary = Profiler(s"Encode $idx ${columnVector(idx).name}"){columnVector(idx).encoder.encode_any(v)}
   def encode_tuple(tup: IndexedSeq[Any]) = tup.indices.map(i => encode_column(i, tup(i))).sum
   def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))
 

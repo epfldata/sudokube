@@ -7,7 +7,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import scala.util.Try
 
-class DateCol(referenceYear: Int = 0) extends ColEncoder[Date] with RegisterIdx {
+class DateCol(referenceYear: Int) extends ColEncoder[Date] with RegisterIdx {
 
   override def queries(): Set[List[Int]] = {
     val ybits = yCol.bits
@@ -71,10 +71,12 @@ class DateCol(referenceYear: Int = 0) extends ColEncoder[Date] with RegisterIdx 
   }
 
   val f1 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+  val f2 = new SimpleDateFormat("yyyyMMdd")
 
   override def encode_any(v: Any): BigBinary = v match {
     case d: Date => encode(d)
     case s: String if Try(Date.parse(s)).isSuccess => encode(new Date(s))
     case s: String if Try(f1.parse(s)).isSuccess => encode(f1.parse(s))
+    case s: String if Try(f2.parse(s)).isSuccess => encode(f2.parse(s))
   }
 }

@@ -43,7 +43,9 @@ object Profiler {
     s + " "*diff
   }
   def print() = {
-    val L = durations.keys.map(_.length).max + 2
-    durations.toList.sortBy(_._2._2).map { case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c)} ns" }.foreach(println)
+    if(!durations.isEmpty) {
+      val L = durations.keys.map(_.length).max + 2
+      durations.toList.sortBy(_._2._2).map { case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c)} ns" }.foreach(println)
+    }
   }
 }

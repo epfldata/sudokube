@@ -3,7 +3,6 @@ package experiments
 import backend.CBackend
 import breeze.io.CSVReader
 import core.{DataCube, RandomizedMaterializationScheme}
-import frontend.generators.Iowa.read
 import frontend.schema.{LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol}
 import core.RationalTools._
