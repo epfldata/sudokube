@@ -16,6 +16,7 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-natives" % "0.13.2",
   "org.scalanlp" %% "breeze-viz" % "0.13.2",
   "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
+  "org.apache.commons" % "commons-lang3" % "3.12.0",
   //"org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.5.3",
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8"
