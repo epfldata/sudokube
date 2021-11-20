@@ -5,3 +5,5 @@ target
 *.txt
 expdata/*
 cubedata/*
+tabledata/*
+data/*

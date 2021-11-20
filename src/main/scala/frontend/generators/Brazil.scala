@@ -14,7 +14,7 @@ import java.util.Date
 object Brazil {
 
   def readCSV(name: String, cols: Vector[String]) = {
-    val folder = "/Users/sachin/Downloads/brazil"
+    val folder = "tabledata/Brazil"
     val csv = CSVReader.read(new FileReader(s"$folder/olist_${name}_dataset.csv"))
     val header = csv.head
     val colIdx = cols.map(c => header.indexOf(c))
@@ -86,6 +86,7 @@ object Brazil {
     sch.save(name)
     dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
     dc.save2(s"${name}_${lrf}_${lbase}")
+    (sch, dc)
   }
 
   def load(lrf: Double, lbase: Double) = {
@@ -98,12 +99,12 @@ object Brazil {
 
 
   def main(args: Array[String]) = {
-    //save(-25.5, 0.19)
-    val (sch, dc) = load(-25.5, 0.19)
+    val (sch, dc) = save(-25.5, 0.19)
+    //val (sch, dc) = load(-25.5, 0.19)
     val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
-    val expt = new UniformSolverExpt(dc, "brazil2")
-    expt.compare(List(153, 132, 115, 104, 90, 77, 68, 57, 46, 33))
-    //qs.foreach(q => expt.compare(q))
+    val expt = new UniformSolverExpt(dc, "brazil")
+    //expt.compare(List(153, 132, 115, 104, 90, 77, 68, 57, 46, 33))
+    qs.foreach(q => expt.compare(q))
   }
 
 }

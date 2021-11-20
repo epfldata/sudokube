@@ -12,14 +12,19 @@ object Strategy extends Enumeration {
   type Strategy = Value
   val Avg, Cumulant, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
+
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
   var allowNegative = false
+
   import Strategy._
+
   val N = 1 << qsize
   assert(qsize < 31)
   val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
-  val sumValues = Util.mkAB(N, _ => num.zero)
+  val sumValues = new Array[T](N)
   val knownSums = collection.mutable.BitSet()
+  val meanProducts = new Array[T](N)
+  val knownMeanProducts = collection.mutable.BitSet()
 
   var fetchedCuboids = List[(Int, Array[Double])]()
   var solution: Array[Double] = null
@@ -43,8 +48,8 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
   def errMax = {
     val delta = new Array[T](N)
-    hamming_order.foreach{ row =>
-      if(knownSums(row))
+    hamming_order.foreach { row =>
+      if (knownSums(row))
         delta(row) = num.zero
       else {
         val n = BigBinary(row).hamming_weight
@@ -71,6 +76,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).sum
     num.max(num.zero, num.plus(num.times(num.fromInt(1 - n), sumValues(0)), combSum))
   }
+
   def upperBound(row: Int) = {
     val n = BigBinary(row).hamming_weight
     val combMin = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).min
@@ -82,17 +88,20 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).sum
     num.div(combSum, num.fromInt(2 * n))
   }
+
   def getDefaultValueCumulant(row: Int) = {
     def addElem(a: Int, parts: List[List[Int]]) = {
-      def rec(before: List[List[Int]], cur: List[List[Int]], acc:List[List[List[Int]]] ): List[List[List[Int]]] = cur match {
-        case Nil =>  (List(a)::before):: acc
+      def rec(before: List[List[Int]], cur: List[List[Int]], acc: List[List[List[Int]]]): List[List[List[Int]]] = cur match {
+        case Nil => (List(a) :: before) :: acc
         case h :: t =>
-          val acc2  = ((a :: h) :: (before ++ t)) :: acc
+          val acc2 = ((a :: h) :: (before ++ t)) :: acc
           rec(before :+ h, t, acc2)
       }
+
       rec(Nil, parts, Nil)
     }
-    def allParts(l: List[Int]) : List[List[List[Int]]] = l match {
+
+    def allParts(l: List[Int]): List[List[List[Int]]] = l match {
       case h :: Nil => List(List(List(h)))
       case h :: t => {
         val pt = allParts(t)
@@ -105,9 +114,9 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val sum = partitions.map {
       case parts if parts.length > 1 =>
         val n = parts.length
-        val sign = if(n % 2 == 0) 1 else -1
+        val sign = if (n % 2 == 0) 1 else -1
         assert(n <= 13) //TODO: Expand to beyond Int limits
-        val fact = Combinatorics.factorial(n-1).toInt
+        val fact = Combinatorics.factorial(n - 1).toInt
 
         val prod = parts.map { case p =>
           val r2 = p.map(1 << _).sum
@@ -123,24 +132,30 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
 
-    def getMeanProduct(colSet: Int) =
-      Bits.fromInt(colSet).map { c =>
-        num.div(sumValues(1 << c), sumValues(0))
-      }.product
 
     //Special case for means
-    val sum = if (n == 1) num.div(sumValues(0), num.fromInt(2)) else (1 to n).map { k =>
+    val sum = Profiler(s"SDV n$n") {
+      if (n == 1)
+        num.div(sumValues(0), num.fromInt(2))
+      else
+        (1 to n).map { k =>
+          def func = {
 
-      //WARNING: Converting BigInt to Int. Ensure that query does not involve more than 30 bits
-      val combs = Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i.toInt, row))
-      val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
-      //TODO: Can simplify further if parents were unknown and default values were used for them
-      num.times(sign, combs.map { i =>
-        num.times(sumValues(row - i), getMeanProduct(i))
-      }.sum)
-    }.sum
+            //WARNING: Converting BigInt to Int. Ensure that query does not involve more than 30 bits
+            val combs = Profiler.profile("mkComb") {
+              Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i.toInt, row))
+            }
+            val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
+            //TODO: Can simplify further if parents were unknown and default values were used for them
+            num.times(sign, combs.map { i =>
+              num.times(sumValues(row - i), meanProducts(i))
+            }.sum)
+          }
+          if(n == 7) Profiler.profile(s"SDV n$n k$k")(func) else func
+        }.sum
+    }
     val ub = upperBound(row)
-   if(withUpperBound) num.min(sum, ub) else sum
+    if (withUpperBound) num.min(sum, ub) else sum
   }
 
   def getDefaultValueLowVariance(row: Int) = {
@@ -149,7 +164,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
     val array = new Array[T](N1)
     array.indices.foreach { i =>
-      array(i) = if(i == array.indices.last) num.zero else {
+      array(i) = if (i == array.indices.last) num.zero else {
         val j = Bits.unproject(i, row)
         sumValues(j)
       }
@@ -158,17 +173,17 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     while (h < N1) {
       (0 until N1 by h * 2).foreach { i =>
         (i until i + h).foreach { j =>
-          if(h == 1) {
+          if (h == 1) {
             array(j) = num.minus(array(j), array(j + h))
-            array(j+h) = num.negate(array(j+h))
+            array(j + h) = num.negate(array(j + h))
           } else {
-            array(j) = num.minus(array(j+h), array(j))
+            array(j) = num.minus(array(j + h), array(j))
           }
         }
       }
       h *= 2
     }
-   num.div(array.sum, num.fromInt(N1))
+    num.div(array.sum, num.fromInt(N1))
   }
 
   def setDefaultValue(row: Int) = {
@@ -180,23 +195,51 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       case Cumulant => getDefaultValueCumulant(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
-      case Zero =>  num.zero
-      case HalfPowerD =>  num.div(sumValues(0), num.fromInt(1 << n))
+      case Zero => num.zero
+      case HalfPowerD => num.div(sumValues(0), num.fromInt(1 << n))
       case FrechetUpper => upperBound(row)
-      case FrechetMid =>  num.div(num.plus(upperBound(row), lowerBound(row)), num.fromInt(2))
+      case FrechetMid => num.div(num.plus(upperBound(row), lowerBound(row)), num.fromInt(2))
       case LowVariance => getDefaultValueLowVariance(row)
     }
     sumValues(row) = value
   }
 
+  def buildMeanProduct() = {
+    val sizeOne = (0 until qsize).map { i =>
+      val j = (1 << i)
+      meanProducts(j) = num.div(sumValues(j), sumValues(0))
+      j
+    }
+    var curSize = 1
+    var curIdx = sizeOne
+    while (curSize < qsize) {
+      val newIdx = curIdx.flatMap { a =>
+        sizeOne.flatMap { b =>
+          val c = a + b
+          if (((a & b) == 0) && !knownMeanProducts.contains(c)) {
+            knownMeanProducts += c
+            meanProducts(c) = num.times(meanProducts(a), meanProducts(b))
+            Some(c)
+          } else None
+        }
+      }
+      curIdx = newIdx
+      curSize += 1
+    }
+  }
+
   def fillMissing() = {
 
-  import core.solver.Strategy.Strategy
+    import core.solver.Strategy.Strategy
 
-  val toSolve = Profiler("Solve Filter") {
+    val toSolve = Profiler("Solve Filter") {
       hamming_order.filter((!knownSums.contains(_)))
     }
     //println("Predicting values for " + toSolve.mkString(" "))
+
+    Profiler("MeanProducts") {
+      buildMeanProduct()
+    }
 
     Profiler("SetDefaultValueAll") {
       toSolve.foreach { r =>
@@ -221,22 +264,21 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   }
 
   def fastSolve() = {
-    fillMissing()
     val result = sumValues.toArray
     var h = 1
     while (h < N) {
       (0 until N by h * 2).foreach { i =>
         (i until i + h).foreach { j =>
           val diff = num.minus(result(j), result(j + h))
-           strategy match {
-             case CoMomentFrechet =>
-               if(num.lt(diff, num.zero)) {
-                 result(j+h) = result(j)
-                 result(j) = num.zero
-               } else if(num.lt(result(j+h), num.zero)){
-                 result(j+h) = num.zero
-               } else
-                   result(j) = diff
+          strategy match {
+            case CoMomentFrechet =>
+              if (num.lt(diff, num.zero)) {
+                result(j + h) = result(j)
+                result(j) = num.zero
+              } else if (num.lt(result(j + h), num.zero)) {
+                result(j + h) = num.zero
+              } else
+                result(j) = diff
             case _ => result(j) = diff
           }
         }
@@ -248,7 +290,6 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   }
 
   def solve() = {
-    fillMissing()
     val matA =
       Profiler("MatrixInit") {
         val matA = DenseMatrix.zeros[Double](1 << qsize, 1 << qsize)
@@ -272,7 +313,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
     def toT(d: Double) = {
       val i = d.toInt
-      val f = (d-i)
+      val f = (d - i)
       val prec = 1000000
       num.plus(num.fromInt(i), num.div(num.fromInt((f * prec).toInt), num.fromInt(prec)))
     }

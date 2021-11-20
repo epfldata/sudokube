@@ -16,8 +16,8 @@ import scala.reflect.ClassTag
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverExpt") {
 
   val fileout = new PrintStream(s"expdata/$name.csv")
-  val strategies = List(Strategy.CoMoment, Strategy.CoMomentFrechet) //Strategy.values.toList
-  fileout.println("Query, QSize, DOF, NFetch, UFetch, " + strategies.map(a => s"USolve Add $a, USolve Solve $a, USolve Err $a").mkString(", "))
+  val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
+  fileout.println("Query, QSize, DOF, NFetchTime(us), UFetchTime(us), " + strategies.map(a => s"$a AddTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -75,6 +75,9 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
         fetched.foreach{ case (bits, array) => s.add(bits, array)}
       }
 
+      Profiler(s"USolve FillMissing ${s.strategy}") {
+        s.fillMissing()
+      }
       val res = Profiler(s"USolve Solve ${s.strategy}") {
         s.fastSolve()
       }

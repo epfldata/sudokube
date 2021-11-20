@@ -2,7 +2,7 @@
 //#define KEY_BYTES 25
 //#define KEY_BYTES 100
 //typedef unsigned char key_type[KEY_BYTES];
-
+#include <cstdint>
 typedef unsigned char byte;
 typedef int64_t value_t;
 

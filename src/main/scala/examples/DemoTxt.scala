@@ -30,6 +30,7 @@ object DemoTxt {
     solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
     //solver.add(List(0,1, 2), Array(1, 3, 2, 1, 5, 1, 0, 2).map(Rational(_, 1)))
     println(solver.sumValues.mkString(" "))
+    solver.fillMissing()
     val result = solver.fastSolve().map(_.toDouble)
     println(result.mkString(" "))
     println("Error = " + error(actual, result.toArray))

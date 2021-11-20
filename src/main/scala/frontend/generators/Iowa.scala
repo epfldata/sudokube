@@ -31,7 +31,7 @@ object Iowa {
     def measureF(s: String) = (s.toDouble * 100).toLong
 
     val sch = new StructuredDynamicSchema(Vector(date, locDims, itemDims))
-    val file = s"/Users/sachin/Downloads/$name.tsv"
+    val file = s"tabledata/Iowa/$name.tsv"
     val R = sch.read(file, measure, measureF)
     sch.columnVector.foreach(_.encoder.refreshBits)
     (sch, R)
@@ -45,6 +45,7 @@ object Iowa {
     sch.save(inputname)
     dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
     dc.save2(s"${inputname}_${lrf}_${lbase}")
+    (sch, dc)
   }
 
   def load(inputname: String, lrf: Double, lbase: Double) = {
@@ -55,10 +56,12 @@ object Iowa {
   }
 
   def main(args: Array[String]) = {
-    //save("Iowa200k", -9, 0.15)
+    //val (sch, dc) = save("Iowa200k", -9, 0.15)
     val (sch, dc) = load("Iowa200k", -9, 0.15)
     val qs = sch.queries
-    val expt = new UniformSolverExpt(dc)
-    qs.filter(x => x.length >= 4  && x.length <= 8).foreach(q => expt.compare(q))
+    val expt = new UniformSolverExpt(dc, "Iowa-test")
+    expt.compare(List(11, 46, 28, 32, 20, 19, 18, 17))
+    //qs.filter(x => x.length >= 4  && x.length <= 10).foreach(q => expt.compare(q))
+    ()
   }
 }

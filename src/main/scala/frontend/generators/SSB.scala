@@ -2,7 +2,7 @@ package frontend.generators
 
 import backend.CBackend
 import breeze.io.CSVReader
-import core.{DataCube, RandomizedMaterializationScheme}
+import core.{DataCube, RandomizedMaterializationScheme, Rational}
 import experiments.UniformSolverExpt
 import frontend.schema.encoders.{DateCol, MemCol, NatCol}
 import frontend.schema.{BD2, LD2, StructuredDynamicSchema}
@@ -13,7 +13,7 @@ import java.io.FileReader
 import java.util.Date
 
 object SSB {
-  var sf = 1
+  var sf = 0.1
 
   def readTbl(name: String, colIdx: Vector[Int]) = {
     Profiler(s"readTbl$name") {
@@ -94,7 +94,7 @@ object SSB {
     val r = join.zipWithIndex.map { case ((k, v), i) =>
       if (i % 100000 == 0) {
         println(s"Encoding $i/${join.length}")
-        Profiler.print()
+        //Profiler.print()
       }
       sch.encode_tuple(k) -> v
     }
@@ -113,6 +113,7 @@ object SSB {
     sch.save(name)
     dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
     dc.save2(s"${name}_${lrf}_${lbase}")
+    (sch, dc)
   }
 
   def load(lrf: Double, lbase: Double) = {
@@ -126,11 +127,15 @@ object SSB {
 
   def main(args: Array[String]) = {
     //println(Runtime.getRuntime.maxMemory()/(1 << 30).toDouble)
-    //save(-27, 0.19)
-    val (sch, dc) = load(-27, 0.19)
+    val lrf = -27
+    val lbase = 0.195
+    //val (sch, dc) = save(lrf, lbase)
+    val (sch, dc) = load(lrf, lbase)
     val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
-    val expt = new UniformSolverExpt(dc, s"SSB-sf${sf}")
-    qs.foreach(q => expt.compare(q))
+    val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
+    expt.compare(List(40, 14, 4, 3, 2, 109, 86, 52, 23, 22))
+    //qs.foreach(q => expt.compare(q))
+    Profiler.print()
   }
 
 
