@@ -96,7 +96,7 @@ case class BigBinary(val toBigInt: BigInt) {
   }
 
   def toInt = this.toBigInt.toInt
-
+  def |(that: BigBinary) = BigBinary(this.toBigInt | that.toBigInt)
   def +(that: BigBinary) = BigBinary(this.toBigInt + that.toBigInt)
   def &(that: BigBinary) = BigBinary(this.toBigInt & that.toBigInt)
 
