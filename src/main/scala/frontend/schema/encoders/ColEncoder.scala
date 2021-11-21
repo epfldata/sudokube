@@ -1,6 +1,6 @@
 //package ch.epfl.data.sudokube
 package frontend.schema.encoders
-import frontend.schema.RegisterIdx
+import frontend.schema.{BitPosRegistry, RegisterIdx}
 import util._
 
 /** Implements a mapping between a local encoder/decoder (which maps between
@@ -8,15 +8,35 @@ import util._
     a global encoder/decoder that assumes the local values are encoded in bits
     located at indexes "bits".
  */
-trait ColEncoder[T] extends Serializable {
+abstract class ColEncoder[T] extends Serializable {
   // abstract members
   def bits: Seq[Int]
+  def bitsMin : Int
+  def isRange: Boolean
   def encode_locally(v: T) : Int
   def decode_locally(i: Int): T
   def maxIdx : Int
-  def queries(): Set[List[Int]]
-  def encode(v: T) : BigBinary = BigBinary(encode_locally(v)).pup(bits)
-  def encode_any(v: Any) : BigBinary = encode(v.asInstanceOf[T])
+  def queries(): Set[Seq[Int]]
+
+  def encode(v: T): BigBinary =
+    if (isRange) {
+      val v1 = Profiler("E121") {
+        BigInt(encode_locally(v))
+      }
+      Profiler("E122") {
+        val v2 = if (v1 > 0) {
+          v1 << bitsMin
+        } else BigInt(0)
+        BigBinary(v2)
+      }
+    }
+    else
+      Profiler("Super Encode") {BigBinary(encode_locally(v)).pup(bits)}
+  def encode_any(v: Any) : BigBinary = {
+    //encode(v.asInstanceOf[T])
+    val vt = Profiler("E11"){v.asInstanceOf[T]}
+    Profiler("E12"){encode(vt)}
+  }
 
   def decode(b: BigBinary) : T = {
     val y = b.toSeq.zipWithIndex.map {
@@ -95,4 +115,10 @@ trait ColEncoder[T] extends Serializable {
     decode_locally(sampling_f(maxIdx + 1))
 }
 
-
+abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T] {
+  val register = new RegisterIdx(bitPosRegistry)
+  override def bits: Seq[Int] = register.bits
+  override def bitsMin: Int = register.bitsMin
+  override def isRange: Boolean = register.isRange
+  override def maxIdx: Int = register.maxIdx
+}

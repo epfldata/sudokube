@@ -231,7 +231,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         pm => assert(dc.m.projections(pm.id) == pm.accessible_bits0) }
       }}}
   */
-  def prepare(query: List[Int], cheap_size: Int, max_fetch_dim: Int
+  def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
   ) : List[ProjectionMetaData] = {
 
     /* NOTE: finding the cheapest might not always preserve the one with the
@@ -349,7 +349,7 @@ class MyRM(that: RandomizedMaterializationScheme) extends MaterializationScheme(
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = that.projections
 
-  override def prepare(query: List[Int], cheap_size: Int, max_fetch_dim: Int
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
              ) : List[ProjectionMetaData] = {
 
     /* NOTE: finding the cheapest might not always preserve the one with the

@@ -3,7 +3,7 @@ package frontend.generators
 import backend.CBackend
 import core.{DataCube, RandomizedMaterializationScheme}
 import experiments.UniformSolverExpt
-import frontend.schema.{BD2, LD2, StructuredDynamicSchema}
+import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
 import util.Profiler
 import core.RationalTools._
@@ -12,12 +12,13 @@ import java.util.Date
 
 object Iowa {
   def read(name: String) = {
-    val date = LD2[Date]("Date", new DateCol(2012))
+    implicit val bpr = new BitPosRegistry
+    val date = LD2[Date]("Date", new DateCol(2012, 2021, true, true))
 
     val county = LD2[String]("County Number", new MemCol)
     val city = LD2[String]("City", new MemCol)
     val zip = LD2[String]("Zip Code", new MemCol)
-    val storeloc = LD2[(Double, Double)]("Store Location", new PositionCol((-96.63, 40.38), 2))
+    val storeloc = LD2[(Double, Double)]("Store Location", new PositionCol((-96.63, 40.38), 2, (-90.2, 43.5)))
     val store = LD2[String]("Store Number", new MemCol)
     val locDims = BD2("Location", Vector(county, city, zip, storeloc, store), false)
 
@@ -33,7 +34,6 @@ object Iowa {
     val sch = new StructuredDynamicSchema(Vector(date, locDims, itemDims))
     val file = s"tabledata/Iowa/$name.tsv"
     val R = sch.read(file, measure, measureF)
-    sch.columnVector.foreach(_.encoder.refreshBits)
     (sch, R)
   }
 

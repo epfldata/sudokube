@@ -1,7 +1,8 @@
 package frontend.schema
 
-trait BitPosRegistry {
+class BitPosRegistry {
   protected var bitpos = 0
+  def n_bits = bitpos
   def increment(n: Int)  = {
     bitpos += n
     bitpos
@@ -9,17 +10,19 @@ trait BitPosRegistry {
 }
 
 /** manages an expanding collection of global bit indexes. */
-trait RegisterIdx {
+class RegisterIdx(val registry: BitPosRegistry) {
   var maxIdx = 0
-  var registry: BitPosRegistry = null
-  def setRegistry(r: BitPosRegistry) = registry = r
   var bits : List[Int] = List()
-
-  def refreshBits = {}
+  var bitsMin = 0
+  var isRange = true
   def registerIdx(i: Int) {
     if(i > maxIdx) maxIdx = i
     while(i >= (1 << bits.length)) {
-      bits =  registry.increment(1) :: bits
+      val b = registry.increment(1)
+      isRange = isRange && (bits.isEmpty || bits.head == b-1)
+      if(bits.isEmpty)
+        bitsMin = b
+      bits =  b :: bits
     }
   }
 }

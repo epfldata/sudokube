@@ -331,7 +331,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /** fetches the smallest subsuming cuboid and projects away columns not in
       the query. Does not involve a solver.
   */
-  def naive_eval(query: List[Int]) : Array[Double] = {
+  def naive_eval(query: Seq[Int]) : Array[Double] = {
     val l = Profiler("NaivePrepare"){m.prepare(query, m.n_bits, m.n_bits)}
     Profiler("NaiveFetch"){fetch(l).map(p => p.sm.toDouble)}
   }

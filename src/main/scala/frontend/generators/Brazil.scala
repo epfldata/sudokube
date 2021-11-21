@@ -5,7 +5,7 @@ import breeze.io.CSVReader
 import core.{DataCube, RandomizedMaterializationScheme}
 import experiments.UniformSolverExpt
 import frontend.schema.encoders.{DateCol, MemCol}
-import frontend.schema.{BD2, LD2, StructuredDynamicSchema}
+import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import core.RationalTools._
 
 import java.io.FileReader
@@ -50,9 +50,10 @@ object Brazil {
 
      */
 
+    implicit val bitR = new BitPosRegistry
     val order_id =  LD2[String]("order_id", new MemCol)
     val o_item_id =  LD2[String]("order_item_id", new MemCol)
-    val time =  LD2[Date]("order_purchase_timestamp", new DateCol(2016))
+    val time =  LD2[Date]("order_purchase_timestamp", new DateCol(2016, 2018, true, true, true, true, true))
     val orderDim =  BD2("Order", Vector(order_id, o_item_id, time), false)
 
     val cust_id =  LD2[String]("customer_id", new MemCol)
@@ -73,7 +74,6 @@ object Brazil {
 
     val sch = new StructuredDynamicSchema(Vector(orderDim, custDim, prodDim, selDim))
     val r = join.map { case (k, v) => sch.encode_tuple(k) -> v }
-    sch.columnVector.foreach(_.encoder.refreshBits)
     (sch, r)
   }
 

@@ -5,9 +5,9 @@ import util.BigBinary
 
 import scala.util.matching.Regex
 
-class PositionCol(reference: (Double, Double), precision: Int) extends ColEncoder[(Double, Double)] with RegisterIdx {
-  val long = new FixedPointCol(precision)
-  val lat = new FixedPointCol(precision)
+class PositionCol(reference: (Double, Double), precision: Int, maxVal: (Double, Double))(implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[(Double, Double)]  {
+  val long = new FixedPointCol(precision, maxVal._1)
+  val lat = new FixedPointCol(precision, maxVal._2)
 
   override def encode(v: (Double, Double)): BigBinary = {
     val dlong = v._1 - reference._1
@@ -18,14 +18,13 @@ class PositionCol(reference: (Double, Double), precision: Int) extends ColEncode
   }
 
 
-  override def setRegistry(r: BitPosRegistry): Unit = {
-    long.setRegistry(r)
-    lat.setRegistry(r)
-  }
+  override def bits: Seq[Int] = long.bits ++ lat.bits
 
-  override def refreshBits: Unit = {
-    bits = long.bits ++ lat.bits
-  }
+  override def bitsMin: Int = ???
+
+  override def isRange: Boolean = ???
+
+  override def maxIdx: Int = ???
 
   val regex = ("POINT \\((-?\\d*.\\d*) (-?\\d*.\\d*)\\)")
 
@@ -42,5 +41,5 @@ class PositionCol(reference: (Double, Double), precision: Int) extends ColEncode
 
   override def decode_locally(i: Int): (Double, Double) = ???
 
-  override def queries(): Set[List[Int]] = lat.queries.flatMap(q1 => long.queries.map(q2 => q1 ++ q2))
+  override def queries(): Set[Seq[Int]] = lat.queries.flatMap(q1 => long.queries.map(q2 => q1 ++ q2))
 }

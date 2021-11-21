@@ -58,7 +58,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     }
     result
   }
-  def uniform_solve(q: List[Int]) = {
+  def uniform_solve(q: Seq[Int]) = {
 
     val l = Profiler("USolve Prepare") {
       dc.m.prepare(q, q.length - 1, q.length - 1)
@@ -86,7 +86,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     result
   }
 
-  def compare(qu: List[Int]) = {
+  def compare(qu: Seq[Int]) = {
     val q = qu.sorted
     println("Query = " + qu)
     Profiler.resetAll()

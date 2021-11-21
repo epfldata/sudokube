@@ -1,14 +1,14 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
 
-import frontend.schema.encoders.ColEncoder
+import frontend.schema.encoders.{ColEncoder, StaticMemCol}
 import util.{BigBinary, Profiler}
 
 
 /** This is a node in a dimension hierarchy, as we are used to in data cubes. */
 abstract class Dim(val name: String) extends Serializable {
   def n_bits : Int
-  var bits : Seq[Int] = List[Int]()
+  def bits : Seq[Int]
   def set_bits(offset: Int)
 }
 
@@ -18,34 +18,10 @@ case class LD[T](
   override val name: String,
   val n_bits: Int,
   vals: Seq[T]
-) extends Dim(name) with ColEncoder[T] {
-
-  def set_bits(offset: Int) { bits = (offset to offset + n_bits - 1) }
-
-  override def queries(): Set[List[Int]] = Set()
-
-  private val vanity_map: Map[T, Int] =
-    vals.zipWithIndex.map{ case (k, i) => (k, i) }.toMap
-  private val reverse_map: Map[Int, T] =
-    vals.zipWithIndex.map{ case (k, i) => (i, k) }.toMap
-
-  override def encode(v: T): BigBinary = if(v.isInstanceOf[Int] && n_bits == 1) {
-    val vi = v.asInstanceOf[Int]
-    Profiler("LD Encode") {
-      val res1 = if (vi == 0)
-        BigBinary(0)
-      else
-        BigBinary(BigInt(1) << bits.head)
-      //val res2 =  super.encode(v)
-      //assert(res1 == res2)
-      res1
-    }
-  } else super.encode(v)
-
-  def encode_locally(key: T) : Int = vanity_map(key)
-  def decode_locally(i: Int) : T   = reverse_map(i)
-
-  def maxIdx = (1 << bits.length) - 1
+) extends Dim(name)  {
+  val encoder = new StaticMemCol[T](n_bits, vals)
+  override def bits: Seq[Int] = encoder.bits
+  override def set_bits(offset: Int): Unit = encoder.set_bits(offset)
 }
 
 
@@ -61,8 +37,9 @@ class BD(override val name: String, children: List[Dim]
         off + c.n_bits
       }
     }
-    bits = (offset to end - 1)
   }
+
+  override def bits: Seq[Int] = children.map(_.bits).reduce(_ ++ _)
 
   def leaves : List[LD[_]] = children.map{ x =>
     if(x.isInstanceOf[BD]) x.asInstanceOf[BD].leaves
@@ -114,7 +91,7 @@ class StaticSchema(top_level: List[Dim]) extends Schema {
   val n_bits = root.bits.length
 
   // the actual columns are the leaves of the hierarchy.
-  val columnList = root.leaves.map(c => (c.name, c))
+  val columnList = root.leaves.map(c => (c.name, c.encoder))
   val colMap = columnList.toMap
 
   // uses ColEncoder[T].encode_any
