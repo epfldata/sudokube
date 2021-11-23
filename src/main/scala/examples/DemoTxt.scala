@@ -150,12 +150,7 @@ object DemoTxt {
     dc.save("Iowa200_all")
   }
 
-  def prepare(): Unit = {
-    val m = RandomizedMaterializationScheme(48, 0.1, 1.4)
-    val m2 = new MyRM(m)
-    m2.prepare((0 to 7).toList, 7, 7)
-    Profiler.print()
-  }
+
 
   def iowa3() = {
     val name = "Iowa200k"
