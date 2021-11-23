@@ -20,6 +20,7 @@ import scala.collection.mutable.ArrayBuffer
     The DataCube instance itself stores the Cuboids -- the data or proxies
     to the data held in the backend.
 */
+@SerialVersionUID(1L)
 class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /* protected */
@@ -59,7 +60,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       val par_build_plan = Profiler("CreateBuildPlan") {
         m.create_parallel_build_plan(cores)
       }
-      println(s"Projecting using $cores threads")
+      println(s"Dividing plan into $cores threads")
 
       // puts a ref to the same object into all fields of the array.
       val backend = full_cube.backend
@@ -84,7 +85,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
           }
         }
       }
-
+      println(s"Starting projections  ")
       threadBuffer.foreach(_.start())
       Profiler("Projections") {
         threadBuffer.foreach(_.join())

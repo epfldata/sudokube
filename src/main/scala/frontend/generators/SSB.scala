@@ -119,7 +119,7 @@ object SSB {
     //join.take(10).map(r => r._1.zip(allDims.map(_.name)).mkString("   ")).foreach(println)
 
     val r = join.zipWithIndex.map { case ((k, v), i) =>
-      if (i % 400000 == 0) {
+      if (i % 500000 == 0) {
         println(s"Encoding $i/${join.length}")
         Profiler.print()
         //sch.columnVector.map(c => (c.name, c.encoder.isRange, c.encoder.bits)).filter(x => !x._2 || (!x._3.isEmpty && (x._3.head != x._3.last + x._3.length-1))).foreach(println)
@@ -143,6 +143,20 @@ object SSB {
     (sch, dc)
   }
 
+  def loadAndSave(lrf1: Double, lbase1: Double, lrf2: Double, lbase2: Double) = {
+
+    val rf1 = math.pow(10, lrf1)
+    val base1 = math.pow(10, lbase1)
+    val rf2 = math.pow(10, lrf1)
+    val base2 = math.pow(10, lbase1)
+    val name = s"SSB-sf${sf}"
+    val dc1 = DataCube.load2(s"${name}_${lrf1}_${lbase1}")
+    val dc2 = new DataCube(RandomizedMaterializationScheme(dc1.m.n_bits, rf2, base2))
+
+    dc2.buildFrom(dc1)
+    dc2.save2(s"${name}_${lrf2}_${lbase2}")
+  }
+
   def load(lrf: Double, lbase: Double) = {
     val inputname = s"SSB-sf${sf}"
     val sch = StructuredDynamicSchema.load(inputname)
@@ -154,17 +168,23 @@ object SSB {
 
   def main(args: Array[String]) = {
     //println(Runtime.getRuntime.maxMemory()/(1 << 30).toDouble)
-    read()
-    /*
-    val lrf = -27
-    val lbase = 0.195
-    //val (sch, dc) = save(lrf, lbase)
-    val (sch, dc) = load(lrf, lbase)
-    val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
-    val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
-    expt.compare(List(40, 14, 4, 3, 2, 109, 86, 52, 23, 22))
+    //read()
+    var lrf = 0.0
+    var lbase = -1.0
+    if(args.length > 0) {
+      sf = args(0).toInt
+      lrf = args(1).toDouble
+      lbase = args(2).toDouble
+    }
+    println(s"SF = $sf")
+    val (sch, dc) = save(lrf, lbase)
+
+    //val (sch, dc) = load(lrf, lbase)
+    //val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
+    //val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
+    //expt.compare(List(40, 14, 4, 3, 2, 109, 86, 52, 23, 22))
     //qs.foreach(q => expt.compare(q))
-     */
+
     Profiler.print()
   }
 

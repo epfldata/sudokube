@@ -1,3 +1,4 @@
+import frontend.experiments.Tools
 import org.scalatest._
 
 
@@ -14,6 +15,16 @@ class CBackendSpec extends FlatSpec with Matchers {
     def my_mk(d: Int, l: List[(Int, Int)]) =
       CBackend.b.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
 
+    val c = my_mk(2, List((2,1), (0,3), (3,7)))
+    val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
+    val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
+    assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
+  }
+
+
+  "ScalaBackend simple absolute test" should "work" in {
+    def my_mk(d: Int, l: List[(Int, Int)]) =
+      ScalaBackend.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
     val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
     val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
@@ -61,6 +72,43 @@ class CBackendSpec extends FlatSpec with Matchers {
       assert(r1.map(_.sm) == r6, "FAILURE C != DataCube.naive_eval")
     }
   }
+  def randomTest(n_bits: Int, n_rows: Int, rf: Double, base: Double, qmax: Int) = {
+
+    val schema = StaticSchema.mk(n_bits)
+
+    val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
+    val be = Vector(CBackend.b, ScalaBackend)
+    val full_cube = be.map(_.mk(n_bits, R.toIterator))
+    val m = RandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val dcs = full_cube.map { fc =>
+      val dc = new DataCube(m)
+      dc.build(fc)
+      dc
+    }
+    val queries = (3 to qmax).flatMap{ s => (1 to 100).map(i => Tools.rand_q(n_bits, s))}
+    queries.foreach( q =>  {
+      val result = dcs.map(_.naive_eval(q))
+        assert(result(0).sameElements(result(1)), s"Query ${q} \n ${result(0).map(_.toInt).mkString(" ")} \n != \n ${result(1).map(_.toInt).mkString(" ")}")
+
+    })
+  }
+  "Scala and C Backends" should "produce same results for random queries case 0" in  {
+    randomTest(70, 100, 0.1, 1.1, 20)
+  }
+  /*
+  "Scala and C Backends" should "produce same results for random queries case 1" in  {
+    randomTest(70, 10000, 0.1, 1.1, 20)
+  }
+  "Scala and C Backends" should "produce same results for random queries case 2 " in  {
+    randomTest(70, 10000, 0.1, 1.19, 20)
+  }
+  "Scala and C Backends" should "produce same results for random queries case 3" in {
+    randomTest(70, 1000000, 0.1, 1.1, 20)
+  }
+  "Scala and C Backends" should "produce same results for random queries case 4" in {
+    randomTest(15, 100000, 1, 100, 14)
+  }
+*/
 }
 
 

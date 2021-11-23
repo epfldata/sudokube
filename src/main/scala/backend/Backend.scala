@@ -24,7 +24,7 @@ abstract class Backend[MEASURES_T] {
   protected type SPARSE_T
   protected type DENSE_T
   type MASK_T = Array[Int]
-
+  def allones(n: Int): MASK_T = Array.fill(n)(1)
   protected val be_this = this
 
   case class SparseCuboid(
@@ -38,10 +38,17 @@ abstract class Backend[MEASURES_T] {
     override def rehash(mask: MASK_T): Cuboid = {
       assert(mask.length == n_bits)
       val res_n_bits = mask.sum
-      val size_dense = Big.pow2(res_n_bits)
-      val sparse_cuboid = rehash_to_sparse(mask)
-      if (size_dense <= sparse_cuboid.size) rehash_to_dense(mask)
-      else sparse_cuboid
+      val n0 = (math.log(size.toDouble)/math.log(2)).toInt
+      if(n0 >= res_n_bits + 10)
+        rehash_to_dense(mask)
+      else {
+        val size_dense = Big.pow2(res_n_bits)
+        val sparse_cuboid = rehash_to_sparse(mask)
+        if (size_dense <= sparse_cuboid.size)
+          sparse_cuboid.rehash_to_dense(allones(res_n_bits))
+        else sparse_cuboid
+      }
+
     }
 
     def rehash_to_dense(mask: MASK_T) = {

@@ -8,6 +8,8 @@ void print_key(int n_bits, byte *key) {
     int b = (key[pos / 8] >> (pos % 8)) % 2;
     if(b) printf("1");
     else  printf("0");
+    if(pos % 8 == 0)
+        printf(" ");
   }
 }
 
@@ -53,12 +55,12 @@ unsigned long long toLong(int n_bits, byte *key) {
   return r;
 }
 
-void project_key(int n_bits, byte *from_key, int *mask, byte* to_key)
+void project_key(int n_bits, int toBytes, byte *from_key, int *mask, byte* to_key)
 {
     //we assume to_keys has length at least n_bits/8 + 1 bytes
 
   // IMPORTANT: to_key must be all zeroes!
-    memset(to_key, 0, n_bits/8 + 1);
+    memset(to_key, 0, toBytes);
 
   //printf("pk: ");
   //print_key(n_bits, from_key); printf(" ");

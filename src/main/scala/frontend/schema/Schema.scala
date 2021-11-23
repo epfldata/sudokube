@@ -10,7 +10,7 @@ import frontend.schema.encoders.ColEncoder
 
 import java.io._
 
-
+@SerialVersionUID(6L)
 trait Schema extends Serializable {
   // abstract members
   def n_bits: Int

@@ -8,6 +8,7 @@ import util.BigBinaryTools._
 import java.io.{File, FileInputStream, FileOutputStream, FileReader, ObjectInputStream, ObjectOutputStream}
 import scala.io.Source
 
+@SerialVersionUID(3L)
 abstract class Dim2(val name: String) extends  Serializable {
   def queries: Set[Seq[Int]]
 }
@@ -27,6 +28,7 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
 
 }
 
+@SerialVersionUID(4L)
 class StructuredDynamicSchema(top_level: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends Serializable  {
   val root = new BD2("ROOT", top_level, true)
 

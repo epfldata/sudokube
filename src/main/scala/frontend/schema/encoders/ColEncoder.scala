@@ -8,6 +8,7 @@ import util._
     a global encoder/decoder that assumes the local values are encoded in bits
     located at indexes "bits".
  */
+@SerialVersionUID(1L)
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
   def bits: Seq[Int]

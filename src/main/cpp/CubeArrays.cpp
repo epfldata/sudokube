@@ -29,13 +29,13 @@ struct rec {
 };
 */
 
-inline byte *getKey(byte **array, int idx, int recSize) {
+inline byte *getKey(byte **array, size_t idx, size_t recSize) {
     byte *key = (byte *) array + recSize * idx;
 //    printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
     return key;
 }
 
-inline value_t *getVal(byte **array, int idx, int recSize) {
+inline value_t *getVal(byte **array, size_t idx, size_t recSize) {
     value_t *val = (value_t *) ((byte *) array + (idx + 1) * recSize - sizeof(value_t));
 //    printf("array = %d idx = %d recSize = %d val = %d\n", array, idx, recSize, val);
     return val;
@@ -45,6 +45,14 @@ inline int bitsToBytes(int bits) {
     return bits / 8 + 1;
 }
 
+thread_local int globalnumkeybytes = 0;
+inline bool global_compare_keys(const tempRec& k1, const tempRec& k2)  {
+    for(int i = globalnumkeybytes - 1; i >= 0; i--) {
+        if(k1.key[i] < k2.key[i]) return true;
+        if(k1.key[i] > k2.key[i]) return false;
+    }
+    return false;
+}
 
 struct {
     std::vector<void *> ptr_registry;
@@ -73,7 +81,7 @@ struct {
         }
     }
 
-    void* readPtr(int id) {
+    void *readPtr(int id) {
         std::unique_lock<std::mutex> lock(registryMutex);
         return ptr_registry[id];
     }
@@ -162,7 +170,7 @@ void sparse_print(int s_id, int n_bits) {
     for (unsigned i = 0; i < size; i++) {
         print_key(n_bits, getKey(store, i, recSize));
         printf(" ");
-        printf(" %lld ", *getVal(store, i, recSize));
+        printf(" %" PRId64, *getVal(store, i, recSize));
         printf("\n");
     }
 }
@@ -172,11 +180,11 @@ void dense_print(int d_id, int n_bits) {
     unsigned int size;
     short keySize;
     globalRegistry.read(d_id, ptr, size, keySize);
-    value_t *store = (value_t *)ptr;
+    value_t *store = (value_t *) ptr;
 
     for (unsigned i = 0; i < size; i++) {
         printf("%u ", i);
-        printf("%lld ", store[i]);
+        printf(" %" PRId64, store[i]);
         printf("\n");
     }
 }
@@ -186,7 +194,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
     printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "r");
     assert(fp != NULL);
-    byte **buffer_array = new byte*[numCuboids];
+    byte **buffer_array = new byte *[numCuboids];
     for (int i = 0; i < numCuboids; i++) {
         bool sparse = isSparse_array[i];
         int n_bits = n_bits_array[i];
@@ -276,7 +284,7 @@ void write_cb(const char *filename, void *data, int id, size_t byte_size) {
 }
 
 void writeSCuboid(const char *filename, int s_id) {
-    void* data;
+    void *data;
     unsigned int size;
     short keySize;
     globalRegistry.read(s_id, data, size, keySize);
@@ -286,7 +294,7 @@ void writeSCuboid(const char *filename, int s_id) {
 }
 
 void writeDCuboid(const char *filename, int d_id) {
-    void* data;
+    void *data;
     unsigned int size;
     short keySize;
     globalRegistry.read(d_id, data, size, keySize);
@@ -304,7 +312,7 @@ void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int 
         int id = ids[i];
         bool sparse = isSparse_array[i];
 
-        void* data;
+        void *data;
         unsigned int size;
         short keySize;
         globalRegistry.read(id, data, size, keySize);
@@ -350,18 +358,18 @@ int srehash(int s_id, int *mask, int masklen) {
 #endif
     short keySize;
     unsigned int rows;
-    void* ptr;
+    void *ptr;
     globalRegistry.read(s_id, ptr, rows, keySize);
     byte **store = (byte **) ptr;
     int recSize = keySize + sizeof(value_t);
 
 
-    const int tempRecSize = sizeof(tempRec);
+    const unsigned int tempRecSize = sizeof(tempRec);
 
     tempRec *tempstore = (tempRec *) calloc(rows, tempRecSize);
 
     for (unsigned long r = 0; r < rows; r++) {
-        project_key(masklen, getKey(store, r, recSize), mask, getKey((byte **) tempstore, r, tempRecSize));
+        project_key(masklen, tempKeySize, getKey(store, r, recSize), mask, getKey((byte **) tempstore, r, tempRecSize));
         memcpy(getVal((byte **) tempstore, r, tempRecSize), getVal(store, r, recSize), sizeof(value_t));
 #ifdef VERBOSE
         print_key(masklen, getKey(store, r, recSize));
@@ -372,9 +380,9 @@ int srehash(int s_id, int *mask, int masklen) {
     }
 
 
-    std::sort(tempstore, tempstore + rows, [keySize](const tempRec &k1, const tempRec &k2) {
-        return compare_keys((const byte *) &(k1.key), (const byte *) &(k2.key), keySize);
-    });
+    globalnumkeybytes = keySize;
+    std::sort(tempstore, tempstore + rows, global_compare_keys);
+
 #ifdef VERBOSE
     printf("AFter sorting\n");
     for (unsigned long r = 0; r < rows; r++) {
@@ -481,7 +489,7 @@ int drehash(int n_bits, int d_id, int d_bits, int *mask, int masklen) {
     assert(r == r_cp);
 */
         // print_key(masklen, src_key);
-        project_key(masklen, src_key, mask, dest_key);
+        project_key(masklen, newKeySize, src_key, mask, dest_key);
         unsigned long long i = toLong(d_bits, dest_key);
 
 /*
@@ -522,7 +530,7 @@ int s2drehash(int s_id, int d_bits, int *mask, int masklen) {
 #endif
 
     unsigned int rows;
-    void* ptr;
+    void *ptr;
     short keySize;
     globalRegistry.read(s_id, ptr, rows, keySize);
     int recSize = keySize + sizeof(value_t);
@@ -541,7 +549,7 @@ int s2drehash(int s_id, int d_bits, int *mask, int masklen) {
     for (int r = 0; r < rows; r++) {
         byte dest_key[keySize];
 //    print_key(masklen, getKey(store, r, recSize));
-        project_key(masklen, getKey(store, r, recSize), mask, dest_key);
+        project_key(masklen, keySize, getKey(store, r, recSize), mask, dest_key);
         unsigned long long i = toLong(d_bits, dest_key);
         newstore[i] += *getVal(store, r, recSize);
 //    printf(" %lld %d\n", i, newstore[i]);
@@ -561,11 +569,11 @@ int s2drehash(int s_id, int d_bits, int *mask, int masklen) {
 int d2srehash(int n_bits, int d_id, int *mask, int masklen) {
     unsigned int size;
     short oldKeySize;
-    void * ptr;
+    void *ptr;
 
     globalRegistry.read(d_id, ptr, size, oldKeySize);
     value_t *store = (value_t *) ptr;
-    assert(size ==  (1 << masklen));
+    assert(size == (1 << masklen));
 
     long newrows = size;
 
@@ -585,7 +593,7 @@ int d2srehash(int n_bits, int d_id, int *mask, int masklen) {
     for (unsigned long long r = 0; r < size; r++) {
         byte src_key[oldKeySize];
         fromLong(src_key, r, oldKeySize);
-        project_key(masklen, src_key, mask, getKey(newstore, r, newKeySize));
+        project_key(masklen, newKeySize, src_key, mask, getKey(newstore, r, newKeySize));
         *getVal(newstore, r, newRecSize) += store[r];
     }
 

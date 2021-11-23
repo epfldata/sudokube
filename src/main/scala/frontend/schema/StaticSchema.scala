@@ -6,6 +6,7 @@ import util.{BigBinary, Profiler}
 
 
 /** This is a node in a dimension hierarchy, as we are used to in data cubes. */
+@SerialVersionUID(5L)
 abstract class Dim(val name: String) extends Serializable {
   def n_bits : Int
   def bits : Seq[Int]

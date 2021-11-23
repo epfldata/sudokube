@@ -1,6 +1,7 @@
 package frontend.schema
 
-class BitPosRegistry {
+@SerialVersionUID(1L)
+class BitPosRegistry  extends  Serializable {
   protected var bitpos = 0
   def n_bits = bitpos
   def increment(n: Int)  = {
@@ -10,7 +11,8 @@ class BitPosRegistry {
 }
 
 /** manages an expanding collection of global bit indexes. */
-class RegisterIdx(val registry: BitPosRegistry) {
+@SerialVersionUID(2L)
+class RegisterIdx(val registry: BitPosRegistry) extends Serializable {
   var maxIdx = 0
   var bits : List[Int] = List()
   var bitsMin = 0
