@@ -77,9 +77,10 @@ class MemCol[T](init_size: Int = 8
   def decode_locally(i: Int): T = decode_map(i)
 }
 
-class NestedMemCol[T](partition: T => (T, T))(implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T]  {
-  val c1 = new MemCol[T]()
-  val c2 = new MemCol[T]()
+class NestedMemCol[T](partition: T => (T, T), initvalues:Seq[T])(implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T]  {
+
+  val c1 = new MemCol[T](initvalues.map(x => partition(x)._1).distinct)
+  val c2 = new MemCol[T](initvalues.map(x => partition(x)._2).distinct)
 
   override def queries(): Set[Seq[Int]] = Set(Nil, c1.bits.toList, (c1.bits.toList ++ c2.bits.toList))
 

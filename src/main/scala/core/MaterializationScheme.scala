@@ -179,7 +179,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
    def qproject(q: Seq[Int]): Seq[ProjectionMetaData] = {
     val PI = projections.zipWithIndex
     val qBS = q.toSet
-    val qIS = qBS.toIndexedSeq
+    val qIS = q.toIndexedSeq
     PI.map { xid =>
       val ab0 = xid._1.toSet.intersect(qBS) // unnormalized
       val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized

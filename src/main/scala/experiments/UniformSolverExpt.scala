@@ -10,12 +10,14 @@ import core.solver.Strategy.{CoMomentFrechet, Strategy}
 import frontend.experiments.Tools
 
 import java.io.PrintStream
+import java.time.Instant
 import scala.reflect.ClassTag
 
 
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverExpt") {
 
-  val fileout = new PrintStream(s"expdata/$name.csv")
+  val timestamp = Instant.now().toString
+  val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
   val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
   fileout.println("Query, QSize, DOF, NFetchTime(us), UFetchTime(us), " + strategies.map(a => s"$a AddTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
@@ -88,7 +90,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
 
   def compare(qu: Seq[Int]) = {
     val q = qu.sorted
-    println("Query = " + qu)
+    println("\nQuery = " + qu)
     Profiler.resetAll()
     val naiveRes = dc.naive_eval(q)
     val naiveCum = fastSum(naiveRes)

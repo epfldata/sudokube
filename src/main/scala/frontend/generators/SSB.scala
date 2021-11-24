@@ -145,10 +145,9 @@ object SSB {
 
   def loadAndSave(lrf1: Double, lbase1: Double, lrf2: Double, lbase2: Double) = {
 
-    val rf1 = math.pow(10, lrf1)
-    val base1 = math.pow(10, lbase1)
-    val rf2 = math.pow(10, lrf1)
-    val base2 = math.pow(10, lbase1)
+
+    val rf2 = math.pow(10, lrf2)
+    val base2 = math.pow(10, lbase2)
     val name = s"SSB-sf${sf}"
     val dc1 = DataCube.load2(s"${name}_${lrf1}_${lbase1}")
     val dc2 = new DataCube(RandomizedMaterializationScheme(dc1.m.n_bits, rf2, base2))

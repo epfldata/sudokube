@@ -12,7 +12,7 @@ import util._
 import core.SolverTools._
 import core.solver.Strategy.{CoMoment, Cumulant}
 import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol}
-import frontend.schema.{DynamicSchema, LD2, StructuredDynamicSchema}
+import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StructuredDynamicSchema}
 
 import java.io.{FileReader, FileWriter}
 import java.util.Date
@@ -150,7 +150,21 @@ object DemoTxt {
     dc.save("Iowa200_all")
   }
 
-
+  def test1() = {
+    implicit val bpos = new BitPosRegistry
+    val e2 = LD2("col1", new NatCol(1000))
+    val e1 = LD2("col1", new NatCol(60))
+    val s = new StructuredDynamicSchema(Vector(e2, e1))
+    println("Schema bits = " + s.n_bits)
+    s.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    val tups = List(
+      Vector(11, 3),
+      Vector(512, 2),
+      Vector(33, 55)
+    )
+    tups.map(s.encode_tuple(_).toPaddedString(16)).foreach(println)
+    ()
+  }
 
   def iowa3() = {
     val name = "Iowa200k"
@@ -309,7 +323,7 @@ object DemoTxt {
   def main(args: Array[String]): Unit = {
     //uniformSolver()
     //prepare()
-    //test()
+    test1()
     //loadtest()
     //investment()
     //sample(1000)

@@ -5,8 +5,9 @@ class BitPosRegistry  extends  Serializable {
   protected var bitpos = 0
   def n_bits = bitpos
   def increment(n: Int)  = {
+    val bitposorig = bitpos
     bitpos += n
-    bitpos
+    bitposorig
   }
 }
 

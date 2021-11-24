@@ -264,7 +264,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   }
 
   def fastSolve() = {
-    val result = sumValues.toArray
+    val result = sumValues.clone()
     var h = 1
     while (h < N) {
       (0 until N by h * 2).foreach { i =>
