@@ -9,7 +9,7 @@ abstract class Cuboid {
   type MASK_T = Array[Int]
   val n_bits : Int
   def size: BigInt
-
+  def numBytes: Long
   def rehash_to_sparse(mask: MASK_T): Cuboid
   def rehash_to_dense( mask: MASK_T): Cuboid
 
@@ -34,6 +34,7 @@ abstract class Backend[MEASURES_T] {
 
     /** size in # rows */
     def size = sSize(data)
+    def numBytes: Long = sNumBytes(data)
 
     override def rehash(mask: MASK_T): Cuboid = {
       assert(mask.length == n_bits)
@@ -71,7 +72,7 @@ abstract class Backend[MEASURES_T] {
   ) extends Cuboid {
 
     def size = Big.pow2(n_bits)
-
+    override def numBytes: Long = (size * 8).toLong
 
     /** smart rehash */
     override def rehash(mask: MASK_T): Cuboid = rehash_to_dense(mask)
@@ -104,6 +105,7 @@ abstract class Backend[MEASURES_T] {
 
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
   protected def sSize(data: SPARSE_T) : BigInt
+  protected def sNumBytes(data: SPARSE_T) : Long
 
   protected def d2sRehash(n_bits: Int, a: DENSE_T,  mask: MASK_T) : SPARSE_T
   protected def s2dRehash(a: SPARSE_T, p_bits: Int, mask: MASK_T) : DENSE_T

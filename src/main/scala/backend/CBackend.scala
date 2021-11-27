@@ -20,6 +20,7 @@ class CBackend extends Backend[Payload] {
                                    mask: Array[Int]): Int
   @native protected def mk0(n_bits: Int): Int
   @native protected def sSize0(id: Int): Int
+  @native protected def sNumBytes0(id: Int): Long
   @native protected def dFetch0(d_id: Int): Array[Long]
 
   @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
@@ -105,6 +106,7 @@ class CBackend extends Backend[Payload] {
 
   /** size of spare cuboid, in rows. */
   protected def sSize(data: SPARSE_T) : BigInt = sSize0(data)
+  protected def sNumBytes(data: SPARSE_T): Long =  sNumBytes0(data)
 }
 
 

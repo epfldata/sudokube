@@ -57,6 +57,14 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
 
 /*
  * Class:     backend_CBackend
+ * Method:    sNumBytes0
+ * Signature: (I)J
+ */
+JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     backend_CBackend
  * Method:    dFetch0
  * Signature: (I)[J
  */

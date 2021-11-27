@@ -2,7 +2,7 @@ package examples
 
 import backend.CBackend
 import breeze.io.{CSVReader, CSVWriter}
-import combinatorics.Combinatorics.comb
+import combinatorics.Combinatorics.{comb, comb2, mk_comb_bi}
 import core.solver.UniformSolver
 import experiments.UniformSolverExpt
 import frontend.experiments.Tools
@@ -166,6 +166,18 @@ object DemoTxt {
     ()
   }
 
+  def combTest() = {
+    (10 to 10).map { n =>
+      (0 to n).map{ k =>
+        val l1 = Profiler("L1"){mk_comb_bi(n, k)}.sorted
+        val l2 = Profiler("L2"){comb2(n, k)}.sorted
+        println((n, k))
+        println("L1 = " + l1)
+        println("L2 = " + l2)
+      }
+    }
+    Profiler.print()
+  }
   def iowa3() = {
     val name = "Iowa200k"
     val dir = "/Users/sachin/Downloads"
@@ -323,8 +335,9 @@ object DemoTxt {
   def main(args: Array[String]): Unit = {
     //uniformSolver()
     //prepare()
-    test1()
+    //test1()
     //loadtest()
+    combTest()
     //investment()
     //sample(1000)
     //large()

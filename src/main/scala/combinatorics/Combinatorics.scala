@@ -327,11 +327,24 @@ object Combinatorics {
     mk_comb1(n, k, 0)
   }
 
-  def mk_comb_bi(n: Int, k: Int) : List[BigInt] = {
-    def rec(num: BigInt, ones: Int, dims: Int): List[BigInt] = {
-      if (ones == dims)
+  val combMap = collection.mutable.HashMap[(Int, Int), List[Int]]()
+
+  def comb2(n: Int, k: Int): List[Int] = if(combMap.isDefinedAt((n, k))) combMap((n, k)) else {
+    val l = if(k == 0) List(0) else if(k == n) List((1<<n) -1) else {
+      val l1 = comb2(n-1, k).map(x => x << 1)
+      val l2 = comb2(n-1, k-1).map(x => (x << 1) + 1)
+      l1 ++ l2
+    }
+    combMap += ((n, k) -> l)
+    l
+  }
+  def mk_comb_bi(n: Int, k: Int) : List[Int] = {
+    assert(n <= 31)
+    def rec(num: Int, ones: Int, dims: Int): List[Int] = {
+
+      if (ones == dims) //all ones from now on
         List(((num + 1) << dims) - 1)
-      else if (ones == 0)
+      else if (ones == 0) // all zeros from now on
         List(num << dims)
       else {
         val num2 = num << 1

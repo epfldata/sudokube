@@ -6,7 +6,7 @@ import core.{DataCube, RandomizedMaterializationScheme, Rational}
 import experiments.UniformSolverExpt
 import frontend.schema.encoders.{DateCol, MemCol, NatCol}
 import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
-import util.Profiler
+import util.{Profiler, Util}
 import core.RationalTools._
 
 import java.io.FileReader
@@ -168,21 +168,48 @@ object SSB {
   def main(args: Array[String]) = {
     //println(Runtime.getRuntime.maxMemory()/(1 << 30).toDouble)
     //read()
-    var lrf = 0.0
-    var lbase = -1.0
-    if(args.length > 0) {
-      sf = args(0).toInt
-      lrf = args(1).toDouble
-      lbase = args(2).toDouble
-    }
-    println(s"SF = $sf")
-    val (sch, dc) = save(lrf, lbase)
 
-    //val (sch, dc) = load(lrf, lbase)
-    //val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
-    //val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
-    //expt.compare(List(40, 14, 4, 3, 2, 109, 86, 52, 23, 22))
-    //qs.foreach(q => expt.compare(q))
+
+    //sf=100
+    //val lrf = 0
+    //val lbase = -1
+
+    val lrf = -29
+    val lbase = 0.184
+    sf = 10
+
+
+    //sf=1
+    //val lrf = -27
+    //val lbase = 0.195
+
+    println(s"SF = $sf lrf = $lrf lbase = $lbase")
+    //val (sch, dc) = save(lrf, lbase)
+    val (sch, dc) = load(lrf, lbase)
+
+
+    //val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
+    //  val n = cs.length
+    //  val sum = cs.map(_.numBytes).sum
+    //  val avg = (sum/n).toInt
+    //  s"$n \t $sum  \t $avg"
+    //}
+    //cubs.toList.sortBy(_._1).foreach{case (k, v) => println(s"$k \t $v")}
+
+    val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
+    val qs = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
+    //expt.compare(List(12, 77, 76, 75, 74))
+    val q2 = (20 to 20).flatMap{ i =>
+      val n = qs(i).size
+      if(n <= 1) qs(i).toList else {
+        val idx = Util.collect_n(1, () => scala.util.Random.nextInt(n))
+        idx.map(x =>qs(i)(x))
+      }
+    }
+    q2.foreach{q =>
+      Profiler("Compare Full"){expt.compare(q)}
+      //Profiler.print()
+    }
 
     Profiler.print()
   }

@@ -19,7 +19,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
   val timestamp = Instant.now().toString
   val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
   val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
-  fileout.println("Query, QSize, DOF, NFetchTime(us), UFetchTime(us), " + strategies.map(a => s"$a AddTime(us), $a SolveTime(us), $a Err").mkString(", "))
+  fileout.println("Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -90,17 +90,17 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
 
   def compare(qu: Seq[Int]) = {
     val q = qu.sorted
-    println("\nQuery = " + qu)
+    println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
-    val naiveRes = dc.naive_eval(q)
-    val naiveCum = fastSum(naiveRes)
+    val naiveRes = Profiler("Naive Full"){dc.naive_eval(q)}
+    //val naiveCum = fastSum(naiveRes)
 
-    val solverRes = uniform_solve(q)
+    val solverRes = Profiler("Solver Full"){uniform_solve(q)}
     val num = implicitly[Fractional[T]]
     //Profiler.print()
 
 
-    val errors = solverRes.map{s => s.strategy ->  error(naiveRes, s.solution)}
+    val errors = Profiler("ErrorChecking"){solverRes.map{s => s.strategy ->  error(naiveRes, s.solution)}}
     val dof = solverRes.head.dof
     val knownSums = solverRes.head.knownSums
 
@@ -115,26 +115,30 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     //}
     //allcums.sortBy{case (i, n, ssv) => Math.abs(ssv.head - n)}.map{case (i, n, ssv) => s"$i ${knownSums(i)} ==> $n     ${ssv.mkString(" ")}"}.foreach(println)
 
+      val ntotal = Profiler.durations("Naive Full")._2/1000
+      val nprepare = Profiler.durations("NaivePrepare")._2/1000
       val nfetch = Profiler.durations("NaiveFetch")._2/1000
+      val uprep = Profiler.durations("USolve Prepare")._2/1000
       val ufetch = Profiler.durations("USolve Fetch")._2/1000
+      val utot = Profiler.durations("Solver Full")._2/1000
 
       def round(v: Double) = {
         val prec = 10000
         math.floor(v*prec)/prec
       }
 
-      val resultrow = s"${qu.mkString(":")},${q.size},$dof,$nfetch, $ufetch," +
+      val resultrow = s"${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal, $uprep $ufetch,$utot" +
         errors.map{case (algo, err) =>
           val uadd = Profiler.durations(s"USolve Add $algo")._2/1000
+          val ufill = Profiler.durations(s"USolve FillMissing $algo")._2/1000
           val usolve= Profiler.durations(s"USolve Solve $algo")._2/1000
-          s"${uadd},${usolve},${round(err)}"
+          s"${uadd},${ufill},${usolve},${round(err)}"
         }.mkString(", ")
     fileout.println(resultrow)
 
   }
 
   def rnd_compare(qsize: Int) = {
-    println("Query size = "+qsize)
     val query = Tools.rand_q(dc.m.n_bits, qsize)
     compare(query)
   }

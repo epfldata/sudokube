@@ -53,6 +53,7 @@ object ScalaBackend extends Backend[Payload] {
   protected def dFetch(data: DENSE_T) : Array[Payload] = data
 
   protected def sSize(data: SPARSE_T) : BigInt = data.length
+  protected def sNumBytes(data: SPARSE_T) : Long = ???
 
   private def d2s(a: DENSE_T) : SPARSE_T =
     a.zipWithIndex.map(x => (BigBinary(x._2), x._1))

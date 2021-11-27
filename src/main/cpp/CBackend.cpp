@@ -14,6 +14,7 @@ extern void     add(int s_id, int n_bits, byte *key, value_t v);
 extern void     freeze(int s_id);
 extern value_t *fetch(int d_id, unsigned int& size);
 extern int      sz(int id);
+extern size_t   sNumBytes(int id);
 
 extern int   readSCuboid(const char *filename, int n_bits, int size);
 extern int   readDCuboid(const char *filename, int n_bits, int size);
@@ -112,6 +113,10 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
   return sz(id);
 }
 
+JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
+        (JNIEnv *, jobject, jint id) {
+            return sNumBytes(id);
+}
 JNIEXPORT jint JNICALL Java_backend_CBackend_mk0
 (JNIEnv* env, jobject obj, jint n_bits)
 {

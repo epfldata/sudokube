@@ -158,6 +158,15 @@ void freeze(int s_id) {
 
 int sz(int id) { return globalRegistry.readSize(id); }
 
+size_t sNumBytes(int s_id) {
+    short keySize;
+    unsigned int rows;
+    void *ptr;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    int recSize = keySize + sizeof(value_t);
+    return recSize * rows;
+
+};
 void sparse_print(int s_id, int n_bits) {
 
     void *ptr;

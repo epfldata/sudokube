@@ -3,10 +3,10 @@ package frontend.generators
 import backend.CBackend
 import core.{DataCube, RandomizedMaterializationScheme}
 import experiments.UniformSolverExpt
+import frontend.Sampling
 import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
-import util.Profiler
-import core.RationalTools._
+import util.{Profiler, Util}
 
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -102,22 +102,41 @@ object Iowa {
 
   def main(args: Array[String]) = {
 
-    val name = "Iowa200k"
-    val lrf = -9
-    val lbase = 0.13
+    //val name = "Iowa200k"
+    //val lrf = -9
+    //val lbase = 0.13
 
-    //val name = "IowaAll"
-    //val lrf = -16
-    //val lbase = 0.19
+    val name = "IowaAll"
+    val lrf = -16
+    val lbase = 0.19
 
     //val (sch, dc) = save(name, lrf, lbase)
     val (sch, dc) = load(name, lrf, lbase)
+
+    //val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
+    //  val n = cs.length
+    //  val sum = cs.map(_.numBytes).sum
+    //  val avg = (sum/n).toInt
+    //  s"$n \t $sum  \t $avg"
+    //}
+    //cubs.toList.sortBy(_._1).foreach{case (k, v) => println(s"$k \t $v")}
+
     //loadAndSave("IowaAll", 0, -1, -16, 0.19)
-    val qs = sch.queries
-    val expt = new UniformSolverExpt(dc, s"${name}-${lrf}-${lbase}")
-    expt.compare(List(12, 77, 76, 75, 74))
     //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
-    //qs.filter(x => x.length >= 4  && x.length <= 10 && !x.contains(sch.n_bits)).foreach(q => expt.compare(q))
+    val expt = new UniformSolverExpt[Double](dc, s"${name}-${lrf}-${lbase}")
+    val qs = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
+
+    val q2 = (4 to 14).flatMap{ i =>
+      val n = qs(i).size
+      if(n <= 50) qs(i).toList else {
+        val idx = Util.collect_n(40, () => scala.util.Random.nextInt(n))
+        idx.map(x =>qs(i)(x))
+      }
+    }
+    q2.foreach{q =>
+      Profiler("Compare Full"){expt.compare(q)}
+      //Profiler.print()
+    }
     ()
   }
 }

@@ -134,24 +134,24 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
 
     //Special case for means
-    val sum = Profiler(s"SDV n$n") {
+    val sum = Profiler.noprofile(s"SDV n$n") {
       if (n == 1)
         num.div(sumValues(0), num.fromInt(2))
       else
         (1 to n).map { k =>
-          def func = {
 
-            //WARNING: Converting BigInt to Int. Ensure that query does not involve more than 30 bits
-            val combs = Profiler.profile("mkComb") {
-              Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i.toInt, row))
+            //WARNING: Ensure that query does not involve more than 30 bits
+            val projcombs = Profiler.noprofile("mkComb") {
+              Combinatorics.comb2(n, k)
             }
+            val combs = Profiler("unproject Comb"){projcombs.map(i => Bits.unproject(i, row))}
             val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
             //TODO: Can simplify further if parents were unknown and default values were used for them
-            num.times(sign, combs.map { i =>
+            Profiler("Term Mult"){num.times(sign, combs.map { i =>
               num.times(sumValues(row - i), meanProducts(i))
-            }.sum)
-          }
-          if(n == 7) Profiler.profile(s"SDV n$n k$k")(func) else func
+            }.sum)}
+
+
         }.sum
     }
     val ub = upperBound(row)
