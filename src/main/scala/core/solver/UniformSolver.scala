@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Cumulant, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Cumulant,Cumulant2, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
@@ -21,10 +21,15 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   val N = 1 << qsize
   assert(qsize < 31)
   val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
+
   val sumValues = new Array[T](N)
   val knownSums = collection.mutable.BitSet()
+
   val meanProducts = new Array[T](N)
   val knownMeanProducts = collection.mutable.BitSet()
+
+  val cumulantMap = Array.fill(N)( num.zero)
+  val knownCumulants = collection.mutable.BitSet()
 
   var fetchedCuboids = List[(Int, Array[Double])]()
   var solution: Array[Double] = null
@@ -128,6 +133,51 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     num.times(sum, sumValues(0))
   }
 
+  val partitionMap = collection.mutable.Map[Int, List[List[Int]]]()
+
+  def addElem(a: Int, partition: List[Int]) = {
+    def rec(before: List[Int], after: List[Int], acc: List[List[Int]]): List[List[Int]] = after match {
+      case Nil => (a :: before) :: acc
+      case h :: t  =>
+        val acc2 = if(knownSums(a + h)) ((a + h) :: (before ++ t)) :: acc else acc
+        rec(before :+ h, t, acc2)
+
+    }
+    rec(Nil, partition, Nil)
+  }
+
+  def getPart(s: Int): List[List[Int]] = if(partitionMap.isDefinedAt(s)) partitionMap(s) else {
+
+    var a = 1
+    while((s & a) == 0 || !knownSums(a))
+      a = a << 1
+
+    val partitions = if(s==a)
+      List(List(a))
+    else {
+      getPart(s-a).flatMap{p => addElem(a, p)}
+    }
+    //println(s, partitions)
+    partitionMap += s -> partitions
+    partitions
+  }
+
+  def getDefaultValueCumulant2(row: Int) = {
+    val parts = getPart(row)
+    if(parts.size > 1000) {
+      println(parts.size)
+      val parts2 = parts.map(p => p.toSet).toSet
+      println(parts2.size)
+      assert(parts.map(part => part.map(x => knownSums(x)).reduce(_ && _)).reduce(_ &&_))
+      //parts.foreach( x => println(x.size))
+      ()
+    }
+   val sum = parts.map{ partition =>
+      partition.map{part => cumulantMap(part)}.product
+    }.sum
+    num.times(sum, sumValues(0))
+  }
+
   def getDefaultValueCoMoment(row: Int, withUpperBound: Boolean) = {
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
@@ -193,6 +243,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val value = strategy match {
       case Avg => getDefaultValueAvg(row)
       case Cumulant => getDefaultValueCumulant(row)
+      case Cumulant2 => getDefaultValueCumulant2(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
       case Zero => num.zero
@@ -228,6 +279,27 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     }
   }
 
+  def buildCumulant(): Unit = {
+    knownCumulants += 0
+    cumulantMap(0) = num.one
+    val sizeOne = (0 until qsize).map { i =>
+      val j = (1 << i)
+      cumulantMap(j) = num.div(sumValues(j), sumValues(0))
+      knownCumulants += j
+      j
+    }
+    hamming_order.filter(x => knownSums.contains(x) && !knownCumulants.contains(x)).foreach { row  =>
+      val partitions = getPart(row).filter(_.size > 1)
+      val sum = partitions.map { partition => partition.map(cumulantMap).product}.sum
+      val sumStr = partitions.map{ partition => partition.mkString("*")}.mkString(" + ")
+      val res = num.minus(num.div(sumValues(row), sumValues(0)), sum)
+      //println(s" $row = $sumStr  $sum $res")
+
+      cumulantMap(row) = res
+      knownCumulants += row
+    }
+  }
+
   def fillMissing() = {
 
     import core.solver.Strategy.Strategy
@@ -240,6 +312,10 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     Profiler("MeanProducts") {
       buildMeanProduct()
     }
+
+    //Profiler("Build Cumulant") {
+    //  buildCumulant()
+    //}
 
     Profiler("SetDefaultValueAll") {
       toSolve.foreach { r =>
@@ -271,7 +347,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         (i until i + h).foreach { j =>
           val diff = num.minus(result(j), result(j + h))
           strategy match {
-            case CoMomentFrechet =>
+            case CoMomentFrechet | Cumulant2 =>
               if (num.lt(diff, num.zero)) {
                 result(j + h) = result(j)
                 result(j) = num.zero

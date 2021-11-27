@@ -213,7 +213,8 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
             int recSize = keySize + sizeof(value_t);
             size_t byte_size = size * recSize;
             byte *buffer = (byte *) malloc(byte_size);
-            fread(buffer, 1, byte_size, fp);
+            size_t readBytes = fread(buffer, 1, byte_size, fp);
+            assert(readBytes == byte_size);
             buffer_array[i] = buffer;
 #ifdef VERBOSE
             printf("Read Sparse Cuboid i=%d,  nbits=%d, size=%d, keySize=%d, bufferSize=%lu\n", i, n_bits, size,

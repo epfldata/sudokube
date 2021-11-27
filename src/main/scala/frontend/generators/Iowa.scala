@@ -113,6 +113,8 @@ object Iowa {
     //val (sch, dc) = save(name, lrf, lbase)
     val (sch, dc) = load(name, lrf, lbase)
 
+    //(1 to 4).map{ i => loadAndSave(name, 0, -1, lrf - 0.25*i, lbase)}
+    //(3 to 4).map{ i => loadAndSave(name, 0, -1, lrf + 0.25*i, lbase)}
     //val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
     //  val n = cs.length
     //  val sum = cs.map(_.numBytes).sum
