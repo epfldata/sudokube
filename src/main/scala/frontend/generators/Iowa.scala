@@ -1,8 +1,9 @@
 package frontend.generators
 
 import backend.CBackend
-import core.{DataCube, RandomizedMaterializationScheme}
-import experiments.UniformSolverExpt
+import core.{DataCube, RandomizedMaterializationScheme, Rational}
+import core.RationalTools._
+import experiments.{LPSolverExpt, UniformSolverExpt}
 import frontend.Sampling
 import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
@@ -100,7 +101,7 @@ object Iowa {
     (sch, dc)
   }
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String])  {
 
     //val name = "Iowa200k"
     //val lrf = -9
@@ -112,9 +113,11 @@ object Iowa {
 
     //val (sch, dc) = save(name, lrf, lbase)
     val (sch, dc) = load(name, lrf, lbase)
+    //val sch = StructuredDynamicSchema.load(name)
+
 
     //(1 to 4).map{ i => loadAndSave(name, 0, -1, lrf - 0.25*i, lbase)}
-    //(3 to 4).map{ i => loadAndSave(name, 0, -1, lrf + 0.25*i, lbase)}
+    //(2 to 2).map{ i => loadAndSave(name, lrf, lbase, lrf + 0.25*i, lbase)}
     //val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
     //  val n = cs.length
     //  val sum = cs.map(_.numBytes).sum
@@ -123,22 +126,36 @@ object Iowa {
     //}
     //cubs.toList.sortBy(_._1).foreach{case (k, v) => println(s"$k \t $v")}
 
-    //loadAndSave("IowaAll", 0, -1, -16, 0.19)
-    //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
-    val expt = new UniformSolverExpt[Double](dc, s"${name}-${lrf}-${lbase}")
     val qs = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
 
-    val q2 = (4 to 14).flatMap{ i =>
+    val q2 = (4 to 10).flatMap{ i =>
       val n = qs(i).size
-      if(n <= 50) qs(i).toList else {
-        val idx = Util.collect_n(40, () => scala.util.Random.nextInt(n))
+      if(n <= 40) qs(i).toList else {
+        val idx = Util.collect_n(30, () => scala.util.Random.nextInt(n))
         idx.map(x =>qs(i)(x))
       }
     }
-    q2.foreach{q =>
-      Profiler("Compare Full"){expt.compare(q)}
-      //Profiler.print()
-    }
-    ()
+
+    //val cubs = (0 to 8 ).map { i =>
+    //  val lrf2 = -17.0 + i * 0.25
+    //  val dc2 = DataCube.load2(s"${name}_${lrf2}_${lbase}")
+    //  dc2.cuboids.groupBy(_.n_bits).mapValues(_.length).map{case (nb, nc) => s"$lrf2 \t $nb \t $nc"}.foreach(System.err.println)
+    //  //new UniformSolverExpt[Double](dc2, s"${name}-${lrf2}-${lbase}")
+    //}
+
+    //loadAndSave("IowaAll", 0, -1, -16, 0.19)
+    //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
+    //val expt = new UniformSolverExpt[Double](dc, s"UniformSolve-${name}-${lrf}-${lbase}")
+    val expt = new LPSolverExpt[Rational](dc, s"LPSolve-${name}-${lrf}-${lbase}")
+
+   //es.foreach { expt =>
+     q2.foreach { q =>
+       Profiler("Compare Full") {
+         expt.compare(q)
+       }
+       //Profiler.print()
+     }
+   //}
+    //()
   }
 }

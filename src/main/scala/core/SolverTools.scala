@@ -11,11 +11,11 @@ object SolverTools {
     deviation / sum
   }
   /// creates initial intervals [0, +\infty) for each variable.
-  def mk_all_non_neg[T](n_bits: Int)(implicit num: Numeric[T]
+  def mk_all_non_neg[T](n_vars: Int)(implicit num: Numeric[T]
   ): collection.mutable.ArrayBuffer[Interval[T]] = {
 
     val bounds = new collection.mutable.ArrayBuffer[Interval[T]]()
-    bounds ++= (1 to n_bits).map(_ => Interval(Some(num.zero), None))
+    bounds ++= (1 to n_vars).map(_ => Interval(Some(num.zero), None))
     bounds
   }
 

@@ -17,9 +17,11 @@ import scala.reflect.ClassTag
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverExpt") {
 
   val timestamp = Instant.now().toString
+  val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf)/math.log(10)
+  val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base)/math.log(10)
   val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
   val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
-  fileout.println("Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
+  fileout.println("LogRF,LogBase,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -60,6 +62,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     }
     result
   }
+
   def uniform_solve(q: Seq[Int]) = {
 
     val l = Profiler("USolve Prepare") {
@@ -127,12 +130,12 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
         math.floor(v*prec)/prec
       }
 
-      val resultrow = s"${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal, $uprep $ufetch,$utot" +
+      val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $uprep,$ufetch,$utot,  " +
         errors.map{case (algo, err) =>
           val uadd = Profiler.durations(s"USolve Add $algo")._2/1000
           val ufill = Profiler.durations(s"USolve FillMissing $algo")._2/1000
           val usolve= Profiler.durations(s"USolve Solve $algo")._2/1000
-          s"${uadd},${ufill},${usolve},${round(err)}"
+          s"  ${uadd},${ufill},${usolve},${round(err)}"
         }.mkString(", ")
     fileout.println(resultrow)
 
