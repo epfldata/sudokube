@@ -53,7 +53,7 @@ import java.util.{Timer, TimerTask}
      stats += (cur - startTime) -> stat
    }
 
-   def finish() = {
+   def finishAuto() = {
      if(timerTask != null) timerTask.cancel()
      timer.purge()
      val cur = System.currentTimeMillis()

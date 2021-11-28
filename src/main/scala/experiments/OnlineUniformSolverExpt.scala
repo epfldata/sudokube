@@ -44,13 +44,13 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: Str
       stg.record()
       l = l.tail
     }
-    stg.finish()
+    //stg.finishAuto()
 
     val naiveRes = dc.naive_eval(q)
 
     stg.stats.foreach{ case (time, (dof, sol)) =>
     val err =  error(naiveRes, sol)
-      println(s"\n@$time : dof=$dof err=$err")
+      println(s"@$time : dof=$dof err=$err")
       fileout.println(s"$lrf,$lbase,$qstr,${q.size},$time,$dof,$err" )
     }
   }

@@ -130,7 +130,7 @@ object CubeData {
             Profiler.print()
           }
           println("Remaining cuboids = "+l.size)
-          statsGatherer.finish()
+          statsGatherer.finishAuto()
           statsGatherer
         }
 
