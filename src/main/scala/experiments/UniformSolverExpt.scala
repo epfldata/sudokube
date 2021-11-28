@@ -66,7 +66,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
   def uniform_solve(q: Seq[Int]) = {
 
     val l = Profiler("USolve Prepare") {
-      dc.m.prepare(q, q.length - 1, q.length - 1)
+      dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1)
     }
     val solvers = strategies.map(a => new UniformSolver[T](q.length, a))
 

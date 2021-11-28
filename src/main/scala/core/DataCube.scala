@@ -229,7 +229,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /** This is the only place where we transfer data from C into Scala.
   */
-  protected def fetch(pms: List[ProjectionMetaData]) : Array[Payload] = {
+  protected def fetch(pms: Seq[ProjectionMetaData]) : Array[Payload] = {
     if(cuboids.length == 0) throw new Exception("Need to build first!")
 
     val backend = cuboids(0).backend
@@ -243,7 +243,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** Gets rid of the Payload box. */
-   def fetch2[T](pms: List[ProjectionMetaData]
+   def fetch2[T](pms: Seq[ProjectionMetaData]
   )(implicit num: Fractional[T]) : Seq[T] = {
 
     fetch(pms).map(p => {

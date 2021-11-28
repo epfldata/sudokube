@@ -4,7 +4,7 @@ import core.{DataCube, Rational, SolverTools, SparseSolver}
 import frontend._
 import frontend.experiments._
 import planning.ProjectionMetaData
-import util.{Profiler, VaryingTimer}
+import util.{Profiler, StatsGatherer}
 
 import java.io.PrintStream
 
@@ -96,8 +96,8 @@ object CubeData {
           }
           var df = s.df
 
-          val statsGatherer = new VaryingTimer(s.getStats, s"$qsize $iternum")
-          statsGatherer.start
+          val statsGatherer = new StatsGatherer(s.getStats, s"$qsize $iternum")
+          statsGatherer.startAuto()
 
           while (!(l.isEmpty) && (df > 0)) {
 

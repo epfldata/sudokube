@@ -202,6 +202,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
       @param cheap_size     cuboids below this size are only fetched if there
                             is no larger cuboid in our selection that subsumes
                             it.
+                            //TODO: SBJ: It seems like dominee is removed only if dominator is cheap. It is not sufficient that dominee is cheap
       @param max_fetch_dim  the maximum dimensionality of cuboids to fetch.
                             This refers to their actual storage size, not the
                             number of dimensions shared with the query.
@@ -267,7 +268,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   /** prepare for online aggregation. Evaluate in the order returned.
       The final cuboid will answer the query exactly by itself.
   */
-  def prepare_online_agg(query: List[Int], cheap_size: Int
+  def prepare_online_agg(query: Seq[Int], cheap_size: Int
   ) : List[ProjectionMetaData] = {
 
     prepare(query, cheap_size, n_bits).sortBy(_.mask.length)

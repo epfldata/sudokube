@@ -3,7 +3,7 @@ package frontend.generators
 import backend.CBackend
 import core.{DataCube, RandomizedMaterializationScheme, Rational}
 import core.RationalTools._
-import experiments.{LPSolverExpt, UniformSolverExpt}
+import experiments.{LPSolverExpt, UniformSolverExpt, UniformSolverOnlineExpt}
 import frontend.Sampling
 import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
@@ -146,7 +146,8 @@ object Iowa {
     //loadAndSave("IowaAll", 0, -1, -16, 0.19)
     //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
     //val expt = new UniformSolverExpt[Double](dc, s"UniformSolve-${name}-${lrf}-${lbase}")
-    val expt = new LPSolverExpt[Rational](dc, s"LPSolve-${name}-${lrf}-${lbase}")
+    //val expt = new LPSolverExpt[Rational](dc, s"LPSolve-${name}-${lrf}-${lbase}")
+    val expt = new UniformSolverOnlineExpt[Double](dc, s"OnlineSolve-${name}-${lrf}-${lbase}")
 
    //es.foreach { expt =>
      q2.foreach { q =>

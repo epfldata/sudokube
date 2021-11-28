@@ -32,7 +32,9 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   val knownCumulants = collection.mutable.BitSet()
 
   var fetchedCuboids = List[(Int, Array[Double])]()
-  var solution: Array[Double] = null
+  var solution = Array.fill(N)(0.0)
+
+  def getStats = (dof, solution.clone())
 
   def verifySolution() = {
     //solution.indices.foreach(i => if (solution(i) < 0) println(s"solution[$i] = ${solution(i)}"))
@@ -146,7 +148,9 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     rec(Nil, partition, Nil)
   }
 
-  def getPart(s: Int): List[List[Int]] = if(partitionMap.isDefinedAt(s)) partitionMap(s) else {
+  def getPart(s: Int): List[List[Int]] = ???
+  /*
+  def getPart(s: Int): List[List[Int]] =  if(partitionMap.isDefinedAt(s)) partitionMap(s) else {
 
     var a = 1
     while((s & a) == 0 || !knownSums(a))
@@ -161,7 +165,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     partitionMap += s -> partitions
     partitions
   }
-
+*/
   def getDefaultValueCumulant2(row: Int) = {
     val parts = getPart(row)
     if(parts.size > 1000) {
@@ -243,7 +247,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val value = strategy match {
       case Avg => getDefaultValueAvg(row)
       case Cumulant => getDefaultValueCumulant(row)
-      case Cumulant2 => getDefaultValueCumulant2(row)
+      case Cumulant2 => ??? //getDefaultValueCumulant2(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
       case Zero => num.zero
@@ -310,6 +314,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     //println("Predicting values for " + toSolve.mkString(" "))
 
     Profiler("MeanProducts") {
+      knownMeanProducts.clear()
       buildMeanProduct()
     }
 

@@ -3,8 +3,7 @@ package util
 import java.io.{PrintStream}
 import java.util.{Timer, TimerTask}
 
- class VaryingTimer[T](task: => T, name: String) {
-
+ class StatsGatherer[T](task: => T, name: String) {
 
    override def finalize(): Unit = {
      println(s"Destroying $name")
@@ -13,14 +12,11 @@ import java.util.{Timer, TimerTask}
 
    class MyTimerTask extends TimerTask {
      override def run(): Unit = {
-       count += 1
-       val cur = System.currentTimeMillis()
-       val stat = task
-       stats += (cur - startTime) -> stat
+      record
        count match {
-         case 10 => reschedule(200)
-         case 20 => reschedule(500)
-         case 30 => reschedule(1000)
+         //case 10 => reschedule(200)
+         //case 20 => reschedule(500)
+         //case 30 => reschedule(1000)
          case _ => ()
        }
      }
@@ -41,13 +37,24 @@ import java.util.{Timer, TimerTask}
      timer.scheduleAtFixedRate(timerTask, period, period)
    }
 
-   def start(): Unit = {
+   def startAuto(): Unit = {
      startTime = System.currentTimeMillis()
      reschedule(100)
    }
 
+   def startManual(): Unit = {
+     startTime = System.currentTimeMillis()
+   }
+
+   def record()  {
+     count += 1
+     val cur = System.currentTimeMillis()
+     val stat = task
+     stats += (cur - startTime) -> stat
+   }
+
    def finish() = {
-     timerTask.cancel()
+     if(timerTask != null) timerTask.cancel()
      timer.purge()
      val cur = System.currentTimeMillis()
      val stat = task
