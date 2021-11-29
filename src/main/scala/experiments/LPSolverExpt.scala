@@ -8,13 +8,13 @@ import java.io.PrintStream
 import java.time.Instant
 import scala.reflect.ClassTag
 
-class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "LPSolverExpt") {
+class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
 
   val timestamp = Instant.now().toString
 
   val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf) / math.log(10)
   val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base) / math.log(10)
-  val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
+  val fileout = new PrintStream(s"expdata/LPSolverExpt_${name}_${timestamp}.csv")
 
   fileout.println("LogRF,LogBase,Query,QSize,   NPrepareTime(us),NFetchTime(us),NaiveTotal(us), LPPrepareTime(us),LPFetchTime(us),LPTotalTime(us)," +
     "Init SliceSparse, ComputeBounds SliceSparse, DOF SliceSparse, Error SliceSparse,"+
@@ -56,7 +56,7 @@ class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "LPSo
     (s1, s2)
   }
 
-  def compare(qu: Seq[Int]) = {
+  def compare(qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
@@ -91,11 +91,12 @@ class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "LPSo
       math.floor(v*prec)/prec
     }
 
-
-    val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,  $lpprep,$lpfetch,$lptot,  " +
-      s"$inits1,$cbs1,$dof1,${round(err1)},  " +
-      s"$inits2,$cbs2,$dof2,${round(err2)}"
-    fileout.println(resultrow)
+    if(output) {
+      val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,  $lpprep,$lpfetch,$lptot,  " +
+        s"$inits1,$cbs1,$dof1,${round(err1)},  " +
+        s"$inits2,$cbs2,$dof2,${round(err2)}"
+      fileout.println(resultrow)
+    }
 
   }
 

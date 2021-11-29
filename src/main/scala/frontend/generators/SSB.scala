@@ -13,8 +13,7 @@ import java.io.FileReader
 import java.text.SimpleDateFormat
 import java.util.Date
 
-object SSB {
-  var sf = 1
+case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
   def readTbl(name: String, colIdx: Vector[Int]) = {
     Profiler.noprofile(s"readTbl$name") {
@@ -24,7 +23,7 @@ object SSB {
     }
   }
 
-  def read() = {
+  def generate() = {
     val sdf = new SimpleDateFormat("yyyyMMdd")
     val date = readTbl("date", Vector(0, 2)).map(d => d.head -> Vector(sdf.parse(d(0)), d(1))).toMap
     val custSeq = readTbl("customer", Vector(0, 3, 4, 5, 7))
@@ -71,7 +70,7 @@ object SSB {
     val weekdaysvals = List("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     /* 06 */ val weekdayCol = LD2[String]("day_of_week", new MemCol(weekdaysvals))
 
-    val dateDims = BD2("Time",Vector(dateCol, weekdayCol), false)
+    val dateDims = BD2("Time", Vector(dateCol, weekdayCol), false)
 
     val cidvals = custSeq.map(r => r(0)).distinct
     /* 07 */ val cidCol = LD2[String]("cust_key", new MemCol(cidvals))
@@ -84,9 +83,9 @@ object SSB {
     val mktvals = custSeq.map(r => r(4)).distinct
     /* 11 */ val cmkCol = LD2[String]("cust_mkt_segment", new MemCol(mktvals))
 
-    val custDims = BD2("Customer",Vector(cidCol, ccityCol, cnatCol, cregCol, cmkCol), false)
+    val custDims = BD2("Customer", Vector(cidCol, ccityCol, cnatCol, cregCol, cmkCol), false)
 
-    val pidvals = partSeq.map( r => r(0)).distinct
+    val pidvals = partSeq.map(r => r(0)).distinct
     /* 12 */ val pidCol = LD2[String]("part_key", new MemCol(pidvals))
     val mfgrvals = partSeq.map(r => r(1)).distinct
     /* 13 */ val mfgrCol = LD2[String]("mfgr", new MemCol(mfgrvals))
@@ -129,90 +128,5 @@ object SSB {
 
     (sch, r)
   }
-
-
-  def save(lrf: Double, lbase: Double) = {
-    val (sch, r) = read()
-    val rf = math.pow(10, lrf)
-    val base = math.pow(10, lbase)
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    val name = s"SSB-sf${sf}"
-    sch.save(name)
-    dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
-    dc.save2(s"${name}_${lrf}_${lbase}")
-    (sch, dc)
-  }
-
-  def loadAndSave(lrf1: Double, lbase1: Double, lrf2: Double, lbase2: Double) = {
-
-
-    val rf2 = math.pow(10, lrf2)
-    val base2 = math.pow(10, lbase2)
-    val name = s"SSB-sf${sf}"
-    val dc1 = DataCube.load2(s"${name}_${lrf1}_${lbase1}")
-    val dc2 = new DataCube(RandomizedMaterializationScheme(dc1.m.n_bits, rf2, base2))
-
-    dc2.buildFrom(dc1)
-    dc2.save2(s"${name}_${lrf2}_${lbase2}")
-  }
-
-  def load(lrf: Double, lbase: Double) = {
-    val inputname = s"SSB-sf${sf}"
-    val sch = StructuredDynamicSchema.load(inputname)
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
-    (sch, dc)
-  }
-
-
-  def main(args: Array[String]) = {
-    //println(Runtime.getRuntime.maxMemory()/(1 << 30).toDouble)
-    //read()
-
-
-    //sf=100
-    //val lrf = 0
-    //val lbase = -1
-
-    val lrf = -29
-    val lbase = 0.184
-    sf = 10
-
-
-    //sf=1
-    //val lrf = -27
-    //val lbase = 0.195
-
-    println(s"SF = $sf lrf = $lrf lbase = $lbase")
-    //val (sch, dc) = save(lrf, lbase)
-    val (sch, dc) = load(lrf, lbase)
-
-
-    //val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
-    //  val n = cs.length
-    //  val sum = cs.map(_.numBytes).sum
-    //  val avg = (sum/n).toInt
-    //  s"$n \t $sum  \t $avg"
-    //}
-    //cubs.toList.sortBy(_._1).foreach{case (k, v) => println(s"$k \t $v")}
-
-    val expt = new UniformSolverExpt[Double](dc, s"SSB-sf${sf}")
-    val qs = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
-    //expt.compare(List(12, 77, 76, 75, 74))
-    val q2 = (20 to 20).flatMap{ i =>
-      val n = qs(i).size
-      if(n <= 1) qs(i).toList else {
-        val idx = Util.collect_n(1, () => scala.util.Random.nextInt(n))
-        idx.map(x =>qs(i)(x))
-      }
-    }
-    q2.foreach{q =>
-      Profiler("Compare Full"){expt.compare(q)}
-      //Profiler.print()
-    }
-
-    Profiler.print()
-  }
-
-
 }
+

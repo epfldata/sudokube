@@ -4,7 +4,7 @@ import core.{DataCube, Rational, SolverTools, SparseSolver}
 import frontend._
 import frontend.experiments._
 import planning.ProjectionMetaData
-import util.{Profiler, StatsGatherer}
+import util.{AutoStatsGatherer, Profiler, StatsGatherer}
 
 import java.io.PrintStream
 
@@ -96,8 +96,8 @@ object CubeData {
           }
           var df = s.df
 
-          val statsGatherer = new StatsGatherer(s.getStats, s"$qsize $iternum")
-          statsGatherer.startAuto()
+          val statsGatherer = new AutoStatsGatherer(s.getStats)
+          statsGatherer.start()
 
           while (!(l.isEmpty) && (df > 0)) {
 
@@ -130,7 +130,7 @@ object CubeData {
             Profiler.print()
           }
           println("Remaining cuboids = "+l.size)
-          statsGatherer.finishAuto()
+          statsGatherer.finish()
           statsGatherer
         }
 
@@ -149,7 +149,7 @@ object CubeData {
 
         stg.stats.map{kv =>
          val statres = s"$n_bits,$rf,$base,$n_row_log,${qsize},${iternum},  " +
-            s"${kv._1}, ${kv._2._1}, ${kv._2._2}, ${kv._2._3}"
+            s"${kv._1}, ${kv._3._1}, ${kv._3._2}, ${kv._3._3}"
           println(statres)
           pwstat.println(statres)
         }

@@ -11,7 +11,7 @@ import core.RationalTools._
 import java.io.FileReader
 import java.util.Date
 
-object Brazil {
+object Brazil extends CubeGenerator("Brazil"){
 
   def readCSV(name: String, cols: Vector[String]) = {
     val folder = "tabledata/Brazil"
@@ -21,7 +21,7 @@ object Brazil {
     csv.tail.map { r => colIdx.map(i => r(i)) }
   }
 
-  def read() = {
+  def generate() = {
     val custs = readCSV("customers", Vector("customer_id", "customer_zip_code_prefix", "customer_city", "customer_state")).map(d => d(0) -> d.tail).toMap //.withDefaultValue(Vector("Cust Zip", "Cust City", "Cust State"))
     val orderitems = readCSV("order_items", Vector("order_id", "order_item_id", "product_id", "seller_id", "price"))
     val orders = readCSV("orders", Vector("order_id", "customer_id", "order_purchase_timestamp")).map(d => d(0) -> d.tail).toMap //.withDefaultValue(Vector("Cust Id", "Time"))
@@ -76,35 +76,4 @@ object Brazil {
     val r = join.map { case (k, v) => sch.encode_tuple(k) -> v }
     (sch, r)
   }
-
-  def save(lrf: Double, lbase: Double) = {
-    val (sch, r) = read()
-    val rf = math.pow(10, lrf)
-    val base = math.pow(10, lbase)
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    val name = "brazil"
-    sch.save(name)
-    dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
-    dc.save2(s"${name}_${lrf}_${lbase}")
-    (sch, dc)
-  }
-
-  def load(lrf: Double, lbase: Double) = {
-    val inputname = "brazil"
-    val sch = StructuredDynamicSchema.load(inputname)
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
-    (sch, dc)
-  }
-
-
-  def main(args: Array[String]) = {
-    val (sch, dc) = save(-25.5, 0.19)
-    //val (sch, dc) = load(-25.5, 0.19)
-    val qs = sch.queries.filter(x => x.length >= 4 && x.length <= 10)
-    val expt = new UniformSolverExpt(dc, "brazil")
-    //expt.compare(List(153, 132, 115, 104, 90, 77, 68, 57, 46, 33))
-    qs.foreach(q => expt.compare(q))
-  }
-
 }

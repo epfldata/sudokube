@@ -4,18 +4,18 @@ import core.{DataCube, RandomizedMaterializationScheme}
 import core.solver.Strategy.CoMomentFrechet
 import core.solver.{Strategy, UniformSolver}
 import experiments.CubeData.dc
-import util.{Profiler, StatsGatherer}
+import util.{ManualStatsGatherer, Profiler, StatsGatherer}
 
 import java.io.PrintStream
 import java.time.Instant
 import scala.reflect.ClassTag
 
-class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverOnlineExpt") {
+class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
   val timestamp = Instant.now().toString
   val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf)/math.log(10)
   val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base)/math.log(10)
-  val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
-  fileout.println("LogRF,LogBase,Query,QSize, TimeElapsed(ms), DOF, Error")
+  val fileout = new PrintStream(s"expdata/UniformSolverOnlineExpt_${name}_${timestamp}.csv")
+  fileout.println("LogRF,LogBase,Query,QSize,TimeElapsed(ms),DOF,Error")
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
 
@@ -26,13 +26,13 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: Str
     deviation / sum
   }
 
-  def compare(qu: Seq[Int]) = {
+  def compare(qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
     val s = new UniformSolver(q.size, CoMomentFrechet)
-    val stg = new StatsGatherer(s.getStats, qstr)
-    stg.startManual()
+    val stg = new ManualStatsGatherer(s.getStats)
+    stg.start()
     val cheap_size = 30
     var l = dc.m.prepare_online_agg(q, cheap_size)
     while (!(l.isEmpty) ) {
@@ -48,10 +48,12 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: Str
 
     val naiveRes = dc.naive_eval(q)
 
-    stg.stats.foreach{ case (time, (dof, sol)) =>
-    val err =  error(naiveRes, sol)
-      println(s"@$time : dof=$dof err=$err")
-      fileout.println(s"$lrf,$lbase,$qstr,${q.size},$time,$dof,$err" )
+    if(output) {
+      stg.stats.foreach { case (time, count, (dof, sol)) =>
+        val err = error(naiveRes, sol)
+        println(s"$count @ $time : dof=$dof err=$err")
+        fileout.println(s"$lrf,$lbase,$qstr,${q.size},$time,$dof,$err")
+      }
     }
   }
 

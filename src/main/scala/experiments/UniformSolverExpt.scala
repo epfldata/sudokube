@@ -14,12 +14,12 @@ import java.time.Instant
 import scala.reflect.ClassTag
 
 
-class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "UniformSolverExpt") {
+class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
 
   val timestamp = Instant.now().toString
   val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf)/math.log(10)
   val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base)/math.log(10)
-  val fileout = new PrintStream(s"expdata/${name}_${timestamp}.csv")
+  val fileout = new PrintStream(s"expdata/UniformSolverExpt_${name}_${timestamp}.csv")
   val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
   fileout.println("LogRF,LogBase,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
@@ -91,7 +91,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     result
   }
 
-  def compare(qu: Seq[Int]) = {
+  def compare(qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
@@ -130,14 +130,16 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
         math.floor(v*prec)/prec
       }
 
+    if(output) {
       val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $uprep,$ufetch,$utot,  " +
-        errors.map{case (algo, err) =>
-          val uadd = Profiler.durations(s"USolve Add $algo")._2/1000
-          val ufill = Profiler.durations(s"USolve FillMissing $algo")._2/1000
-          val usolve= Profiler.durations(s"USolve Solve $algo")._2/1000
+        errors.map { case (algo, err) =>
+          val uadd = Profiler.durations(s"USolve Add $algo")._2 / 1000
+          val ufill = Profiler.durations(s"USolve FillMissing $algo")._2 / 1000
+          val usolve = Profiler.durations(s"USolve Solve $algo")._2 / 1000
           s"  ${uadd},${ufill},${usolve},${round(err)}"
         }.mkString(", ")
-    fileout.println(resultrow)
+      fileout.println(resultrow)
+    }
 
   }
 
@@ -194,7 +196,5 @@ object UniformSolverExptRandom {
     //  }
     //  line = io.StdIn.readLine("\n Enter QuerySize : ")
     //}
-
-
   }
 }

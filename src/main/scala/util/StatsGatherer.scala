@@ -3,64 +3,79 @@ package util
 import java.io.{PrintStream}
 import java.util.{Timer, TimerTask}
 
- class StatsGatherer[T](task: => T, name: String) {
+abstract class StatsGatherer[T] {
+  def record: Unit
 
-   override def finalize(): Unit = {
-     println(s"Destroying $name")
-     super.finalize()
-   }
+  def start: Unit
 
-   class MyTimerTask extends TimerTask {
-     override def run(): Unit = {
+  def finish: Unit
+
+  val stats = new collection.mutable.ArrayBuffer[(Long, Int, T)](50)
+  var count = 0
+  var startTime = 0L
+}
+
+class AutoStatsGatherer[T](task: => T) extends StatsGatherer[T] {
+  class MyTimerTask extends TimerTask {
+    override def run(): Unit = {
       record
-       count match {
-         //case 10 => reschedule(200)
-         //case 20 => reschedule(500)
-         //case 30 => reschedule(1000)
-         case _ => ()
-       }
-     }
-   }
+      count match {
+        //case 10 => reschedule(200)
+        //case 20 => reschedule(500)
+        //case 30 => reschedule(1000)
+        case _ => ()
+      }
+    }
+  }
 
-   val timer = new Timer(true)
-   val stats = new collection.mutable.ArrayBuffer[(Long, T)](50)
-   var count = 0
-   var startTime = 0L
-   var timerTask: TimerTask = null
+  val timer = new Timer(true)
+  var timerTask: TimerTask = null
 
-   def reschedule(period: Int) = {
-     if (timerTask != null) {
-       timerTask.cancel()
-       timer.purge()
-     }
-     timerTask = new MyTimerTask
-     timer.scheduleAtFixedRate(timerTask, period, period)
-   }
+  def reschedule(period: Int) = {
+    if (timerTask != null) {
+      timerTask.cancel()
+      timer.purge()
+    }
+    timerTask = new MyTimerTask
+    timer.scheduleAtFixedRate(timerTask, period, period)
+  }
 
-   def startAuto(): Unit = {
-     startTime = System.currentTimeMillis()
-     reschedule(100)
-   }
+  override def start(): Unit = {
+    startTime = System.currentTimeMillis()
+    reschedule(100)
+  }
 
-   def startManual(): Unit = {
-     startTime = System.currentTimeMillis()
-   }
+  override def record() {
+    count += 1
+    val cur = System.currentTimeMillis()
+    val stat = task
+    stats += (((cur - startTime), count, stat))
+  }
 
-   def record()  {
-     count += 1
-     val cur = System.currentTimeMillis()
-     val stat = task
-     stats += (cur - startTime) -> stat
-   }
+  override def finish() = {
+    if (timerTask != null) timerTask.cancel()
+    timer.purge()
+    val cur = System.currentTimeMillis()
+    val stat = task
+    stats += (((cur - startTime), count, stat))
+  }
+}
 
-   def finishAuto() = {
-     if(timerTask != null) timerTask.cancel()
-     timer.purge()
-     val cur = System.currentTimeMillis()
-     val stat = task
-     stats += (cur - startTime) -> stat
-   }
+class ManualStatsGatherer[T](task: => T) extends StatsGatherer[T] {
+  override def start(): Unit = {
+    startTime = System.nanoTime()
+  }
 
+  override def record() {
+    count += 1
+    val cur = System.nanoTime()
+    val stat = task
+    stats += (((cur - startTime), count, stat))
+  }
+
+  override def finish() = {
+
+  }
 }
 
 
