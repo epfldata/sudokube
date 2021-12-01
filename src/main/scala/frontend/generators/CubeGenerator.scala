@@ -28,8 +28,18 @@ abstract class CubeGenerator(val inputname: String) {
     dc2.buildFrom(dc1)
     dc2.save2(s"${inputname}_${lrf2}_${lbase2}")
   }
-
-
+  def multiload(params: Seq[(Double, Double)]) = {
+    val sch = StructuredDynamicSchema.load(inputname)
+    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    val dcs = params.map{p => p -> loadDC(p._1, p._2)}
+    (sch, dcs)
+  }
+  def load2() = {
+    val sch = StructuredDynamicSchema.load(inputname)
+    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    val dc = DataCube.load2(s"${inputname}_sch")
+    (sch, dc)
+  }
   def load(lrf: Double, lbase: Double) = {
     val sch = StructuredDynamicSchema.load(inputname)
     sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)

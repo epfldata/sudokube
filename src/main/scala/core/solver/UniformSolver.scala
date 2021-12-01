@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Cumulant,Cumulant2, CoMoment, CoMomentFrechet, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Cumulant,Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
@@ -22,7 +22,8 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   assert(qsize < 31)
   val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
 
-  val sumValues = new Array[T](N)
+  val sumValues = Array.fill(N)(num.zero)
+  val moments = Array.fill(N)(num.zero)
   val knownSums = collection.mutable.BitSet()
 
   val meanProducts = new Array[T](N)
@@ -182,6 +183,20 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     num.times(sum, sumValues(0))
   }
 
+ def changeMoment(row: Int, v: T): Unit = {
+   val delta = num.minus(v, moments(row))
+   if(!num.equiv(delta, num.zero)) {
+     moments(row) = v
+     val supersets = Profiler("FindSuperSet"){(row + 1 until N).filter(i => (i & row) == row)}
+     Profiler("IncrementSuperSet") {
+       supersets.foreach { i =>
+         moments(i) = num.plus(moments(i), num.times(delta, meanProducts(i - row)))
+         //println(s"m[$i] += (sv[$row] - m[$row]) * mp[${i-row}]")
+       }
+     }
+   }
+ }
+
   def getDefaultValueCoMoment(row: Int, withUpperBound: Boolean) = {
     val n = BigBinary(row).hamming_weight
     val N1 = 1 << n
@@ -200,6 +215,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
             }
             val combs = Profiler("unproject Comb"){projcombs.map(i => Bits.unproject(i, row))}
             val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
+            //println(s"$sign * ${combs.map{ i => s"sv[${row-i}] * mp[$i]"}.mkString("[", " + ", "]")}")
             //TODO: Can simplify further if parents were unknown and default values were used for them
             Profiler("Term Mult"){num.times(sign, combs.map { i =>
               num.times(sumValues(row - i), meanProducts(i))
@@ -208,8 +224,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
         }.sum
     }
-    val ub = upperBound(row)
-    if (withUpperBound) num.min(sum, ub) else sum
+    if (withUpperBound) num.max(num.zero, num.min(sum,  upperBound(row))) else sum
   }
 
   def getDefaultValueLowVariance(row: Int) = {
@@ -250,6 +265,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       case Cumulant2 => ??? //getDefaultValueCumulant2(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
+      case CoMoment3 => getDefaultValueCoMoment(row, true)
       case Zero => num.zero
       case HalfPowerD => num.div(sumValues(0), num.fromInt(1 << n))
       case FrechetUpper => upperBound(row)
@@ -257,6 +273,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       case LowVariance => getDefaultValueLowVariance(row)
     }
     sumValues(row) = value
+    //println(s"Filling $row = ${num.toDouble(value).toLong}")
   }
 
   def buildMeanProduct() = {
@@ -322,16 +339,58 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     //  buildCumulant()
     //}
 
-    Profiler("SetDefaultValueAll") {
-      toSolve.foreach { r =>
-        setDefaultValue(r)
+    if(strategy != CoMoment3)
+    {
+      Profiler("SetDefaultValueAll") {
+        toSolve.foreach { r =>
+          setDefaultValue(r)
+        }
       }
     }
+    if(strategy == CoMoment3)  {
+      Profiler("IncrementMomentAll") {
+        val known = hamming_order.filter(knownSums)
+        known.foreach { r =>
+          changeMoment(r, sumValues(r))
+        }
+        toSolve.foreach{r =>
+          val v1 = moments(r)
+
+          var v2 = v1
+          var s = 1
+          while(s < r && num.gt(v2,  num.zero)) {
+            if((s & r) == s)
+            v2 = num.min(v2, sumValues(r-s))
+            s = s << 1
+          }
+          if(num.lt(v2, num.zero))
+            v2 = num.zero
+
+          //val v3 = getDefaultValueCoMoment(r, true)
+          //assert(num.equiv(v3, v2))
+
+          //val prec = 1000000
+         //val diffp = num.div(num.fromInt(prec+1), num.fromInt(prec))
+         //val diffm = num.div(num.fromInt(prec-1), num.fromInt(prec))
+
+          //assert(num.lteq(sumValues(r), num.times(v2, diffp)))
+          //assert(num.gteq(sumValues(r), num.times(v2, diffm)))
+
+          sumValues(r) = v2
+          //println(s"Filling2 $r = ${num.toDouble(v1).toLong}")
+        }
+      }
+
+    }
+
+    //println(sumValues.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
   }
 
   def add(cols: Seq[Int], values: Array[T]) = {
     val eqnColSet = Bits.toInt(cols)
     fetchedCuboids = (eqnColSet -> values.map(num.toDouble(_))) :: fetchedCuboids
+    //println(s"Fetch $eqnColSet")
+    //println(values.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
     val length = cols.length
     (0 until 1 << length).foreach { i0 =>
       val i = Bits.unproject(i0, eqnColSet)
@@ -340,6 +399,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         val rowsSum = rowsToSum.map(values(_)).sum
         knownSums += i
         sumValues(i) = rowsSum
+        //println(s"Add $i = ${rowsSum.asInstanceOf[Double].toLong}")
       }
     }
   }
@@ -352,7 +412,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         (i until i + h).foreach { j =>
           val diff = num.minus(result(j), result(j + h))
           strategy match {
-            case CoMomentFrechet | Cumulant2 =>
+            case CoMomentFrechet | Cumulant2 | CoMoment3 =>
               if (num.lt(diff, num.zero)) {
                 result(j + h) = result(j)
                 result(j) = num.zero

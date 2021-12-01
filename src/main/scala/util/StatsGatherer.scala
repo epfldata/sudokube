@@ -9,8 +9,8 @@ abstract class StatsGatherer[T] {
   def start: Unit
 
   def finish: Unit
-
-  val stats = new collection.mutable.ArrayBuffer[(Long, Int, T)](50)
+  final val billion = math.pow(10, 9)
+  val stats = new collection.mutable.ArrayBuffer[(Double, Int, T)](50)
   var count = 0
   var startTime = 0L
 }
@@ -41,23 +41,23 @@ class AutoStatsGatherer[T](task: => T) extends StatsGatherer[T] {
   }
 
   override def start(): Unit = {
-    startTime = System.currentTimeMillis()
+    startTime = System.nanoTime()
     reschedule(100)
   }
 
   override def record() {
     count += 1
-    val cur = System.currentTimeMillis()
+    val cur = System.nanoTime()
     val stat = task
-    stats += (((cur - startTime), count, stat))
+    stats += (((cur - startTime)/billion, count, stat))
   }
 
   override def finish() = {
     if (timerTask != null) timerTask.cancel()
     timer.purge()
-    val cur = System.currentTimeMillis()
+    val cur = System.nanoTime()
     val stat = task
-    stats += (((cur - startTime), count, stat))
+    stats += (((cur - startTime)/billion, count, stat))
   }
 }
 
@@ -70,7 +70,7 @@ class ManualStatsGatherer[T](task: => T) extends StatsGatherer[T] {
     count += 1
     val cur = System.nanoTime()
     val stat = task
-    stats += (((cur - startTime), count, stat))
+    stats += (((cur - startTime)/billion, count, stat))
   }
 
   override def finish() = {

@@ -4,6 +4,23 @@ package core
 
 object SolverTools {
 
+  def fastMoments(naive: Array[Double]): Array[Double] = {
+    val result = naive.clone()
+    val N = naive.size
+    var h = 1
+    while (h < N) {
+      (0 until N by h * 2).foreach { i =>
+        (i until i + h).foreach { j =>
+          val sum = result(j) + result(j + h)
+          result(j) = sum
+        }
+      }
+      h *= 2
+    }
+    result
+  }
+
+
   def error(naive: Array[Double], solver: Array[Double]) = {
     val length = naive.length
     val deviation = (0 until length).map(i => Math.abs(naive(i) - solver(i))).sum

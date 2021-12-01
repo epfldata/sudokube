@@ -6,22 +6,25 @@ import util._
 import RationalTools._
 import breeze.linalg.DenseVector
 import SolverTools._
-import core.solver.Strategy.{CoMomentFrechet, Strategy}
+import core.solver.Strategy.{CoMoment, CoMomentFrechet, Strategy}
 import frontend.experiments.Tools
 
 import java.io.PrintStream
-import java.time.Instant
+import java.time.{Instant, LocalDateTime}
+import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 
-class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
+class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "")(implicit shouldRecord: Boolean) {
 
-  val timestamp = Instant.now().toString
-  val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf)/math.log(10)
-  val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base)/math.log(10)
+  val timestamp = if(shouldRecord) {
+    val datetime = LocalDateTime.now
+    DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime)
+  } else "dummy"
+
   val fileout = new PrintStream(s"expdata/UniformSolverExpt_${name}_${timestamp}.csv")
-  val strategies = List(Strategy.CoMomentFrechet) //Strategy.values.toList
-  fileout.println("LogRF,LogBase,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
+  val strategies = List(Strategy.CoMoment3, CoMomentFrechet) //Strategy.values.toList
+  fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -47,21 +50,6 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
   //  (naiveRes, s.solution.toArray)
   //}
 
-  def fastSum(naive: Array[Double]): Array[Double] = {
-    val result = naive.clone()
-    val N = naive.size
-    var h = 1
-    while (h < N) {
-      (0 until N by h * 2).foreach { i =>
-        (i until i + h).foreach { j =>
-          val sum = result(j) + result(j + h)
-          result(j) = sum
-        }
-      }
-      h *= 2
-    }
-    result
-  }
 
   def uniform_solve(q: Seq[Int]) = {
 
@@ -96,7 +84,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
     val naiveRes = Profiler("Naive Full"){dc.naive_eval(q)}
-    //val naiveCum = fastSum(naiveRes)
+    //val naiveCum = fastMoments(naiveRes)
 
     val solverRes = Profiler("Solver Full"){uniform_solve(q)}
     val num = implicitly[Fractional[T]]
@@ -131,7 +119,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
       }
 
     if(output) {
-      val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $uprep,$ufetch,$utot,  " +
+      val resultrow = s"${name},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $uprep,$ufetch,$utot,  " +
         errors.map { case (algo, err) =>
           val uadd = Profiler.durations(s"USolve Add $algo")._2 / 1000
           val ufill = Profiler.durations(s"USolve FillMissing $algo")._2 / 1000
@@ -149,52 +137,3 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
   }
 }
 
-object UniformSolverExpt {
-  def main(args: Array[String]) = {
-   //val dc = core.DataCube.load2("Iowa200k_cols6_0.1_1.4")
-   val dc = core.DataCube.load2("Iowa200k_volL_2p-195_2")
-    import SloppyFractionalInt._
-   val expt = new UniformSolverExpt[Rational](dc)
-    val volumeGallon = List(0, 23, 45, 74, 96, 126, 163, 195, 208)
-    val bottleSold = Nil //List(7, 30, 64, 103, 139, 179, 193, 208)
-    val bottleRetail =  List(19, 42, 52, 76, 91, 118, 133, 146, 168, 188)
-    val query = volumeGallon //(bottleSold ++ bottleRetail).sorted
-    //val query = List(73, 123, 127, 193)
-   //val query = List(0, 18, 39, 42, 45)
-    expt.compare(query)
-    ()
-    //var line = io.StdIn.readLine("\nEnter Query : ")
-    //while(line != "stop") {
-    //  try {
-    //    val query = line.split(" ").map(_.toInt).toList.sorted
-    //    expt.compare(query)
-    //  } catch {
-    //    case ex: Throwable => ex.getStackTrace.take(10).foreach(println)
-    //  }
-    //  line = io.StdIn.readLine("\n Enter Query : ")
-    //}
-  }
-}
-
-object UniformSolverExptRandom {
-  def main(args: Array[String]) = {
-    //val dc = core.DataCube.load2("Iowa200k_cols6_0.1_1.4")
-    //val dc = core.DataCube.load2("Iowa200k_cols6_2p-30_2")
-    val dc = core.DataCube.load2("Iowa200k_sales_2p-193_2")
-    //val dc = core.DataCube.load2("Random-10")
-    val expt = new UniformSolverExpt(dc)
-    val iters = 100
-    (4 to 12).foreach{qsize => (0 until iters).foreach(_ => expt.rnd_compare(qsize))}
-
-    //var line = io.StdIn.readLine("\nEnter QuerySize : ")
-    //while(line != "stop") {
-    //  try {
-    //    val querysize = line.toInt
-    //    expt.rnd_compare(querysize)
-    //  } catch {
-    //    case ex: Throwable => ex.getStackTrace.take(10).foreach(println)
-    //  }
-    //  line = io.StdIn.readLine("\n Enter QuerySize : ")
-    //}
-  }
-}

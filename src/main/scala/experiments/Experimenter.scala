@@ -1,6 +1,6 @@
 package experiments
 
-import core.DataCube
+import core.{DataCube, Rational, SchemaBasedMaterializationScheme}
 import frontend.experiments.Tools
 import frontend.generators.{CubeGenerator, Iowa, SSB}
 import frontend.schema.StructuredDynamicSchema
@@ -13,13 +13,18 @@ import scala.util.Random
 object Experimenter {
 
   def randomQueries(nb: Int) = {
-    (0 to 100).map { i =>
+    (0 to 10).map { i =>
       val s = Random.nextInt(4) + 4
       Tools.rand_q(nb, s)
     }
   }
 
-  def online(name: String, dc: DataCube, qs: Seq[Seq[Int]]) = {
+  def full(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
+    import core.RationalTools._
+    val expt = new UniformSolverExpt[Double](dc, name)
+    qs.foreach(q => expt.compare(q, true))
+  }
+  def online(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
     val expt = new UniformSolverOnlineExpt[Double](dc, name)
     //Warm up
     randomQueries(dc.m.n_bits).foreach(q => expt.compare(q, false))
@@ -54,7 +59,7 @@ object Experimenter {
     //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
     val allQueries = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
 
-    (4 to 10).flatMap { i =>
+    (12 to 12).flatMap { i =>
       val n = allQueries(i).size
       val qr = if (n <= 40) allQueries(i) else {
         val idx = Util.collect_n(30, () => scala.util.Random.nextInt(n))
@@ -69,9 +74,10 @@ object Experimenter {
 
     val cg = Iowa
     val lrf = -16
+    //val lrfs = List(-15.0, -16.0, -17.0)
     val lbase = 0.19
 
-
+  implicit val shouldRecord = false
     //val lrf = -29
     //val lbase = 0.184
     //val cg = SSB(10)
@@ -82,11 +88,21 @@ object Experimenter {
     //val lbase = 0.195
 
     val (sch, dc) = cg.load(lrf, lbase)
+    //val (sch, dc) = cg.load2()
+    //val (sch, dcs) = cg.multiload(lrfs.map(lrf => (lrf, lbase)))
 
-    //val qs = genQueries(sch)
-    //online(s"${cg.inputname}-${lrf}-${lbase}", dc, qs)
+    //val dc2 = new DataCube(SchemaBasedMaterializationScheme(sch))
+    //dc2.buildFrom(dc)
+    //dc2.save2(s"${cg.inputname}_sch")
 
-    storage(dc, cg.inputname)
+    val qs = genQueries(sch)
+    //val qs = List(List(13, 12, 11, 10, 52, 51, 50, 49, 48, 47, 46, 82, 81, 80, 79))
+
+
+    //dcs.foreach{case ((lrf, lbase), dc) =>
+      online(s"${cg.inputname}-${lrf}-${lbase}", dc, qs)
+    //}
+    //storage(dc, cg.inputname)
 
   }
 }

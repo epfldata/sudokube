@@ -3,6 +3,7 @@ package core
 import planning._
 import util._
 import combinatorics._
+import frontend.schema.StructuredDynamicSchema
 
 import scala.collection.BitSet
 import scala.collection.mutable.ArrayBuffer
@@ -180,12 +181,13 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val PI = projections.zipWithIndex
     val qBS = q.toSet
     val qIS = q.toIndexedSeq
-    PI.map { xid =>
+    val res = PI.map { xid =>
       val ab0 = xid._1.toSet.intersect(qBS) // unnormalized
       val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
       val mask = Bits.mk_list_mask(xid._1, qBS)
       ProjectionMetaData(ab, ab0, mask, xid._2)
     }
+     res
   }
 
 
@@ -351,5 +353,9 @@ case class RandomizedMaterializationScheme(
 } // end MaterializationScheme
 
 
-
+@SerialVersionUID(1L)
+case class SchemaBasedMaterializationScheme(sch: StructuredDynamicSchema) extends MaterializationScheme(sch.n_bits) {
+  /** the metadata describing each projection in this scheme. */
+  override val projections: IndexedSeq[List[Int]] = (sch.queries.filter(x => x.length <= 20 && !x.contains(sch.n_bits)).map(_.toList.sorted).sortBy(_.length) :+ (0 until n_bits).toList).toVector
+}
 
