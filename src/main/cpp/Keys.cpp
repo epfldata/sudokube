@@ -14,6 +14,7 @@ void print_key(int n_bits, byte *key) {
 }
 
 bool compare_keys(const byte *k1, const byte *k2, int numkeybytes)  {
+    //Warning : Do not use unsigned here. i>= 0 always true
   for(int i = numkeybytes - 1; i >= 0; i--) {
     if(k1[i] < k2[i]) return true;
     if(k1[i] > k2[i]) return false;
@@ -55,7 +56,7 @@ unsigned long long toLong(int n_bits, byte *key) {
   return r;
 }
 
-void project_key(int n_bits, int toBytes, byte *from_key, int *mask, byte* to_key)
+void project_key(unsigned int n_bits, unsigned int toBytes, byte *from_key, unsigned int *mask, byte* to_key)
 {
     //we assume to_keys has length at least n_bits/8 + 1 bytes
 

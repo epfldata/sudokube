@@ -23,7 +23,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
   } else "dummy"
 
   val fileout = new PrintStream(s"expdata/UniformSolverExpt_${name}_${timestamp}.csv")
-  val strategies = List(Strategy.CoMoment3, CoMomentFrechet) //Strategy.values.toList
+  val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
   fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 

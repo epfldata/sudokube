@@ -4,30 +4,31 @@
 #include "Keys.h"
 
 
-extern int   srehash(            int s_id,             int *mask, int masklen);
-extern int d2srehash(int n_bits, int d_id,             int *mask, int masklen);
-extern int s2drehash(            int s_id, int d_bits, int *mask, int masklen);
-extern int   drehash(int n_bits, int d_id, int d_bits, int *mask, int masklen);
+extern unsigned int   srehash(            unsigned int s_id,            unsigned int *mask, unsigned int masklen);
+extern unsigned int d2srehash(unsigned int n_bits, unsigned int d_id,             unsigned int *mask, unsigned int masklen);
+extern unsigned int s2drehash(           unsigned int s_id, unsigned int d_bits, unsigned int *mask, unsigned int masklen);
+extern unsigned int   drehash(unsigned int n_bits, unsigned int d_id, unsigned int d_bits,unsigned int *mask, unsigned int masklen);
 
-extern int      mk(int n_bits);
-extern void     add(int s_id, int n_bits, byte *key, value_t v);
-extern void     freeze(int s_id);
-extern value_t *fetch(int d_id, unsigned int& size);
-extern int      sz(int id);
-extern size_t   sNumBytes(int id);
+extern unsigned int      mk(unsigned int n_bits);
+extern void     add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
+extern void     freeze(unsigned int s_id);
+extern value_t *fetch(unsigned int d_id, size_t& size);
+extern size_t      sz(unsigned int id);
+extern size_t   sNumBytes(unsigned int id);
 
-extern int   readSCuboid(const char *filename, int n_bits, int size);
-extern int   readDCuboid(const char *filename, int n_bits, int size);
-extern void writeSCuboid(const char *filename, int s_id);
-extern void writeDCuboid(const char *filename, int d_id);
+extern unsigned int   readSCuboid(const char *filename, unsigned int n_bits, size_t size);
+extern unsigned int   readDCuboid(const char *filename, unsigned int n_bits, size_t size);
+extern void writeSCuboid(const char *filename, unsigned int s_id);
+extern void writeDCuboid(const char *filename, unsigned int d_id);
 
-extern void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[], int id_array[], int numCuboids);
-extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int ids[], int numCuboids);
+extern void readMultiCuboid(const char *filename,  int n_bits_array[], int size_array[], unsigned char isSparse_array[], unsigned int id_array[], unsigned int numCuboids);
+extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[],  int ids[], unsigned int numCuboids);
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
+    //Note: Conversion from Int to size_t
   int result = readSCuboid(str, n_bits, size);
   env->ReleaseStringUTFChars(filename, str);
   return result;
@@ -37,6 +38,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
+  //Note: Conversion from Int to size_t
   int result = readDCuboid(str, n_bits, size);
   env->ReleaseStringUTFChars(filename, str);
   return result;
@@ -64,12 +66,12 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
     const char* filename = env->GetStringUTFChars(Jfilename, 0);
     jboolean* isSparseArray = env->GetBooleanArrayElements(JisSparseArray, 0);
     jint* nbitsArray = env->GetIntArrayElements(JnbitsArray, 0);
-    jint* sizeArray = env->GetIntArrayElements(JsizeArray, 0);
-    int idsArray[numCuboids];
+    jint* sizeArray =  env->GetIntArrayElements(JsizeArray, 0);
+    unsigned int idsArray[numCuboids];
     readMultiCuboid(filename, nbitsArray, sizeArray, isSparseArray, idsArray, numCuboids);
     jintArray result = env->NewIntArray(numCuboids);
     if (result == NULL) return NULL; // out of memory error thrown
-    env->SetIntArrayRegion(result, 0, numCuboids, idsArray);
+    env->SetIntArrayRegion(result, 0, numCuboids, (jint*) idsArray);
     return result;
 
 }
@@ -80,6 +82,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
     const char* filename = env->GetStringUTFChars(Jfilename, 0);
     jboolean* isSparseArray = env->GetBooleanArrayElements(JisSparseArray, 0);
     jint* idArray = env->GetIntArrayElements(JidArray, 0);
+    assert(sizeof(jint) == sizeof(unsigned int));
     writeMultiCuboid(filename, isSparseArray, idArray, numCuboids);
 }
 
@@ -129,8 +132,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
 {
   jsize masklen  = env->GetArrayLength(mask);
   jint* maskbody = env->GetIntArrayElements(mask, 0);
-
-  int x = srehash(s_id, maskbody, masklen);
+  int x = srehash(s_id,  (unsigned int*) maskbody, masklen);
 
   env->ReleaseIntArrayElements(mask, maskbody, 0);
   return x;
@@ -142,7 +144,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
   jsize masklen  = env->GetArrayLength(mask);
   jint* maskbody = env->GetIntArrayElements(mask, 0);
 
-  int x = d2srehash(n_bits, d_id, maskbody, masklen);
+  int x = d2srehash(n_bits, d_id, (unsigned int*) maskbody, masklen);
 
   env->ReleaseIntArrayElements(mask, maskbody, 0);
   return x;
@@ -154,7 +156,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
   jsize masklen  = env->GetArrayLength(mask);
   jint* maskbody = env->GetIntArrayElements(mask, 0);
 
-  int x = s2drehash(d_id, d_bits, maskbody, masklen);
+  int x = s2drehash(d_id, d_bits,  (unsigned int*) maskbody, masklen);
 
   env->ReleaseIntArrayElements(mask, maskbody, 0);
   return x;
@@ -166,7 +168,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
   jsize masklen  = env->GetArrayLength(mask);
   jint* maskbody = env->GetIntArrayElements(mask, 0);
 
-  int x = drehash(n_bits, d_id, d_bits, maskbody, masklen);
+  int x = drehash(n_bits, d_id, d_bits, (unsigned int*)  maskbody, masklen);
 
   env->ReleaseIntArrayElements(mask, maskbody, 0);
   return x;
@@ -176,7 +178,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
 (JNIEnv *env, jobject obj, int d_id)
 {
-  unsigned int size;
+  size_t size;
   value_t *p = fetch(d_id, size); // fetch does not copy, but in general, we
                             // first build the cuboid #d_id just for this
                             // fetch, and it's not deallocated. That's

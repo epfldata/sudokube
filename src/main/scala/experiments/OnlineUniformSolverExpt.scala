@@ -38,7 +38,7 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc: DataCube, val name: Str
     val s = new UniformSolver(q.size, CoMoment3)
     val stg = new ManualStatsGatherer(s.getStats)
     stg.start()
-    val cheap_size = 5
+    val cheap_size = 30
     var l = dc.m.prepare_online_agg(q, cheap_size)
     //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
     while (!(l.isEmpty) ) {

@@ -13,7 +13,7 @@ import scala.util.Random
 object Experimenter {
 
   def randomQueries(nb: Int) = {
-    (0 to 10).map { i =>
+    (0 to 30).map { i =>
       val s = Random.nextInt(4) + 4
       Tools.rand_q(nb, s)
     }
@@ -59,7 +59,8 @@ object Experimenter {
     //SBJ: TODO  Bug in Encoder means that all bits are shifed by one. The queries with max bit cannot be evaluated
     val allQueries = sch.queries.filter(!_.contains(sch.n_bits)).groupBy(_.length).mapValues(_.toVector)
 
-    (12 to 12).flatMap { i =>
+   Vector(8, 10, 12).flatMap { i =>
+      //val i = 4 * j
       val n = allQueries(i).size
       val qr = if (n <= 40) allQueries(i) else {
         val idx = Util.collect_n(30, () => scala.util.Random.nextInt(n))
@@ -74,10 +75,10 @@ object Experimenter {
 
     val cg = Iowa
     val lrf = -16
-    //val lrfs = List(-15.0, -16.0, -17.0)
+    //val lrfs = List(-17.0, -16.0, -15.0)
     val lbase = 0.19
 
-  implicit val shouldRecord = false
+  implicit val shouldRecord = true
     //val lrf = -29
     //val lbase = 0.184
     //val cg = SSB(10)
@@ -100,7 +101,9 @@ object Experimenter {
 
 
     //dcs.foreach{case ((lrf, lbase), dc) =>
-      online(s"${cg.inputname}-${lrf}-${lbase}", dc, qs)
+    val cubename = s"${lrf}-${lbase}"
+    //val cubename = s"sch"
+      online(s"${cg.inputname}-${cubename}", dc, qs)
     //}
     //storage(dc, cg.inputname)
 

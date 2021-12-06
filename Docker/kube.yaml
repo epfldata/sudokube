@@ -45,7 +45,7 @@ spec:
   selector:
     user: sachin.basiljohn
   ports:
-    - nodePort: 27109
+    - nodePort: 30271
       port: 2222
       targetPort: 2222
 

@@ -1,43 +1,40 @@
 package experiments.plotters
 
-import breeze.io.CSVReader
+import breeze.io.{CSVReader, CSVWriter}
 import breeze.plot._
-import org.jfree.chart.axis.NumberTickUnit
+import org.jfree.chart.axis.{NumberTick, NumberTickUnit}
 
-import java.io.FileReader
+import java.io.{File, FileReader, PrintStream}
 
 
 object OnlinePlotter {
 
-  def getData(name: String) = {
+  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Ykey: Int) = {
 
     val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
-    val seriesKey = 0
-    val filterKey = 2
     val queryKey = 1
     val Xkey = 4
-    val Ykey = 6
+
     val seriesData = data.
-      //filter(r => r(filterKey).contains("--16.0-")).
-      filter(r => r(filterKey) == "12").
-      groupBy(_ (seriesKey)).
+      filter(filterf).
+      groupBy(groupf).
       mapValues {
         _.groupBy(_ (queryKey)).values.map(_.map(r => r(Xkey).toDouble -> r(Ykey).toDouble).toList).toVector
       }
   seriesData
   }
 
-  def average(data: Vector[List[(Double, Double)]]) = {
+  def getSeries(data: Vector[List[(Double, Double)]], agg: Seq[Double] => Double, initValue: Double) = {
     val data2 = data.toArray
     val N = data.size
     println(s"N = $N")
-    val currentError = Array.fill(N)(1.0)
+    val currentValues = Array.fill(N)(initValue)
     val result = collection.mutable.ArrayBuffer[(Double, Double)]()
 
-    result += ((0.0) -> 1.0)
+    result += ((0.0) -> initValue)
     var finished = false
     while (!finished) {
-      val (minIdx, minTime, error) = data2.indices.foldLeft((-1, Double.PositiveInfinity, Double.PositiveInfinity)) { case (acc@(_, time, _), idx) =>
+      val (minIdx, minTime, value) = data2.indices.foldLeft((-1, Double.PositiveInfinity, Double.PositiveInfinity)) { case (acc@(_, time, _), idx) =>
         if (data2(idx).isEmpty) acc else if (data2(idx).head._1 < time)
           (idx, data2(idx).head._1, data2(idx).head._2)
         else
@@ -46,34 +43,86 @@ object OnlinePlotter {
       if (minIdx == -1)
         finished = true
       else {
-        currentError(minIdx) = error
-        result += (minTime -> currentError.sum/N)
+        currentValues(minIdx) = value
+        result += (minTime -> agg(currentValues))
         data2(minIdx) = data2(minIdx).tail
       }
     }
     result.groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
   }
 
+  def myplot(name: String, isDOF: Boolean, isQuerySize: Boolean) = {
+    def filterCube(r: IndexedSeq[String]) = r(0).contains("--16")
+    def filterQuery(r: IndexedSeq[String]) = r(2) == "10"
 
-  def main(args: Array[String]): Unit = {
-    val data = getData("online_IowaAll--16-0.19_dummy.csv")
-    //println(data.length)
-    val fig = Figure()
-    val plt = fig.subplot(0)
-    plt.legend = true
-    plt.yaxis.setTickUnit(new NumberTickUnit(0.1))
+    def groupCube(r: IndexedSeq[String]) = r(0)
+    def groupQuery(r: IndexedSeq[String]) = r(2)
+
+    def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuery(r)
+    def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuery(r) else groupCube(r)
+
+    val valueKey = if(isDOF) 5 else 6
+    val data = getData(name, filterf, groupf, valueKey)
+
+    def avgf(vs :Seq[Double]) = vs.sum/vs.size
+    def minf(vs: Seq[Double]) = vs.min
+    def maxf(vs: Seq[Double]) = vs.max
+
+    val initValue = 1.0
+
+    //val fig = Figure()
+    //fig.refresh()
+    //val plt = fig.subplot(0)
+    //plt.legend = true
+    //
+    //plt.yaxis.setTickUnit(new NumberTickUnit(if(isDOF) 200 else 0.1))
+    //plt.xaxis.setTickUnit(new NumberTickUnit(0.5))
+    val filename = (if(isDOF)"dof-" else "error-") + (if(isQuerySize) "qs" else "rf")
+
+    //plt.xlabel = "Time (s)"
+
+    val t1 = (if(isDOF) "Mean DOF" else "Mean Error")
+    //plt.title = t1 + (if(isQuerySize) " for cube log(rf) = -16" else " for query size 10")
+    val csvout = new PrintStream(s"expdata/online-iowa-$filename.csv")
+
     data.map { case (n, d1) =>
-    //val (n,d1) = data.head
-      val d2 = average(d1)
+      //val (n,d1) = data.head
+      val avg = getSeries(d1, avgf, initValue)
+      //val min = getSeries(d1, minf, initValue)
+      //val max = getSeries(d1, maxf, initValue)
 
       //d2.foreach(println)
-      val x = d2.map(_._1)
-      val y = d2.map(_._2)
-      plt += plot(x, y, name=n)
+      val xavg = avg.map(_._1)
+      val yavg = avg.map(_._2)
+      csvout.println("Time(s),"+xavg.mkString(","))
+      csvout.println(s"$t1:$n," +yavg.mkString(","))
+     /*
+      plt += plot(xavg, yavg, name=n)
 
+      //val xmin = min.map(_._1)
+      //val ymin = min.map(_._2)
+      //plt += plot(xmin, ymin, name=n+"min" )
+      //
+      //val xmax = max.map(_._1)
+      //val ymax = max.map(_._2)
+      //plt += plot(xmax, ymax, name=n+"max" )
+ */
     }
+    //fig.refresh()
+    csvout.close()
+    //fig.saveas(s"figs/iowa-online-$filename.pdf")
 
-    //Thread.sleep(10 * 100000L)
-    fig.saveas("figs/test2.pdf")
+  }
+
+  def main(args: Array[String]): Unit = {
+
+    val name = "online_IowaAll-rf.csv"
+    myplot(name, true, false)
+    myplot(name, false, false)
+
+    val name2 = "online_IowaAll-qs.csv"
+    myplot(name2, false, true)
+    myplot(name2, true, true)
+
   }
 }

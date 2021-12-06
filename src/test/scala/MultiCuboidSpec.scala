@@ -20,6 +20,59 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     directory.deleteRecursively()
   }
 
+  "MultiCuboid Base save and load " should " work for 100 rows" in {
+    baseTest(100, "MultiCubeBaseTest100")
+  }
+
+  "MultiCuboid Base save and load " should " work for 100k rows" in {
+    baseTest(100000, "MultiCubeBaseTest100k")
+  }
+
+  "MultiCuboid Base save and load " should " work for 1M rows" in {
+    baseTest(1000000, "MultiCubeBaseTest1M")
+  }
+
+  "MultiCuboid Base save and load " should " work for 10M rows" in {
+    baseTest(10000000, "MultiCubeBaseTest10M")
+  }
+
+  //"MultiCuboid Base save and load " should " work for 100M rows" in {
+  //  baseTest(100000000, "MultiCubeBaseTest100M")
+  //}
+  //
+  //"MultiCuboid Base save and load " should " work for 600M rows" in {
+  //  baseTest(600000000, "MultiCubeBaseTest600M")
+  //}
+  //
+  //"MultiCuboid Base save and load " should " work for 1B rows" in {
+  //  baseTest(1000000000, "MultiCubeBaseTest1B")
+  //}
+
+  def baseTest(N: Int, name: String) = {
+    val n_bits = 200
+
+    val R = (1 to N).map { i => BigBinary(i) -> i.toLong }.toIterator
+    val be: Backend[Payload] = CBackend.b
+    val full_cube = be.mk(n_bits, R)
+    val m = MaterializationScheme.only_base_cuboid(n_bits)
+    val dc1 = new DataCube(m)
+    dc1.build(full_cube)
+
+    dc1.save2(name)
+
+    val dc2 = DataCube.load2(name)
+    val actual = dc2.naive_eval(List(0))
+    // 2 (N/2) * (N/2 + 1)/2
+    val evenSum = (N.toDouble / 2) * (N.toDouble / 2 + 1)
+
+    //N(N+1)/2 -
+    val oddSum = (N.toDouble * (N + 1).toDouble) / 2 - evenSum
+    val expected = List(evenSum, oddSum)
+    assert(actual.sameElements(expected), s"Expected : ${expected.mkString(" ")}   Actual = ${actual.mkString(" ")}")
+    removeCuboid(name)
+  }
+
+
   "MultiCuboid save and load " should " work for small data " in {
     val n_bits = 10
     val schema = StaticSchema.mk(n_bits)

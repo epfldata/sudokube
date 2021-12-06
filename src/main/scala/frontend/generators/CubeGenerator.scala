@@ -1,7 +1,7 @@
 package frontend.generators
 
 import backend.CBackend
-import core.{DataCube, RandomizedMaterializationScheme}
+import core.{DataCube, MaterializationScheme, RandomizedMaterializationScheme}
 import frontend.schema.StructuredDynamicSchema
 import util.BigBinary
 
@@ -19,10 +19,18 @@ abstract class CubeGenerator(val inputname: String) {
     (sch, dc)
   }
 
-  def loadAndSave(lrf1: Double, lbase1: Double, lrf2: Double, lbase2: Double) = {
+  def saveBase() = {
+    val (sch, r) = generate()
+    val dc = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
+    sch.save(inputname)
+    dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
+    dc.save2(s"${inputname}_base")
+    (sch, dc)
+  }
+  def buildFromBase(lrf2: Double, lbase2: Double) = {
     val rf2 = math.pow(10, lrf2)
     val base2 = math.pow(10, lbase2)
-    val dc1 = DataCube.load2(s"${inputname}_${lrf1}_${lbase1}")
+    val dc1 = DataCube.load2(s"${inputname}_base")
     val dc2 = new DataCube(RandomizedMaterializationScheme(dc1.m.n_bits, rf2, base2))
 
     dc2.buildFrom(dc1)

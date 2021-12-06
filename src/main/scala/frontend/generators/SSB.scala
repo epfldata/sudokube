@@ -11,16 +11,31 @@ import core.RationalTools._
 
 import java.io.FileReader
 import java.text.SimpleDateFormat
+import java.time.Duration
+import scala.concurrent.duration.{Duration => ScalaDur}
 import java.util.Date
+import java.util.concurrent.{Callable, ExecutorService, Executors, FutureTask, ThreadPoolExecutor}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
   def readTbl(name: String, colIdx: Vector[Int]) = {
     Profiler.noprofile(s"readTbl$name") {
       val folder = s"tabledata/SSB/sf${sf}"
-      val tbl = CSVReader.read(new FileReader(s"$folder/${name}.tbl"), '|')
-      tbl.map { r => colIdx.map(i => r(i)) }
+      val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|')
+      tbl.map { r => colIdx.map(i => r(i)) }.toList
     }
+  }
+  def fetchPart(name: String, colIdx: Vector[Int])(i: Int)(implicit ec: ExecutionContext) = {
+      val num =  String.format("%03d",Int.box(i))
+      val n2 = name + "." + num
+      //println("Reading " + n2)
+      Future{
+        val r = readTbl(n2, colIdx)
+        if(i % 100 == 0) print(s" R${i/10} ")
+        i -> r
+      }
+
   }
 
   def generate() = {
@@ -32,25 +47,46 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val parts = partSeq.map(d => d.head -> d).toMap
     val suppSeq = readTbl("supplier", Vector(0, 3, 4, 5))
     val supps = suppSeq.map(d => d.head -> d).toMap
-    val lineorder = readTbl("lineorder", Vector(0, 1, 2, 3, 4, 5, 6, 7, 9, 16))
 
-    val join = Profiler.noprofile("JOIN") {
-      lineorder.map { r =>
-        val oid = r(0)
-        val ln = r(1)
-        val cid = r(2)
-        val pid = r(3)
-        val sid = r(4)
-        val dateid = r(5)
-        val oprio = r(6)
-        val sprio = r(7)
-        val price = r(8)
-        val shipmod = r(9)
-
-        (Vector(oid, ln, oprio, sprio, shipmod) ++ date(dateid) ++ custs(cid) ++ parts(pid) ++ supps(sid)) -> (price.toDouble * 100).toLong
-
-      }
+    def joinFunc(r: IndexedSeq[String]) = {
+      val oid = r(0)
+      val ln = r(1)
+      val cid = r(2)
+      val pid = r(3)
+      val sid = r(4)
+      val dateid = r(5)
+      val oprio = r(6)
+      val sprio = r(7)
+      val price = r(8)
+      val shipmod = r(9)
+      (Vector(oid, ln, oprio, sprio, shipmod) ++ date(dateid) ++ custs(cid) ++ parts(pid) ++ supps(sid)) -> (price.toDouble * 100).toLong
     }
+
+    implicit val ec = ExecutionContext.global
+    var jos: IndexedSeq[Future[List[(Vector[_], Long)]]] = null
+    val (lineorder, join) = if (sf <= 10) {
+      val lo = readTbl("lineorder", Vector(0, 1, 2, 3, 4, 5, 6, 7, 9, 16))
+      val j = lo.map(joinFunc)
+      (lo, j)
+    } else {
+
+      val los = (0 until 1000).map { i => fetchPart("lineorder.cut", (0 to 9).toVector)(i) }
+      jos = los.map(f => f.map(ls => {
+        val res = ls._2.map(joinFunc)
+        if (ls._1 % 100 == 0) print(s" J${ls._1 / 10} ")
+        res
+      }))
+
+      val loss = Future.sequence(los).map(_.flatMap(_._2))
+      val joss = Future.sequence(jos).map(_.flatten)
+      val mloss = Await.result(loss, ScalaDur.Inf)
+      println("Merging lineorders complete")
+      val mjoss = Await.result(joss, ScalaDur.Inf)
+      println("Merging join complete")
+      (mloss, mjoss)
+    }
+
+
     implicit val reg = new BitPosRegistry
     val oidvals = lineorder.map(r => r(0)).distinct
     /* 00 */ val oidCol = LD2[String]("order_key", new MemCol(oidvals))
@@ -117,16 +153,30 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
     //join.take(10).map(r => r._1.zip(allDims.map(_.name)).mkString("   ")).foreach(println)
 
-    val r = join.zipWithIndex.map { case ((k, v), i) =>
-      if (i % 500000 == 0) {
-        println(s"Encoding $i/${join.length}")
-        Profiler.print()
-        //sch.columnVector.map(c => (c.name, c.encoder.isRange, c.encoder.bits)).filter(x => !x._2 || (!x._3.isEmpty && (x._3.head != x._3.last + x._3.length-1))).foreach(println)
+    val r = if (sf <= 10) {
+      join.zipWithIndex.map { case ((k, v), i) =>
+        if (i % 500000 == 0) {
+          println(s"Encoding $i/${join.length}")
+          Profiler.print()
+          //sch.columnVector.map(c => (c.name, c.encoder.isRange, c.encoder.bits)).filter(x => !x._2 || (!x._3.isEmpty && (x._3.head != x._3.last + x._3.length-1))).foreach(println)
+        }
+        sch.encode_tuple(k) -> v
       }
-      sch.encode_tuple(k) -> v
-    }
+    } else {
 
+    val resfs = jos.map { fjo =>
+      fjo.map { jo => jo.map { case (k, v) => sch.encode_tuple(k) -> v } }
+    }
+    val resf = Future.sequence(resfs).map(_.flatten)
+    Await.result(resf, ScalaDur.Inf)
+  }
     (sch, r)
+  }
+}
+
+object SSBTest {
+  def main(args: Array[String])  {
+    SSB(100).saveBase()
   }
 }
 

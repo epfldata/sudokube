@@ -14,7 +14,7 @@ typedef unsigned char *key_type;
 */
 
 extern void print_key(int n_bits, byte *key);
-extern void project_key(int n_bits, int toBytes, byte *from, int *mask, byte *to);
+extern void project_key(unsigned int n_bits, unsigned int toBytes, byte *from, unsigned int *mask, byte *to);
 extern void fromLong(byte *key, unsigned long long _lkey, int numkeybytes);
 extern unsigned long long toLong(int n_bits, byte *key);
 extern bool compare_keys(const byte *k1, const byte *k2, int numkeybytes);
