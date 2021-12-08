@@ -56,6 +56,20 @@ unsigned long long toLong(int n_bits, byte *key) {
   return r;
 }
 
+unsigned long long project_key_toLong(unsigned int masklen, byte *from_key, unsigned int *mask)
+{
+    unsigned long long r = 0;
+    int wpos = 0;
+    for(int rpos = 0; rpos < masklen; rpos++) if(mask[rpos]) {
+            int b = (from_key[rpos / 8] >> (rpos % 8)) % 2;
+            r |= b << wpos;
+            wpos ++;
+        }
+
+   return r;
+}
+
+
 void project_key(unsigned int n_bits, unsigned int toBytes, byte *from_key, unsigned int *mask, byte* to_key)
 {
     //we assume to_keys has length at least n_bits/8 + 1 bytes

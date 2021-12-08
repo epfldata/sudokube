@@ -16,6 +16,7 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
   override def encode_any(v: Any): BigBinary = v match {
     case i: Int => encode(i)
     case s: String if Try(s.toInt).isSuccess => encode(s.toInt)
+    case _ => BigBinary(0)
   }
 
 

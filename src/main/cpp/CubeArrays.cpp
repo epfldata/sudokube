@@ -111,6 +111,15 @@ struct {
 
 } globalRegistry;
 
+unsigned int mkAll(unsigned int n_bits, size_t n_rows) {
+    unsigned short keySize =  bitsToBytes(n_bits);
+    size_t recSize = keySize + sizeof(value_t);
+    byte **newstore = (byte **) calloc(n_rows, recSize);
+    size_t sizeMB = n_rows * recSize / (1000 * 1000);
+    if (sizeMB > 100) fprintf(stderr, "\nmkAll calloc : %lu MB\n", sizeMB);
+    return globalRegistry.r_add(newstore,n_rows, keySize);
+}
+
 // append cuboid to registry, used both in dense and sparse case.
 
 /* creates an appendable sparse representation. add to it using add()
@@ -118,6 +127,9 @@ struct {
    as long as this is appendable/a vector, must not call rehash on it.
 */
 unsigned int mk(unsigned int n_bits) {
+    if(n_bits >= (tempKeySize-1) * 8)
+    fprintf(stderr, "Maximum supported bits exceeded");
+    assert(n_bits < (tempKeySize-1) * 8);
     return globalRegistry.r_add(new std::vector<tempRec>(), 0, bitsToBytes(n_bits));
 }
 
@@ -139,10 +151,22 @@ void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
     globalRegistry.numrows_registry[s_id]++;
 }
 
+void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
+    unsigned short keySize;
+    size_t rows;
+    void *ptr;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    byte **store = (byte **) ptr;
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    memcpy(getKey(store, i, recSize), key, keySize);
+    memcpy(getVal(store, i, recSize), &v, sizeof(value_t));
+
+}
 void freeze(unsigned int s_id) {
     //SBJ: No other threads. No locks
     std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
-    short keySize = globalRegistry.keysz_registry[s_id];
+    unsigned short keySize = globalRegistry.keysz_registry[s_id];
     size_t rows = store->size();
     size_t recSize = keySize + sizeof(value_t);
     byte **newstore = (byte **) calloc(rows, recSize);
@@ -384,6 +408,7 @@ value_t *fetch(unsigned int d_id, size_t &size) {
 
 // rehashing ops
 
+
 unsigned int srehash(unsigned int s_id, unsigned int *mask, unsigned int masklen) {
 #ifdef VERBOSE
     printf("Begin srehash(%d, ", s_id);
@@ -398,9 +423,21 @@ unsigned int srehash(unsigned int s_id, unsigned int *mask, unsigned int masklen
     unsigned int recSize = keySize + sizeof(value_t);
 
 
-    const unsigned int tempRecSize = sizeof(tempRec);
+    unsigned int fromDim = masklen;
+    unsigned int toDim = 0;
+    for (unsigned int i = 0; i < masklen; i++)
+        if (mask[i]) toDim++;
 
+    unsigned int newKeySize = bitsToBytes(toDim);
+    unsigned int newRecSize = newKeySize + sizeof(value_t);
+
+    assert(newKeySize <= tempKeySize);
+
+    const unsigned int tempRecSize = sizeof(tempRec);
     tempRec *tempstore = (tempRec *) calloc(rows, tempRecSize);
+
+    size_t tempMB = rows * tempRecSize / (1000 * 1000);
+    if (tempMB > 1000) fprintf(stderr, "\nsrehash temp calloc : %lu MB\n", tempMB);
 
     for (size_t r = 0; r < rows; r++) {
         project_key(masklen, tempKeySize, getKey(store, r, recSize), mask, getKey((byte **) tempstore, r, tempRecSize));
@@ -414,7 +451,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *mask, unsigned int masklen
     }
 
 
-    globalnumkeybytes = keySize;
+    globalnumkeybytes = newKeySize; //TODO: Check if newKeySize is okay
     std::sort(tempstore, tempstore + rows, global_compare_keys);
 
 #ifdef VERBOSE
@@ -451,13 +488,6 @@ unsigned int srehash(unsigned int s_id, unsigned int *mask, unsigned int masklen
             }
         }
 
-    unsigned int fromDim = masklen;
-    unsigned int toDim = 0;
-    for (unsigned int i = 0; i < masklen; i++)
-        if (mask[i]) toDim++;
-
-    unsigned int newKeySize = bitsToBytes(toDim);
-    unsigned int newRecSize = newKeySize + sizeof(value_t);
     size_t  new_rows = watermark + 1;
     //printf("End srehash (compressing from %lu to %d)\n", rows, new_rows);
 
@@ -635,3 +665,78 @@ unsigned int d2srehash(unsigned int n_bits, unsigned int d_id, unsigned int *mas
 }
 
 
+int shybridhash(unsigned int s_id, unsigned int *mask, unsigned int masklen) {
+    unsigned short keySize;
+    size_t rows;
+    void *ptr;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    byte **store = (byte **) ptr;
+    unsigned int recSize = keySize + sizeof(value_t);
+
+
+    unsigned int fromDim = masklen;
+    unsigned int toDim = 0;
+    for (unsigned int i = 0; i < masklen; i++)
+        if (mask[i]) toDim++;
+
+    unsigned int newKeySize = bitsToBytes(toDim);
+    unsigned int newRecSize = newKeySize + sizeof(value_t);
+    const unsigned int tempRecSize = sizeof(tempRec);
+
+    size_t dense_rows = (1LL << toDim);
+    size_t dense_size = dense_rows * sizeof(value_t);  //overflows when to_dim  > 61
+    size_t temp_size = rows * tempRecSize;
+
+    if (toDim >= 40 || temp_size < dense_size) {
+        //do sorting based approach and return sparse cuboid.
+        return srehash(s_id, mask, masklen);
+    } else {
+        //map to dense, and then remap to sparse if necessary
+
+        value_t *dense_store = (value_t *) calloc(dense_rows, sizeof(value_t));
+
+        assert(dense_store);
+
+        size_t numMB = dense_size / (1000 * 1000);
+        if (numMB > 1000) fprintf(stderr, "\nhybrid rehash dense calloc : %lu MB\n", numMB);
+        // all intervals are initially invalid -- no constraint
+        memset(dense_store, 0, dense_size);
+
+        size_t sparse_rows = 0;
+        for (size_t r = 0; r < rows; r++) {
+//    print_key(masklen, getKey(store, r, recSize));
+            unsigned long long i = project_key_toLong(masklen, getKey(store, r, recSize), mask);
+            auto newval = *getVal(store, r, recSize);
+            if (dense_store[i] == 0 && newval > 0)
+                sparse_rows++;
+            dense_store[i] += newval;
+//    printf(" %lld %d\n", i, newstore[i]);
+        }
+
+        size_t sparseSize = sparse_rows * newKeySize;
+
+        if (sparseSize < 0.5 * dense_size) {
+            //switch to sparse representation
+            byte **sparse_store = (byte **) calloc(sparse_rows, newRecSize);
+            size_t numMB = sparse_rows * newRecSize / (1000 * 1000);
+            if (numMB > 1000) fprintf(stderr, "\nhybrid rehash sparse calloc : %lu MB\n", numMB);
+            size_t w = 0;
+            byte dest_key[newKeySize];
+            for (size_t r = 0; r < dense_rows; r++) {
+                if (dense_store[r] != 0) {
+                    fromLong(dest_key, r, newKeySize);
+                    memcpy(getKey(sparse_store, w, newRecSize), dest_key, newKeySize);
+                    memcpy(getVal(sparse_store, w, newRecSize), dense_store + r, sizeof(value_t));
+                    w++;
+                }
+            }
+            assert(w == sparse_rows);
+            free(dense_store);
+            unsigned id = globalRegistry.r_add(sparse_store, sparse_rows, newKeySize);
+            return id;
+        } else {
+            int d_id = globalRegistry.r_add(dense_store, dense_rows, newKeySize);
+            return -d_id;  //SBJ: Negative value indicates that it is dense
+        }
+    }
+}

@@ -27,14 +27,14 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     }
   }
   def fetchPart(name: String, colIdx: Vector[Int])(i: Int)(implicit ec: ExecutionContext) = {
-      val num =  String.format("%03d",Int.box(i))
-      val n2 = name + "." + num
-      //println("Reading " + n2)
-      Future{
-        val r = readTbl(n2, colIdx)
-        if(i % 100 == 0) print(s" R${i/10} ")
-        i -> r
-      }
+    val num =  String.format("%03d",Int.box(i))
+    val n2 = name + "." + num
+    //println("Reading " + n2)
+    Future{
+      val r = readTbl(n2, colIdx)
+      if(i % 100 == 0) print(s" R${i/10} ")
+      r
+    }
 
   }
 
@@ -63,40 +63,64 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     }
 
     implicit val ec = ExecutionContext.global
-    var jos: IndexedSeq[Future[List[(Vector[_], Long)]]] = null
-    val (lineorder, join) = if (sf <= 10) {
-      val lo = readTbl("lineorder", Vector(0, 1, 2, 3, 4, 5, 6, 7, 9, 16))
-      val j = lo.map(joinFunc)
-      (lo, j)
-    } else {
 
-      val los = (0 until 1000).map { i => fetchPart("lineorder.cut", (0 to 9).toVector)(i) }
-      jos = los.map(f => f.map(ls => {
-        val res = ls._2.map(joinFunc)
-        if (ls._1 % 100 == 0) print(s" J${ls._1 / 10} ")
-        res
-      }))
+    val los = if(sf < 1)
+      Vector(Future{readTbl("lineorder", Vector(0, 1, 2, 3, 4, 5, 6, 7, 9, 16))})
+    else
+      (0 until sf*10).map { i => fetchPart("lineorder.cut", (0 to 9).toVector)(i) }
 
-      val loss = Future.sequence(los).map(_.flatMap(_._2))
-      val joss = Future.sequence(jos).map(_.flatten)
-      val mloss = Await.result(loss, ScalaDur.Inf)
-      println("Merging lineorders complete")
-      val mjoss = Await.result(joss, ScalaDur.Inf)
-      println("Merging join complete")
-      (mloss, mjoss)
+    println("LO Parts  = " + los.size)
+    val jos = los.indices.map(i => los(i).map(ls => {
+      val res = ls.map(joinFunc)
+      if (los.size < 100 || i % (los.size/100) == 0) print(s" J${(i*100)/los.size} ")
+      res
+    }))
+
+    //val loss = Future.sequence(los).map(_.flatMap(_._2))
+    //val joss = Future.sequence(jos).map(_.flatten)
+    //val mloss = Await.result(loss, ScalaDur.Inf)
+    //println("Merging lineorders complete")
+    //val mjoss = Await.result(joss, ScalaDur.Inf)
+    //println("Merging join complete")
+    //(mloss, mjoss)
+
+    def getDistinct[T](id: Int) = {
+      val futdists = los.map { fvs =>
+        fvs.map { vs =>
+          vs.map{r =>
+            r(id).asInstanceOf[T]}.distinct
+        }
+      }
+      val f  = Future.sequence(futdists).map(_.flatten.distinct)
+      val res = Await.result(f, ScalaDur.Inf)
+      println("Distinct "+id)
+      res
+    }
+
+    def getMax[T:Numeric](id: Int) = {
+      val futdists = los.map { fvs =>
+        fvs.map { vs =>
+          vs.map{r =>
+            implicitly[Numeric[T]].fromInt(r(id).toInt)}.max
+        }
+      }
+      val f  = Future.sequence(futdists).map(_.max)
+      val res = Await.result(f, ScalaDur.Inf)
+      println("Max "+id)
+      res
     }
 
 
     implicit val reg = new BitPosRegistry
-    val oidvals = lineorder.map(r => r(0)).distinct
+    val oidvals = getDistinct(0)
     /* 00 */ val oidCol = LD2[String]("order_key", new MemCol(oidvals))
-    val lidmax = lineorder.map(r => r(1)).map(_.toInt).max
+    val lidmax = getMax[Int](1)
     /* 01 */ val lnCol = LD2[Int]("line_number", new NatCol(lidmax))
-    val opriovals = lineorder.map(r => r(6)).distinct
+    val opriovals = getDistinct(6)
     /* 02 */ val oprioCol = LD2[String]("ord_priority", new MemCol(opriovals))
-    val shipriovals = lineorder.map(r => r(7)).distinct
+    val shipriovals = getDistinct(7)
     /* 03 */ val shiprioCol = LD2[String]("ship_priority", new MemCol(shipriovals))
-    val shipmodvals = lineorder.map(r => r(9)).distinct
+    val shipmodvals = getDistinct(9)
     /* 04 */ val shipmodCol = LD2[String]("ship_mode", new MemCol(shipmodvals))
 
     val ordDims = BD2("Order", Vector(oidCol, lnCol, oprioCol, shiprioCol, shipmodCol), false)
@@ -153,30 +177,21 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
     //join.take(10).map(r => r._1.zip(allDims.map(_.name)).mkString("   ")).foreach(println)
 
-    val r = if (sf <= 10) {
-      join.zipWithIndex.map { case ((k, v), i) =>
-        if (i % 500000 == 0) {
-          println(s"Encoding $i/${join.length}")
-          Profiler.print()
-          //sch.columnVector.map(c => (c.name, c.encoder.isRange, c.encoder.bits)).filter(x => !x._2 || (!x._3.isEmpty && (x._3.head != x._3.last + x._3.length-1))).foreach(println)
-        }
-        sch.encode_tuple(k) -> v
-      }
-    } else {
-
     val resfs = jos.map { fjo =>
       fjo.map { jo => jo.map { case (k, v) => sch.encode_tuple(k) -> v } }
     }
     val resf = Future.sequence(resfs).map(_.flatten)
-    Await.result(resf, ScalaDur.Inf)
-  }
+    val r  = Await.result(resf, ScalaDur.Inf)
+
     (sch, r)
   }
 }
 
 object SSBTest {
   def main(args: Array[String])  {
-    SSB(100).saveBase()
+    val cg = SSB(100)
+    //cg.saveBase()
+    cg.buildFromBase(-32, 0.19)
   }
 }
 

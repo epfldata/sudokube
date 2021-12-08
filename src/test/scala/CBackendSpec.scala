@@ -13,7 +13,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
   "CBackend simple absolute test" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =
-      CBackend.b.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
+      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
     val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
@@ -41,7 +41,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     for(it <- 1 to 50) {
       val R   = TupleGenerator(schema, 100, Sampling.f1).toList
-      val c   = CBackend.b.mk(n_bits, R.toIterator)
+      val c   = CBackend.b.mkAll(n_bits, R)
       val q1  = Util.rnd_choose(n_bits,    6)
       val q2  = Util.rnd_choose(q1.length, 3)
       val qmask = mk_mask(n_bits, q2.map(q1(_)))
@@ -78,7 +78,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
     val be = Vector(CBackend.b, ScalaBackend)
-    val full_cube = be.map(_.mk(n_bits, R.toIterator))
+    val full_cube = be.map(_.mkAll(n_bits, R))
     val m = RandomizedMaterializationScheme(schema.n_bits, rf, base)
     val dcs = full_cube.map { fc =>
       val dc = new DataCube(m)

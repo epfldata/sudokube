@@ -37,7 +37,7 @@ class StructuredDynamicSchema(top_level: Vector[Dim2])(implicit bitPosRegistry: 
   def encode_column(idx: Int, v: Any): BigBinary = columnVector(idx).encoder.encode_any(v)
 
   def encode_tuple(tup: IndexedSeq[Any]) = {
-    val tupmap = Profiler("E1") {tup.indices.map(i => encode_column(i, tup(i)))}
+    val tupmap = Profiler("E1") {columnVector.indices.map(i => encode_column(i, tup(i)))}
       Profiler("E2"){tupmap.sum}
   }
   def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))

@@ -14,16 +14,23 @@ abstract class CubeGenerator(val inputname: String) {
     val base = math.pow(10, lbase)
     val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
     sch.save(inputname)
-    dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
+    dc.build(CBackend.b.mkAll(sch.n_bits, r))
     dc.save2(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }
 
   def saveBase() = {
     val (sch, r) = generate()
+    sch.columnVector.map(c => (c.name, c.encoder.isRange, c.encoder.bits.size, c.encoder.bits)).foreach(println)
+    val nonRanges = sch.columnVector.filter(c => !c.encoder.isRange)
+    if(!nonRanges.isEmpty) {
+      println("WARNING ! Encoding not continous for the following ")
+      nonRanges.map(c => c.name).foreach(println)
+    }
+    println("Total = "+sch.n_bits)
     val dc = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
     sch.save(inputname)
-    dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
+    dc.build(CBackend.b.mkAll(sch.n_bits, r))
     dc.save2(s"${inputname}_base")
     (sch, dc)
   }
@@ -51,10 +58,17 @@ abstract class CubeGenerator(val inputname: String) {
   def load(lrf: Double, lbase: Double) = {
     val sch = StructuredDynamicSchema.load(inputname)
     sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    println("Total = "+sch.n_bits)
     val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }
 
+  def schema() = {
+    val sch = StructuredDynamicSchema.load(inputname)
+    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    println("Total = "+sch.n_bits)
+    sch
+  }
   def loadDC(lrf: Double, lbase: Double) = {
     DataCube.load2(s"${inputname}_${lrf}_${lbase}")
   }

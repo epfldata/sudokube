@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     backend_CBackend
+ * Method:    shhash
+ * Signature: (I[I)I
+ */
+JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
+  (JNIEnv *, jobject, jint, jintArray);
+
+/*
+ * Class:     backend_CBackend
  * Method:    sRehash0
  * Signature: (I[I)I
  */
@@ -41,6 +49,14 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
 /*
  * Class:     backend_CBackend
+ * Method:    mkAll0
+ * Signature: (II)I
+ */
+JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
+  (JNIEnv *, jobject, jint, jint);
+
+/*
+ * Class:     backend_CBackend
  * Method:    mk0
  * Signature: (I)I
  */
@@ -70,6 +86,14 @@ JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
  */
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
   (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    add_i
+ * Signature: (III[IJ)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
+  (JNIEnv *, jobject, jint, jint, jint, jintArray, jlong);
 
 /*
  * Class:     backend_CBackend

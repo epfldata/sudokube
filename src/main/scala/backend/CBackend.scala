@@ -9,7 +9,14 @@ import util._
 class CBackend extends Backend[Payload] {
   protected type DENSE_T  = Int // index in C registry data structure
   protected type SPARSE_T = Int
+  protected type HYBRID_T = Int
 
+
+  override def isDense(h: Int): Boolean = h < 0
+  override def extractDense(h: Int): Int = -h
+  override def extractSparse(h: Int): Int = h
+
+  @native protected def shhash(s_id: Int, mask: Array[Int]): Int
   @native protected def   sRehash0(s_id: Int,
                                    mask: Array[Int]): Int
   @native protected def d2sRehash0(n_bits: Int, d_id: Int,
@@ -18,11 +25,13 @@ class CBackend extends Backend[Payload] {
                                    mask: Array[Int]): Int
   @native protected def   dRehash0(n_bits: Int, d_id: Int, d_bits: Int,
                                    mask: Array[Int]): Int
+  @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
   @native protected def mk0(n_bits: Int): Int
   @native protected def sSize0(id: Int): Int
   @native protected def sNumBytes0(id: Int): Long
   @native protected def dFetch0(d_id: Int): Array[Long]
 
+  @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def freeze(s_id: Int)
 
@@ -74,6 +83,19 @@ class CBackend extends Backend[Payload] {
     else writeDCuboid0(filename, c.asInstanceOf[DenseCuboid].data)
   }
 
+  def mkAll(n_bits: Int, values: Seq[(BigBinary, Long)]) = {
+    val nrows = values.size
+    val data = mkAll0(n_bits, nrows)
+
+    var count = 0
+    def add_one(x: (BigBinary, Long)) = {
+      val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
+      add_i(count, data, n_bits, ia_key, x._2)
+      count += 1
+    }
+    values.foreach(add_one)
+    SparseCuboid(n_bits, data)
+  }
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid = {
     val data = mk0(n_bits)
 
@@ -91,6 +113,9 @@ class CBackend extends Backend[Payload] {
 
   // inherited methods seem to add some invisible args that break JNI,
   // so we have yet another indirection.
+
+  protected def hybridRehash(s_id: Int, mask: Array[Int]): Int = shhash(s_id, mask)
+
   protected def   sRehash( s_id: Int, mask: Array[Int]): Int =
                   sRehash0(s_id,      mask)
   protected def d2sRehash( n_bits: Int, d_id: Int, mask: Array[Int]): Int =

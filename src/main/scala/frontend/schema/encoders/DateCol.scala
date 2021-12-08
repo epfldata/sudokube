@@ -22,7 +22,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
 
   override def bitsMin: Int = ???
 
-  override def isRange: Boolean = ???
+  override def isRange: Boolean = yCol.isRange && mCol.isRange && dCol.isRange && hrCol.isRange && minCol.isRange && secCol.isRange
 
   override def maxIdx: Int = ???
 
@@ -45,6 +45,8 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
     val min = v.getMinutes
     val sec = v.getSeconds
 
+    if(year + 1900 < referenceYear || year + 1900 > maxYear)
+      println(s"Overflow year range cur=${year+1900} min=${referenceYear} max=${maxYear} bitsMin=${yCol.bitsMin}")
     val yearDelta = year - (referenceYear - 1900)
     assert(yearDelta >= 0)
     yCol.encode(yearDelta) + mCol.encode(month) + dCol.encode(day) + hrCol.encode(hour) + minCol.encode(min) + secCol.encode(sec)

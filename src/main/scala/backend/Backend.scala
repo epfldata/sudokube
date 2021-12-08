@@ -21,9 +21,15 @@ abstract class Cuboid {
 
 
 abstract class Backend[MEASURES_T] {
+  protected type HYBRID_T
   protected type SPARSE_T
   protected type DENSE_T
   type MASK_T = Array[Int]
+
+  def isDense(h: HYBRID_T): Boolean
+  def extractDense(h: HYBRID_T): DENSE_T
+  def extractSparse(h: HYBRID_T): SPARSE_T
+
   def allones(n: Int): MASK_T = Array.fill(n)(1)
   protected val be_this = this
 
@@ -37,19 +43,11 @@ abstract class Backend[MEASURES_T] {
     def numBytes: Long = sNumBytes(data)
 
     override def rehash(mask: MASK_T): Cuboid = {
-      assert(mask.length == n_bits)
-      val res_n_bits = mask.sum
-      val n0 = (math.log(size.toDouble)/math.log(2)).toInt
-      if(n0 >= res_n_bits + 10)
-        rehash_to_dense(mask)
-      else {
-        val size_dense = Big.pow2(res_n_bits)
-        val sparse_cuboid = rehash_to_sparse(mask)
-        if (size_dense <= sparse_cuboid.size)
-          sparse_cuboid.rehash_to_dense(allones(res_n_bits))
-        else sparse_cuboid
-      }
-
+      val h = hybridRehash(data, mask)
+      if(isDense(h))
+        DenseCuboid(mask.sum, extractDense(h))
+      else
+        SparseCuboid(mask.sum, extractSparse(h))
     }
 
     def rehash_to_dense(mask: MASK_T) = {
@@ -102,11 +100,13 @@ abstract class Backend[MEASURES_T] {
 
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid
+  def mkAll(n_bits: Int, it: Seq[(BigBinary, Long)]) : SparseCuboid
 
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
   protected def sSize(data: SPARSE_T) : BigInt
   protected def sNumBytes(data: SPARSE_T) : Long
 
+  protected def hybridRehash(a: SPARSE_T,  mask: MASK_T ) : HYBRID_T
   protected def d2sRehash(n_bits: Int, a: DENSE_T,  mask: MASK_T) : SPARSE_T
   protected def s2dRehash(a: SPARSE_T, p_bits: Int, mask: MASK_T) : DENSE_T
   protected def   sRehash(a: SPARSE_T,              mask: MASK_T) : SPARSE_T

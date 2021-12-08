@@ -3,13 +3,15 @@
 #include "backend_CBackend.h"
 #include "Keys.h"
 
-
+extern unsigned int   shybridhash(            unsigned int s_id,            unsigned int *mask, unsigned int masklen);
 extern unsigned int   srehash(            unsigned int s_id,            unsigned int *mask, unsigned int masklen);
 extern unsigned int d2srehash(unsigned int n_bits, unsigned int d_id,             unsigned int *mask, unsigned int masklen);
 extern unsigned int s2drehash(           unsigned int s_id, unsigned int d_bits, unsigned int *mask, unsigned int masklen);
 extern unsigned int   drehash(unsigned int n_bits, unsigned int d_id, unsigned int d_bits,unsigned int *mask, unsigned int masklen);
 
+extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
+extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
 extern void     add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
 extern void     freeze(unsigned int s_id);
 extern value_t *fetch(unsigned int d_id, size_t& size);
@@ -86,6 +88,22 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
     writeMultiCuboid(filename, isSparseArray, idArray, numCuboids);
 }
 
+JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
+        (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jintArray key, jlong v) {
+    jsize keylen  = env->GetArrayLength(key);
+    jint* keybody = env->GetIntArrayElements(key, 0);
+
+    // the key is transmitted as an array of bytes (0 to 255).
+
+    assert(n_bits <= keylen * 8);
+    byte ckey[keylen];
+    for(int i = 0; i < keylen; i++) ckey[i] = keybody[i];
+
+    add_i(idx, s_id, ckey, v);
+
+    env->ReleaseIntArrayElements(key, keybody, 0);
+}
+
 JNIEXPORT void JNICALL Java_backend_CBackend_add
 (JNIEnv* env, jobject obj, jint s_id, jint n_bits, jintArray key, jlong v)
 {
@@ -126,6 +144,20 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_mk0
   return mk(n_bits);
 }
 
+JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
+        (JNIEnv * env, jobject obj, jint n_bits, jint n_rows) {
+    return mkAll(n_bits, n_rows);
+}
+
+JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
+        (JNIEnv *env, jobject obj, jint s_id, jintArray mask) {
+    jsize masklen = env->GetArrayLength(mask);
+    jint *maskbody = env->GetIntArrayElements(mask, 0);
+    int id = shybridhash(s_id, (unsigned int *) maskbody, masklen);
+    env->ReleaseIntArrayElements(mask, maskbody, 0);
+    return id;
+
+}
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
 (JNIEnv* env, jobject obj, jint s_id, jintArray mask)

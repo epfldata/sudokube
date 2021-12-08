@@ -33,7 +33,7 @@ object Iowa extends CubeGenerator ("IowaAll") {
         case 1 => try {
           f1.parse(r(1))
         } catch {
-          case e: Exception => new Date(2012, 0, 1)
+          case e: Exception => new Date(2012-1900, 0, 1)
         }
         case i => r(i)
       }

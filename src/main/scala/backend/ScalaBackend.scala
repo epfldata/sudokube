@@ -1,6 +1,8 @@
 //package ch.epfl.data.sudokube
 package backend
+import combinatorics.Big
 import util._
+
 import java.io._
 
 
@@ -10,7 +12,12 @@ import java.io._
 object ScalaBackend extends Backend[Payload] {
   protected type DENSE_T  = Array[Payload]
   protected type SPARSE_T = Seq[(BigBinary, Payload)]
+  protected type HYBRID_T = (DENSE_T, SPARSE_T)
 
+
+  override def isDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Boolean = (h._1 != null)
+  override def extractDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Array[Payload] = h._1
+  override def extractSparse(h: (Array[Payload], Seq[(BigBinary, Payload)])): Seq[(BigBinary, Payload)] = h._2
 
   override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean],
                                nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = ???
@@ -44,8 +51,9 @@ object ScalaBackend extends Backend[Payload] {
     oos.close
   }
 
-  def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid = {
-    val a : SPARSE_T = it.toList.map(x => (x._1, Payload.mk(x._2)))
+  def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = mkAll(n_bits, it.toSeq)
+  def mkAll(n_bits: Int, vs: Seq[(BigBinary, Long)]) : SparseCuboid = {
+    val a : SPARSE_T = vs.map(x => (x._1, Payload.mk(x._2)))
     val mask = (1 to n_bits).map(_ => 1).toArray // dummy for deduplication
     SparseCuboid(n_bits, sRehash(a, mask))
   }
@@ -84,6 +92,20 @@ object ScalaBackend extends Backend[Payload] {
        b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList
 
     dedup(a.map{ case (i, v) => (hash_f(i), v) })
+  }
+
+  override protected def hybridRehash(a: Seq[(BigBinary, Payload)], mask: MASK_T) : HYBRID_T = {
+      val res_n_bits = mask.sum
+      val n0 = (math.log(a.size.toDouble)/math.log(2)).toInt
+      if(n0 >= res_n_bits + 10)
+        (s2dRehash(a, res_n_bits, mask), null)
+      else {
+        val size_dense = Big.pow2(res_n_bits)
+        val sparse_cuboid = sRehash(a, mask)
+        if (size_dense <= sparse_cuboid.size)
+          (s2dRehash(sparse_cuboid, res_n_bits, allones(res_n_bits)), null)
+        else (null, sparse_cuboid)
+    }
   }
 }
 
