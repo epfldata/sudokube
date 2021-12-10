@@ -1,6 +1,7 @@
 package frontend.schema
 
 import breeze.io.CSVReader
+import frontend.experiments.Tools
 import frontend.schema.encoders.ColEncoder
 import util._
 import util.BigBinaryTools._
@@ -32,6 +33,7 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
 class StructuredDynamicSchema(top_level: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends Serializable  {
   val root = new BD2("ROOT", top_level, true)
 
+  def recommended_cube = Tools.params(n_bits, 25)
   def n_bits: Int = bitPosRegistry.n_bits
   lazy val columnVector: Vector[LD2[_]] = root.leaves
   def encode_column(idx: Int, v: Any): BigBinary = columnVector(idx).encoder.encode_any(v)

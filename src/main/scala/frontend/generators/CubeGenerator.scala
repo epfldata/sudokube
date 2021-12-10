@@ -28,6 +28,7 @@ abstract class CubeGenerator(val inputname: String) {
       nonRanges.map(c => c.name).foreach(println)
     }
     println("Total = "+sch.n_bits)
+    println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
     val dc = new DataCube(MaterializationScheme.only_base_cuboid(sch.n_bits))
     sch.save(inputname)
     dc.build(CBackend.b.mkAll(sch.n_bits, r))

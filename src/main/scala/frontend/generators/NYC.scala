@@ -321,66 +321,8 @@ object NYC extends CubeGenerator("NYC") {
   }
 
   def main(args: Array[String]): Unit = {
-    saveBase()
-    //read(2021)
-    // val filename = s"tabledata/nyc/2021.tsv"
-    // val csv = CsvReader.builder().fieldSeparator('\t').build(new FileReader(filename))
-    //
-    //val data = csv.stream().map[IndexedSeq[String]](r => (0 to 35).map(i => r.getField(i)))
-    //
-    // //Source.fromFile(filename, "utf-8").getLines().map(_.split("\t"))
-    // println(Runtime.getRuntime.totalMemory()/math.pow(10, 9) + " GB")
-    //     //println(data.length)
-    // //println(Runtime.getRuntime.totalMemory()/math.pow(10, 9) + " GB")
-    // val f1 = new SimpleDateFormat("MM/dd/yyyy")
-    // val f2 = new SimpleDateFormat("yyyyMMdd")
-    // val f3 = new SimpleDateFormat("hhmma")
-    // //val join = data.drop(1).map { row =>
-    // //  val key = row.indices.map {
-    // //    case 4 => f1.parse(row(4)) //issue_date
-    // //    //case 12 => f2.parse(row(12)) //vehicle_expiry_date
-    // //    case 19 =>
-    // //      val c19 = row(19)
-    // //      try {
-    // //        if (c19.isEmpty)
-    // //          new Date(0, 0, 1)
-    // //        else if (c19.endsWith("A") || c19.endsWith("P"))
-    // //          f3.parse(c19 + "M") //violation_time
-    // //        else
-    // //          f3.parse(c19 + "AM")
-    // //      } catch {
-    // //        case e: Exception => new Date(0, 0, 1)
-    // //      }
-    // //    case 20 =>
-    // //      val c20 = row(20)
-    // //      try {
-    // //        if (c20.isEmpty)
-    // //          new Date(0, 0, 1)
-    // //        else if (c20.endsWith("A") || c20.endsWith("P"))
-    // //          f3.parse(c20 + "M")
-    // //        else f3.parse(c20 + "AM")
-    // //      } catch {
-    // //        case e: Exception => new Date(0, 0, 1)
-    // //      }
-    // //
-    // //    case 26 =>
-    // //      val c26 = row(26) //date first observed
-    // //      if (c26.isEmpty || c26.equals("0"))
-    // //        new Date(2014, 0, 1)
-    // //      else
-    // //        f2.parse(c26)
-    // //    case i => row(i)
-    // //  }
-    // //  key
-    // //}
-    // //println(Runtime.getRuntime.totalMemory()/math.pow(10, 9) + " GB")
-    //     //println(join.length)
-    // //println(Runtime.getRuntime.totalMemory()/math.pow(10, 9) + " GB")
-    // val join2 = data.toArray
-    // println(join2.size)
-    // println(Runtime.getRuntime.totalMemory()/math.pow(10, 9) + " GB")
-    // println("FINISHED")
-    // Thread.sleep(1000L * 300)
+    //saveBase()
+    buildFromBase(-80.6, 0.19)
 
   }
 }
