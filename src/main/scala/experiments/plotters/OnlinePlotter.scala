@@ -83,7 +83,7 @@ object OnlinePlotter {
 
     val t1 = (if(isDOF) "Mean DOF" else "Mean Error")
     //plt.title = t1 + (if(isQuerySize) " for cube log(rf) = -16" else " for query size 10")
-    val csvout = new PrintStream(s"expdata/online-iowa-$filename.csv")
+    val csvout = new PrintStream(s"expdata/$name-$filename.csv")
 
     data.map { case (n, d1) =>
       //val (n,d1) = data.head
@@ -116,13 +116,13 @@ object OnlinePlotter {
 
   def main(args: Array[String]): Unit = {
 
-    val name = "online_IowaAll-rf.csv"
+    val name = "online_NYC.csv"
     myplot(name, true, false)
     myplot(name, false, false)
 
-    val name2 = "online_IowaAll-qs.csv"
-    myplot(name2, false, true)
-    myplot(name2, true, true)
+    val name2 = "online_SSB-sf100.csv"
+    myplot(name2, false, false)
+    myplot(name2, true, false)
 
   }
 }

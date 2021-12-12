@@ -56,6 +56,15 @@ unsigned long long toLong(int n_bits, byte *key) {
   return r;
 }
 
+unsigned long long project_key_toLong2(unsigned int masksum, byte *from_key, unsigned int *maskpos) {
+    unsigned long long r = 0;
+    for(int wpos = 0; wpos < masksum; wpos++) {
+        int rpos = maskpos[wpos];
+        int b = (from_key[rpos / 8] >> (rpos % 8)) % 2;
+        r |= b << wpos;
+    }
+    return r;
+}
 unsigned long long project_key_toLong(unsigned int masklen, byte *from_key, unsigned int *mask)
 {
     unsigned long long r = 0;

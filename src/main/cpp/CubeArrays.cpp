@@ -674,20 +674,23 @@ int shybridhash(unsigned int s_id, unsigned int *mask, unsigned int masklen) {
     unsigned int recSize = keySize + sizeof(value_t);
 
 
-    unsigned int fromDim = masklen;
-    unsigned int toDim = 0;
+    unsigned int masksum = 0;
     for (unsigned int i = 0; i < masklen; i++)
-        if (mask[i]) toDim++;
+        if (mask[i]) masksum++;
 
-    unsigned int newKeySize = bitsToBytes(toDim);
+    unsigned int maskpos[masksum];
+    for (unsigned int i = 0, j = 0; i < masklen; i++)
+        if (mask[i]) maskpos[j++] = i;
+
+    unsigned int newKeySize = bitsToBytes(masksum);
     unsigned int newRecSize = newKeySize + sizeof(value_t);
     const unsigned int tempRecSize = sizeof(tempRec);
 
-    size_t dense_rows = (1LL << toDim);
+    size_t dense_rows = (1LL << masksum);
     size_t dense_size = dense_rows * sizeof(value_t);  //overflows when to_dim  > 61
     size_t temp_size = rows * tempRecSize;
 
-    if (toDim >= 40 || temp_size < dense_size) {
+    if (masksum >= 40 || temp_size < dense_size) {
         //do sorting based approach and return sparse cuboid.
         return srehash(s_id, mask, masklen);
     } else {
@@ -705,15 +708,14 @@ int shybridhash(unsigned int s_id, unsigned int *mask, unsigned int masklen) {
         size_t sparse_rows = 0;
         for (size_t r = 0; r < rows; r++) {
 //    print_key(masklen, getKey(store, r, recSize));
-            unsigned long long i = project_key_toLong(masklen, getKey(store, r, recSize), mask);
+            unsigned long long i = project_key_toLong2(masksum, getKey(store, r, recSize), maskpos);
             auto newval = *getVal(store, r, recSize);
             if (dense_store[i] == 0 && newval > 0)
                 sparse_rows++;
             dense_store[i] += newval;
 //    printf(" %lld %d\n", i, newstore[i]);
         }
-
-        size_t sparseSize = sparse_rows * newKeySize;
+       size_t sparseSize = sparse_rows * newRecSize;
 
         if (sparseSize < 0.5 * dense_size) {
             //switch to sparse representation

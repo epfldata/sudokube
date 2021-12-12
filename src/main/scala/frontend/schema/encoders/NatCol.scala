@@ -11,6 +11,7 @@ import scala.util.Try
  * NatCol does not have a way or representing NULL values --
  * the default value is zero.
  */
+@SerialVersionUID(8516410713123398680L)
 class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[Int]  {
   register.registerIdx(max_value)
   override def encode_any(v: Any): BigBinary = v match {

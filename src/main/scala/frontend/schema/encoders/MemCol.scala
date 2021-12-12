@@ -16,7 +16,7 @@ class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends ColEncoder[T] {
     bits = (offset to offset + n_bits - 1)
   }
   override def isRange: Boolean = true
-  override def queries(): Set[Seq[Int]] = Set()
+  override def queries(): Set[Seq[Int]] = ???
 
   private val vanity_map: Map[T, Int] =
     vals.zipWithIndex.map{ case (k, i) => (k, i) }.toMap
@@ -43,6 +43,7 @@ class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends ColEncoder[T] {
 }
 
 /** The domain of the column is elements of type T and NULL (None). */
+@SerialVersionUID(5162431377964958396L)
 class MemCol[T](init_size: Int = 8
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 

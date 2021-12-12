@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import scala.util.Try
 
+@SerialVersionUID(2060625167200613195L) //for SSB
+//@SerialVersionUID(-2090955600471017765L) //for NYC
 class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, allocateDay: Boolean = false, allocateHr: Boolean = false, allocateMin: Boolean = false, allocateSec: Boolean = false)(implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[Date]  {
 //TODO: Split month into quarters
 

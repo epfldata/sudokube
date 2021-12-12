@@ -18,7 +18,7 @@ abstract class ColEncoder[T] extends Serializable {
   def decode_locally(i: Int): T
   def maxIdx : Int
   def queries(): Set[Seq[Int]]
-
+  def queriesUpto(qsize: Int) : Set[Seq[Int]] = queries().filter(_.length <= qsize)
   def encode(v: T): BigBinary =
     if (isRange) {
       val v1 = Profiler("E121") {

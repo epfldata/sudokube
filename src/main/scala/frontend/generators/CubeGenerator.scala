@@ -35,6 +35,15 @@ abstract class CubeGenerator(val inputname: String) {
     dc.save2(s"${inputname}_base")
     (sch, dc)
   }
+
+  def loadBase() = {
+    val sch = StructuredDynamicSchema.load(inputname)
+    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    println("Total = "+sch.n_bits)
+    println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
+    val dc = DataCube.load2(s"${inputname}_base")
+    (sch, dc)
+  }
   def buildFromBase(lrf2: Double, lbase2: Double) = {
     val rf2 = math.pow(10, lrf2)
     val base2 = math.pow(10, lbase2)

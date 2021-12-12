@@ -8,22 +8,57 @@ import util.BigBinaryTools._
 
 import java.io.{File, FileInputStream, FileOutputStream, FileReader, ObjectInputStream, ObjectOutputStream}
 import scala.io.Source
+import scala.util.Random
 
 @SerialVersionUID(3L)
 abstract class Dim2(val name: String) extends  Serializable {
   def queries: Set[Seq[Int]]
+  def queriesUpto(qsize: Int) : Set[Seq[Int]]
+  def sampleQuery(qsize: Int): Option[Seq[Int]]
 }
-case class LD2[T](override val name : String, val encoder: ColEncoder[T]) extends Dim2(name) {
+@SerialVersionUID(5066804864072392482L)
+case class LD2[T](override val name : String, encoder: ColEncoder[T]) extends Dim2(name) {
   override def queries: Set[Seq[Int]] = encoder.queries()
+  override def queriesUpto(qsize: Int): Set[Seq[Int]] = encoder.queriesUpto(qsize)
+  override def sampleQuery(qsize: Int): Option[Seq[Int]] = ???
 }
+@SerialVersionUID(-3406868252153216970L)
 case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean) extends Dim2(name) {
   def leaves : Vector[LD2[_]] = children.flatMap {
     case  b: BD2 => b.leaves
     case  x: LD2[_]  => Vector(x)
   }
 
+  override def sampleQuery(qsize: Int) : Option[Seq[Int]] = if(cross){
+    val array = Array.fill(children.length)(0)
+    (0 until qsize).foreach{ i =>
+      val idx = Random.nextInt(children.length)
+      array(idx) += 1
+    }
+    val res = children.indices.foldLeft[Option[Seq[Int]]](Some(Nil)) {
+      case (Some(acc), i) => children(i).sampleQuery(array(i)).map(acc ++ _)
+      case (None, i) => None
+    }
+    assert(res.map(_.size == qsize).getOrElse(true))
+    res
+  } else {
+    val idx = Random.nextInt(children.length)
+    children(idx).sampleQuery(qsize)
+  }
+
+
+  override def queriesUpto(qsize: Int): Set[Seq[Int]] = if(qsize <= 0) Set() else {
+    if(cross)
+    children.foldLeft(Set(Seq[Int]())){ case (acc, cur) =>
+      acc.flatMap(q1 => cur.queriesUpto(qsize-q1.size).map(q2 => q1 ++ q2))}
+    else
+      children.map(_.queriesUpto(qsize)).reduce(_ union _)
+  }
+
   override def queries: Set[Seq[Int]] = if(cross)
-    children.foldLeft(Set(Seq[Int]())){ case (acc, cur) => acc.flatMap(q1 => cur.queries.map(q2 => q1 ++ q2))}
+    children.foldLeft(Set(Seq[Int]())){ case (acc, cur) =>
+      val cq = cur.queries
+      acc.flatMap(q1 => cq.map(q2 => q1 ++ q2))}
   else
     children.map(_.queries).reduce(_ union _)
 
