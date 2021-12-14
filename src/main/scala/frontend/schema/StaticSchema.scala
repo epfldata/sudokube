@@ -22,7 +22,7 @@ case class LD[T](
 ) extends Dim(name)  {
   val encoder = new StaticMemCol[T](n_bits, vals)
   override def bits: Seq[Int] = encoder.bits
-  override def set_bits(offset: Int): Unit = encoder.set_bits(offset)
+  override def set_bits(offset: Int) { encoder.set_bits(offset) }
 }
 
 

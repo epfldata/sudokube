@@ -2,6 +2,9 @@
 package backend
 import util._
 
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
+
 
 /** proxy for C implementation; provides access to native functions
     via JNI.
@@ -94,6 +97,31 @@ class CBackend extends Backend[Payload] {
       count += 1
     }
     values.foreach(add_one)
+    SparseCuboid(n_bits, data)
+  }
+  def mkParallel(n_bits: Int, its: IndexedSeq[(Int, Iterator[(BigBinary, Long)])]): SparseCuboid  = {
+
+    val sizes = its.map(_._1)
+    val totalSize = sizes.sum
+    val offsets = Array.fill(its.size)(0)
+    (1 until its.size).foreach { i =>  offsets(i) = offsets(i-1) + sizes(i-1)}
+    val data = mkAll0(n_bits, totalSize)
+
+
+    implicit val ec = ExecutionContext.global
+    val futs = its.indices.map(i => Future {
+      val offset = offsets(i)
+      var count = 0
+      its(i)._2.foreach { x =>
+        val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
+        add_i(count + offset, data, n_bits, ia_key, x._2)
+        count += 1
+      }
+      println(" P"+i+s" from $offset to ${offset + count}")
+      //collection.immutable.BitSet((offset until offset + count):_*)
+    })
+      Await.result(Future.sequence(futs), Duration.Inf)
+    //assert(ranges.reduce(_ union _).size == totalSize)
     SparseCuboid(n_bits, data)
   }
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid = {

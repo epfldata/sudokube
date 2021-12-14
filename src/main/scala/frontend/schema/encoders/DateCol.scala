@@ -80,3 +80,109 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
     //case s: String if Try(f1.parse(s)).isSuccess => encode(f1.parse(s))
   }
 }
+
+class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  allocateMonth: Boolean = false, allocateDay: Boolean = false, allocateHr: Boolean = false, allocateMin: Boolean = false, allocateSec: Boolean = false) extends StaticColEncoder[Date] {
+  val yearCol = new StaticNatCol(minYear, maxYear, _.asInstanceOf[Option[Date]].map(_.getYear))
+  val quarterCol = new StaticNatCol(0, 3, _.asInstanceOf[Option[Date]].map(_.getMonth/4))
+  val monthCol = new StaticNatCol(0, 11, _.asInstanceOf[Option[Date]].map(_.getMonth))
+  val dayCol = new StaticNatCol(1, 31, _.asInstanceOf[Option[Date]].map(_.getDate))
+  //val dayOfWeekCol = new StaticNatCol(0, 6, _.asInstanceOf[Option[Date]].map(_.getDay))
+  val hourCol = new StaticNatCol(0, 23 ,_.asInstanceOf[Option[Date]].map(_.getHours))
+  val minuteCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getMinutes))
+  val secondsCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getSeconds))
+
+
+  override def set_bits(offset: Int): Int = {
+    var off2 = offset
+    if(allocateSec)
+      off2 = secondsCol.set_bits(off2)
+    if(allocateMin)
+      off2 = minuteCol.set_bits(off2)
+    if(allocateHr)
+      off2 = hourCol.set_bits(off2)
+    if(allocateDay)
+      off2 = dayCol.set_bits(off2)
+    if(allocateMonth) {
+      off2 = monthCol.set_bits(off2)
+      off2 = quarterCol.set_bits(off2)
+    }
+    if(maxYear >= minYear){
+      off2 = yearCol.set_bits(off2)
+    }
+    bits = offset until off2
+    off2
+  }
+
+  override def n_bits: Int = {
+    var sum = yearCol.n_bits
+    if(allocateMonth) {
+      sum += quarterCol.n_bits
+      sum += monthCol.n_bits
+    }
+    if(allocateDay)
+      sum += dayCol.n_bits
+    if(allocateHr)
+      sum += hourCol.n_bits
+    if(allocateMin)
+      sum += minuteCol.n_bits
+    if(allocateSec)
+      sum += secondsCol.n_bits
+    sum
+  }
+
+  override def encode_any(v: Any): BigBinary = {
+     val dopt = map_f(v)
+
+    var sum = BigBinary(0)
+    if(dopt.isDefined) {
+      sum = sum + yearCol.encode_any(dopt)
+      if (allocateMonth)
+        sum = sum + quarterCol.encode_any(dopt) + monthCol.encode_any(dopt)
+      if (allocateDay)
+        sum = sum + dayCol.encode_any(dopt)
+      if (allocateHr)
+        sum = sum + hourCol.encode_any(dopt)
+      if (allocateMin)
+        sum = sum + minuteCol.encode_any(dopt)
+      if (allocateSec)
+        sum = sum + secondsCol.encode_any(dopt)
+    }
+    sum
+  }
+
+  override def encode_locally(v: Date): Int = ???
+  override def decode_locally(i: Int): Date = ???
+  override def maxIdx: Int = ???
+
+  override def queries(): Set[Seq[Int]] = {
+    val ybits = yearCol.bits
+    val ymbits = monthCol.bits ++ ybits
+
+    val yQ = yearCol.queries
+    val qQ = quarterCol.queries.flatMap(q => Set(q, q ++ ybits))
+    val mQ = monthCol.queries.flatMap(q => Set(q, q ++ ybits))
+    val dQ = dayCol.queries.flatMap(q => Set(q, q ++ ymbits))
+    val hrQ = hourCol.queries
+    yQ union qQ union mQ union dQ union hrQ
+  }
+}
+
+object StaticDateCol {
+  def simpleDateFormat(f: String) = {
+    val parser = new SimpleDateFormat(f)
+    (v: Any) => v match {
+      case s: String => Try(parser.parse(s)).toOption
+    }
+  }
+
+  def fromFile(filename: String, map_f: Any => Option[Date], hasYear: Boolean = false, hasMonth : Boolean = false, hasDay: Boolean = false, hasHr: Boolean = false, hasMin: Boolean = false, hasSec: Boolean = false) = {
+    val (ymin, ymax) = if(hasYear) {
+      val lines = Source.fromFile(filename).getLines().map(map_f).toSeq
+      val yearMax = lines.flatten.map(_.getYear).max
+      val yearMin = lines.flatten.map(_.getYear).min
+      (yearMin, yearMax)
+    } else
+      (0, -1)
+    new StaticDateCol(map_f, ymin, ymax, hasMonth, hasDay, hasHr, hasMin, hasSec)
+  }
+}

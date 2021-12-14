@@ -159,6 +159,7 @@ void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
     byte **store = (byte **) ptr;
     unsigned int recSize = keySize + sizeof(value_t);
 
+    //can be multithreaded, but there should be no conflicts
     memcpy(getKey(store, i, recSize), key, keySize);
     memcpy(getVal(store, i, recSize), &v, sizeof(value_t));
 

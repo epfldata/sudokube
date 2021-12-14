@@ -3,6 +3,8 @@ package frontend.schema.encoders
 import frontend.schema.{BitPosRegistry, RegisterIdx}
 import util._
 
+import scala.concurrent.{ExecutionContext, Future}
+
 /** Implements a mapping between a local encoder/decoder (which maps between
     numbers 0..(bits.length - 1) and values of type T) and
     a global encoder/decoder that assumes the local values are encoded in bits
@@ -18,21 +20,19 @@ abstract class ColEncoder[T] extends Serializable {
   def decode_locally(i: Int): T
   def maxIdx : Int
   def queries(): Set[Seq[Int]]
+  def initializeBeforeEncoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
+  def initializeBeforeDecoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
   def queriesUpto(qsize: Int) : Set[Seq[Int]] = queries().filter(_.length <= qsize)
-  def encode(v: T): BigBinary =
+  def encode(v: T): BigBinary =  //overriden by nested encoders
     if (isRange) {
-      val v1 = Profiler("E121") {
-        BigInt(encode_locally(v))
-      }
-      Profiler("E122") {
-        val v2 = if (v1 > 0) {
-          v1 << bitsMin
-        } else BigInt(0)
-        BigBinary(v2)
-      }
+      val v1 = BigInt(encode_locally(v))
+      val v2 = if (v1 > 0) {
+        v1 << bitsMin
+      } else BigInt(0)
+      BigBinary(v2)
     }
     else
-      Profiler("Super Encode") {BigBinary(encode_locally(v)).pup(bits)}
+      BigBinary(encode_locally(v)).pup(bits)
   def encode_any(v: Any) : BigBinary = {
     //encode(v.asInstanceOf[T])
     val vt = Profiler("E11"){v.asInstanceOf[T]}
@@ -114,6 +114,17 @@ abstract class ColEncoder[T] extends Serializable {
    */
   def sample(sampling_f: Int => Int): T =
     decode_locally(sampling_f(maxIdx + 1))
+}
+
+abstract class StaticColEncoder[T] extends ColEncoder[T] {
+  def n_bits: Int
+  override def bitsMin: Int = bits.min
+  override def isRange: Boolean = true
+  var bits: Seq[Int] = Nil
+  def set_bits(offset: Int) = {
+    bits = (offset until offset + n_bits)
+    offset + n_bits
+  }
 }
 
 abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T] {

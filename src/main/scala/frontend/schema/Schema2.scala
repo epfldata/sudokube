@@ -2,11 +2,13 @@ package frontend.schema
 
 import breeze.io.CSVReader
 import frontend.experiments.Tools
-import frontend.schema.encoders.ColEncoder
+import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticColEncoder}
 import util._
 import util.BigBinaryTools._
 
 import java.io.{File, FileInputStream, FileOutputStream, FileReader, ObjectInputStream, ObjectOutputStream}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
 import scala.util.Random
 
@@ -50,7 +52,8 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
   override def queriesUpto(qsize: Int): Set[Seq[Int]] = if(qsize <= 0) Set() else {
     if(cross)
     children.foldLeft(Set(Seq[Int]())){ case (acc, cur) =>
-      acc.flatMap(q1 => cur.queriesUpto(qsize-q1.size).map(q2 => q1 ++ q2))}
+      val cq = cur.queriesUpto(qsize)
+      acc.flatMap(q1 => cq.flatMap(q2 => if(q1.size + q2.size <= qsize) Some(q1 ++ q2) else None))}
     else
       children.map(_.queriesUpto(qsize)).reduce(_ union _)
   }
@@ -65,24 +68,9 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
 }
 
 @SerialVersionUID(4L)
-class StructuredDynamicSchema(top_level: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends Serializable  {
-  val root = new BD2("ROOT", top_level, true)
+class StructuredDynamicSchema(tl: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends Schema2(tl)  {
+  override def n_bits = bitPosRegistry.n_bits
 
-  def recommended_cube = Tools.params(n_bits, 25)
-  def n_bits: Int = bitPosRegistry.n_bits
-  lazy val columnVector: Vector[LD2[_]] = root.leaves
-  def encode_column(idx: Int, v: Any): BigBinary = columnVector(idx).encoder.encode_any(v)
-
-  def encode_tuple(tup: IndexedSeq[Any]) = {
-    val tupmap = Profiler("E1") {columnVector.indices.map(i => encode_column(i, tup(i)))}
-      Profiler("E2"){tupmap.sum}
-  }
-  def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))
-
-  def queries = root.queries.toList.sortBy(_.length)
-  /** saves the schema as a file. Note: Schema.load is used to load, not
-      read()!
-   */
   def save(filename: String) {
     val file = new File("cubedata/schema/"+filename+".sdsch")
     if(!file.exists())
@@ -124,4 +112,44 @@ object StructuredDynamicSchema {
     ois.close
     sch
   }
+}
+
+abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
+  val root = new BD2("ROOT", top_level, true)
+  def recommended_cube = Tools.params(n_bits, 25)
+  lazy val columnVector: Vector[LD2[_]] = root.leaves
+  def n_bits: Int
+  def encode_column(idx: Int, v: Any): BigBinary =  columnVector(idx).encoder.encode_any(v)
+
+  def encode_tuple(tup: IndexedSeq[Any]) = {
+    val tsize = tup.size
+    val tupmap = Profiler("E1") {columnVector.indices.map{
+      case i if i < tsize => encode_column(i, tup(i))
+      case j => encode_column(j, "")
+    }}
+    Profiler("E2"){tupmap.sum}
+  }
+  def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))
+
+  def queries = root.queries.toList.sortBy(_.length)
+  def queriesUpto(qSize: Int) = root.queriesUpto(qSize).groupBy(_.length)
+  def initBeforeEncode() = {
+    println("Starting to load dictionary values")
+    implicit val ec = ExecutionContext.global
+    val futs = columnVector.map { _.encoder.initializeBeforeEncoding}
+    Await.result(Future.sequence(futs), Duration.Inf)
+    println("Dictionary loading complete")
+  }
+  def initBeforeDecode() = {
+    println("Starting to load dictionary values")
+    implicit val ec = ExecutionContext.global
+    val futs = columnVector.map { _.encoder.initializeBeforeDecoding}
+    Await.result(Future.sequence(futs), Duration.Inf)
+    println("Dictionary loading complete")
+  }
+}
+
+class StaticSchema2(tl: Vector[Dim2]) extends Schema2(tl) {
+  val n_bits = columnVector.foldLeft(0){(acc, cur) => cur.encoder.asInstanceOf[StaticColEncoder[_]].set_bits(acc)}
+
 }
