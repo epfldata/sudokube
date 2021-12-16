@@ -1,7 +1,7 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.{DataCube, SchemaBasedMaterializationScheme}
+import core.{DataCube, PartialDataCube, SchemaBasedMaterializationScheme}
 import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
@@ -180,16 +180,28 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
 object SSBTest {
   def main(args: Array[String])  {
-    val cg = SSB(1)
-    val (sch, dc) = cg.saveBase
-    //val sch = cg.schema()
+    val cg = SSB(100)
+    //val (sch, dc) = cg.saveBase
+    val sch = cg.schema()
     //val (sch,dc) = cg.loadBase()
 
-    val maxN = 13
-    val maxD = 20
-    val dc2 = new DataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD))
-    dc2.buildFrom(dc)
-    dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}")
+    {
+      val maxN = 15
+      val maxD = 19
+      val logsf = 0
+      val dc2 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      dc2.build()
+      dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+    }
+
+    {
+      val maxN = 15
+      val maxD = 25
+      val logsf = 3
+      val dc2 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      dc2.build()
+      dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+    }
 
     //val base = dc.cuboids.head
     //(0 to 20).foreach { d =>

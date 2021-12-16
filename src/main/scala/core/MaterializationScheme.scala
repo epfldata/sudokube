@@ -353,25 +353,21 @@ case class RandomizedMaterializationScheme(
 
 
 @SerialVersionUID(1L)
-case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD: Int) extends MaterializationScheme(sch.n_bits) {
+case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(sch.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = {
     assert(sch.n_bits > maxD  * 2)
-    val logmaxN = logmaxND.toInt
-    val mod = logmaxND - logmaxN
+    val logmaxN = (logmaxND-logsf).toInt
+    val mod = (logmaxND-logsf) - logmaxN
     val maxPrefix = sch.root.numPrefixUpto(maxD)
-    maxPrefix.zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
+    //maxPrefix.zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
 
     val cubD = (0 until n_bits).map { d =>
       if (d <= maxD && d > maxD - logmaxN) {
         val logn = maxD-d
-        val n = math.pow(2, logn + mod).toInt
+        val n = math.pow(2, logn + mod + logsf).toInt
 
-       val res =  if (n < maxPrefix(d) * 0.9 - 10)
-          Util.collect_n(n, () => sch.root.samplePrefix(d).toList.sorted).toVector
-       else {
-         (0 until (1.2 * n).toInt).map{i => sch.root.samplePrefix(d).toList}.distinct.toVector
-       }
+        val res = (0 until  n).map{i => sch.root.samplePrefix(d).toList.sorted}.distinct.toVector
         print(res.length+"/")
         res
       } else {
@@ -380,7 +376,7 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD
       }
     }
     println("1")
-    val maxSize = maxD + math.log(logmaxND)/math.log(2) + mod
+    val maxSize = maxD + math.log(logmaxND)/math.log(2) + mod + logsf
     println("Max total size = 2^"+ maxSize)
     cubD.reduce(_ ++ _) ++ Vector((0 until n_bits).toList)
   }

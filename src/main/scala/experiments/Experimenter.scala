@@ -1,6 +1,6 @@
 package experiments
 
-import core.{DataCube, Rational, SchemaBasedMaterializationScheme}
+import core.{DataCube, PartialDataCube, Rational, SchemaBasedMaterializationScheme}
 import frontend.experiments.Tools
 import frontend.generators.{CubeGenerator, Iowa, NYC, SSB}
 import frontend.schema.StructuredDynamicSchema
@@ -127,7 +127,7 @@ object Experimenter {
     //val (sch, dc) = cg.load2()
     //val (sch, dcs) = cg.multiload(lrfs.map(lrf => (lrf, lbase)))
     val sch = cg.schema()
-    val dcs = names.map{n => n->DataCube.load2(cg.inputname + "_"+n)}
+    val dcs = names.map{n => n->PartialDataCube.load2(cg.inputname + "_"+n, cg.inputname + "_base")}
     //val dc = cg.loadDC(lrf, lbase)
 
 
