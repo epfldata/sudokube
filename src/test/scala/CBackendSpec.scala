@@ -21,6 +21,96 @@ class CBackendSpec extends FlatSpec with Matchers {
     assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
   }
 
+  "CBackend simple absolute test2" should "work" in {
+
+    def my_mk(d: Int, l: Seq[(Int, Int)]) =
+      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
+
+
+    val c = my_mk(100, (1 to 20).map(i => (i, i)))
+
+    assert(c.size == 20)
+    assert(c.numBytes == 420)
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
+
+    val m0 = Set(0, 1, 2, 3, 4)
+    val m1 = m0 ++ Set(20, 21, 22, 23, 24)
+    val cs1 = c.rehash(toMask(100, m1))
+    assert(cs1.isInstanceOf[CBackend.b.SparseCuboid])
+
+    val cs2 = c.rehash_to_sparse(toMask(100, m1))
+    assert(cs2.isInstanceOf[CBackend.b.SparseCuboid])
+
+
+    assert(cs1.size == 20)
+    assert(cs1.size == cs2.size)
+    assert(cs1.numBytes == 200)
+    assert(cs1.numBytes == cs2.numBytes)
+
+
+    val cd1 = c.rehash(toMask(100, m0))
+    assert(cd1.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cd1.size == 32)
+    assert(cd1.numBytes == 256)
+
+
+    val cd2 = c.rehash_to_dense(toMask(100, m0))
+    assert(cd2.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cd2.size == 32)
+    assert(cd2.numBytes == 256)
+
+
+    val cs1d1 = cs1.rehash(toMask(10, m0))
+    assert(cs1d1.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cs1d1.size == 32)
+    assert(cs1d1.numBytes == 256)
+
+
+    val cs1d2 = cs1.rehash_to_dense(toMask(10, m0))
+    assert(cs1d2.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cs1d2.size == 32)
+    assert(cs1d2.numBytes == 256)
+
+
+    val res = Array.fill(32)(0.0)
+    (1 to 20).foreach{ i => res(i) = i.toDouble}
+
+    val results = List(cd1, cd2, cs1d1, cs1d2).map{dcub => dcub.asInstanceOf[CBackend.b.DenseCuboid].fetch.map(_.sm)}
+    assert(results.map(_.sameElements(res)).reduce(_ && _))
+  }
+
+  "CBackend simple absolute test3" should "work" in {
+
+    def my_mk(d: Int, l: Seq[(Int, Int)]) =
+      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
+
+
+    val c = my_mk(100, (1 to 20).map(i => (i, i)))
+
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
+
+    val c1 = c.rehash(toMask(100, Set(0,2,3)))
+    assert(c1.isInstanceOf[CBackend.b.DenseCuboid])
+    val c2_ = c.rehash(toMask(100, Set(0, 2, 3, 20, 30)))
+    val c2 = c2_.rehash(toMask(5, Set(0,1,2)))
+    assert(c2.isInstanceOf[CBackend.b.DenseCuboid])
+
+    val c3__ = c.rehash(toMask(100, Set(0,1,2,3,7,10,90)))
+    val c3_ = c3__.rehash(toMask(7, Set(0,1,2,3,5)))
+    val c3  = c3_.rehash(toMask(5, Set(0, 2, 3)))
+    assert(c3.isInstanceOf[CBackend.b.DenseCuboid])
+    val res = List(
+    0+2+16+18,
+    1+3+17+19,
+    4+6+20,
+    5+7,
+    8+10,
+    9+11,
+    12+14,
+    13+15).map(_.toDouble).toArray
+    val results = List(c1, c2, c3).map{dcub => dcub.asInstanceOf[CBackend.b.DenseCuboid].fetch.map(_.sm)}
+    assert(results.map(_.sameElements(res)).reduce(_ && _))
+  }
 
   "ScalaBackend simple absolute test" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =

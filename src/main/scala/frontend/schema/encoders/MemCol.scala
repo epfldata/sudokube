@@ -48,6 +48,11 @@ class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf
   override def decode_locally(i: Int): T = decode_map(i)
   override def queries(): Set[Seq[Int]] = Set(Nil, bits)
 
+  override def prefixUpto(size: Int): Set[Seq[Int]] = {
+    val min = math.min(size, bits.size)
+    (0 to min).map{i => bits.takeRight(i)}.toSet
+  }
+
   override def n_bits: Int = if(maxIdx == 0) 0 else math.ceil(math.log(maxIdx) / math.log(2)).toInt
 }
 

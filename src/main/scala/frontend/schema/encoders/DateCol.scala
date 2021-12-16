@@ -5,7 +5,8 @@ import util.BigBinary
 
 import java.text.SimpleDateFormat
 import java.util.Date
-import scala.util.Try
+import scala.io.Source
+import scala.util.{Random, Try}
 
 @SerialVersionUID(2060625167200613195L) //for SSB
 //@SerialVersionUID(-2090955600471017765L) //for NYC
@@ -154,7 +155,7 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   override def decode_locally(i: Int): Date = ???
   override def maxIdx: Int = ???
 
-  override def queries(): Set[Seq[Int]] = {
+  def queries(): Set[Seq[Int]] = {
     val ybits = yearCol.bits
     val ymbits = monthCol.bits ++ ybits
 
@@ -164,6 +165,12 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
     val dQ = dayCol.queries.flatMap(q => Set(q, q ++ ymbits))
     val hrQ = hourCol.queries
     yQ union qQ union mQ union dQ union hrQ
+  }
+  lazy val myqueries = queries().groupBy(_.size).withDefaultValue(Set())
+  override def samplePrefix(size: Int): Seq[Int] = {
+    val qs = myqueries(size).toVector
+    val idx = Random.nextInt(qs.size)
+    qs(idx)
   }
 }
 

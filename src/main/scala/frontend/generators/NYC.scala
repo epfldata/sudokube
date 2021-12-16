@@ -2,7 +2,7 @@ package frontend.generators
 
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
-import util.BigBinary
+import util.{BigBinary, Util}
 
 import java.util.Date
 import scala.io.Source
@@ -25,7 +25,7 @@ object NYC extends CubeGenerator("NYC") {
 
     def uniq(i: Int) = s"tabledata/nyc/uniq/all.$i.uniq"
     import StaticDateCol._
-    val summons_number = LD2[String]("Summons Number", new LazyMemCol(uniq(1)))
+    //val summons_number = LD2[String]("Summons Number", new LazyMemCol(uniq(1)))
     val plate_id = LD2[String]("Plate ID", new LazyMemCol(uniq(2)))
     val registration_state = LD2[String]("Registration State", new LazyMemCol(uniq(3)))
     val plate_type = LD2[String]("Plate Type", new LazyMemCol(uniq(4)))
@@ -36,7 +36,7 @@ object NYC extends CubeGenerator("NYC") {
     val issuing_agency = LD2[String]("Issuing Agency", new LazyMemCol(uniq(9)))
     val street_code1 = LD2[String]("Street Code1", new LazyMemCol(uniq(10)))
 
-    val dims0to9 = Vector(summons_number, plate_id, registration_state, plate_type, issue_date,
+    val dims0to9 = Vector(plate_id, registration_state, plate_type, issue_date,
       violation_code, vehicle_body_type, vehicle_make, issuing_agency, street_code1)
 
 
@@ -83,19 +83,24 @@ object NYC extends CubeGenerator("NYC") {
       vehicle_year, meter_number, feet_from_curb) //, violation_post_code, violation_description)
 
     val allDims = dims0to9 ++ dim10to19 ++ dims20to29 ++ dims30to39 // ++ dims40to42
-    assert(allDims.size == 38)
+
     val sch = new StaticSchema2(allDims)
+    sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
+    println("Total = "+sch.n_bits)
     sch
   }
 
   def read(file: String) = {
     val filename = s"tabledata/nyc/$file"
-    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t"))
+    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").tail)  //ignore summons_number
     data
   }
 
   def main(args: Array[String]): Unit = {
-    saveBase()
+    //saveBase()
+    val sch = schema()
+    sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
+    //Util.collect_n(100, () => sch.root.samplePrefix(10)).foreach(println)
     //buildFromBase(-80.6, 0.19)
 
   }

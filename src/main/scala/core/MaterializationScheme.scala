@@ -3,10 +3,9 @@ package core
 import planning._
 import util._
 import combinatorics._
-import frontend.schema.StructuredDynamicSchema
+import frontend.schema.Schema2
 
 import scala.collection.BitSet
-import scala.collection.mutable.ArrayBuffer
 
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
@@ -354,8 +353,38 @@ case class RandomizedMaterializationScheme(
 
 
 @SerialVersionUID(1L)
-case class SchemaBasedMaterializationScheme(sch: StructuredDynamicSchema) extends MaterializationScheme(sch.n_bits) {
+case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD: Int) extends MaterializationScheme(sch.n_bits) {
   /** the metadata describing each projection in this scheme. */
-  override val projections: IndexedSeq[List[Int]] = (sch.queries.filter(x => x.length <= 20 && !x.contains(sch.n_bits)).map(_.toList.sorted).sortBy(_.length) :+ (0 until n_bits).toList).toVector
+  override val projections: IndexedSeq[List[Int]] = {
+    assert(sch.n_bits > maxD  * 2)
+    val logmaxN = logmaxND.toInt
+    val mod = logmaxND - logmaxN
+    val maxPrefix = sch.root.numPrefixUpto(maxD)
+    maxPrefix.zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
+
+    val cubD = (0 until n_bits).map { d =>
+      if (d <= maxD && d > maxD - logmaxN) {
+        val logn = maxD-d
+        val n = math.pow(2, logn + mod).toInt
+
+       val res =  if (n < maxPrefix(d) * 0.9 - 10)
+          Util.collect_n(n, () => sch.root.samplePrefix(d).toList.sorted).toVector
+       else {
+         (0 until (1.2 * n).toInt).map{i => sch.root.samplePrefix(d).toList}.distinct.toVector
+       }
+        print(res.length+"/")
+        res
+      } else {
+        print("0/")
+        Vector()
+      }
+    }
+    println("1")
+    val maxSize = maxD + math.log(logmaxND)/math.log(2) + mod
+    println("Max total size = 2^"+ maxSize)
+    cubD.reduce(_ ++ _) ++ Vector((0 until n_bits).toList)
+  }
+  println("Total ="+projections.length)
+
 }
 

@@ -1,10 +1,11 @@
 package frontend.generators
 
 import breeze.io.CSVReader
+import core.{DataCube, SchemaBasedMaterializationScheme}
+import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
-import util.{Profiler}
-
+import util.Profiler
 
 import java.io.FileReader
 import java.text.SimpleDateFormat
@@ -20,8 +21,8 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     import StaticNatCol._
     import StaticDateCol._
     val louniqs = uniq("lineorder") _
-    val oidCol = LD2[String]("order_key", new LazyMemCol(louniqs(1)))
-    val lnCol = LD2[Int]("line_number", StaticNatCol.fromFile(louniqs(2)))
+    //val oidCol = LD2[String]("order_key", new LazyMemCol(louniqs(1)))
+    //val lnCol = LD2[Int]("line_number", StaticNatCol.fromFile(louniqs(2)))
     //3 -> custkey
     //4 -> partkey
     //5 -> suppkey
@@ -38,11 +39,11 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val commitdateCol = LD2[Date]("commit_date", StaticDateCol.fromFile(louniqs(16), simpleDateFormat("yyyyMMdd"), true, true, true))
     val shipmodCol = LD2[String]("ship_mode", new LazyMemCol(louniqs(17)))
 
-    val ordDims = BD2("Order", Vector(oidCol, lnCol, orderDateCol, oprioCol, shiprioCol, qtyCol, expriceCol, discountCol, revenueCol, supcostCol, taxCol, commitdateCol, shipmodCol), true)
+    val ordDims = BD2("Order", Vector(orderDateCol, oprioCol, shiprioCol, qtyCol, expriceCol, discountCol, revenueCol, supcostCol, taxCol, commitdateCol, shipmodCol), true)
 
 
     val custuniqs = uniq("customer") _
-    val custKeyCol = LD2[String]("cust_key", new LazyMemCol(custuniqs(1)))
+    //val custKeyCol = LD2[String]("cust_key", new LazyMemCol(custuniqs(1)))
     //2 -> name
     //3 -> address
     val custCityCol = LD2[String]("cust_city", new LazyMemCol(custuniqs(4)))
@@ -51,19 +52,19 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     //7 -> Phone
     val custMarketCol = LD2[String]("cust_mkt_segment", new LazyMemCol(custuniqs(8)))
     val custLocation = BD2("Customer Location", Vector(custCityCol, custNationCol, custRegionCol), false)
-    val custDims = BD2("Customer", Vector(custKeyCol, custLocation, custMarketCol), true)
+    val custDims = BD2("Customer", Vector(custLocation, custMarketCol), true)
 
 
     val suppuniqs = uniq("supplier") _
-    val suppKeyCol = LD2[String]("supp_key", new LazyMemCol(suppuniqs(1)))
+    //val suppKeyCol = LD2[String]("supp_key", new LazyMemCol(suppuniqs(1)))
     //2 -> name
     //3 -> address
     val suppCityCol = LD2[String]("supp_city", new LazyMemCol(suppuniqs(4)))
     val suppNationCol = LD2[String]("supp_nation", new LazyMemCol(suppuniqs(5)))
     val suppRegionCol = LD2[String]("supp_region", new LazyMemCol(suppuniqs(6)))
     //6 -> Phone
-    val suppLocation = BD2("Supplier Location", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
-    val suppDims = BD2("Supplier", Vector(suppKeyCol, suppLocation), true)
+    val suppDims= BD2("Supplier", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
+    //val suppDims = BD2("Supplier", Vector(suppLocation), true)
 
 
     //1 -> date in numbers
@@ -86,7 +87,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
     val partuniqs = uniq("part") _
 
-     val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
+     //val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
     // 2 -> name
      val mfgrCol = LD2[String]("mfgr", new LazyMemCol(partuniqs(3)))
      val catCol = LD2[String]("category", new LazyMemCol(partuniqs(4)))
@@ -96,13 +97,13 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val sizeCol = LD2[Int]("size", StaticNatCol.fromFile(partuniqs(8)))
     val containerCol = LD2[String]("container", new LazyMemCol(partuniqs(9)))
 
-    val part1 = BD2("Part Properties", Vector(mfgrCol, catCol, brandCol, colorCol, typeCol, sizeCol, containerCol), true)
-    val partDims = BD2("Part", Vector(pidCol, part1), false)
+    val partDims = BD2("Part", Vector(mfgrCol, catCol, brandCol, colorCol, typeCol, sizeCol, containerCol), true)
+    //val partDims = BD2("Part", Vector(pidCol, part1), false)
 
     val allDims = Vector(ordDims, custDims, suppDims, partDims)
     val sch = new StaticSchema2(allDims)
 
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
     println("Total = "+sch.n_bits)
 
     //sch.queriesUpto(25).mapValues(_.size).toList.sortBy(_._1).foreach{case (k,v) => println(s"$k\t $v")}
@@ -128,9 +129,9 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
     //val date = readTbl("date", Vector(0, 2)).map(d => d.head -> Vector(sdf.parse(d(0)), d(1))).toMap
 
-    val custs = readTbl("customer", Vector(0, 3, 4, 5, 7))._2.map(d => d.head -> d).toMap
-    val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d).toMap
-    val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d).toMap
+    val custs = readTbl("customer", Vector(0, 3, 4, 5, 7))._2.map(d => d.head -> d.tail).toMap
+    val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d.tail).toMap
+    val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d.tail).toMap
 
     val sch = schema()
 
@@ -152,7 +153,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
       val commitdate = r(15)
       val shipmod = r(16)
 
-      val ordVales = Vector(oid, ln, orderdateid, oprio, sprio, qty, ext_price, discount, revenue, supcost, tax, commitdate, shipmod)
+      val ordVales = Vector(orderdateid, oprio, sprio, qty, ext_price, discount, revenue, supcost, tax, commitdate, shipmod)
       val key = ordVales ++
         //date(dateid) ++
         custs(cid) ++
@@ -179,9 +180,28 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
 object SSBTest {
   def main(args: Array[String])  {
-    val cg = SSB(100)
+    val cg = SSB(1)
+    val (sch, dc) = cg.saveBase
+    //val sch = cg.schema()
+    //val (sch,dc) = cg.loadBase()
 
-    cg.saveBase()
+    val maxN = 13
+    val maxD = 20
+    val dc2 = new DataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD))
+    dc2.buildFrom(dc)
+    dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}")
+
+    //val base = dc.cuboids.head
+    //(0 to 20).foreach { d =>
+    //  val q= Tools.rand_q(sch.n_bits, d)
+    //  val mask = (0 until sch.n_bits).map(i => if(q.contains(i)) 1 else 0).toArray
+    //  val start = System.currentTimeMillis()
+    //  val c = base.rehash(mask)
+    //  val end = System.currentTimeMillis()
+    //  val dur = (end-start)/1000.0
+    //  println(s"Dim $d  Size=${c.size} Time=$dur s\n\n")
+    //}
+    //cg.saveBase()
 
   }
 }

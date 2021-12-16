@@ -16,13 +16,21 @@ import scala.util.Random
 abstract class Dim2(val name: String) extends  Serializable {
   def queries: Set[Seq[Int]]
   def queriesUpto(qsize: Int) : Set[Seq[Int]]
-  def sampleQuery(qsize: Int): Option[Seq[Int]]
+  def numPrefixUpto(size: Int): Array[Long]
+  def samplePrefix(size: Int): Seq[Int]
+  def maxSize: Int
 }
 @SerialVersionUID(5066804864072392482L)
 case class LD2[T](override val name : String, encoder: ColEncoder[T]) extends Dim2(name) {
   override def queries: Set[Seq[Int]] = encoder.queries()
   override def queriesUpto(qsize: Int): Set[Seq[Int]] = encoder.queriesUpto(qsize)
-  override def sampleQuery(qsize: Int): Option[Seq[Int]] = ???
+  override def samplePrefix(size: Int): Seq[Int] = encoder.samplePrefix(size)
+  override def numPrefixUpto(size: Int): Array[Long] = {
+    val sizes = encoder.prefixUpto(size).groupBy(_.size).mapValues(_.size.toLong).withDefaultValue(0L)
+    val result = (0 to size).map(i => sizes(i)).toArray
+    result
+  }
+  lazy val maxSize = encoder.bits.size
 }
 @SerialVersionUID(-3406868252153216970L)
 case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean) extends Dim2(name) {
@@ -31,21 +39,71 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
     case  x: LD2[_]  => Vector(x)
   }
 
-  override def sampleQuery(qsize: Int) : Option[Seq[Int]] = if(cross){
-    val array = Array.fill(children.length)(0)
-    (0 until qsize).foreach{ i =>
-      val idx = Random.nextInt(children.length)
-      array(idx) += 1
+  lazy val maxSize = if(cross)
+    children.map(_.maxSize).sum
+    else
+    children.map(_.maxSize).max
+
+
+  override def numPrefixUpto(size: Int): Array[Long] = if(cross) {
+    val init = Array.fill(size+1)(0L)
+    init(0) += 1
+    children.foldLeft(init){ (acc, cur) =>
+      val cr = cur.numPrefixUpto(size)
+      val result = Array.fill(size+1)(0L)
+      (0 to size).foreach {s1  =>
+        (0 to size-s1).foreach{ s2 =>
+          result(s1 + s2) += acc(s1) * cr(s2)
+        }
+      }
+      result
     }
-    val res = children.indices.foldLeft[Option[Seq[Int]]](Some(Nil)) {
-      case (Some(acc), i) => children(i).sampleQuery(array(i)).map(acc ++ _)
-      case (None, i) => None
-    }
-    assert(res.map(_.size == qsize).getOrElse(true))
-    res
   } else {
-    val idx = Random.nextInt(children.length)
-    children(idx).sampleQuery(qsize)
+    val result = Array.fill(size+1)(0L)
+    result(0) = 1L
+    children.foreach{c =>
+      val cr = c.numPrefixUpto(size)
+      (1 to size).foreach(i => result(i) += cr(i))
+    }
+    result
+  }
+
+  override def samplePrefix(size: Int): Seq[Int] = if(size <= 0) Nil else {
+    assert(size <= maxSize)
+    if(cross) {
+      val n = children.size
+      val maxes = children.map(_.maxSize).toArray
+      val rvs = (1 until n).map(i => Random.nextInt(size)).sorted
+      val splits = Array.fill(n)(0)
+      splits(0) = rvs(0)
+      splits(n-1) = size - rvs(n-2)
+      (1 until n-1).foreach { i => splits(i) = rvs(i) - rvs(i-1) }
+      var exceedMax = splits.indices.filter(i => splits(i) > maxes(i)).toList
+      var belowMax = splits.indices.filter(i => splits(i) < maxes(i))
+      while(!exceedMax.isEmpty) {
+        val curi = exceedMax.head
+        var diff = splits(curi) - maxes(curi)
+        while(diff > 0) {
+          val idx = Random.nextInt(belowMax.size)
+          diff -= 1
+          val idx2 = belowMax(idx)
+          splits(idx2) += 1
+          splits(curi) -= 1
+          if(splits(idx2) == maxes(idx2))
+            belowMax = splits.indices.filter(i => splits(i) < maxes(i))
+        }
+        exceedMax = exceedMax.tail
+      }
+      assert(splits.size == n)
+      assert(splits.sum == size)
+      children.indices.map( i => children(i).samplePrefix(splits(i))).reduce(_ ++ _)
+    } else {
+      var idx = Random.nextInt(children.size)
+      while(children(idx).maxSize < size) {
+        idx = Random.nextInt(children.size)
+      }
+      children(idx).samplePrefix(size)
+    }
   }
 
 

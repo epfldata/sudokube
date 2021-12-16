@@ -3,11 +3,11 @@
 #include "backend_CBackend.h"
 #include "Keys.h"
 
-extern unsigned int   shybridhash(            unsigned int s_id,            unsigned int *mask, unsigned int masklen);
-extern unsigned int   srehash(            unsigned int s_id,            unsigned int *mask, unsigned int masklen);
-extern unsigned int d2srehash(unsigned int n_bits, unsigned int d_id,             unsigned int *mask, unsigned int masklen);
-extern unsigned int s2drehash(           unsigned int s_id, unsigned int d_bits, unsigned int *mask, unsigned int masklen);
-extern unsigned int   drehash(unsigned int n_bits, unsigned int d_id, unsigned int d_bits,unsigned int *mask, unsigned int masklen);
+extern unsigned int   shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+extern unsigned int   srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
+extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
 extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
@@ -150,59 +150,59 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
 }
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
-        (JNIEnv *env, jobject obj, jint s_id, jintArray mask) {
-    jsize masklen = env->GetArrayLength(mask);
-    jint *maskbody = env->GetIntArrayElements(mask, 0);
-    int id = shybridhash(s_id, (unsigned int *) maskbody, masklen);
-    env->ReleaseIntArrayElements(mask, maskbody, 0);
+        (JNIEnv *env, jobject obj, jint s_id, jintArray pos) {
+    jsize poslen = env->GetArrayLength(pos);
+    jint *posbody = env->GetIntArrayElements(pos, 0);
+    int id = shybridhash(s_id, (unsigned int *) posbody, poslen);
+    env->ReleaseIntArrayElements(pos, posbody, 0);
     return id;
 
 }
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
-(JNIEnv* env, jobject obj, jint s_id, jintArray mask)
+(JNIEnv* env, jobject obj, jint s_id, jintArray pos)
 {
-  jsize masklen  = env->GetArrayLength(mask);
-  jint* maskbody = env->GetIntArrayElements(mask, 0);
-  int x = srehash(s_id,  (unsigned int*) maskbody, masklen);
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
+  int x = srehash(s_id,  (unsigned int*) posbody, poslen);
 
-  env->ReleaseIntArrayElements(mask, maskbody, 0);
+  env->ReleaseIntArrayElements(pos, posbody, 0);
   return x;
 }
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
-(JNIEnv* env, jobject obj, jint n_bits, jint d_id, jintArray mask)
+(JNIEnv* env, jobject obj,  jint d_id, jintArray pos)
 {
-  jsize masklen  = env->GetArrayLength(mask);
-  jint* maskbody = env->GetIntArrayElements(mask, 0);
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
 
-  int x = d2srehash(n_bits, d_id, (unsigned int*) maskbody, masklen);
+  int x = d2srehash(d_id, (unsigned int*) posbody, poslen);
 
-  env->ReleaseIntArrayElements(mask, maskbody, 0);
+  env->ReleaseIntArrayElements(pos, posbody, 0);
   return x;
 }
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
-(JNIEnv* env, jobject obj, jint d_id, jint d_bits, jintArray mask)
+(JNIEnv* env, jobject obj, jint d_id, jintArray pos)
 {
-  jsize masklen  = env->GetArrayLength(mask);
-  jint* maskbody = env->GetIntArrayElements(mask, 0);
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
 
-  int x = s2drehash(d_id, d_bits,  (unsigned int*) maskbody, masklen);
+  int x = s2drehash(d_id, (unsigned int*) posbody, poslen);
 
-  env->ReleaseIntArrayElements(mask, maskbody, 0);
+  env->ReleaseIntArrayElements(pos, posbody, 0);
   return x;
 }
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
-(JNIEnv* env, jobject obj, jint n_bits, jint d_id, jint d_bits, jintArray mask)
+(JNIEnv* env, jobject obj, jint d_id, jintArray pos)
 {
-  jsize masklen  = env->GetArrayLength(mask);
-  jint* maskbody = env->GetIntArrayElements(mask, 0);
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
 
-  int x = drehash(n_bits, d_id, d_bits, (unsigned int*)  maskbody, masklen);
+  int x = drehash(d_id, (unsigned int*)  posbody, poslen);
 
-  env->ReleaseIntArrayElements(mask, maskbody, 0);
+  env->ReleaseIntArrayElements(pos, posbody, 0);
   return x;
 }
 

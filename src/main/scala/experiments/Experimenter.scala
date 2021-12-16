@@ -4,7 +4,7 @@ import core.{DataCube, Rational, SchemaBasedMaterializationScheme}
 import frontend.experiments.Tools
 import frontend.generators.{CubeGenerator, Iowa, NYC, SSB}
 import frontend.schema.StructuredDynamicSchema
-import util.Util
+import util.{Profiler, Util}
 
 import java.io.PrintStream
 import java.time.Instant
@@ -20,7 +20,7 @@ object Experimenter {
   }
 
   def fullwarmup() = {
-    val dc = DataCube.load2("SSB-sf1_base")
+    val dc = DataCube.load2("warmup")
     implicit val shouldRecord = false
     val expt = new UniformSolverExpt[Double](dc, "warmup")
     randomQueries(dc.m.n_bits).foreach(q => expt.compare(q, false))
@@ -28,13 +28,13 @@ object Experimenter {
   }
 
   def full(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
-    fullwarmup()
+    //fullwarmup()
     val expt = new UniformSolverExpt[Double](dc, name)
     qs.foreach(q => expt.compare(q, true))
   }
 
   def onlinewarmup() = {
-    val dc = DataCube.load2("SSB-sf1_base")
+    val dc = DataCube.load2("warmup")
     implicit val shouldRecord = false
     val expt = new UniformSolverOnlineExpt[Double](dc, "warmup")
     randomQueries(dc.m.n_bits).foreach(q => expt.compare(q, false))
@@ -42,7 +42,7 @@ object Experimenter {
   }
 
   def online(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
-    onlinewarmup()
+    //onlinewarmup()
     val expt = new UniformSolverOnlineExpt[Double](dc, name)
     qs.foreach(q => expt.compare(q, true))
   }
@@ -100,7 +100,7 @@ object Experimenter {
     //val lrfs = List(-17.0, -16.0, -15.0)
     //val lbase = 0.19
 
-  implicit val shouldRecord = true
+  implicit val shouldRecord = false
     //val lrf = -29
     //val lbase = 0.184
     //val cg = SSB(10)
@@ -110,19 +110,24 @@ object Experimenter {
     //val lrf = -27
     //val lbase = 0.195
 
-    val cg = SSB(100)
-    val lrf = -32
-    val lbase = 0.19
+    val cg = SSB(1)
+
+    //val lrf = -32
+    //val lbase = 0.19
+    //val names = List((13.4, 20), (15, 25), (16, 27)).map{p => "sms_" + p._1 + "_" + p._2}
+    val names = List((13, 20)).map{p => "sms_" + p._1 + "_" + p._2}
 
     //val cg = NYC
     //val lrf = -80.6
     //val lbase = 0.19
 
 
-
-    val (sch, dc) = cg.load(lrf, lbase)
+      //val (sch, dc) = cg.loadBase()
+    //val (sch, dc) = cg.load(lrf, lbase)
     //val (sch, dc) = cg.load2()
     //val (sch, dcs) = cg.multiload(lrfs.map(lrf => (lrf, lbase)))
+    val sch = cg.schema()
+    val dcs = names.map{n => n->DataCube.load2(cg.inputname + "_"+n)}
     //val dc = cg.loadDC(lrf, lbase)
 
 
@@ -130,18 +135,21 @@ object Experimenter {
     //dc2.buildFrom(dc)
     //dc2.save2(s"${cg.inputname}_sch")
 
-    val qs = genQueries(sch, 30)
+    //onlinewarmup()
+    //val qs = (0 until 1).map(i => sch.root.samplePrefix(8))
+    val qs = List(List(143, 144, 165, 170, 171, 172, 191, 192))
+
     //val qs = List(List(13, 12, 11, 10, 52, 51, 50, 49, 48, 47, 46, 82, 81, 80, 79))
     //val qs = (0 to 30).map{i => Tools.rand_q(dc.m.n_bits, 10)}
 
-    //dcs.foreach{case ((lrf, lbase), dc) =>
-    val cubename = s"${lrf}-${lbase}"
+    dcs.foreach{case (cubename, dc) =>
+    //val cubename = s"${lrf}-${lbase}"
     //val cubename = s"sch"
     full(s"${cg.inputname}-${cubename}", dc, qs)
     //  online(s"${cg.inputname}-${cubename}", dc, qs)
-    //}
-    //storage(dc, cg.inputname)
-
+      //storage(dc, cg.inputname)
+      Profiler.print()
+    }
     //queryDistribution(cg)
 
   }

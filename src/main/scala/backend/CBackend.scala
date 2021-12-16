@@ -19,15 +19,11 @@ class CBackend extends Backend[Payload] {
   override def extractDense(h: Int): Int = -h
   override def extractSparse(h: Int): Int = h
 
-  @native protected def shhash(s_id: Int, mask: Array[Int]): Int
-  @native protected def   sRehash0(s_id: Int,
-                                   mask: Array[Int]): Int
-  @native protected def d2sRehash0(n_bits: Int, d_id: Int,
-                                   mask: Array[Int]): Int
-  @native protected def s2dRehash0(s_id: Int, d_bits: Int,
-                                   mask: Array[Int]): Int
-  @native protected def   dRehash0(n_bits: Int, d_id: Int, d_bits: Int,
-                                   mask: Array[Int]): Int
+  @native protected def shhash(s_id: Int, pos: Array[Int]): Int
+  @native protected def   sRehash0(s_id: Int, pos: Array[Int]): Int
+  @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
+  @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
+  @native protected def   dRehash0(d_id: Int, pos: Array[Int]): Int
   @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
   @native protected def mk0(n_bits: Int): Int
   @native protected def sSize0(id: Int): Int
@@ -142,17 +138,30 @@ class CBackend extends Backend[Payload] {
   // inherited methods seem to add some invisible args that break JNI,
   // so we have yet another indirection.
 
-  protected def hybridRehash(s_id: Int, mask: Array[Int]): Int = shhash(s_id, mask)
+  protected def hybridRehash(s_id: Int, mask: Array[Int]): Int = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    shhash(s_id, pos)
+  }
 
-  protected def   sRehash( s_id: Int, mask: Array[Int]): Int =
-                  sRehash0(s_id,      mask)
-  protected def d2sRehash( n_bits: Int, d_id: Int, mask: Array[Int]): Int =
-                d2sRehash0(n_bits,      d_id,      mask)
-  protected def s2dRehash( s_id: Int, d_bits: Int, mask: Array[Int]): Int =
-                s2dRehash0(s_id,      d_bits,      mask)
-  protected def   dRehash(n_bits: Int, d_id: Int, d_bits: Int,
-                          mask: Array[Int]): Int =
-                 dRehash0(n_bits, d_id, d_bits, mask)
+  protected def sRehash(s_id: Int, mask: Array[Int]): Int = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    sRehash0(s_id, pos)
+  }
+
+  protected def d2sRehash(n_bits: Int, d_id: Int, mask: Array[Int]): Int = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    d2sRehash0(d_id, pos)
+  }
+
+  protected def s2dRehash(s_id: Int, d_bits: Int, mask: Array[Int]): Int = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    s2dRehash0(s_id, pos)
+  }
+
+  protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, mask: Array[Int]): Int = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    dRehash0(d_id, pos)
+  }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] =
     Payload.decode_fetched(dFetch0(data))

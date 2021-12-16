@@ -20,7 +20,8 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
   val N = 1 << qsize
   assert(qsize < 31)
-  val hamming_order = (0 until N).sortBy(i => BigBinary(i).hamming_weight)
+  //TODO: Check if we really need hamming order for any algorithm?
+  val hamming_order = (0 until N) //Profiler(s"USolve hamming sort $strategy"){(0 until N).sortBy(i => BigBinary(i).hamming_weight)}
 
   val sumValues = Array.fill(N)(num.zero)
   val moments = Array.fill(N)(num.zero)
@@ -277,6 +278,28 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   }
 
   def buildMeanProduct() = {
+    meanProducts(0) = num.one
+    (0 until qsize).foreach { i =>
+      val j = (1 << i)
+      meanProducts(j) = num.div(sumValues(j), sumValues(0))
+      knownMeanProducts += j
+    }
+    (0 until N).foreach{ i =>
+      if(!knownMeanProducts(i)) {
+        var s = 1
+        while (s < i) {
+          if ((i & s) == s) {
+              meanProducts(i) = num.times(meanProducts(i - s), meanProducts(s))
+            s = i + 1 //break
+          } else {
+            s = s << 1
+          }
+        }
+        knownMeanProducts += i
+      }
+    }
+  }
+  def buildMeanProduct2() = {
     val sizeOne = (0 until qsize).map { i =>
       val j = (1 << i)
       meanProducts(j) = num.div(sumValues(j), sumValues(0))

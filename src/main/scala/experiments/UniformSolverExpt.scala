@@ -24,7 +24,7 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
 
   val fileout = new PrintStream(s"expdata/UniformSolverExpt_${name}_${timestamp}.csv")
   val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
-  fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), UPrepareTime(us), UFetchTime(us), SolversTotalTime(us), " + strategies.map(a => s"$a AddTime(us), $a FillTime(us), $a SolveTime(us), $a Err").mkString(", "))
+  fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), SolversTotalTime(us), UPrepareTime(us), UFetchTime(us), " + strategies.map(a => s"$a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
   //def online_compare(q: List[Int]) = {
@@ -56,25 +56,29 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
     val l = Profiler("USolve Prepare") {
       dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1)
     }
-    val solvers = strategies.map(a => new UniformSolver[T](q.length, a))
-
     val fetched =  Profiler("USolve Fetch") {
      l.map { pm =>
        (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
       }
     }
-    val result = solvers.map { s =>
-      Profiler(s"USolve Add ${s.strategy}") {
-        fetched.foreach{ case (bits, array) => s.add(bits, array)}
-      }
 
-      Profiler(s"USolve FillMissing ${s.strategy}") {
-        s.fillMissing()
+
+    val result = strategies.map { a =>
+      Profiler(s"USolve Solve ${a}") {
+        val s = Profiler(s"USolve Constructor ${a}") {
+          new UniformSolver[T](q.length, a)
+        }
+        Profiler(s"USolve Add ${s.strategy}") {
+          fetched.foreach { case (bits, array) => s.add(bits, array) }
+        }
+        Profiler(s"USolve FillMissing ${s.strategy}") {
+          s.fillMissing()
+        }
+        Profiler(s"USolve FastSolve ${s.strategy}") {
+          s.fastSolve()
+        }
+        s
       }
-      val res = Profiler(s"USolve Solve ${s.strategy}") {
-        s.fastSolve()
-      }
-      s
     }
     result
   }
@@ -119,12 +123,10 @@ class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = 
       }
 
     if(output) {
-      val resultrow = s"${name},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $uprep,$ufetch,$utot,  " +
+      val resultrow = s"${name},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,  $utot,$uprep,$ufetch,  " +
         errors.map { case (algo, err) =>
-          val uadd = Profiler.durations(s"USolve Add $algo")._2 / 1000
-          val ufill = Profiler.durations(s"USolve FillMissing $algo")._2 / 1000
           val usolve = Profiler.durations(s"USolve Solve $algo")._2 / 1000
-          s"  ${uadd},${ufill},${usolve},${round(err)}"
+          s"  ${usolve},${round(err)}"
         }.mkString(", ")
       fileout.println(resultrow)
     }

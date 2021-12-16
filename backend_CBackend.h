@@ -26,26 +26,26 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
 /*
  * Class:     backend_CBackend
  * Method:    d2sRehash0
- * Signature: (II[I)I
+ * Signature: (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
-  (JNIEnv *, jobject, jint, jint, jintArray);
+  (JNIEnv *, jobject, jint, jintArray);
 
 /*
  * Class:     backend_CBackend
  * Method:    s2dRehash0
- * Signature: (II[I)I
+ * Signature: (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
-  (JNIEnv *, jobject, jint, jint, jintArray);
+  (JNIEnv *, jobject, jint, jintArray);
 
 /*
  * Class:     backend_CBackend
  * Method:    dRehash0
- * Signature: (III[I)I
+ * Signature: (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
-  (JNIEnv *, jobject, jint, jint, jint, jintArray);
+  (JNIEnv *, jobject, jint, jintArray);
 
 /*
  * Class:     backend_CBackend
