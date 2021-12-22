@@ -1,7 +1,7 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.{DataCube, PartialDataCube, SchemaBasedMaterializationScheme}
+import core.{DataCube, PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
 import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
@@ -187,20 +187,20 @@ object SSBTest {
 
     {
       val maxN = 15
-      val maxD = 19
+      val maxD = 22
       val logsf = 0
-      val dc2 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
-      dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
     }
 
     {
       val maxN = 15
       val maxD = 25
-      val logsf = 3
-      val dc2 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      val logsf = 0
+      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
-      dc2.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
     }
 
     //val base = dc.cuboids.head

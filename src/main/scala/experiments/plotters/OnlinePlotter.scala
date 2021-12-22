@@ -52,8 +52,8 @@ object OnlinePlotter {
   }
 
   def myplot(name: String, isDOF: Boolean, isQuerySize: Boolean) = {
-    def filterCube(r: IndexedSeq[String]) = r(0).contains("--16")
-    def filterQuery(r: IndexedSeq[String]) = r(2) == "10"
+    def filterCube(r: IndexedSeq[String]) = r(0).contains("15_25_3")
+    def filterQuery(r: IndexedSeq[String]) = r(2) == "15"
 
     def groupCube(r: IndexedSeq[String]) = r(0)
     def groupQuery(r: IndexedSeq[String]) = r(2)
@@ -95,7 +95,7 @@ object OnlinePlotter {
       val xavg = avg.map(_._1)
       val yavg = avg.map(_._2)
       csvout.println("Time(s),"+xavg.mkString(","))
-      csvout.println(s"$t1:$n," +yavg.mkString(","))
+      csvout.println(s"$n," +yavg.mkString(","))
      /*
       plt += plot(xavg, yavg, name=n)
 
@@ -116,13 +116,17 @@ object OnlinePlotter {
 
   def main(args: Array[String]): Unit = {
 
-    val name = "online_NYC.csv"
-    myplot(name, true, false)
-    myplot(name, false, false)
+    //val name = "online_NYC.csv"
+    //myplot(name, true, false)
+    //myplot(name, false, false)
 
-    val name2 = "online_SSB-sf100.csv"
-    myplot(name2, false, false)
-    myplot(name2, true, false)
+    //val name2 = "online_SSB-sf100.csv"
+    //myplot(name2, false, false)
+    //myplot(name2, true, false)
+
+    val name3 = "online_SSB-sf100-qs.csv"
+    myplot(name3, false, true)
+    myplot(name3, true, true)
 
   }
 }

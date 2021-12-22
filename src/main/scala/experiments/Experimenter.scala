@@ -64,7 +64,7 @@ object Experimenter {
     val cubs = dc.cuboids.groupBy(_.n_bits).mapValues{cs =>
       val n = cs.length
       val sum = cs.map(_.numBytes).sum
-      val avg = (sum/n).toInt
+      val avg = (sum/n)
       s"$n,$sum,$avg"
     }
     cubs.toList.sortBy(_._1).foreach{case (k, v) => fileout.println(s"$k,$v")}
@@ -100,7 +100,7 @@ object Experimenter {
     //val lrfs = List(-17.0, -16.0, -15.0)
     //val lbase = 0.19
 
-  implicit val shouldRecord = false
+  implicit val shouldRecord = true
     //val lrf = -29
     //val lbase = 0.184
     //val cg = SSB(10)
@@ -110,13 +110,13 @@ object Experimenter {
     //val lrf = -27
     //val lbase = 0.195
 
-    val cg = SSB(1)
+    val cg = SSB(100)
 
     //val lrf = -32
     //val lbase = 0.19
-    //val names = List((13.4, 20), (15, 25), (16, 27)).map{p => "sms_" + p._1 + "_" + p._2}
-    val names = List((13, 20)).map{p => "sms_" + p._1 + "_" + p._2}
-
+    //val names1 = List((15, 19, 0), (15, 25, 3)).map { p => "sms_" + p._1 + "_" + p._2 + "_" + p._3 }
+    //val names2 = List((15, 22, 0), (15, 25, 0)).map { p => "sms_" + p._1 + "_" + p._2 + "_" + p._3 }
+    //val names = names1 ++ names2
     //val cg = NYC
     //val lrf = -80.6
     //val lbase = 0.19
@@ -126,30 +126,39 @@ object Experimenter {
     //val (sch, dc) = cg.load(lrf, lbase)
     //val (sch, dc) = cg.load2()
     //val (sch, dcs) = cg.multiload(lrfs.map(lrf => (lrf, lbase)))
-    val sch = cg.schema()
-    val dcs = names.map{n => n->PartialDataCube.load2(cg.inputname + "_"+n, cg.inputname + "_base")}
+    //val sch = cg.schema()
+    //val dcs = names.map{n => n->PartialDataCube.load2(cg.inputname + "_"+n, cg.inputname + "_base")}
     //val dc = cg.loadDC(lrf, lbase)
+    val cubename =  "sms_15_25_3"
+    //val cubename =  "sms_13_20"
+    //val cubename =  "base"
+    val (sch, dc) = cg.loadPartial(cubename)
 
 
     //val dc2 = new DataCube(SchemaBasedMaterializationScheme(sch))
     //dc2.buildFrom(dc)
     //dc2.save2(s"${cg.inputname}_sch")
 
-    //onlinewarmup()
-    //val qs = (0 until 1).map(i => sch.root.samplePrefix(8))
-    val qs = List(List(143, 144, 165, 170, 171, 172, 191, 192))
+    if(shouldRecord) {
+      //onlinewarmup()
+      fullwarmup()
+    }
+    //val qs = List(20).flatMap(q => (0 until 1).map(i => sch.root.samplePrefix(q)))
+    val qs = List(14, 18).flatMap(q => (0 until 30).map(i => sch.root.samplePrefix(q)))
+    //val qs = List(10, 22).flatMap(q => (0 until 30).map(i => sch.root.samplePrefix(q)))
+    //val qs = List(List(143, 144, 165, 170, 171, 172, 191, 192))
 
     //val qs = List(List(13, 12, 11, 10, 52, 51, 50, 49, 48, 47, 46, 82, 81, 80, 79))
     //val qs = (0 to 30).map{i => Tools.rand_q(dc.m.n_bits, 10)}
 
-    dcs.foreach{case (cubename, dc) =>
+    //dcs.foreach{case (cubename, dc) =>
     //val cubename = s"${lrf}-${lbase}"
     //val cubename = s"sch"
     full(s"${cg.inputname}-${cubename}", dc, qs)
     //  online(s"${cg.inputname}-${cubename}", dc, qs)
-      //storage(dc, cg.inputname)
-      Profiler.print()
-    }
+    //  storage(dc, cg.inputname+"_"+cubename)
+      //Profiler.print()
+    //}
     //queryDistribution(cg)
 
   }

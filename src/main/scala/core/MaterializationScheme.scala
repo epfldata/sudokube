@@ -384,3 +384,33 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD
 
 }
 
+case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(n_bits) {
+  val logmaxN = (logmaxND-logsf).toInt
+  val mod = (logmaxND-logsf) - logmaxN
+
+  def n_proj_d(d: Int) =
+    if(d <= maxD && d > maxD -logmaxN) {
+      val logn = maxD-d
+      val n = math.pow(2, logn + mod + logsf).toInt
+      val c: BigInt = Combinatorics.comb(n_bits, d)
+      if(n < c) n else c.toInt
+    } else 0
+
+  val projections : IndexedSeq[List[Int]] = {
+    val r = (for(d <- 0 to n_bits - 1) yield {
+
+      val n_proj = n_proj_d(d)
+
+      print(n_proj + "/")
+
+      Util.collect_n[List[Int]](n_proj, () =>
+        Util.collect_n[Int](d, () =>
+          scala.util.Random.nextInt(n_bits)).sorted)
+    }
+      ).flatten ++ Vector((0 to n_bits - 1).toList)
+    println("1")
+    r
+  }
+  println("Total = "+ projections.length)
+}
+
