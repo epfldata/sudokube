@@ -6,6 +6,14 @@ import util.Util.mkAB
 
 import scala.util.control.Breaks._
 
+/**
+ * Altenative to (Primal) Simplex algorithm to find bounds
+ * @param nv number of variables (there are no artificual variables)
+ * @param _base_v  Initial basis variables
+ * @param constraints  Initial set of equations
+ * @param num
+ * @tparam T
+ */
 class DualSimplex[T](
                       nv: Int, // all vars, no artificial vars
                       _base_v: Seq[Int],
@@ -42,67 +50,6 @@ class DualSimplex[T](
   tableau += null
   tableau ++= constraints
 
-
-  //def checkIsParallelObj(r: Int) : Option[((Int, Boolean), T)]= {
-  //  assert(r > 0)
-  //  val row = M(r)
-  //  val basisVar = base_v(r-1)
-  //  val signs = row.data.filterKeys(k => k != 0 && k != basisVar + 1 ).mapValues(v => num.gt(v, num.zero)).map(_._2)
-  //  val allPos = signs.reduce(_ && _)
-  //  val allNeg = !signs.reduce(_ || _)
-  //  if(!allPos && !allNeg)
-  //    None
-  //  else {
-  //    val isMax = allPos
-  //  }
-  //}
-
-  ///**
-  // * Assumes equality constraints.
-  // * Assumes all coeffs in l are 1
-  // * Assumes b is positive
-  // */
-  //def addConstraint(l: List[(Int, T)], b: T) = {
-  //
-  //  //for each vars, check if we have better upper bound
-  //  assert(num.gteq(b, num.zero))
-  //  l.foreach { case (k, c) =>
-  //    assert(c == num.one)
-  //    if (!maxVals.isDefinedAt(k) || num.lt(b, maxVals(k)))
-  //      maxVals(k) = b
-  //  }
-  //
-  //  val l1 = l.map { case (k, v) => k + 1 -> v }
-  //  val row = if (true) {
-  //    M.data += mk_constraint(l1, b)
-  //    base_v += -100 //DUMMY
-  //    n_constraints
-  //  } else {
-  //    val fR = freeRows.head
-  //    freeRows = freeRows.tail
-  //    M.data(fR) = mk_constraint(l1, b)
-  //    base_v(fR - 1) = -100
-  //    fR
-  //  }
-  //
-  //  fixRow(row)
-  //  val keyDomain = M(row).data.filterKeys(_ != 0).map(_._1) //choose any non-zero coefficent key column from the new row.
-  //  val sliceKeyDomain = (keyDomain.filter(k => sliceFunc(k - 1)))
-  //  val bv = if (sliceKeyDomain.isEmpty)
-  //    keyDomain.head
-  //  else sliceKeyDomain.head
-  //
-  //  base_v(row - 1) = bv - 1
-  //  pivot(row, bv)
-  //  isFeasible = false
-  //}
-
-  ////Assumes l has indexes > 0
-  //private def mk_constraint(l: List[(Int, T)], b: T) = {
-  //  //assert(num.gteq(b, num.zero))
-  //  Some(SparseRow[T](n_vars + 1, ((0, b) :: l).toMap))
-  //}
-
   /**
    *  Rewrite  a row  in terms of non-basic variables
    *  @param to_row index of row
@@ -124,6 +71,7 @@ class DualSimplex[T](
     result
   }
 
+  /** Run simplex algorithm till termination */
   def run(v: Int, maximize: Boolean): Unit = {
     it_cnt = 0
     terminate = false

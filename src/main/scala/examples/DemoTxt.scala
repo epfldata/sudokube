@@ -10,7 +10,7 @@ import frontend.generators._
 import frontend.gui.FeatureFrame
 import util._
 import core.SolverTools._
-import core.solver.Strategy.{CoMoment, Cumulant}
+import core.solver.Strategy.{CoMoment, CoMoment3, Cumulant}
 import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol}
 import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StructuredDynamicSchema}
 
@@ -23,7 +23,7 @@ object DemoTxt {
   import frontend._, backend._, core._, core.RationalTools._
 
   def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3, Cumulant)
+    val solver = new UniformSolver[Rational](3, CoMoment3)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
@@ -333,11 +333,11 @@ object DemoTxt {
   }
 
   def main(args: Array[String]): Unit = {
-    //uniformSolver()
+    uniformSolver()
     //prepare()
     //test1()
     //loadtest()
-    combTest()
+    //combTest()
     //investment()
     //sample(1000)
     //large()

@@ -15,7 +15,7 @@
 //#define VERBOSE
 
 
-
+//STL requires a static type. So we use maximum possible key size. We support only 40*8 = 320 bits for those functions.
 const unsigned int tempKeySize = 40;
 
 struct tempRec {
@@ -30,19 +30,12 @@ struct tempRec {
 
  */
 
-
-/*
-struct rec {
-  key_type key;
-  payload val;
-
-  void copy_from(rec &other) { memcpy(this, &other, sizeof(rec)); }
-};
-*/
-
-
+//Used in sorting within global_compare_keys  to store the number of bytes (out of tempKeySize=40) that need to be compared
 thread_local unsigned short globalnumkeybytes = 0;
 
+/*
+ * Returns whether k1 < k2 . Assumes the bytes are in little endian (LS byte first). Requires globalnumkeybytes to be set.
+ */
 inline bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
     //DO NOT use unsigned !! i >= 0 always true
     for (short i = globalnumkeybytes - 1; i >= 0; i--) {
@@ -52,14 +45,34 @@ inline bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
     return false;
 }
 
+
+/**
+ * Various registries storing in-memory cuboids and their meta-information.
+ */
+
 struct {
+    /**pointer to dense or sparse cuboid*/
     std::vector<void *> ptr_registry;
-    //Currently we support only number of rows < IntMax
-    //Stores numrows for both dense and sparse cuboids
+
+    /**
+     * Stores numrows for both dense and sparse cuboids
+     * Currently we support only number of rows < IntMax */
     std::vector<size_t> numrows_registry;
+
+     /** stores size of key in bytes for sparse cuboids. Not relevant for dense cuboids. May be possible to remove it. */
     std::vector<unsigned short> keysz_registry;
+
+    /** for synchronization when multiple java threads try to update this registry simulataneously */
     std::mutex registryMutex;
 
+
+    /**
+        Adds a dense or sparse cuboid to the registry
+        @param p  Pointer to the array representing the dense or sparse cuboid
+        @param size Number of rows in cuboid, relevant for sparse cuboids
+        @param keysize Size of the key (in bytes), relevant for sparse cuboids
+        @returns unique id for the added cuboid
+    */
     unsigned int r_add(void *p, size_t size, unsigned short keysize) {
         std::unique_lock<std::mutex> lock(registryMutex);
 //TODO: It is possible that some thread might access when these vectors are resized.
@@ -69,6 +82,14 @@ struct {
         return ptr_registry.size() - 1;
     }
 
+    /**
+     * Adds several dense or sparse cuboids to the registry in a batch
+     * @param p_array Array of pointers to dense/sparse cuboids
+     * @param size_array Array of number of rows in each cuboid
+     * @param n_bits_array Array of number of key bits of each cuboid
+     * @param id_array Array of unique ids for each cuboid to be returned by this function
+     * @param numCuboids Total number of cuboids in this batch, and the sizes of each of input arrays.
+     */
     void multi_r_add(byte *p_array[], int size_array[], int n_bits_array[], unsigned int id_array[],
                      unsigned int numCuboids) {
         std::unique_lock<std::mutex> lock(registryMutex);
@@ -82,16 +103,25 @@ struct {
         }
     }
 
+    /** Thread safe access to pointer to cuboid */
     void *readPtr(unsigned int id) {
         std::unique_lock<std::mutex> lock(registryMutex);
         return ptr_registry[id];
     }
 
+    /**Thread safe access to number of rows of some cuboid */
     size_t readSize(unsigned int id) {
         std::unique_lock<std::mutex> lock(registryMutex);
         return numrows_registry[id];
     }
 
+    /**
+     * Thread safe access to a cuboid and meta information
+     * @param id Unique id of the cuboid to be retrieved
+     * @param ptr Output parameter storing pointer to cuboid
+     * @param size Output parameter storing number of rows in the cuboid
+     * @param keySize Output parameter storing keysize in bytes
+     */
     void read(unsigned int id, void *&ptr, size_t &size, unsigned short &keySize) {
         std::unique_lock<std::mutex> lock(registryMutex);
         ptr = ptr_registry[id];
@@ -101,6 +131,14 @@ struct {
 
 } globalRegistry;
 
+/**
+ * Initialize and pre-allocate new cuboid with a given size. The data is added using add_i method to add specific rows.
+ * No need to freeze. Supports multi-threaded insertion of records to different positions using add_i.
+ * @see add_i
+ * @param n_bits Number of bits in the key
+ * @param n_rows Number of rows in the cuboid
+ * @return Unique id for the new cuboid
+ */
 unsigned int mkAll(unsigned int n_bits, size_t n_rows) {
     unsigned short keySize = bitsToBytes(n_bits);
     size_t recSize = keySize + sizeof(value_t);
@@ -110,11 +148,12 @@ unsigned int mkAll(unsigned int n_bits, size_t n_rows) {
     return globalRegistry.r_add(newstore, n_rows, keySize);
 }
 
-// append cuboid to registry, used both in dense and sparse case.
-
-/* creates an appendable sparse representation. add to it using add()
+/**
+ * creates an appendable sparse representation. add to it using add()
    and end adding using freeze()
    as long as this is appendable/a vector, must not call rehash on it.
+   Does not support multi-threading.
+   Supports cuboids with maximum of 320 key bits
 */
 unsigned int mk(unsigned int n_bits) {
     if (n_bits >= (tempKeySize - 1) * 8)
@@ -123,11 +162,12 @@ unsigned int mk(unsigned int n_bits) {
     return globalRegistry.r_add(new std::vector<tempRec>(), 0, bitsToBytes(n_bits));
 }
 
-/* appends one record to an appendable (not yet frozen) sparse representation.
-
+/**
+ * appends one record to an appendable (not yet frozen) sparse representation initialized by mk().
    inconsistent storage type with the rest: a cuboid that we can write to
    is to be a vector that we can append to. It is replaced by the standard
    sparse representation when we freeze it.
+   Does not support multi-threading
 */
 void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
     tempRec myrec;
@@ -136,11 +176,19 @@ void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
     myrec.val = v;
 
     //SBJ: Currently no other thread should be running. So no locks
+    //Adding to std::vector requires static type. So using tempRec
     std::vector<tempRec> *p = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
     p->push_back(myrec); // makes a copy of myrec
     globalRegistry.numrows_registry[s_id]++;
 }
-
+/**
+ * Adds record at specified position to a cuboid initialized by mkAll()
+ * Thread-safe, as long as there are no conflicts on the parameter i
+ * @param i The index at which new record is to be added
+ * @param s_id The id of the cuboid (returned by mkAll) to which record is to be added
+ * @param key Record key
+ * @param v Record value
+ */
 void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
     unsigned short keySize;
     size_t rows;
@@ -155,6 +203,11 @@ void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
 
 }
 
+/**
+ * Finalizes cuboid construction intiatied by mk(). Changes internal representation of cuboid that is compatible with rest of the system
+ * Also sets the cuboid size. Only single thread may call it.
+ * @param s_id Id of the cuboid (retured by mk()) to be finalized.
+ */
 void freeze(unsigned int s_id) {
     //SBJ: No other threads. No locks
     std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
@@ -183,9 +236,15 @@ void freeze(unsigned int s_id) {
     globalRegistry.ptr_registry[s_id] = newstore;
 }
 
-
+/**
+ * Returns size (number of rows) of the cuboid with specified id.
+ */
 size_t sz(unsigned int id) { return globalRegistry.readSize(id); }
 
+/**
+ * Returns number of bytes of storage used by cuboid with specified id.
+ * Valid for only sparse cuboids
+ */
 size_t sNumBytes(unsigned int s_id) {
     unsigned short keySize;
     size_t rows;
@@ -227,6 +286,15 @@ void dense_print(unsigned int d_id, unsigned int n_bits) {
     }
 }
 
+/**
+ * Reads batch of cuboids from file and loads them into RAM
+ * @param filename Name of file containing the cuboids
+ * @param n_bits_array Number of key bits, one for each cuboid, in an array
+ * @param size_array  Number of rows, one for each cuboid, in an array
+ * @param isSparse_array Boolean representing whether a cuboid is sparse, one for each cuboid, in an array
+ * @param id_array Output parameter : Unique id , one for each cuboid, in an array
+ * @param numCuboids Number of cuboids in the file, and also sizes of the input array parameters.
+ */
 void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
                      unsigned int id_array[], unsigned int numCuboids) {
     printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
@@ -296,6 +364,11 @@ void *read_cb(const char *filename, size_t byte_size) {
     return b;
 }
 
+/**
+ * Reads a file containing a single sparse cuboid and loads it into RAM
+ * @return Unique id for the cuboid
+ * @deprecated Use readMultiCuboid
+ */
 unsigned int readSCuboid(const char *filename, unsigned int n_bits, size_t size) {
     printf("readSCuboid(\"%s\", %d, %lu)\n", filename, n_bits, size);
     unsigned int keySize = bitsToBytes(n_bits);
@@ -308,6 +381,11 @@ unsigned int readSCuboid(const char *filename, unsigned int n_bits, size_t size)
     return s_id;
 }
 
+/**
+ * Reads a file containing a single dense cuboid and lodas it into RAM
+ * @return Unique id
+ * @deprecated use readMultiCuboid
+ */
 unsigned int readDCuboid(const char *filename, unsigned int n_bits, size_t size) {
     printf("readDCuboid(\"%s\", %d, %lu)\n", filename, n_bits, size);
 
@@ -335,6 +413,10 @@ void write_cb(const char *filename, void *data, unsigned int id, size_t byte_siz
     fclose(fp);
 }
 
+/**
+ * Writes a sparse cuboid to file
+   @deprecated use writeMultiCuboid
+ */
 void writeSCuboid(const char *filename, unsigned int s_id) {
     void *data;
     size_t size;
@@ -345,6 +427,10 @@ void writeSCuboid(const char *filename, unsigned int s_id) {
     write_cb(filename, data, s_id, byte_size);
 }
 
+/**
+ * Writes a dense cuboid to file
+   @deprecated use writeMultiCuboid
+ */
 void writeDCuboid(const char *filename, unsigned int d_id) {
     void *data;
     size_t size;
@@ -354,7 +440,13 @@ void writeDCuboid(const char *filename, unsigned int d_id) {
     write_cb(filename, data, d_id, byte_size);
 }
 
-
+/**
+ * Writes a batch of cuboids to file
+ * @param filename Name of file
+ * @param isSparse_array Boolean value indicating whether the cuboid is sparse or dense, one per cuboid, in an array
+ * @param ids  Id of cuboid to be written
+ * @param numCuboids  Total number of cuboids in the batch, and the size of the arrays.
+ */
 void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int ids[], unsigned int numCuboids) {
     printf("writeMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "wb");
@@ -392,7 +484,13 @@ void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int 
 }
 
 
-// must only be called for a dense array
+/**
+ * Retrieves the contents of a dense cuboid as an  array.
+ * Must only be called on a dense cuboid
+ * @param d_id Id of the dense cuboid
+ * @param size Output parameter storing the number of rows in the cuboid
+ * @return Pointer to array containing the data of the specified dense cuboid
+ */
 value_t *fetch(unsigned int d_id, size_t &size) {
     unsigned short keySize;
     void *ptr;
@@ -401,9 +499,14 @@ value_t *fetch(unsigned int d_id, size_t &size) {
 }
 
 
-// rehashing ops
-
-
+/**
+ * Aggregates a sparse cuboid to another sparse cuboid according to a specific mask
+ * Uses sorting on tempRec typed records -- avoid this function if possible
+ * @param s_id Id of the cuboid being aggregated
+ * @param maskpos The indexes of the mask where bit is 1
+ * @param masksum Total number of 1s in the mask
+ * @return Id of the new cuboid
+ */
 unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
 #ifdef VERBOSE
     printf("Begin srehash(%d, ", s_id);
@@ -426,12 +529,14 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
 
     assert(newKeySize <= tempKeySize);
 
+    //allocate tempRec-typed array of the same size as the source cuboid
     const unsigned int tempRecSize = sizeof(tempRec);
     tempRec *tempstore = (tempRec *) calloc(rows, tempRecSize);
 
     size_t tempMB = rows * tempRecSize / (1000 * 1000);
     if (tempMB > 1000) fprintf(stderr, "\nsrehash temp calloc : %lu MB\n", tempMB);
 
+    //project each record into tempRec-typed record
     for (size_t r = 0; r < rows; r++) {
         project_Key_to_Key(masksum, maskpos, getKey(store, r, recSize), getKey((byte **) tempstore, r, tempRecSize));
         memcpy(getVal((byte **) tempstore, r, tempRecSize), getVal(store, r, recSize), sizeof(value_t));
@@ -443,7 +548,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
 #endif
     }
 
-
+    //sort the tempRecs based on new key
     globalnumkeybytes = newKeySize; //TODO: Check if newKeySize is okay
     std::sort(tempstore, tempstore + rows, global_compare_keys);
 
@@ -454,6 +559,8 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
         printf(", %lld)\n", *getVal((byte **) tempstore, r, tempRecSize));
     }
 #endif
+
+    //aggregate rows with same (new) key
     unsigned long watermark = 0;
     for (size_t r = 0; r < rows; r++)
         if (watermark < r) {
@@ -484,6 +591,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
     size_t new_rows = watermark + 1;
     //printf("End srehash (compressing from %lu to %d)\n", rows, new_rows);
 
+    //Convert from tempRec-type record to that of correct size
     byte **new_store = (byte **) calloc(new_rows, newRecSize);
     size_t numMB = new_rows * newRecSize / (1000 * 1000);
     if (numMB > 100) fprintf(stderr, "\nsrehash calloc : %lu MB\n", numMB);
@@ -506,6 +614,13 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
     return id;
 }
 
+/**
+ * Aggregates a dense cuboid into a dense cuboid.
+ * @param d_id Id of the source cuboid
+ * @param maskpos Indexes of mask where bit is 1
+ * @param masksum Number of 1s in the mask
+ * @return Id of new cuboid
+ */
 unsigned int drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum) {
 #ifdef VERBOSE
     printf("Begin drehash(%d, %d, %d, ", n_bits, d_id, d_bits);
@@ -565,6 +680,13 @@ unsigned int drehash(unsigned int d_id, unsigned int *maskpos, unsigned int mask
     return d_id2;
 }
 
+/**
+ * Aggregates sparse cuboid to dense. Called before fetch() or if the aggregated cuboid is likely to be dense
+ * @param s_id  Id of sparse cuboid
+ * @param maskpos Indexes of mask where bit is 1
+ * @param masksum Number of 1s in mask
+ * @return Id of the dense cuboid
+ */
 unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
 #ifdef VERBOSE
     printf("Begin s2drehash(%d, %d, ", s_id, d_bits);
@@ -610,6 +732,13 @@ unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int ma
     return d_id;
 }
 
+/**
+ * Converts a dense cuboid to a sparse cuboid. Aggregation of records with same key is not yet implemented
+ * @param d_id  Id of source cuboid
+ * @param maskpos Indexes of mask where bit is 1
+ * @param masksum Number of 1s in  mask
+ * @return Id of new cuboid
+ */
 unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum) {
     size_t size;
     unsigned short oldKeySize;
@@ -637,7 +766,13 @@ unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int ma
     return globalRegistry.r_add(newstore, newrows, newKeySize);
 }
 
-
+/**
+ * Aggregates a sparse cuboid into appropriate sparse/dense cuboid
+ * @param s_id Id of the source cuboid
+ * @param maskpos Index of mask where bit is 1
+ * @param masksum Number of 1s in mask
+ * @return Id of the new cuboid. If the id is negative, then it means the new cuboid is dense.
+ */
 int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
     unsigned short keySize;
     size_t rows;
@@ -654,6 +789,7 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
     size_t dense_size = dense_rows * sizeof(value_t);  //overflows when to_dim  > 61
     size_t temp_size = rows * tempRecSize;
 
+    //if dense size is too big, fall back to sorting based approach
     if (masksum >= 40 || temp_size < dense_size) {
         //do sorting based approach and return sparse cuboid.
         return srehash(s_id, maskpos, masksum);
@@ -664,7 +800,7 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
 
         size_t numMB = dense_size / (1000 * 1000);
         if (numMB > 1000) fprintf(stderr, "\nhybrid rehash dense calloc : %lu MB\n", numMB);
-        // all intervals are initially invalid -- no constraint
+
         memset(dense_store, 0, dense_size);
 
         size_t sparse_rows = 0;
@@ -672,12 +808,13 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
             byte *from_key = getKey(store, r, recSize);
             auto newval = *getVal(store, r, recSize);
             size_t i = project_Key_to_Long(masksum, maskpos, from_key);
+            //Count non-zero rows
             if (dense_store[i] == 0 && newval > 0)
                 sparse_rows++;
             dense_store[i] += newval;
         }
         size_t sparseSize = sparse_rows * newRecSize;
-
+        //if the new cuboid is not dense enough then convert to sparse cuboid
         if (sparseSize < 0.5 * dense_size) {
             //switch to sparse representation
             byte **sparse_store = (byte **) calloc(sparse_rows, newRecSize);

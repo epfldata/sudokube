@@ -8,6 +8,8 @@ import java.io._
 import solver._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future, future}
 
 /** To create a DataCube, must either
     (1) call DataCube.build(full_cube) or
@@ -125,6 +127,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
       @param l  a list of (isSparseCuboid, n_bits, size) triples, one list
                 entry for each cuboid to load.
+
+   @deprecated Use load2 for multiple cuboids from a single file
   */
   protected def load(backend: Backend[Payload], l: List[(Boolean, Int, BigInt)], name_prefix: String) {
     cuboids = (l.zipWithIndex.map {
@@ -133,26 +137,26 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }).toArray
   }
 
+  /**
+   * Loads cuboids from files. Do not call this directly, but invoke the load2 method of the companion object.
+   * @param be Backend
+   * @param multicuboidLayout List of layout information, one per file. For each  file, we have
+   *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
+   */
   def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](m.projections.length)
-    val parallelism =  Runtime.getRuntime.availableProcessors / 2
-    println(s"Reading cuboids from disk using $parallelism threads")
-    val threadBuffer = multicuboidLayout.zipWithIndex.groupBy(_._2 % parallelism).values.map { mcs =>
-      new Thread {
-        override def run(): Unit = {
-          mcs.foreach {
-            case ((idList, sparseList, nbitsList, sizeList), mcid) =>
+    implicit val ec = ExecutionContext.global
+    println(s"Reading cuboids from disk")
+
+    val futures = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
+      Future {
               val filename = parentDir + s"/multicube_$mcid.csuk"
               //WARNING Converting size of cuboid from BigInt to Int
               val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
               cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
-            case x => assert(false)
           }
-        }
       }
-    }
-    threadBuffer.foreach(_.start())
-    threadBuffer.foreach(_.join())
+    Await.result(Future.sequence(futures), Duration.Inf)
   }
   /** write the DataCube's metadata and cuboid data to a file.
 
@@ -185,7 +189,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     if(!file.exists())
       file.getParentFile.mkdirs()
 
-
+    //pack cuboids upto 10 MB into a single file
      val multiCuboids =  cuboids.zipWithIndex.foldLeft((Map[Int, Cuboid]() :: Nil) -> BigInt(0) ) {
        case ((list,total), (cub, id)) => if((total + cub.numBytes) < threshold) {
          ((list.head + (id -> cub)) :: list.tail) -> (total + cub.numBytes )
@@ -208,21 +212,16 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     oos.writeObject(multiCuboidLayoutData)
     oos.close
 
-    val parallelism =  Runtime.getRuntime.availableProcessors / 2
-    println(s"Writing cuboids to disk using $parallelism threads")
-    val threadTasks =  multiCuboids.zipWithIndex.groupBy(_._2 % parallelism).values.map{ multicuboids =>
-      new Thread {
-        override def run(): Unit = {
-          multicuboids.map { case (mc, mcid) =>
+    implicit val ec = ExecutionContext.global
+    println(s"Writing cuboids to disk")
+    val threadTasks =  multiCuboids.zipWithIndex.map{  case (mc, mcid) =>
+      Future{
             val filename = file.getParent + s"/multicube_$mcid.csuk"
             //layout data is written in reverse order, so we reverse it here too
             be.writeMultiCuboid(filename, mc.values.toArray.reverse)
         }
       }
-    }}
-
-    threadTasks.foreach(_.start())
-    threadTasks.foreach(_.join())
+    Await.result(Future.sequence(threadTasks), Duration.Inf)
   }
 
 
@@ -338,33 +337,33 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 } // end DataCube
 
+/**
+ * DataCube that builds projections from another data cube that contains only the full cuboid.
+ * Does not materialize the full cuboid again.
+ * Several PartialDataCubes can share the same full cuboid.
+ * @param m Materialization Scheme
+ * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
+ */
 class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCube(m) {
   val base = DataCube.load2(basename)
   def build() = buildFrom(base)
 
   override def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](m.projections.length)
-    val parallelism =  Runtime.getRuntime.availableProcessors / 2
-    println(s"Reading cuboids from disk using $parallelism threads")
-    val threadBuffer = multicuboidLayout.zipWithIndex.groupBy(_._2 % parallelism).values.map { mcs =>
-      new Thread {
-        override def run(): Unit = {
-          mcs.foreach {
-            case ((idList, sparseList, nbitsList, sizeList), mcid) =>
-              val filename = parentDir + s"/multicube_$mcid.csuk"
-              //WARNING Converting size of cuboid from BigInt to Int
-              val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
-              cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
-            case x => assert(false)
-          }
+    implicit val ec = ExecutionContext.global
+    println(s"Reading cuboids from disk")
+    val tasks  = multicuboidLayout.zipWithIndex.map {  case ((idList, sparseList, nbitsList, sizeList), mcid) =>
+        Future {
+          val filename = parentDir + s"/multicube_$mcid.csuk"
+          //WARNING Converting size of cuboid from BigInt to Int
+          val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
+          cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
         }
-      }
     }
-    threadBuffer.foreach(_.start())
-    threadBuffer.foreach(_.join())
     val last = cuboids.indices.last
     assert(cuboids(last) == null)
     cuboids(last) =  DataCube.load2(basename).cuboids.last
+    Await.result(Future.sequence(tasks), Duration.Inf)
   }
 
   override def save2(filename: String): Unit = {
@@ -396,21 +395,16 @@ class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCu
     oos.writeObject(multiCuboidLayoutData)
     oos.close
 
-    val parallelism =  Runtime.getRuntime.availableProcessors / 2
-    println(s"Writing cuboids to disk using $parallelism threads")
-    val threadTasks =  multiCuboids.zipWithIndex.groupBy(_._2 % parallelism).values.map{ multicuboids =>
-      new Thread {
-        override def run(): Unit = {
-          multicuboids.map { case (mc, mcid) =>
+    implicit val ec = ExecutionContext.global
+    println(s"Writing cuboids to disk")
+    val threadTasks =  multiCuboids.zipWithIndex.map{ case (mc, mcid) =>
+      Future{
             val filename = file.getParent + s"/multicube_$mcid.csuk"
             //layout data is written in reverse order, so we reverse it here too
             be.writeMultiCuboid(filename, mc.values.toArray.reverse)
           }
         }
-      }}
-
-    threadTasks.foreach(_.start())
-    threadTasks.foreach(_.join())
+    Await.result(Future.sequence(threadTasks), Duration.Inf)
   }
 }
 

@@ -353,6 +353,13 @@ case class RandomizedMaterializationScheme(
 
 
 @SerialVersionUID(1L)
+/**
+ * Materialization scheme that picks only meaningful prefixes from the schema
+ * @param sch Schema
+ * @param logmaxND log_2 of total number of cuboids
+ * @param maxD maximum dimension upto which we materilizae cuboids
+ * @param logsf log_2 of the number of cuboids of dimensionality maxD
+ */
 case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(sch.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = {
@@ -384,6 +391,13 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD
 
 }
 
+/**
+ * Same idea as Randomized Materialization Scheme, but parameters are different
+ * @param n_bits Number of bits of full cuboid
+ * @param logmaxND Log_2 of total number of cuboids
+ * @param maxD maximum dimension upto which we materialize cuboids
+ * @param logsf log_2 of number of cuboids of dimension maxD
+ */
 case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(n_bits) {
   val logmaxN = (logmaxND-logsf).toInt
   val mod = (logmaxND-logsf) - logmaxN

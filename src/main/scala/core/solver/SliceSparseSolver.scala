@@ -3,6 +3,9 @@ package core.solver
 import core._
 import util._
 
+/** Alternative to SparseSolver originally intended to be optimized for solving a subset of variables in presence of slice
+ * but contains other optimizations as well
+ * */
 class SliceSparseSolver[T](
                             nb: Int,
                             bs: collection.mutable.ArrayBuffer[Interval[T]],
