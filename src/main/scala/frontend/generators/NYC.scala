@@ -1,5 +1,7 @@
 package frontend.generators
 
+import core.{PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
+import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.{BigBinary, Util}
@@ -98,8 +100,33 @@ object NYC extends CubeGenerator("NYC") {
 
   def main(args: Array[String]): Unit = {
     //saveBase()
-    val sch = schema()
-    sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
+    //val sch = schema()
+    val cg = this
+    val (sch,dc) = loadBase()
+    //sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
+
+    List(
+      (16, 21, 0), (16, 25, 0), (16, 25, 4)
+      //(15, 20, 0), (15, 24, 0), (15, 25, 3),
+      //(14, 19, 0), (14, 23, 0), (14, 25, 2)
+    ).map { case (maxN, maxD, logsf) =>
+      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
+      dc2.build()
+      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
+      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      dc3.build()
+      dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+    }
+    //val base = dc.cuboids.head
+    //(0 to 5).foreach { i => val d = 6 + 3*i
+    //  val q= Tools.rand_q(sch.n_bits, d)
+    //  val mask = (0 until sch.n_bits).map(i => if(q.contains(i)) 1 else 0).toArray
+    //  val start = System.currentTimeMillis()
+    //  val c = base.rehash(mask)
+    //  val end = System.currentTimeMillis()
+    //  val dur = (end-start)/1000.0
+    //  println(s"Dim $d  Size=${c.size} Time=$dur s\n\n")
+    //}
     //Util.collect_n(100, () => sch.root.samplePrefix(10)).foreach(println)
     //buildFromBase(-80.6, 0.19)
 

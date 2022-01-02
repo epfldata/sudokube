@@ -185,22 +185,28 @@ object SSBTest {
     val sch = cg.schema()
     //val (sch,dc) = cg.loadBase()
 
-    {
-      val maxN = 15
-      val maxD = 22
-      val logsf = 0
-      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
-      dc2.build()
-      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
-    }
+    //{
+    //  val maxN = 15
+    //  val maxD = 19
+    //  val logsf = 0
+    //  val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
+    //  dc2.build()
+    //  dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
+    //  val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+    //  dc3.build()
+    //  dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+    //}
 
-    {
-      val maxN = 15
-      val maxD = 25
+    List((21, 13), (16, 11), (18 , 11), (20, 13)).map { case (maxD, maxN) =>
+      //val maxN = 15
+      //val maxD = 25
       val logsf = 0
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
       dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
+      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      dc3.build()
+      dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
     }
 
     //val base = dc.cuboids.head

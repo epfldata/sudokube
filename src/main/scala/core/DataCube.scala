@@ -181,7 +181,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     oos.close
   }
 
-  final val threshold = 1000 * 1000 * 10
+  final val threshold = 1000 * 1000 * 200
 
   def save2(filename: String) {
     val be = cuboids(0).backend

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+dest="${1:-datadell}"
+cube=${2:-*}
+echo $dest
+
+
+rsync -avz  --progress /var/data/sudokube/sudokube/cubedata/$2 $dest:/var/data/sudokube/sudokube/cubedata/
