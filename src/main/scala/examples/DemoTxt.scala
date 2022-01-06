@@ -17,6 +17,7 @@ import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StructuredDynamicSch
 import java.io.{FileReader, FileWriter}
 import java.util.Date
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 object DemoTxt {
 
@@ -195,7 +196,7 @@ object DemoTxt {
   def investment(): Unit = {
 
     val sch = new schema.DynamicSchema
-    val R = sch.read("investments.json", Some("k_amount"))
+    val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
     val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .0000000008, 10))
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 
@@ -331,18 +332,36 @@ object DemoTxt {
     println(map.size)
     map.filter(_._2 > 4).foreach(println)
   }
-
+  def backend_naive() = {
+    val n_bits = 10
+    val n_rows = 40
+    val n_queries = 10
+    val query_size = 5
+    val rnd = new Random(1L)
+    val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1<<n_bits)) -> rnd.nextInt(10).toLong)
+    val fullcub = CBackend.b.mk(n_bits, data.toIterator)
+    println("Full Cuboid data = " + data.mkString("  "))
+    val dc = new DataCube(RandomizedMaterializationScheme(n_bits, 0.1, 1.8))
+    dc.build(fullcub)
+    (0 until n_queries).map{i =>
+      val q = Tools.rand_q(n_bits, query_size)
+      println("\nQuery =" + q)
+      val res = dc.naive_eval(q)
+      println("Result = "+res.mkString(" "))
+    }
+  }
   def main(args: Array[String]): Unit = {
-    uniformSolver()
+    //uniformSolver()
     //prepare()
     //test1()
     //loadtest()
     //combTest()
-    //investment()
+    investment()
     //sample(1000)
     //large()
     //feature()
     //parPlan()
+    //backend_naive()
   }
 
 }

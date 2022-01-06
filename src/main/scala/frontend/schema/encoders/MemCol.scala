@@ -65,7 +65,7 @@ class MemCol[T](init_size: Int = 8
   override def queries(): Set[Seq[Int]] = Set(Nil, bits)
 
   /* protected */
-  var encode_map = new collection.mutable.OpenHashMap[T, Int](init_size) with Serializable
+  var encode_map = new collection.mutable.OpenHashMap[T, Int](math.max(2, init_size))
   var decode_map = new collection.mutable.ArrayBuffer[T](init_size)
   register.registerIdx(init_size)
 
