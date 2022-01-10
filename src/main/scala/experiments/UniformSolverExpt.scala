@@ -9,7 +9,7 @@ import SolverTools._
 import core.solver.Strategy.{CoMoment, CoMomentFrechet, Strategy}
 import frontend.experiments.Tools
 
-import java.io.PrintStream
+import java.io.{File, PrintStream}
 import java.time.{Instant, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
@@ -17,13 +17,17 @@ import scala.reflect.ClassTag
 
 class UniformSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "")(implicit shouldRecord: Boolean) {
 
-  val timestamp = if(shouldRecord) {
-    val datetime = LocalDateTime.now
-    DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime)
-  } else "dummy"
-
-  val fileout = new PrintStream(s"expdata/UniformSolverExpt_${name}_${timestamp}.csv")
-  val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
+  val fileout = {
+    val (timestamp,folder) = if(shouldRecord) {
+      val datetime = LocalDateTime.now
+      (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
+    } else ("dummy", "dummy")
+    val file = new File(s"expdata/$folder/UniformSolverExpt_${name}_${timestamp}.csv")
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+    new PrintStream(file)
+  }
+  val strategies = List(Strategy.CoMoment3, Strategy.MeanProduct) //Strategy.values.toList
   fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us), SolversTotalTime(us), UPrepareTime(us), UFetchTime(us), " + strategies.map(a => s"$a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 

@@ -54,12 +54,12 @@ case class ProjectionMetaData(
   */
   def dominates(other: ProjectionMetaData, cheap: Int = -1) = {
     (!(this eq other)) &&
-    Util.subsumes(this.accessible_bits, other.accessible_bits) &&
-    //((this.cost_factor < other.cost_factor) ||
-    ((this.mask.length <= other.mask.length) ||
-     (this.mask.length <= cheap))
-    // careful -- see the commented-out code. Was this important for
-    // optimization? It appears wrong.
+      ((this.mask.length <= other.mask.length) ||
+        (this.mask.length <= cheap)) &&
+    Util.subsumes(this.accessible_bits, other.accessible_bits)
+    // this dominates that only if this.accessible bits is superset of that.accessible bits and
+    // reading this is cheap or at least cheaper than reading that.
+
   }
 }
 

@@ -1,8 +1,9 @@
 package experiments
 
-import core.{DataCube, PartialDataCube, Rational, SchemaBasedMaterializationScheme}
+import core._
 import frontend.experiments.Tools
-import frontend.generators.{CubeGenerator, Iowa, NYC, SSB}
+import frontend.generators.{CubeGenerator, Iowa, MicroBench, NYC, SSB}
+import frontend.generators.MB_Sampler._
 import frontend.schema.StructuredDynamicSchema
 import util.{Profiler, Util}
 
@@ -37,14 +38,19 @@ object Experimenter {
     val dc = DataCube.load2("warmup")
     implicit val shouldRecord = false
     val expt = new UniformSolverOnlineExpt[Double](dc, "warmup")
-    randomQueries(dc.m.n_bits).foreach(q => expt.compare(q, false))
+    randomQueries(dc.m.n_bits).foreach(q => expt.compare(q, false, 30))
     println("Warmup Complete")
   }
 
   def online(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
     //onlinewarmup()
     val expt = new UniformSolverOnlineExpt[Double](dc, name)
-    qs.foreach(q => expt.compare(q, true))
+    qs.foreach(q => expt.compare(q, true, 30))
+  }
+  def mbonline(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
+    //onlinewarmup()
+      val expt = new UniformSolverOnlineExpt[Double](dc, name, true)
+    qs.foreach(q => expt.compare(q, true, 1))
   }
 
   def multi_storage(cg: CubeGenerator, lrfs: Seq[Double], lbase: Double) = {
@@ -57,6 +63,11 @@ object Experimenter {
     }.foreach(fileout.println)
   }
 
+  def cubestats() = {
+    val fileout = new PrintStream(s"expdata/cubestats.csv")
+    fileout.println("Dataset,#Dims,#Rows,Base Size,Name,#Cuboids,Additional Overhead,Mode Cuboid Size")
+    //val list : Seq[(CubeGenerator, String)] = List(())
+  }
   def storage(dc: DataCube, name: String) = {
 
     val fileout = new PrintStream(s"expdata/Storage_${name}.csv")
@@ -94,6 +105,7 @@ object Experimenter {
     }
   }
 
+
   def main(args: Array[String]): Unit = {
 
     //val cg = Iowa
@@ -120,12 +132,15 @@ object Experimenter {
     //val lbase = 0.19
 
 
+    //val cg = MicroBench(20, Normal)
+
     val p1 = List((16, 21, 0), (16, 25, 0), (16, 25, 4), (14, 19, 0))
     val p2 = List((15, 20, 0), (15, 24, 0), (15, 25, 3), (14, 23, 0), (14, 25, 2))
+    //val p = List((15, 25, 3))
     val params = p1
     val sms_names = params.map(p => "sms_" + p._1 + "_" + p._2 + "_" + p._3)
-    val rms_names = params.map(p => "rms2_" + p._1 + "_" + p._2 + "_" + p._3)
-    val names = sms_names ++ rms_names
+    //val rms_names = params.map(p => "rms2_" + p._1 + "_" + p._2 + "_" + p._3)
+    val names = sms_names // ++ rms_names
 
     //val (sch, dc) = cg.loadBase()
     //val (sch, dc) = cg.load(lrf, lbase)
@@ -138,6 +153,7 @@ object Experimenter {
     //val cubename =  "sms_13_20"
     //val cubename =  "base"
     //val (sch, dc) = cg.loadPartial(cubename)
+    //val dc = cg.dc
 
 
     //val dc2 = new DataCube(SchemaBasedMaterializationScheme(sch))
@@ -148,19 +164,21 @@ object Experimenter {
       onlinewarmup()
       fullwarmup()
     }
-    //val qs = List(20).flatMap(q => (0 until 1).map(i => sch.root.samplePrefix(q)))
+    val qs = List(17).flatMap(q => (0 until 3).map(i => sch.root.samplePrefix(q)))
     //val qs = List(14, 18).flatMap(q => (0 until 30).map(i => sch.root.samplePrefix(q)))
-    val qs = List(10).flatMap(q => (0 until 100).map(i => sch.root.samplePrefix(q))).distinct
+    //val qs = List(10).flatMap(q => (0 until 100).map(i => sch.root.samplePrefix(q))).distinct
     //val qs = List(List(143, 144, 165, 170, 171, 172, 191, 192))
-
+    //val qs = List((0 until 12).toList)
     //val qs = List(List(13, 12, 11, 10, 52, 51, 50, 49, 48, 47, 46, 82, 81, 80, 79))
     //val qs = (0 to 30).map{i => Tools.rand_q(dc.m.n_bits, 10)}
 
     dcs.foreach { case (cubename, dc) =>
       //val cubename = s"${lrf}-${lbase}"
       //val cubename = s"sch"
+      //val cubename = "all"
       full(s"${cg.inputname}-${cubename}", dc, qs)
-      online(s"${cg.inputname}-${cubename}", dc, qs)
+      //online(s"${cg.inputname}-${cubename}", dc, qs)
+      //mbonline(s"${cg.inputname}-${cubename}", dc, qs)
       //  storage(dc, cg.inputname+"_"+cubename)
       //Profiler.print()
       }
