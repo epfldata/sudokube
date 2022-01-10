@@ -1,8 +1,8 @@
 package core.solver
 
-import breeze.linalg.{DenseMatrix, DenseVector, inv}
+import breeze.linalg.{DenseMatrix, DenseVector, copy, inv}
 import combinatorics.Combinatorics
-import core.solver.Strategy.{Strategy, CoMoment}
+import core.solver.Strategy.{CoMoment, Strategy}
 import util.{BigBinary, Bits, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
@@ -10,13 +10,14 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Cumulant,Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 /**
  * Finds approximate values of cuboids using moments under some uniformity assumptiom.
  * Different strategies model the uniformity assumption differently
- * @param qsize Number of bits in query
+ *
+ * @param qsize    Number of bits in query
  * @param strategy Strategy to be used for solving
  * @tparam T Type of the value (Double / Rational)
  */
@@ -42,7 +43,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   val knownMeanProducts = collection.mutable.BitSet()
 
   //Store cumulants. Only used by Cumulant strategy
-  val cumulantMap = Array.fill(N)( num.zero)
+  val cumulantMap = Array.fill(N)(num.zero)
   val knownCumulants = collection.mutable.BitSet()
 
   //Stores which cuboids have been fetched and what data they contain
@@ -50,6 +51,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
   //Final result of the query will be updated here. Initially all values are 0, making the error 1
   var solution = Array.fill(N)(0.0)
+  val lattice = new Lattice[T](qsize)
 
   //Used in online-algorithm to get intermediate results. Returns current degrees of freedom and current solution
   def getStats = (dof, solution.clone())
@@ -165,15 +167,17 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   def addElem(a: Int, partition: List[Int]) = {
     def rec(before: List[Int], after: List[Int], acc: List[List[Int]]): List[List[Int]] = after match {
       case Nil => (a :: before) :: acc
-      case h :: t  =>
-        val acc2 = if(knownSums(a + h)) ((a + h) :: (before ++ t)) :: acc else acc
+      case h :: t =>
+        val acc2 = if (knownSums(a + h)) ((a + h) :: (before ++ t)) :: acc else acc
         rec(before :+ h, t, acc2)
 
     }
+
     rec(Nil, partition, Nil)
   }
 
   def getPart(s: Int): List[List[Int]] = ???
+
   /*
   def getPart(s: Int): List[List[Int]] =  if(partitionMap.isDefinedAt(s)) partitionMap(s) else {
 
@@ -193,16 +197,16 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 */
   def getDefaultValueCumulant2(row: Int) = {
     val parts = getPart(row)
-    if(parts.size > 1000) {
+    if (parts.size > 1000) {
       println(parts.size)
       val parts2 = parts.map(p => p.toSet).toSet
       println(parts2.size)
-      assert(parts.map(part => part.map(x => knownSums(x)).reduce(_ && _)).reduce(_ &&_))
+      assert(parts.map(part => part.map(x => knownSums(x)).reduce(_ && _)).reduce(_ && _))
       //parts.foreach( x => println(x.size))
       ()
     }
-   val sum = parts.map{ partition =>
-      partition.map{part => cumulantMap(part)}.product
+    val sum = parts.map { partition =>
+      partition.map { part => cumulantMap(part) }.product
     }.sum
     num.times(sum, sumValues(0))
   }
@@ -211,21 +215,60 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
    * Incremental version of Comoment strategy.
    * mu(row) = v - moments(row)
    * for each J superset of row :
-   *    moments(J) += mu(row) * product(J \ row)
+   * moments(J) += mu(row) * product(J \ row)
    */
- def changeMoment(row: Int, v: T): Unit = {
-   val delta = num.minus(v, moments(row))
-   if(!num.equiv(delta, num.zero)) {
-     moments(row) = v
-     val supersets = Profiler("FindSuperSet"){(row + 1 until N).filter(i => (i & row) == row)}
-     Profiler("IncrementSuperSet") {
-       supersets.foreach { i =>
-         moments(i) = num.plus(moments(i), num.times(delta, meanProducts(i - row)))
-         //println(s"m[$i] += (sv[$row] - m[$row]) * mp[${i-row}]")
-       }
-     }
-   }
- }
+  def changeMoment(row: Int, v: T): Unit = {
+    val delta = num.minus(v, moments(row))
+    if (!num.equiv(delta, num.zero)) {
+      if (strategy != MeanProduct) {
+        moments(row) = v
+        //if(true) {
+        val supersets = Profiler(s"FindSuperSet $strategy") {
+          (row + 1 until N).filter(i => (i & row) == row)
+        }
+        if(N-row < 20)
+        println(s"row $row Superset count = "+supersets.size + " == " + supersets.mkString(" "))
+        Profiler(s"IncrementSuperSet $strategy") {
+          supersets.foreach { i =>
+            moments(i) = num.plus(moments(i), num.times(delta, meanProducts(i - row)))
+            //println(s"m[$i] += (sv[$row] - m[$row]) * mp[${i-row}]")
+          }
+        }
+      } else {
+        lattice.nodes(0).value = delta
+      }
+    }
+  }
+
+  def propagateDelta(start: Int) = {
+    import lattice._
+    val queue = collection.mutable.Queue[Node]()
+    nodes(start).visited = true
+    queue += nodes(start)
+    var count = 0
+    var str = ""
+    while (!queue.isEmpty) {
+      val n = queue.dequeue()
+        val i = n.key
+        count += 1
+        str += (" " + i.toString)
+        n.children.foreach { c =>
+          val j = c.key
+          val b = j - i
+          val m = meanProducts(b)
+          val v = num.times(n.value, m)
+          c.value = num.plus(c.value, v)
+        }
+        moments(i) = num.plus(moments(i), n.value)
+        n.value = num.zero
+        n.visited = false
+        val newc = n.children.filter(!_.visited)
+        newc.foreach(_.visited = true)
+        queue ++= newc
+      }
+    if(lattice.N-start < 20)
+    println(s"row $start Child count = "+ count + "children = " + str)
+  }
 
   /**
    * m(J) =  sum_{emptyset \neq K subsetof J} (-1)^{ |K| + 1 } * m(J\K) * products(K)
@@ -242,22 +285,26 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       else
         (1 to n).map { k =>
 
-            //WARNING: Ensure that query does not involve more than 30 bits
-            val projcombs = Profiler.noprofile("mkComb") {
-              Combinatorics.comb2(n, k)
-            }
-            val combs = Profiler("unproject Comb"){projcombs.map(i => Bits.unproject(i, row))}
-            val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
-            //println(s"$sign * ${combs.map{ i => s"sv[${row-i}] * mp[$i]"}.mkString("[", " + ", "]")}")
-            //TODO: Can simplify further if parents were unknown and default values were used for them
-            Profiler("Term Mult"){num.times(sign, combs.map { i =>
+          //WARNING: Ensure that query does not involve more than 30 bits
+          val projcombs = Profiler.noprofile("mkComb") {
+            Combinatorics.comb2(n, k)
+          }
+          val combs = Profiler(s"unproject Comb $strategy") {
+            projcombs.map(i => Bits.unproject(i, row))
+          }
+          val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
+          //println(s"$sign * ${combs.map{ i => s"sv[${row-i}] * mp[$i]"}.mkString("[", " + ", "]")}")
+          //TODO: Can simplify further if parents were unknown and default values were used for them
+          Profiler(s"Term Mult $strategy") {
+            num.times(sign, combs.map { i =>
               num.times(sumValues(row - i), meanProducts(i))
-            }.sum)}
+            }.sum)
+          }
 
 
         }.sum
     }
-    if (withUpperBound) num.max(num.zero, num.min(sum,  upperBound(row))) else sum
+    if (withUpperBound) num.max(num.zero, num.min(sum, upperBound(row))) else sum
   }
 
   def getDefaultValueLowVariance(row: Int) = {
@@ -298,7 +345,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       case Cumulant2 => ??? //getDefaultValueCumulant2(row)
       case CoMoment => getDefaultValueCoMoment(row, false)
       case CoMomentFrechet => getDefaultValueCoMoment(row, true)
-      case CoMoment3 => getDefaultValueCoMoment(row, true)
+      case CoMoment3 | MeanProduct => getDefaultValueCoMoment(row, true)
       case Zero => num.zero
       case HalfPowerD => num.div(sumValues(0), num.fromInt(1 << n))
       case FrechetUpper => upperBound(row)
@@ -314,17 +361,17 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     //Set products corresponding to singleton sets
     (0 until qsize).foreach { i =>
       val j = (1 << i)
-      meanProducts(j) = num.div(sumValues(j), sumValues(0))
+      meanProducts(j) = if (knownSums(j)) num.div(sumValues(j), sumValues(0)) else num.div(num.fromInt(1), num.fromInt(2))
       knownMeanProducts += j
     }
-    (0 until N).foreach{ i =>
-      if(!knownMeanProducts(i)) {
+    (0 until N).foreach { i =>
+      if (!knownMeanProducts(i)) {
         var s = 1
         while (s < i) {
           //find any element s subset of i
           if ((i & s) == s) {
             //products(I) = products(I \ {s}) * products({s})
-              meanProducts(i) = num.times(meanProducts(i - s), meanProducts(s))
+            meanProducts(i) = num.times(meanProducts(i - s), meanProducts(s))
             s = i + 1 //break
           } else {
             s = s << 1
@@ -344,10 +391,10 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       knownCumulants += j
       j
     }
-    hamming_order.filter(x => knownSums.contains(x) && !knownCumulants.contains(x)).foreach { row  =>
+    hamming_order.filter(x => knownSums.contains(x) && !knownCumulants.contains(x)).foreach { row =>
       val partitions = getPart(row).filter(_.size > 1)
-      val sum = partitions.map { partition => partition.map(cumulantMap).product}.sum
-      val sumStr = partitions.map{ partition => partition.mkString("*")}.mkString(" + ")
+      val sum = partitions.map { partition => partition.map(cumulantMap).product }.sum
+      val sumStr = partitions.map { partition => partition.mkString("*") }.mkString(" + ")
       val res = num.minus(num.div(sumValues(row), sumValues(0)), sum)
       //println(s" $row = $sumStr  $sum $res")
 
@@ -363,13 +410,14 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     import core.solver.Strategy.Strategy
 
     //unknown moments
-    val toSolve = Profiler("Solve Filter") {
+    val toSolve = Profiler(s"Solve Filter $strategy") {
       hamming_order.filter((!knownSums.contains(_)))
     }
+    println("Known = " + knownSums.size + " Unknown = " + toSolve.size)
     //println("Predicting values for " + toSolve.mkString(" "))
 
     //build products of moments. Need to be cleared and rebuilt for online algorithms as initial condition of knowning all singleton moments may not be satisfied
-    Profiler("MeanProducts") {
+    Profiler(s"MeanProducts $strategy") {
       knownMeanProducts.clear()
       buildMeanProduct()
     }
@@ -379,44 +427,47 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     //}
 
     //For strategies other than CoMoment3, we iterate over all missing moments and set values
-    if(strategy != CoMoment3)
-    {
-      Profiler("SetDefaultValueAll") {
+    if (strategy != CoMoment3 && strategy != MeanProduct) {
+      Profiler(s"SetDefaultValueAll $strategy") {
         toSolve.foreach { r =>
           setDefaultValue(r)
         }
       }
     }
-    if(strategy == CoMoment3)  {
+    if (strategy == CoMoment3 || strategy == MeanProduct) {
       //for the comoment3 strategy, we don't calcule the value of missing momnets, instead known moments trigger updates to superset moments.
-      Profiler("IncrementMomentAll") {
+      Profiler(s"IncrementMomentAll $strategy") {
         val known = hamming_order.filter(knownSums)
         known.foreach { r =>
           changeMoment(r, sumValues(r))
         }
+        if(strategy == MeanProduct)
+          Profiler(s"Propagate Delta $strategy") {
+            propagateDelta(0)
+          }
         /*
         Change moment calculates the moment and stores in the array "moment".
          Move it back to the array "sumValues" and do other stuff that we do like applying bounds if needed
          */
-        toSolve.foreach{r =>
+        toSolve.foreach { r =>
           val v1 = moments(r)
 
           var v2 = v1
           var s = 1
-          while(s < r && num.gt(v2,  num.zero)) {
-            if((s & r) == s)
-            v2 = num.min(v2, sumValues(r-s))
+          while (s < r && num.gt(v2, num.zero)) {
+            if ((s & r) == s)
+              v2 = num.min(v2, sumValues(r - s))
             s = s << 1
           }
-          if(num.lt(v2, num.zero))
+          if (num.lt(v2, num.zero))
             v2 = num.zero
 
           //val v3 = getDefaultValueCoMoment(r, true)
           //assert(num.equiv(v3, v2))
 
           //val prec = 1000000
-         //val diffp = num.div(num.fromInt(prec+1), num.fromInt(prec))
-         //val diffm = num.div(num.fromInt(prec-1), num.fromInt(prec))
+          //val diffp = num.div(num.fromInt(prec+1), num.fromInt(prec))
+          //val diffm = num.div(num.fromInt(prec-1), num.fromInt(prec))
 
           //assert(num.lteq(sumValues(r), num.times(v2, diffp)))
           //assert(num.gteq(sumValues(r), num.times(v2, diffm)))
@@ -466,7 +517,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
           strategy match {
             //special handling of negative values for these algorithms
             //this can only result in lower error (at least, I think so)
-            case CoMomentFrechet | Cumulant2 | CoMoment3 =>
+            case CoMomentFrechet | Cumulant2 | CoMoment3 | MeanProduct =>
               if (num.lt(diff, num.zero)) {
                 result(j + h) = result(j)
                 result(j) = num.zero
