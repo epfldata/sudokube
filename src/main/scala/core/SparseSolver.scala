@@ -46,6 +46,9 @@ case class SparseSolver[T](
   def det_vars  = (0 to n_vars - 1).filter(x => M.data(x) != None)
   val solved_vars = collection.mutable.BitSet()
 
+  // We do gaussian elimination in the constructor.
+  gauss(add2(projections, values))
+
   /** Gaussian elimination.
       This implementation is intentionally limited in that it requires that
       the pivot fields have value one. That doesn't make the algorithm
@@ -107,8 +110,7 @@ case class SparseSolver[T](
     new_pivots
   }
 
-  //Warning CUM INT SPAN may overflow
-  def getStats = (df, solved_vars.size, cumulative_interval_span.map(num.toInt(_)).getOrElse(-1))
+  def getStats = (df, solved_vars.size, cumulative_interval_span.map(num.toDouble).getOrElse(Double.PositiveInfinity))
 
   /**
    * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
@@ -125,8 +127,6 @@ case class SparseSolver[T](
   def add2(a: Seq[Seq[Int]], b: Seq[T]) : Seq[Int] =
     add(SolverTools.mk_constraints(n_bits, a, b))
 
-  // We do gaussian elimination in the constructor.
-  gauss(add2(projections, values))
 
   /** returns which new equations for solved variables were added.
       This is a subset of the input sequence vars.

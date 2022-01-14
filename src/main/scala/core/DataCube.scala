@@ -228,7 +228,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /** This is the only place where we transfer data from C into Scala.
   */
-  protected def fetch(pms: Seq[ProjectionMetaData]) : Array[Payload] = {
+   def fetch(pms: Seq[ProjectionMetaData]) : Array[Payload] = {
     if(cuboids.length == 0) throw new Exception("Need to build first!")
 
     val backend = cuboids(0).backend
@@ -333,6 +333,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   */
   def naive_eval(query: Seq[Int]) : Array[Double] = {
     val l = Profiler("NaivePrepare"){m.prepare(query, m.n_bits, m.n_bits)}
+    println("Naive query "+l.head.mask.sum + "  fetch = " + l.head.mask.length)
     Profiler("NaiveFetch"){fetch(l).map(p => p.sm.toDouble)}
   }
 } // end DataCube

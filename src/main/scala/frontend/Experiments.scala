@@ -89,6 +89,7 @@ object minus1_adv {
       val q = Tools.qq(qsize)
       val m = RandomizedMaterializationScheme(nbits, rf, base)
 
+      //SBJ: cheap size of qsize - 1 is arbitrary
       val a = m.prepare(q, qsize - 1, nbits).groupBy(_.accessible_bits.length)
       val full_cost = cost(a(q.length).head.mask.length)
       accum_full_cost += full_cost

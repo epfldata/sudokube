@@ -22,7 +22,6 @@ object Strategy extends Enumeration {
  * @tparam T Type of the value (Double / Rational)
  */
 class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
-
   import Strategy._
 
   val N = 1 << qsize
@@ -227,7 +226,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
           (row + 1 until N).filter(i => (i & row) == row)
         }
         if(N-row < 20)
-        println(s"row $row Superset count = "+supersets.size + " == " + supersets.mkString(" "))
+        //println(s"row $row Superset count = "+supersets.size + " == " + supersets.mkString(" "))
         Profiler(s"IncrementSuperSet $strategy") {
           supersets.foreach { i =>
             moments(i) = num.plus(moments(i), num.times(delta, meanProducts(i - row)))
@@ -266,8 +265,8 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         newc.foreach(_.visited = true)
         queue ++= newc
       }
-    if(lattice.N-start < 20)
-    println(s"row $start Child count = "+ count + "children = " + str)
+    //if(lattice.N-start < 20)
+    //println(s"row $start Child count = "+ count + "children = " + str)
   }
 
   /**
@@ -413,7 +412,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     val toSolve = Profiler(s"Solve Filter $strategy") {
       hamming_order.filter((!knownSums.contains(_)))
     }
-    println("Known = " + knownSums.size + " Unknown = " + toSolve.size)
+    //println("Known = " + knownSums.size + " Unknown = " + toSolve.size)
     //println("Predicting values for " + toSolve.mkString(" "))
 
     //build products of moments. Need to be cleared and rebuilt for online algorithms as initial condition of knowning all singleton moments may not be satisfied

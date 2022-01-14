@@ -9,9 +9,13 @@ import java.io.{File, FileReader, PrintStream}
 
 object OnlinePlotter {
 
+  object YKEY extends Enumeration {
+    val DOF,ERROR,MAXDIM = Value
+  }
+  import YKEY._
   def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Ykey: Int) = {
 
-    val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
+    val data = CSVReader.read(new FileReader(s"expdata/current/$name")).tail
     val queryKey = 1
     val Xkey = 4
 
@@ -27,7 +31,7 @@ object OnlinePlotter {
   def getSeries(data: Vector[List[(Double, Double)]], agg: Seq[Double] => Double, initValue: Double) = {
     val data2 = data.toArray
     val N = data.size
-    println(s"N = $N")
+    //println(s"N = $N")
     val currentValues = Array.fill(N)(initValue)
     val result = collection.mutable.ArrayBuffer[(Double, Double)]()
 
@@ -51,17 +55,22 @@ object OnlinePlotter {
     result.groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
   }
 
-  def myplot(name: String, isDOF: Boolean, isQuerySize: Boolean) = {
-    def filterCube(r: IndexedSeq[String]) = r(0).contains("15_25_3")
-    def filterQuery(r: IndexedSeq[String]) = r(2) == "15"
+  def myplot(name: String, ykey: YKEY.Value) = {
+    val isQuerySize = name.endsWith("qs.csv")
+    def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
+    def filterQuery(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
 
     def groupCube(r: IndexedSeq[String]) = r(0)
     def groupQuery(r: IndexedSeq[String]) = r(2)
 
     def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuery(r)
     def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuery(r) else groupCube(r)
-
-    val valueKey = if(isDOF) 5 else 6
+    import YKEY._
+    val valueKey = ykey match {
+      case DOF => 5
+      case ERROR => 6
+      case MAXDIM => 7
+    }
     val data = getData(name, filterf, groupf, valueKey)
 
     def avgf(vs :Seq[Double]) = vs.sum/vs.size
@@ -77,13 +86,13 @@ object OnlinePlotter {
     //
     //plt.yaxis.setTickUnit(new NumberTickUnit(if(isDOF) 200 else 0.1))
     //plt.xaxis.setTickUnit(new NumberTickUnit(0.5))
-    val filename = (if(isDOF)"dof-" else "error-") + (if(isQuerySize) "qs" else "rf")
+
 
     //plt.xlabel = "Time (s)"
 
-    val t1 = (if(isDOF) "Mean DOF" else "Mean Error")
+    val t1 = "Mean " + ykey
     //plt.title = t1 + (if(isQuerySize) " for cube log(rf) = -16" else " for query size 10")
-    val csvout = new PrintStream(s"expdata/$name-$filename.csv")
+    val csvout = new PrintStream(s"expdata/current/${name.dropRight(4)}-$ykey.csv")
 
     data.map { case (n, d1) =>
       //val (n,d1) = data.head
@@ -124,9 +133,10 @@ object OnlinePlotter {
     //myplot(name2, false, false)
     //myplot(name2, true, false)
 
-    val name3 = "online_SSB-sf100-qs.csv"
-    myplot(name3, false, true)
-    myplot(name3, true, true)
+    val name3 = args(0)
+    //myplot(name3, DOF, true)
+    //myplot(name3, MAXDIM, true)
+    myplot(name3, ERROR )
 
   }
 }

@@ -20,7 +20,7 @@ class SliceSparseSolver[T](
   val maxVals = collection.mutable.Map[Int, T]() // store upper bounds for artificial constraint
 
   val maxFetchedVars = collection.mutable.BitSet()
-  gauss(add2(ps, vs))
+  gauss(add2(ps, vs)) //gauss also called by superclass that's why we pass Nil to super constructor
 
 
   override def simplex_add(): Seq[Int] = {

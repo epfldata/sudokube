@@ -4,28 +4,25 @@ import core.{DataCube, RandomizedMaterializationScheme, SolverTools, SparseSolve
 import core.solver.{SliceSparseSolver, Strategy}
 import util.Profiler
 
-import java.io.PrintStream
-import java.time.Instant
+import java.io.{File, PrintStream}
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDateTime}
 import scala.reflect.ClassTag
 
-class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
+class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: String = "")(implicit shouldRecord: Boolean) extends Experiment(dc_expt,"LP-Full", name) {
 
-  val timestamp = Instant.now().toString
-
-  val lrf = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].rf) / math.log(10)
-  val lbase = math.log(dc.m.asInstanceOf[RandomizedMaterializationScheme].base) / math.log(10)
-  val fileout = new PrintStream(s"expdata/LPSolverExpt_${name}_${timestamp}.csv")
-
-  fileout.println("LogRF,LogBase,Query,QSize,   NPrepareTime(us),NFetchTime(us),NaiveTotal(us), LPPrepareTime(us),LPFetchTime(us),LPTotalTime(us)," +
-    "Init SliceSparse, ComputeBounds SliceSparse, DOF SliceSparse, Error SliceSparse,"+
+  fileout.println("CubeName,Query,QSize,   NPrepareTime(us),NFetchTime(us),NaiveTotal(us),NaiveMaxDimFetched, LPPrepareTime(us),LPFetchTime(us),LPTotalTime(us),LPPMaxDim," +
+    "Init SliceSparse, ComputeBounds SliceSparse, DOF SliceSparse, Error SliceSparse, "+
     "Init Sparse, ComputeBounds Sparse, DOF Sparse, Error Sparse"
   )
   println("LP Solver of type " + implicitly[ClassTag[T]])
 
   def lp_solve(q: Seq[Int]) = {
     val l = Profiler("LPSolve Prepare") {
-      dc.m.prepare(q, q.length - 1, q.length - 1)
+      dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1) //fetch most dominating cuboids other than full
     }
+    val prepareMaxDim =  l.last.mask.length
+    println("Prepare over. #Cuboids to fetch = "+l.size + "  Last cuboid size =" + prepareMaxDim)
 
     val fetched =  Profiler("LPSolve Fetch") {
       dc.fetch2(l)
@@ -53,17 +50,23 @@ class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
       s2.compute_bounds
       s2.propagate_bounds(allVars)
     }
-    (s1, s2)
+    (s1, s2, prepareMaxDim)
   }
 
-  def compare(qu: Seq[Int], output: Boolean = true) = {
+  def run(qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
 
-    val naiveRes = Profiler("Naive Full"){dc.naive_eval(q)}
+    val (naiveRes, naiveMaxDim) = Profiler("Naive Full"){
+      val l = Profiler("NaivePrepare"){dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)}
+      val maxDim = l.head.mask.length
+      println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
+      val res = Profiler("NaiveFetch"){dc.fetch(l).map(p => p.sm.toDouble)}
+      (res, maxDim)
+    }
 
-    val (s1, s2) = Profiler("Solver Full"){lp_solve(q)}
+    val (s1, s2, lpMaxDim) = Profiler("Solver Full"){lp_solve(q)}
 
     val err1 = error(naiveRes, s1)
     val err2 = error(naiveRes, s2)
@@ -72,7 +75,7 @@ class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
 
     println(s"SliceSparseSolver dof = $dof1 error = $err1")
     println(s"SparseSolver dof = $dof2 error = $err2")
-
+    Profiler.print()
     val ntotal = Profiler.durations("Naive Full")._2/1000
     val nprepare = Profiler.durations("NaivePrepare")._2/1000
     val nfetch = Profiler.durations("NaiveFetch")._2/1000
@@ -92,7 +95,7 @@ class LPSolverExpt[T:Fractional:ClassTag](dc: DataCube, val name: String = "") {
     }
 
     if(output) {
-      val resultrow = s"${lrf},${lbase},${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,  $lpprep,$lpfetch,$lptot,  " +
+      val resultrow = s"$name,${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $lpprep,$lpfetch,$lptot,$lpMaxDim,  " +
         s"$inits1,$cbs1,$dof1,${round(err1)},  " +
         s"$inits2,$cbs2,$dof2,${round(err2)}"
       fileout.println(resultrow)

@@ -3,7 +3,7 @@ package frontend.generators
 import backend.CBackend
 import core.{DataCube, RandomizedMaterializationScheme, Rational}
 import core.RationalTools._
-import experiments.{LPSolverExpt, UniformSolverExpt, UniformSolverOnlineExpt}
+import experiments.{LPSolverFullExpt, UniformSolverFullExpt, UniformSolverOnlineExpt}
 import frontend.Sampling
 import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}

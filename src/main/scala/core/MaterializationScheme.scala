@@ -414,6 +414,7 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD
  * @param maxD maximum dimension upto which we materialize cuboids
  * @param logsf log_2 of number of cuboids of dimension maxD
  */
+@SerialVersionUID(-8479738895927514999L)
 case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(n_bits) {
   val logmaxN = (logmaxND-logsf).toInt
   val mod = (logmaxND-logsf) - logmaxN
