@@ -225,7 +225,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
         val supersets = Profiler(s"FindSuperSet $strategy") {
           (row + 1 until N).filter(i => (i & row) == row)
         }
-        if(N-row < 20)
+        //if(N-row < 20)
         //println(s"row $row Superset count = "+supersets.size + " == " + supersets.mkString(" "))
         Profiler(s"IncrementSuperSet $strategy") {
           supersets.foreach { i =>
@@ -518,10 +518,17 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
             //this can only result in lower error (at least, I think so)
             case CoMomentFrechet | Cumulant2 | CoMoment3 | MeanProduct =>
               if (num.lt(diff, num.zero)) {
-                result(j + h) = result(j)
-                result(j) = num.zero
+                val half = num.div(result(j) , num.fromInt(2))
+                result(j + h) = half
+                result(j) = half
+                //result(j + h) = result(j)
+                //result(j) = num.zero
+
               } else if (num.lt(result(j + h), num.zero)) {
-                result(j + h) = num.zero
+                val half = num.div(result(j), num.fromInt(2))
+                result(j + h) = half
+                result(j) = half
+                //result(j + h) = num.zero
               } else
                 result(j) = diff
             case _ => result(j) = diff
