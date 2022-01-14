@@ -1,5 +1,6 @@
 package experiments
 
+import combinatorics.Combinatorics
 import core._
 import experiments.Experimenter.queryDistribution
 import frontend.experiments.Tools
@@ -15,57 +16,111 @@ import scala.util.Random
 object Experimenter {
 
 
-  def mbonline(name: String, dc: DataCube, qs: Seq[Seq[Int]])(implicit record: Boolean) = {
-    val expt = new UniformSolverOnlineExpt[Double](dc, name, true)
-    if (record) expt.warmup()
-    qs.foreach(q => expt.run(q, true))
-  }
 
-  def multi_storage(cg: CubeGenerator, lrfs: Seq[Double], lbase: Double) = {
-    val timestamp = Instant.now().toString
-    val fileout = new PrintStream(s"expdata/MultiStorage_${cg.inputname}_${timestamp}.csv")
-
-    lrfs.map { lrf =>
-      val dc = cg.loadDC(lrf, lbase)
-      dc.cuboids.groupBy(_.n_bits).mapValues(_.length).map { case (nb, nc) => s"$lrf \t $nb \t $nc" }
-    }.foreach(fileout.println)
-  }
-
-  def cubestats() = {
-    val fileout = new PrintStream(s"expdata/cubestats.txt")
-    fileout.println("CubeName & #Dims & #Rows & Base Size & #Cuboids & Additional Overhead & Mode Cuboid Size \\\\")
+  def multi_storage(isSMS: Boolean) = {
+    val ms = if (isSMS) "sms" else "rms2"
+    val cg = NYC
     val cubes = List(
-      //"NYC_rms2_14_19_0",
-      //"NYC_rms2_14_23_0",
-      //"NYC_rms2_14_25_2",
-      //"NYC_rms2_15_20_0",
-      //"NYC_rms2_15_24_0",
-      //"NYC_rms2_15_25_3",
-      //"NYC_rms2_16_21_0",
-      //"NYC_rms2_16_25_0",
-      //"NYC_rms2_16_25_4",
-      //"SSB-sf100_rms2_15_19_0",
-      //"SSB-sf100_rms2_15_22_0",
-      //"SSB-sf100_rms2_15_25_0",
-      "SSB-sf100_rms2_15_25_3",
-      "SSB-sf10_rms2_15_19_0",
-      "SSB-sf10_rms2_15_22_0",
-      "SSB-sf10_rms2_15_25_0",
-      "SSB-sf1_rms2_15_19_0",
-      "SSB-sf1_rms2_15_22_0"
+      s"NYC_${ms}_14_19_0",
+      s"NYC_${ms}_14_25_2",
+      s"NYC_${ms}_16_21_0",
+      s"NYC_${ms}_16_25_4"
+    )
+    val maxD = 25
+   val fileout = new PrintStream(s"expdata/MultiStorage_${cg.inputname}_${ms}_$maxD.csv")
+   fileout.println("Name," + (0 to maxD).mkString(","))
+    cubes.foreach { n =>
+      val names = n.split("_")
+      val logN = names(2).toInt
+      val mod = names(4).toInt + names(3).toInt + 1 - logN
+      val modstr = String.format("%02d",Int.box(mod))
+      val dc = PartialDataCube.load2(n, cg.inputname + "_base")
+      val projMap = dc.m.projections.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
+      val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
+      println("MAX D =" + dc.m.projections.map(_.length).max)
+      fileout.println(s"${logN}_${modstr}," + projs)
+    }
+    val sch = cg.schema()
+    val total = if(isSMS) {
+       sch.root.numPrefixUpto(maxD).map(_.toDouble).toList
+    }
+    else {
+      (0 to maxD).map{i => Combinatorics.comb(sch.n_bits, i).toDouble}.toList
+    }
+    fileout.println(s"Total,"+total.mkString(","))
+  }
+
+  def cubestats1() = {
+    val fileout = new PrintStream(s"expdata/cubestats1.txt")
+    fileout.println(
+      """
+        |\begin{tabular}{|c|c|c|}
+        |\hline
+        |logn & $d_{min}$ & Extra \\ \hline""".stripMargin)
+    val cubes = List(
+      "NYC_rms2_14_19_0",
+      "NYC_rms2_14_23_0",
+      "NYC_rms2_14_25_2",
+      "NYC_rms2_15_20_0",
+      "NYC_rms2_15_24_0",
+      "NYC_rms2_15_25_3",
+      "NYC_rms2_16_21_0",
+      "NYC_rms2_16_25_0",
+      "NYC_rms2_16_25_4"
     )
     cubes.foreach { n =>
-      val cgname = n.split("_")(0)
+      val names = n.split("_")
+      val cgname = names(0)
+      val logN = names(2).toInt
+      val mod = names(4).toInt + names(3).toInt + 1 - logN
       val dc = PartialDataCube.load2(n, cgname + "_base")
-      val nbits = dc.m.n_bits
-      val ncuboids = dc.m.projections.length
-      val nrows = dc.cuboids.last.size
+
       val basesize = dc.cuboids.last.numBytes
       val overhead = dc.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0
-      val mod = dc.m.projections.groupBy(_.length).mapValues(_.length).toList.sortBy(-_._2).head._1
-      fileout.println(s"$n & $nbits & $nrows & ${basesize / 1000 * 1000 * 1000.0}  & $ncuboids & $overhead & $mod")
+
+      fileout.println(s"$logN & $mod & ${Tools.round(overhead,4)} \\\\")
+
     }
+    fileout.println(
+      """\hline
+        |\end{tabular}
+        |""".stripMargin)
   }
+
+  def cubestats2() = {
+    val fileout = new PrintStream(s"expdata/cubestats2.txt")
+    fileout.println(
+      """
+        |\begin{tabular}{|c|c|c|}
+        |\hline
+        |Dataset & Base & Extra \\ \hline
+        |""".stripMargin)
+
+    val cubenames = List(
+      "NYC_rms2_15_20_0", //TODO Replace with 15_22
+      "SSB-sf100_rms2_15_22_0",
+      "SSB-sf10_rms2_15_22_0",
+      "SSB-sf1_rms2_15_22_0"
+    )
+    cubenames.foreach { n =>
+      val names = n.split("_")
+      val cgname = names(0)
+      val dc = PartialDataCube.load2(n, cgname + "_base")
+
+      val basesize = dc.cuboids.last.numBytes
+
+      val overhead0 = (dc.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0)
+      val overhead = if(cgname.startsWith("NYC")) overhead0 * 4 else overhead0 //TODO: Remove HACK
+      val baseGB = basesize/math.pow(10, 9)
+      fileout.println(s"$cgname & ${Tools.round(baseGB, 2)} G & ${Tools.round(overhead,4)} \\\\")
+    }
+    fileout.println(
+      """\hline
+        |\end{tabular}
+        |""".stripMargin)
+
+  }
+
 
   def storage(dc: DataCube, name: String) = {
     val fileout = new PrintStream(s"expdata/Storage_${name}.csv")
@@ -183,33 +238,53 @@ object Experimenter {
     if (shouldRecord) expt.warmup(5)
     queries.foreach(q => expt.run(q, true))
   }
+
+  def mbonline()(implicit shouldRecord: Boolean) = {
+    List(Uniform, Normal, LogNormal, Exponential).foreach { sample =>
+      val cg = MicroBench(15, sample)
+      val fullname = cg.inputname + "_all"
+      val dc = DataCube.load2(fullname)
+      val qs = List(6, 9, 12, 15).map(0 until _)
+      val expt = new UniformSolverOnlineExpt[Double](dc, fullname, true)
+      if (shouldRecord) {
+       //Cannot use default warmup because of "containsAllCuboid" set to true
+        (1 to 6).foreach(i => expt.run(0 until i, false))
+      }
+      qs.foreach(q => expt.run(q, true))
+    }
+  }
 def debug(): Unit = {
   implicit val shouldRecord = false
   val cg = SSB(100)
-  val isSMS = false
+  val isSMS = true
   val param = "15_25_3"
   val name = (if (isSMS) "_sms_" else "_rms2_") + param
   val fullname = cg.inputname + name
   val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
   val sch = cg.schema()
-  val queries = List(List(15, 16, 47, 48, 49, 50, 91, 112, 124, 125, 131, 147, 172, 186, 192))
+  val queries = List(List(91, 112, 117, 118, 119, 120, 130, 131, 145, 146, 147, 192))
   //val numQs = sch.root.numPrefixUpto(15)
   //(0 until 15).map(i => println(s"$i => " + numQs(i)))
 
-  val expt = new UniformSolverFullExpt[Double](dc, fullname)
+  val expt = new UniformSolverOnlineExpt[Double](dc, fullname)
   queries.foreach(q => expt.run(q, true))
 }
   def main(args: Array[String]) {
     implicit val shouldRecord = true
+    //debug()
     //lpp_full_qsize(true)
     //lpp_full_qsize(false)
     //lpp_online_qsize(true)
     //lpp_online_qsize(false)
     //uniform_online_qsize(true)
     //uniform_online_qsize(false)
-    uniform_full_qsize(true)
+    //uniform_full_qsize(true)
     //uniform_full_qsize(false)
-    debug()
+    //mbonline()
+    //cubestats1()
+    //cubestats2()
+    multi_storage(true)
+    multi_storage(false)
   }
 
   def oldmain(args: Array[String]): Unit = {

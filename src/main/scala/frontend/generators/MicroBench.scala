@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import core.{DataCube, MaterializationScheme}
 import frontend.generators.MB_Sampler.{Exponential, LogNormal, Normal, Sampler, Uniform}
 import frontend.schema.encoders.StaticNatCol.defaultToInt
@@ -41,15 +42,16 @@ case class MicroBench(n_bits: Int, sampler: Sampler) extends CubeGenerator(s"mb_
 
 object MicroBenchTest {
   def main(args: Array[String]) = {
-
-    List(MicroBench(20, Uniform),  MicroBench(20, Normal)).
-      //List(MicroBench(20, LogNormal), MicroBench(20, Exponential)).
-      map{cg =>
-      //cg.saveBase()
-      val (sch, dc) = cg.loadBase()
-      val dc2 = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-      dc2.buildFrom(dc)
-      dc2.save2(cg.inputname + "_all")
+  val N = 15
+    List(
+      MicroBench(N, Uniform), MicroBench(N, Normal),
+      MicroBench(N, LogNormal), MicroBench(N, Exponential)
+    ).map { cg =>
+      val (sch, r_its) = cg.generate2()
+      sch.initBeforeEncode()
+      val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+      dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+      dc.save2(cg.inputname + "_all")
     }
 
     ()

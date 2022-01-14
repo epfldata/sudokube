@@ -31,7 +31,7 @@ for s in sorted(series, key=lambda tdn: int(tdn[2])):
     ax.plot(s[0], s[1], label=s[2])
 
 plt.title(title0)    
-#ax.set_xscale('log')
+ax.set_xscale('log')
 ax.set_xlabel('Time(s)')
 ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
 plt.legend()

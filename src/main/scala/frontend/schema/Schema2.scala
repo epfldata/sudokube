@@ -16,7 +16,7 @@ import scala.util.Random
 abstract class Dim2(val name: String) extends  Serializable {
   def queries: Set[Seq[Int]]
   def queriesUpto(qsize: Int) : Set[Seq[Int]]
-  def numPrefixUpto(size: Int): Array[Long]
+  def numPrefixUpto(size: Int): Array[BigInt]
   def samplePrefix(size: Int): Seq[Int]
   def maxSize: Int
 }
@@ -25,8 +25,8 @@ case class LD2[T](override val name : String, encoder: ColEncoder[T]) extends Di
   override def queries: Set[Seq[Int]] = encoder.queries()
   override def queriesUpto(qsize: Int): Set[Seq[Int]] = encoder.queriesUpto(qsize)
   override def samplePrefix(size: Int): Seq[Int] = encoder.samplePrefix(size)
-  override def numPrefixUpto(size: Int): Array[Long] = {
-    val sizes = encoder.prefixUpto(size).groupBy(_.size).mapValues(_.size.toLong).withDefaultValue(0L)
+  override def numPrefixUpto(size: Int): Array[BigInt] = {
+    val sizes = encoder.prefixUpto(size).groupBy(_.size).mapValues(x => BigInt(x.size)).withDefaultValue(BigInt(0))
     val result = (0 to size).map(i => sizes(i)).toArray
     result
   }
@@ -45,12 +45,12 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
     children.map(_.maxSize).max
 
 
-  override def numPrefixUpto(size: Int): Array[Long] = if(cross) {
-    val init = Array.fill(size+1)(0L)
+  override def numPrefixUpto(size: Int): Array[BigInt] = if(cross) {
+    val init = Array.fill(size+1)(BigInt(0))
     init(0) += 1
     children.foldLeft(init){ (acc, cur) =>
       val cr = cur.numPrefixUpto(size)
-      val result = Array.fill(size+1)(0L)
+      val result = Array.fill(size+1)(BigInt(0))
       (0 to size).foreach {s1  =>
         (0 to size-s1).foreach{ s2 =>
           result(s1 + s2) += acc(s1) * cr(s2)
@@ -59,8 +59,8 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
       result
     }
   } else {
-    val result = Array.fill(size+1)(0L)
-    result(0) = 1L
+    val result = Array.fill(size+1)(BigInt(0))
+    result(0) += 1
     children.foreach{c =>
       val cr = c.numPrefixUpto(size)
       (1 to size).foreach(i => result(i) += cr(i))

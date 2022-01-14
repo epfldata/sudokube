@@ -9,7 +9,10 @@ import backend._
 import generators._
 import scala.util.Random
 object Tools {
-
+  def round(v: Double, digits: Int) ={
+    val prec = math.pow(10, digits)
+    math.floor(v * prec)/prec
+  }
   //For Randomized Materialization Scheme so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
   def params(nbits: Int, colWith1: Int) = {
     /*

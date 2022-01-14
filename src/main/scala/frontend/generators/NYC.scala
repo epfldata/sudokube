@@ -106,7 +106,8 @@ object NYC extends CubeGenerator("NYC") {
     //sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
 
     List(
-      (16, 21, 0), (16, 25, 0), (16, 25, 4)
+      (15, 22, 0)
+      //(16, 21, 0), (16, 25, 0), (16, 25, 4)
       //(15, 20, 0), (15, 24, 0), (15, 25, 3),
       //(14, 19, 0), (14, 23, 0), (14, 25, 2)
     ).map { case (maxN, maxD, logsf) =>
