@@ -6,6 +6,7 @@ from collections import defaultdict
 from textwrap import wrap
 import numpy as np
 
+plt.rcParams["figure.figsize"] = (8,4)
 input = sys.argv[1]
 filename = input[16:-4]
 isError = filename.endswith('ERROR')
@@ -37,4 +38,4 @@ ax.set_xscale('log')
 ax.set_xlabel('Time(s)')
 ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
 plt.legend()
-plt.savefig('figs/'+filename+'.pdf')
+plt.savefig('figs/'+filename+'.pdf',bbox_inches = 'tight',pad_inches = 0.1)

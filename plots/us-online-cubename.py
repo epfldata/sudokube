@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from textwrap import wrap
 import numpy as np
-
+plt.rcParams["figure.figsize"] = (8,4)
 input = sys.argv[1]
 filename = input[16:-4]
 isError = filename.endswith('ERROR')
@@ -29,16 +29,16 @@ for i in range(0, numseries):
 
 fig, ax = plt.subplots()
 ss = sorted(series, key=lambda tdn: tdn[2][0]*100 + tdn[2][1])
-colors = ['tomato', 'red', 'brown', 'turquoise', 'dodgerblue', 'blue', 'limegreen', 'green', 'darkgreen']
-styles = ['dotted', 'dashed', 'solid', 'dotted', 'dashed', 'solid', 'dotted', 'dashed', 'solid']
+colors = [ 'coral', 'limegreen', 'turquoise', 'orangered', 'green', 'dodgerblue','red', 'darkgreen', 'blue']
+styles = ['dotted', 'dotted', 'dotted', 'dashed', 'dashed', 'dashed', 'solid', 'solid', 'solid']
 for s in zip(ss, colors, styles):
     ax.plot(s[0][0], s[0][1], label="{}_{}".format(s[0][2][0], s[0][2][1]), color=s[1], ls=s[2])
 
 plt.title(title0)    
 ax.set_xlabel('Time(s)')
 ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
-plt.legend()
-plt.savefig('figs/'+filename+'.pdf')
+plt.legend(loc='upper right', fontsize='small', ncol=3)
+plt.savefig('figs/'+filename+'.pdf',bbox_inches = 'tight',pad_inches = 0.1)
 
 
 """

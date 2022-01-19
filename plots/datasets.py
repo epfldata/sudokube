@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from textwrap import wrap
 import numpy as np
+plt.rcParams["figure.figsize"] = (8,3)
 
 X = [93, 600, 60, 6]
 Y = [429, 193, 193, 193]
@@ -37,4 +38,4 @@ ax.set_xlabel('#Rows(Millions)')
 ax.set_ylabel('#Dimensions')
 plt.xlim([0, 610])
 plt.ylim([0, 500])
-plt.savefig('figs/datasets.pdf')
+plt.savefig('figs/datasets.pdf',bbox_inches = 'tight',pad_inches = 0.1)

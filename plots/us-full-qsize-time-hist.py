@@ -8,7 +8,7 @@ from textwrap import wrap
 from math import sqrt
 import numpy as np
 
-
+plt.rcParams["figure.figsize"] = (8,4)
 input =  sys.argv[1]
 
 filename = input[16:-4]
@@ -33,7 +33,7 @@ with open(input) as fh:
 	header = [h.strip() for h in fh.next().split(',')]
 	reader = csv.DictReader(fh, fieldnames=header)
 	data = list(reader)
-	timescale=1000.0
+	timescale=1000.0 * 1000.0
 	for row in data:
 		key = int(row['QSize'])
 		dof = int(row['DOF'])
@@ -73,16 +73,19 @@ usolve_avg = np.array(map(lambda x: mean(x[1]), sorted(solversolve.iteritems(), 
 
 N = len(keys)
 X = np.arange(0, N)    # set up a array of x-coordinates
-w=1.0/6
+w=1.0/9
 fig, ax = plt.subplots()
 
-ax.bar(X-2*w , uprep_avg+ufetch_avg, bottom=1, width=w, label='Solver Prepare + Fetch', color='gray')
-ax.bar(X-w , usolve_avg, bottom=1, width=w, label='Solver Solve', color='limegreen')
-ax.bar(X , uprep_avg+ufetch_avg+usolve_avg, width=w, bottom=1, label='Solver Total', color='darkgreen')
-ax.bar(X+w , nprep_avg + nfetch_avg, bottom = 1, width=w,label='Naive Prepare + Fetch', color='red')
+ax.bar(X-3*w , uprep_avg, bottom=0.001, width=w, label='Solver Prepare', color='limegreen')
+ax.bar(X-2*w , nprep_avg , bottom = 0.001, width=w,label='Naive Prepare', color='darkgreen')
+ax.bar(X-w , ufetch_avg, bottom=0.001, width=w, label='Solver Fetch', color='turquoise')
+ax.bar(X , nfetch_avg, bottom = 0.001, width=w,label='Naive Fetch', color='blue')
+ax.bar(X+2*w , uprep_avg+ufetch_avg+usolve_avg, width=w, bottom=0.001, label='Solver Total', color='tomato')
+ax.bar(X+3*w , nprep_avg + nfetch_avg, bottom = 0.001, width=w,label='Naive Total', color='red')
+ax.bar(X+w , usolve_avg, bottom=0.001, width=w, label='Solver Solve', color='gray')
 
-ax.set_ylabel('Time(ms)')
-ax.set_xlabel('Query Size')
+ax.set_ylabel('Time(s)')
+ax.set_xlabel('Query Dimensionality')
 ax.set_xticks(X)
 ax.set_xticklabels(keys)
 ax.set_yscale('log')
@@ -90,11 +93,11 @@ ax.set_yscale('log')
 box = ax.get_position()
 ax.set_position([box.x0, box.y0+0.2, box.width , box.height * 0.8])
 plt.title(title0)
-ax.legend(loc='lower center', ncol=2, bbox_to_anchor=(0.5, -0.4))
+ax.legend(loc='lower center', ncol=4, bbox_to_anchor=(0.5, -0.4), fontsize='x-small')
 #plt.show()
-plt.savefig('figs/'+filename+'-time.pdf')
+plt.savefig('figs/'+filename+'-time.pdf',bbox_inches = 'tight',pad_inches = 0.1)
 
-
+"""
 ######################
 
 fig, ax = plt.subplots()
@@ -102,9 +105,27 @@ data = map(lambda kv: kv[1], sorted(errors.iteritems(), key=lambda kv: kv[0]))
 
 ax.set_xticks(X)
 ax.set_xticklabels(keys)
-ax.set_xlabel('Query Size')
+ax.set_xlabel('Query Dimensionality')
 
 ax.boxplot(data)
 ax.set_ylabel('Error')
 plt.title(title0)
 plt.savefig('figs/'+filename+'-err.pdf')
+
+######################
+"""
+fig,ax = plt.subplots()
+maxX = max(max(errors.values()))
+for s in sorted(errors.iteritems(), key=lambda kv: kv[0]):
+	maxv = max(s[1])
+	values, base = np.histogram(s[1], bins=10, range=(0.0, maxv+0.00001))
+	total = sum(values)
+	cumulative = map(lambda x: float(x)/total, np.insert(np.cumsum(values),0,0))
+
+	ax.plot(base, cumulative, label=s[0])
+ax.set_xlabel('Error')
+ax.set_ylabel('CDF')
+ax.set_xlim([-maxX/12.0, maxX])
+ax.legend(loc='lower right')
+plt.title(title0)
+plt.savefig('figs/'+filename+'-err.pdf',bbox_inches = 'tight',pad_inches = 0.1)

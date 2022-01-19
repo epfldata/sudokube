@@ -52,14 +52,14 @@ object OnlinePlotter {
         data2(minIdx) = data2(minIdx).tail
       }
     }
-    result.groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
+    result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
   }
 
   def myplot(name: String, ykey: YKEY.Value) = {
     val isQuerySize = name.endsWith("qs.csv")
     def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
     def filterQuery(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
-
+    val isLPP = name.startsWith("LP")
     def groupCube(r: IndexedSeq[String]) = r(0)
     def groupQuery(r: IndexedSeq[String]) = r(2)
 
@@ -77,7 +77,7 @@ object OnlinePlotter {
     def minf(vs: Seq[Double]) = vs.min
     def maxf(vs: Seq[Double]) = vs.max
 
-    val initValue = 1.0
+    val initValue = if(isLPP) Double.PositiveInfinity else 1.0
 
     //val fig = Figure()
     //fig.refresh()

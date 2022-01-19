@@ -24,6 +24,7 @@ cd /var/data/sudokube/sudokube
 mkdir tabledata expdata cubedata
 
 #sync
+#sbt compile
 #make shared lib !
-
+#copy .jvmpopts
 

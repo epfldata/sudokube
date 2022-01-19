@@ -106,10 +106,11 @@ object NYC extends CubeGenerator("NYC") {
     //sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
 
     List(
-      (15, 22, 0)
-      //(16, 21, 0), (16, 25, 0), (16, 25, 4)
-      //(15, 20, 0), (15, 24, 0), (15, 25, 3),
-      //(14, 19, 0), (14, 23, 0), (14, 25, 2)
+      //(15, 22, 0)
+      (16, 29, 0),(15, 28, 0),(14, 27, 0)
+      //(16, 21, 0), (16, 25, 0), (16, 29, 0)
+      //(15, 20, 0), (15, 24, 0), (15, 28, 0),
+      //(14, 19, 0), (14, 23, 0), (14, 27, 0)
     ).map { case (maxN, maxD, logsf) =>
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
