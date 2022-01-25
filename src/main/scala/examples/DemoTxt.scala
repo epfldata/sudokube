@@ -7,12 +7,12 @@ import core.solver.UniformSolver
 import experiments.UniformSolverFullExpt
 import frontend.experiments.Tools
 import frontend.generators._
-import frontend.gui.FeatureFrame
+import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import util._
 import core.SolverTools._
 import core.solver.Strategy.{CoMoment, CoMoment3, Cumulant}
-import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol}
-import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StructuredDynamicSchema}
+import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol, StaticDateCol, StaticNatCol}
+import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StaticSchema2, StructuredDynamicSchema}
 
 import java.io.{FileReader, FileWriter}
 import java.util.Date
@@ -271,43 +271,54 @@ object DemoTxt {
   def feature() = {
 
     val n_cols = 3
-    val n_bits_per_col = 8
+    val n_bits_per_col = 20
     val n_bits = n_cols * n_bits_per_col
-    val n_rows = 1000
+    val n_rows = 100 * (1 << n_bits_per_col) + 10 //60 * 1000 * 1000
 
+    val time = new LD2("Time", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
+    val prod = new LD2("Product", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
+    val loc = new LD2("Location", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
+    val sch2 = new StaticSchema2(Vector(time, prod, loc))
     //val columnMap = Map(0 -> "Time", "1" ->)
-    val sch = schema.StaticSchema.mk(n_cols, n_bits_per_col, Map(0 -> "Time", 1 -> "Product", 2 -> "Location"))
+    //val sch = schema.StaticSchema.mk(n_cols, n_bits_per_col, Map(0 -> "Time", 1 -> "Product", 2 -> "Location"))
 
+    def prefix(c: Int, n: Int) = {
+      val res = offset(c, 0 until n)
+      println(s"prefix($c $n) = $res")
+      res
+    }
+    def offset(c: Int, vs: Seq[Int]) = vs.reverse.map(n_bits_per_col*(c+1)-1-_).toList
     //--------------CUBE DATA GENERATION-------------
     val vgs = collection.mutable.ArrayBuffer[ValueGenerator]()
-    //vgs += ConstantValueGenerator(50)
-    vgs += RandomValueGenerator(2)
-    //vgs += SinValueGenerator(List(0, 1, 2, 3), List(13, 17), 0, 1, 2)
-    //vgs += SinValueGenerator(List(1, 3, 5), List(12, 25, 32), 0, 1, 4)
+    vgs += ConstantValueGenerator(100)
+    vgs += RandomValueGenerator(10)
+    //vgs += SinValueGenerator(List(0, 1, 2, 3), List(5).map(x => n_bits_per_col + x) ++ List(1).map(x => 2*n_bits_per_col + x), 0, 1, 2)
+    vgs += SinValueGenerator(offset(0, List(2, 4, 6)), prefix(1, 1) ++ prefix(2, 1), 0, 1, 50)
     //vgs += SinValueGenerator(List(1, 5, 7), List(11, 12), 0, 1, 8)
     //vgs += SinValueGenerator(List(1, 2, 5), List(20, 22), 0, 1, 8)
 
-    //vgs += TrendValueGenerator(List(4, 5, 6, 7), List(13, 14, 15, 19, 20, 21, 22, 23), 147, 1, 15*256)
-    //vgs += TrendValueGenerator(List(6, 7), List(22, 23), 3, -1, 20)
+    vgs += TrendValueGenerator(prefix(0, 4), prefix(1, 3) ++ prefix(2, 5), 147, 1, 15*256*1)
+    vgs += TrendValueGenerator(prefix(0, 2), prefix(1, 2), 3, -1, 100)
     //  //vgs += TrendValueGenerator( List(4, 5, 6, 7), List(), 0, 1, 10)
-    // //vgs += TrendValueGenerator( List(6, 7), List(13,14,15),5, 1, 1)
+    // vgs += TrendValueGenerator( prefix(0, 2), prefix(1, 3), 5, 1, 1*3)
     //vgs += TrendValueGenerator(List(2, 3, 4, 5, 6, 7), List(15), 0, -1, 30)
     val vg = SumValueGenerator(vgs)
 
-    val R = TupleGenerator2(sch, n_rows, Sampling.f1, vg)
+    val R = ParallelTupleGenerator2(sch2, n_rows, 1000,  Sampling.f1, vg).data
     println("mkDC: Creating maximum-granularity cuboid...")
-    val fc = CBackend.b.mk(n_bits, R)
+    val fc = CBackend.b.mkParallel(n_bits, R)
     println("...done")
-    val m = RandomizedMaterializationScheme(n_bits, 0.4, 1.1)
+    //val m = RandomizedMaterializationScheme2(n_bits, 13,math.min(20, (math.log(n_rows)/math.log(2)-1).toInt))
+    val m = MaterializationScheme.only_base_cuboid(n_bits)
     val dcw = new DataCube(m);
     dcw.build(fc)
-    dcw.save("trend.dc")
+    dcw.save2("trend")
     // ----------------- END CUBE DATA GENERATION ----------
 
-    val dc = core.DataCube.load("trend.dc")
+    val dc = core.DataCube.load2("trend")
     println("Materialization Schema" + dc.m)
 
-    val display = FeatureFrame(sch, dc, 50)
+    val display = FeatureFrame(sch2, dc, 50)
 
   }
 
@@ -350,18 +361,52 @@ object DemoTxt {
       println("Result = "+res.mkString(" "))
     }
   }
+  def ssb_demo() = {
+    val sf = 100
+    val cg = SSB(sf)
+    //val sch = cg.schema()
+    //val cols = sch.columnVector
+    //
+    //val odate = cols(0).encoder.asInstanceOf[StaticDateCol]
+    //val ccity = cols(11)
+    //val cnation = cols(12)
+    //val cregion = cols(14)
+    //
+    //val mfgr = cols(18)
+    //val category = cols(19)
+    //val size = cols(23)
+    //val color = cols(21)
+
+    //println("odateyear = "+odate.yearCol.bits.mkString(","))
+    //println("odateyearqtr = "+( odate.quarterCol.bits ++ odate.yearCol.bits) .mkString(","))
+    //println("odateyearmonth =" + ( odate.monthCol.bits ++ odate.yearCol.bits).mkString(","))
+    //println("odatedate =" + (odate.dayCol.bits ++ odate.monthCol.bits ++ odate.yearCol.bits).mkString(","))
+    //println("ccity = "+ccity.encoder.bits.mkString(","))
+    //println("cnat = "+cnation.encoder.bits.mkString(","))
+    //println("cregion = "+cregion.encoder.bits.mkString(","))
+    //println("mfgr =" + mfgr.encoder.bits.mkString(","))
+    //println("category =" + category.encoder.bits.mkString(","))
+    //println("size =" + size.encoder.bits.mkString(","))
+    //println("color =" + color.encoder.bits.mkString(","))
+
+    val dc = PartialDataCube.load2(cg.inputname+"_rms2_15_22_0", cg.inputname+"_base")
+    val display = FeatureFrameSSB(sf, dc, 50)
+  }
   def main(args: Array[String]): Unit = {
     //uniformSolver()
     //prepare()
     //test1()
     //loadtest()
     //combTest()
-    investment()
+    //investment()
     //sample(1000)
     //large()
     //feature()
     //parPlan()
     //backend_naive()
+    ssb_demo()
+
+
   }
 
 }

@@ -1,6 +1,7 @@
 //package ch.epfl.data.sudokube
 package core
 import backend._
+import core.solver.Strategy.CoMoment3
 import planning.ProjectionMetaData
 import util._
 
@@ -324,6 +325,21 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
         cont = callback(s)
         df = s.df
       }
+      l = l.tail
+    }
+  }
+
+  def online_agg_moment(query: List[Int], cheap_size: Int, callback: UniformSolver[Double] => Boolean) = {
+    val s = new UniformSolver[Double](query.size, CoMoment3)
+    var l = m.prepare_online_agg(query, cheap_size)
+    var cont = true
+    while(!(l.isEmpty) && cont) {
+      val fetched = fetch2[Double](List(l.head))
+      val bits = l.head.accessible_bits
+      s.add(bits, fetched.toArray)
+      s.fillMissing()
+      s.fastSolve()
+      cont = callback(s)
       l = l.tail
     }
   }

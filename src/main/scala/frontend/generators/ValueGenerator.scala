@@ -34,6 +34,7 @@ case class RandomValueGenerator(n: Long) extends ValueGenerator {
  */
 case class TrendValueGenerator(xcols : List[Int], zcols: List[Int], zval: Int, yslope: Double, yscale: Double) extends ValueGenerator {
   override def apply(k: BigBinary): Long = {
+
     val z = k.valueOf(zcols)
     val x = k.valueOf(xcols)
     if(z == zval)
