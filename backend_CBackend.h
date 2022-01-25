@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     backend_CBackend
+ * Method:    reset0
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_reset0
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     backend_CBackend
  * Method:    shhash
  * Signature: (I[I)I
  */

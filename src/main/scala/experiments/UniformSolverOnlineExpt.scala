@@ -27,6 +27,7 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name
 
   def run(qu: Seq[Int], output: Boolean = true): Unit = {
     val q = qu.sorted
+    Profiler.resetAll()
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
     val s = new UniformSolver(q.size, CoMoment3)
@@ -46,13 +47,13 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name
     val pi = new ProgressIndicator(l.size)
     //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
     while (!(l.isEmpty) ) {
-      val fetched = dc.fetch2(List(l.head))
+      val fetched = Profiler.noprofile("Fetch"){dc.fetch2(List(l.head))}
       val bits = l.head.accessible_bits
       if(l.head.mask.length > maxDimFetched)
         maxDimFetched = l.head.mask.length
-      s.add(bits, fetched.toArray)
-      s.fillMissing()
-      s.fastSolve()
+      Profiler.noprofile("Add"){s.add(bits, fetched.toArray)}
+      Profiler.noprofile("FillMiss"){s.fillMissing()}
+      Profiler.noprofile("Solve"){s.fastSolve()}
       stg.record()
       pi.step
       l = l.tail

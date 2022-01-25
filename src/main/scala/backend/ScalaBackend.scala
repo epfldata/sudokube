@@ -15,6 +15,7 @@ object ScalaBackend extends Backend[Payload] {
   protected type HYBRID_T = (DENSE_T, SPARSE_T)
 
 
+  override def reset: Unit = ()
   override def isDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Boolean = (h._1 != null)
   override def extractDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Array[Payload] = h._1
   override def extractSparse(h: (Array[Payload], Seq[(BigBinary, Payload)])): Seq[(BigBinary, Payload)] = h._2

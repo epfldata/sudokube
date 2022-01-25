@@ -3,6 +3,7 @@
 #include "backend_CBackend.h"
 #include "Keys.h"
 
+extern void reset();
 extern unsigned int   shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int   srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
@@ -25,6 +26,11 @@ extern void writeDCuboid(const char *filename, unsigned int d_id);
 
 extern void readMultiCuboid(const char *filename,  int n_bits_array[], int size_array[], unsigned char isSparse_array[], unsigned int id_array[], unsigned int numCuboids);
 extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[],  int ids[], unsigned int numCuboids);
+
+JNIEXPORT void JNICALL Java_backend_CBackend_reset0(JNIEnv *env, jobject obj)
+{
+    reset();
+}
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)

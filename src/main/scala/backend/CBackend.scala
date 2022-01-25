@@ -19,6 +19,7 @@ class CBackend extends Backend[Payload] {
   override def extractDense(h: Int): Int = -h
   override def extractSparse(h: Int): Int = h
 
+  @native protected def reset0(): Unit
   @native protected def shhash(s_id: Int, pos: Array[Int]): Int
   @native protected def   sRehash0(s_id: Int, pos: Array[Int]): Int
   @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
@@ -46,6 +47,8 @@ class CBackend extends Backend[Payload] {
 
   @native protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int])
 
+
+  override def reset: Unit = reset0()
 
   override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean], nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = {
     val backend_id_array = readMultiCuboid0(filename, isSparseArray, nbitsArray, sizeArray)

@@ -180,7 +180,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
 object SSBTest {
   def main(args: Array[String])  {
-    val cg = SSB(1)
+    val cg = SSB(100)
     //val (sch, dc) = cg.saveBase
     val sch = cg.schema()
     //val (sch,dc) = cg.loadBase()
@@ -197,7 +197,10 @@ object SSBTest {
     //  dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
     //}
 
-    List((15, 19), (15, 22)).map { case (maxN, maxD) =>
+    List(
+      //(15, 19), (15, 22)
+      (15, 28)
+    ).map { case (maxN, maxD) =>
       //val maxN = 15
       //val maxD = 25
       val logsf = 0

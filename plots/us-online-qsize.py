@@ -6,36 +6,42 @@ from collections import defaultdict
 from textwrap import wrap
 import numpy as np
 
-plt.rcParams["figure.figsize"] = (8,4)
-input = sys.argv[1]
-filename = input[16:-4]
-isError = filename.endswith('ERROR')
-print(filename)
+plt.rcParams["figure.figsize"] = (8,6)
+fig, (ax1,ax2) = plt.subplots(2,1)
 
-alldata = list(open(input))
-numseries = len(alldata)/2
-series = []
+def plot(input, ax):
+    filename = input[16:-4]
+    isError = filename.endswith('ERROR')
+    print(filename)
 
-qsindex = filename.index('qs')-1
-cnames=filename[10:qsindex].split('_')
-mod = int(cnames[4]) + int(cnames[3]) + 1 - int(cnames[2])
-title0="{}_{}_{}_{}".format(cnames[0], cnames[1], cnames[2], mod)
+    alldata = list(open(input))
+    numseries = len(alldata)/2
+    series = []
 
-for i in range(0, numseries):
-    time = map(lambda x: float(x), alldata[2*i].split(',')[1:])
-    data0 = alldata[2*i + 1].split(',')
-    name = data0[0]
-    data = map(lambda x: float(x), data0[1:])
-    series.append([time, data, name])
+    qsindex = filename.index('qs')-1
+    cnames=filename[10:qsindex].split('_')
+    mod = int(cnames[4]) + int(cnames[3]) + 1 - int(cnames[2])
+    title="{}_{}_{}_{}".format(cnames[0], cnames[1], cnames[2], mod)
+
+    for i in range(0, numseries):
+        time = map(lambda x: float(x), alldata[2*i].split(',')[1:])
+        data0 = alldata[2*i + 1].split(',')
+        name = data0[0]
+        data = map(lambda x: float(x), data0[1:])
+        series.append([time, data, name])
 
 
-fig, ax = plt.subplots()
-for s in sorted(series, key=lambda tdn: int(tdn[2])):
-    ax.plot(s[0], s[1], label=s[2])
+    for s in sorted(series, key=lambda tdn: int(tdn[2])):
+        ax.plot(s[0], s[1], label=s[2])
+    ax.title.set_text(title)
+    ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
+    ax.set_xscale('log')
 
-plt.title(title0)    
-ax.set_xscale('log')
-ax.set_xlabel('Time(s)')
-ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
-plt.legend()
-plt.savefig('figs/'+filename+'.pdf',bbox_inches = 'tight',pad_inches = 0.1)
+plot('expdata/current/US-Online_SSB-sf100_rms2_15_25_3-qs-ERROR.csv',ax1)
+plot('expdata/current/US-Online_SSB-sf100_sms_15_25_3-qs-ERROR.csv',ax2)
+
+plt.subplots_adjust(bottom=0.25,hspace=0.4)
+plt.xlabel('Time(s)')
+handles, labels = ax2.get_legend_handles_labels()
+fig.legend(handles, labels, ncol=4, loc='upper center', bbox_to_anchor=(0.5,0.13))
+plt.savefig('figs/us-online-qsize.pdf',bbox_inches = 'tight')

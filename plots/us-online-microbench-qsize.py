@@ -32,7 +32,8 @@ for s in sorted(series, key=lambda tdn: int(tdn[2])):
 
 plt.title(title0)    
 ax.set_xscale('log')
+ax.set_yscale('log')
 ax.set_xlabel('Time(s)')
 ax.set_ylabel('Error' if isError==1 else 'Degrees of Freedom')
 plt.legend(loc='upper left', ncol=4, fontsize='small')
-plt.savefig('figs/'+filename+'.pdf',bbox_inches = 'tight',pad_inches = 0.1)
+plt.savefig('figs/'+filename+'.pdf',bbox_inches = 'tight')

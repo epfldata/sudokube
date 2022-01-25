@@ -65,7 +65,15 @@ struct {
     /** for synchronization when multiple java threads try to update this registry simulataneously */
     std::mutex registryMutex;
 
-
+    //Do not call when unfrozen cuboids are present
+    void clear() {
+        std::unique_lock<std::mutex> lock(registryMutex);
+        for(auto ptr: ptr_registry)
+            free(ptr);
+        ptr_registry.clear();
+        numrows_registry.clear();
+        keysz_registry.clear();
+    }
     /**
         Adds a dense or sparse cuboid to the registry
         @param p  Pointer to the array representing the dense or sparse cuboid
@@ -130,6 +138,13 @@ struct {
     }
 
 } globalRegistry;
+
+/**
+ * Resets the backend by unloading all cuboids from memory and clearing the registry
+ */
+void reset() {
+    globalRegistry.clear();
+}
 
 /**
  * Initialize and pre-allocate new cuboid with a given size. The data is added using add_i method to add specific rows.

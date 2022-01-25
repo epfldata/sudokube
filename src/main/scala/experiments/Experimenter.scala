@@ -1,5 +1,6 @@
 package experiments
 
+import backend.CBackend
 import combinatorics.Combinatorics
 import core._
 import experiments.Experimenter.queryDistribution
@@ -60,13 +61,13 @@ object Experimenter {
     val cubes = List(
       "NYC_rms2_14_19_0",
       "NYC_rms2_14_23_0",
-      "NYC_rms2_14_25_2",
+      "NYC_rms2_14_27_0",
       "NYC_rms2_15_20_0",
       "NYC_rms2_15_24_0",
-      "NYC_rms2_15_25_3",
+      "NYC_rms2_15_28_0",
       "NYC_rms2_16_21_0",
       "NYC_rms2_16_25_0",
-      "NYC_rms2_16_25_4"
+      "NYC_rms2_16_29_0"
     )
     cubes.foreach { n =>
       val names = n.split("_")
@@ -239,6 +240,70 @@ object Experimenter {
     queries.foreach(q => expt.run(q, true))
   }
 
+  def uniform_qsize(isSMS: Boolean)(implicit shouldRecord: Boolean): Unit = {
+    val cg = SSB(100)
+    val param = "15_28_0"
+    val name = (if (isSMS) "_sms_" else "_rms2_") + param
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val sch = cg.schema()
+    val qss = List(6, 9, 12, 15, 18)
+    val nq = 100
+    val queries = qss.flatMap { qs =>
+      (0 until nq).map(_ => sch.root.samplePrefix(qs)).distinct
+    }
+    val exptfull = new UniformSolverFullExpt[Double](dc, fullname)
+    if (shouldRecord) exptfull.warmup()
+    val ql = queries.length
+    queries.zipWithIndex.foreach{case(q,i) =>
+      println(s"Full Query $i/$ql")
+      exptfull.run(q)
+    }
+
+    val exptonline = new UniformSolverOnlineExpt[Double](dc, fullname)
+    if (shouldRecord) exptonline.warmup()
+    queries.zipWithIndex.foreach{ case (q, i) =>
+      println(s"Online Query $i/$ql")
+      exptonline.run(q)
+    }
+    dc.cuboids.head.backend.reset
+  }
+
+  def uniform_cubes(isSMS: Boolean)(implicit shouldRecord: Boolean) = {
+    val cg = NYC
+    val params = List(
+      (14, 23),
+      (15, 20), (15, 24), (15, 28),
+      (16, 25)
+    )
+    val sch = cg.schema()
+    val nq = 100
+    val qs = 10
+    val queries = (0 until nq).map(_ => sch.root.samplePrefix(qs)).distinct
+
+   params.foreach{ p =>
+      val fullname = cg.inputname + (if (isSMS) "-sms_" else "-rms2_") + s"${p._1}_${p._2}_0"
+      val dc =  PartialDataCube.load2(fullname, cg.inputname + "_base")
+
+     val exptfull = new UniformSolverFullExpt[Double](dc, fullname)
+     if(shouldRecord) exptfull.warmup()
+     val ql = queries.length
+     queries.zipWithIndex.foreach{case(q,i) =>
+       println(s"Full Query $i/$ql")
+       exptfull.run(q)
+     }
+
+     val exptonline = new UniformSolverOnlineExpt[Double](dc, fullname)
+     if(shouldRecord) exptonline.warmup()
+     queries.zipWithIndex.foreach{ case (q, i) =>
+     println(s"Online Query $i/$ql")
+       exptonline.run(q)
+     }
+
+     dc.cuboids.head.backend.reset
+    }
+
+  }
   def mbonline()(implicit shouldRecord: Boolean) = {
     List(Uniform, Normal, LogNormal, Exponential).foreach { sample =>
       val cg = MicroBench(15, sample)
@@ -257,21 +322,45 @@ def debug(): Unit = {
   implicit val shouldRecord = false
   val cg = SSB(100)
   val isSMS = true
-  val param = "15_25_3"
+  val param = "15_28_0"
   val name = (if (isSMS) "_sms_" else "_rms2_") + param
   val fullname = cg.inputname + name
   val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
   val sch = cg.schema()
-  val queries = List(List(91, 112, 117, 118, 119, 120, 130, 131, 145, 146, 147, 192))
-  //val numQs = sch.root.numPrefixUpto(15)
-  //(0 until 15).map(i => println(s"$i => " + numQs(i)))
-
+  val q1 = List(141,142,143,144,165,192)
+  val q2 = List(116,117,118,119,120,129,130,131,137,138,139,155,172,180,192)
+  val queries = List(q1, q2)
+  ////val numQs = sch.root.numPrefixUpto(15)
+  ////(0 until 15).map(i => println(s"$i => " + numQs(i)))
+  //
   val expt = new UniformSolverOnlineExpt[Double](dc, fullname)
+  //import RationalTools._
+  //val expt = new LPSolverFullExpt[Rational](dc, fullname)
+  expt.warmup(10)
   queries.foreach(q => expt.run(q, true))
+  //val sample = Exponential
+  //val cg = MicroBench(15, sample)
+
+  //val fullname = cg.inputname + "_all"
+  //val dc = DataCube.load2(fullname)
+
+  //val (sch, r_its) = cg.generate2()
+  //sch.initBeforeEncode()
+  //val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+  //dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+  //val q = 0 until 15
+  //val res = dc.naive_eval(q)
+  //val resMax = res.max.toInt
+  //val step = math.max(resMax/1000,1)
+  //res.groupBy(x => (x.toInt/step) * step).mapValues(_.length).toList.sortBy(_._1).foreach(println)
+
+  //val expt = new UniformSolverOnlineExpt[Double](dc, fullname, true)
+  //expt.run(q)
 }
   def main(args: Array[String]) {
     implicit val shouldRecord = true
-    //debug()
+    debug()
     //lpp_full_qsize(true)
     //lpp_full_qsize(false)
     //lpp_online_qsize(true)
@@ -280,11 +369,17 @@ def debug(): Unit = {
     //uniform_online_qsize(false)
     //uniform_full_qsize(true)
     //uniform_full_qsize(false)
+    //uniform_cubes(true, 10)
+    //uniform_cubes(false, 10)
+    //uniform_cubes(true, 12)
+    //uniform_cubes(false, 12)
+    //uniform_qsize(true)
+    //uniform_qsize(false)
     //mbonline()
     //cubestats1()
     //cubestats2()
-    multi_storage(true)
-    multi_storage(false)
+    //multi_storage(true)
+    //multi_storage(false)
   }
 
   def oldmain(args: Array[String]): Unit = {

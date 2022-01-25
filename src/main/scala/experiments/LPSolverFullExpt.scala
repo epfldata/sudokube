@@ -40,17 +40,18 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
       s1.propagate_bounds(allVars)
     }
 
-    println("\nSparseSolver")
-    val s2 = Profiler("Init SparseSolver") {
-      val b2 = SolverTools.mk_all_non_neg(1 << q.size)
-      new SparseSolver[T](q.length, b2, l.map(_.accessible_bits), fetched)
-    }
-
-    Profiler("ComputeBounds Sparse") {
-      s2.compute_bounds
-      s2.propagate_bounds(allVars)
-    }
-    (s1, s2, prepareMaxDim)
+    //println("\nSparseSolver")
+    //val s2 = Profiler("Init SparseSolver") {
+    //  val b2 = SolverTools.mk_all_non_neg(1 << q.size)
+    //  new SparseSolver[T](q.length, b2, l.map(_.accessible_bits), fetched)
+    //}
+    //
+    //Profiler("ComputeBounds Sparse") {
+    //  s2.compute_bounds
+    //  s2.propagate_bounds(allVars)
+    //}
+    //
+    (s1, prepareMaxDim)
   }
 
   def run(qu: Seq[Int], output: Boolean = true) = {
@@ -66,15 +67,15 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
       (res, maxDim)
     }
 
-    val (s1, s2, lpMaxDim) = Profiler("Solver Full"){lp_solve(q)}
+    val (s1, lpMaxDim) = Profiler("Solver Full"){lp_solve(q)}
 
     val err1 = error(naiveRes, s1)
-    val err2 = error(naiveRes, s2)
+    //val err2 = error(naiveRes, s2)
     val dof1 = s1.df
-    val dof2 = s2.df
+    //val dof2 = s2.df
 
     println(s"SliceSparseSolver dof = $dof1 error = $err1")
-    println(s"SparseSolver dof = $dof2 error = $err2")
+    //println(s"SparseSolver dof = $dof2 error = $err2")
     Profiler.print()
     val ntotal = Profiler.durations("Naive Full")._2/1000
     val nprepare = Profiler.durations("NaivePrepare")._2/1000
@@ -84,9 +85,9 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
     val lptot = Profiler.durations("Solver Full")._2/1000
 
     val inits1 = Profiler.durations("Init SliceSparseSolver")._2/1000
-    val inits2 = Profiler.durations("Init SparseSolver")._2/1000
+    //val inits2 = Profiler.durations("Init SparseSolver")._2/1000
     val cbs1 = Profiler.durations("ComputeBounds SliceSparse")._2/1000
-    val cbs2 = Profiler.durations("ComputeBounds Sparse")._2/1000
+    //val cbs2 = Profiler.durations("ComputeBounds Sparse")._2/1000
 
 
     def round(v: Double) = {
@@ -96,8 +97,8 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
 
     if(output) {
       val resultrow = s"$name,${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $lpprep,$lpfetch,$lptot,$lpMaxDim,  " +
-        s"$inits1,$cbs1,$dof1,${round(err1)},  " +
-        s"$inits2,$cbs2,$dof2,${round(err2)}"
+        s"$inits1,$cbs1,$dof1,${round(err1)}  "
+        //s"$inits2,$cbs2,$dof2,${round(err2)}"
       fileout.println(resultrow)
     }
 

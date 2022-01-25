@@ -26,6 +26,7 @@ abstract class Backend[MEASURES_T] {
   protected type DENSE_T
   type MASK_T = Array[Int]
 
+  def reset: Unit
   def isDense(h: HYBRID_T): Boolean
   def extractDense(h: HYBRID_T): DENSE_T
   def extractSparse(h: HYBRID_T): SPARSE_T
