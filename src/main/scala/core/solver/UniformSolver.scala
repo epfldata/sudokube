@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Avg2, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 /**
@@ -120,6 +120,16 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     num.div(combSum, num.fromInt(2 * n))
   }
 
+  //Sets default value of a moment to weighted average of all its predecessors
+  def getDefaultValueAvg2(row: Int) = {
+    val n = BigBinary(row).hamming_weight
+    val dimSums = (0 until n).map{ k =>
+      val combSum = Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i, row)).map(sumValues(_)).sum
+      val div =  (1 << (n-k))
+      num.div(combSum, num.fromInt(div))
+    }.sum
+    num.div(dimSums, num.fromInt((1<<n)-1))
+  }
   def getDefaultValueCumulant(row: Int) = {
     //Add element a to all partitions in parts
     def addElem(a: Int, parts: List[List[Int]]) = {
@@ -340,6 +350,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
     val value = strategy match {
       case Avg => getDefaultValueAvg(row)
+      case Avg2 => getDefaultValueAvg2(row)
       case Cumulant => getDefaultValueCumulant(row)
       case Cumulant2 => ??? //getDefaultValueCumulant2(row)
       case CoMoment => getDefaultValueCoMoment(row, false)

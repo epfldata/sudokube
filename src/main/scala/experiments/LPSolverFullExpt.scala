@@ -2,6 +2,7 @@ package experiments
 
 import core.{DataCube, RandomizedMaterializationScheme, SolverTools, SparseSolver}
 import core.solver.{SliceSparseSolver, Strategy}
+import frontend.experiments.Tools
 import util.Profiler
 
 import java.io.{File, PrintStream}
@@ -9,7 +10,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime}
 import scala.reflect.ClassTag
 
-class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: String = "")(implicit shouldRecord: Boolean) extends Experiment(dc_expt,"LP-Full", name) {
+class LPSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("LP-Full", ename2) {
 
   fileout.println("CubeName,Query,QSize,   NPrepareTime(us),NFetchTime(us),NaiveTotal(us),NaiveMaxDimFetched, LPPrepareTime(us),LPFetchTime(us),LPTotalTime(us),LPPMaxDim," +
     "Init SliceSparse, ComputeBounds SliceSparse, DOF SliceSparse, Error SliceSparse, "+
@@ -17,7 +18,7 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
   )
   println("LP Solver of type " + implicitly[ClassTag[T]])
 
-  def lp_solve(q: Seq[Int]) = {
+  def lp_solve(dc: DataCube, q: Seq[Int]) = {
     val l = Profiler("LPSolve Prepare") {
       dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1) //fetch most dominating cuboids other than full
     }
@@ -54,7 +55,7 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
     (s1, prepareMaxDim)
   }
 
-  def run(qu: Seq[Int], output: Boolean = true) = {
+  def run(dc: DataCube, dcname: String,  qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
@@ -67,7 +68,7 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
       (res, maxDim)
     }
 
-    val (s1, lpMaxDim) = Profiler("Solver Full"){lp_solve(q)}
+    val (s1, lpMaxDim) = Profiler("Solver Full"){lp_solve(dc, q)}
 
     val err1 = error(naiveRes, s1)
     //val err2 = error(naiveRes, s2)
@@ -90,14 +91,10 @@ class LPSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Strin
     //val cbs2 = Profiler.durations("ComputeBounds Sparse")._2/1000
 
 
-    def round(v: Double) = {
-      val prec = 10000
-      math.floor(v*prec)/prec
-    }
 
     if(output) {
-      val resultrow = s"$name,${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $lpprep,$lpfetch,$lptot,$lpMaxDim,  " +
-        s"$inits1,$cbs1,$dof1,${round(err1)}  "
+      val resultrow = s"$dcname,${qu.mkString(":")},${q.size},  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $lpprep,$lpfetch,$lptot,$lpMaxDim,  " +
+        s"$inits1,$cbs1,$dof1,${Tools.round(err1, 4)}  "
         //s"$inits2,$cbs2,$dof2,${round(err2)}"
       fileout.println(resultrow)
     }

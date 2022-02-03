@@ -6,12 +6,12 @@ import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import scala.reflect.ClassTag
 
-class LPSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: String = "")(implicit shouldRecord: Boolean) extends Experiment(dc_expt, "LP-Online", name) {
+class LPSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("LP-Online", ename2) {
   fileout.println("Name,Query,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim")
   println("LP Solver of type " + implicitly[ClassTag[T]])
 
 
-  def run(qu: Seq[Int], output: Boolean = true) = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     val qstr = qu.mkString(":")
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -57,7 +57,7 @@ class LPSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: Str
         val err = span/total
         if (count % step == 0 || dof < 100 || count < 100)
           println(s"$count @ $time : dof=$dof err=$err maxDim=$maxDim")
-        fileout.println(s"$name,$qstr,${q.size},$count,${time},$dof,$err,$maxDim")
+        fileout.println(s"$dcname,$qstr,${q.size},$count,${time},$dof,$err,$maxDim")
       }
     }
   }

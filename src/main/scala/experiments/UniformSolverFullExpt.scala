@@ -15,13 +15,13 @@ import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 
-class UniformSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: String = "")(implicit shouldRecord: Boolean) extends Experiment(dc_expt,"US-Full", name){
+class UniformSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("US-Full", ename2){
 
   val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
   fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  SolversTotalTime(us), UPrepareTime(us), UFetchTime(us), USolveMaxDimFetched, " + strategies.map(a => s"$a SolveTime(us), $a Err").mkString(", "))
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
-  def uniform_solve(q: Seq[Int]) = {
+  def uniform_solve(dc: DataCube, q: Seq[Int]) = {
 
     val l = Profiler("USolve Prepare") {
       dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1)
@@ -55,7 +55,7 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: 
     (result, maxDimFetch)
   }
 
-  def run(qu: Seq[Int], output: Boolean = true) = {
+  def run(dc: DataCube, dcname:String, qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
@@ -68,7 +68,7 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: 
     }
     //val naiveCum = fastMoments(naiveRes)
 
-    val (solverRes, solverMaxDim) = Profiler("Solver Full"){uniform_solve(q)}
+    val (solverRes, solverMaxDim) = Profiler("Solver Full"){uniform_solve(dc, q)}
     val num = implicitly[Fractional[T]]
     //Profiler.print()
 
@@ -101,7 +101,7 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: 
       }
 
     if(output) {
-      val resultrow = s"${name},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $utot,$uprep,$ufetch,$solverMaxDim,  " +
+      val resultrow = s"${dcname},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $utot,$uprep,$ufetch,$solverMaxDim,  " +
         errors.map { case (algo, err) =>
           val usolve = Profiler.durations(s"USolve Solve $algo")._2 / 1000
           s"  ${usolve},${round(err)}"
@@ -109,11 +109,6 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: 
       fileout.println(resultrow)
     }
 
-  }
-
-  def rnd_run(qsize: Int) = {
-    val query = Tools.rand_q(dc.m.n_bits, qsize)
-    run(query, true)
   }
 }
 

@@ -16,14 +16,14 @@ object OnlinePlotter {
   def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Ykey: Int) = {
 
     val data = CSVReader.read(new FileReader(s"expdata/current/$name")).tail
-    val queryKey = 1
+    val iterKey = 1
     val Xkey = 4
 
     val seriesData = data.
       filter(filterf).
       groupBy(groupf).
       mapValues {
-        _.groupBy(_ (queryKey)).values.map(_.map(r => r(Xkey).toDouble -> r(Ykey).toDouble).toList).toVector
+        _.groupBy(_ (iterKey)).values.map(_.map(r => r(Xkey).toDouble -> r(Ykey).toDouble).toList).toVector
       }
   seriesData
   }
@@ -52,19 +52,21 @@ object OnlinePlotter {
         data2(minIdx) = data2(minIdx).tail
       }
     }
-    result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
+    val res1 = result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
+    val maxt = res1.last._1
+      res1 :+ (maxt + 0.01 -> 0.0)
   }
 
   def myplot(name: String, ykey: YKEY.Value) = {
     val isQuerySize = name.endsWith("qs.csv")
     def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
-    def filterQuery(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
+    def filterQuerySize(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
     val isLPP = name.startsWith("LP")
     def groupCube(r: IndexedSeq[String]) = r(0)
-    def groupQuery(r: IndexedSeq[String]) = r(2)
+    def groupQuerySize(r: IndexedSeq[String]) = r(2)
 
-    def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuery(r)
-    def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuery(r) else groupCube(r)
+    def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuerySize(r)
+    def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuerySize(r) else groupCube(r)
     import YKEY._
     val valueKey = ykey match {
       case DOF => 5
@@ -96,6 +98,7 @@ object OnlinePlotter {
 
     data.map { case (n, d1) =>
       //val (n,d1) = data.head
+      println(s"Averaging over ${d1.length} entries for $n")
       val avg = getSeries(d1, avgf, initValue)
       //val min = getSeries(d1, minf, initValue)
       //val max = getSeries(d1, maxf, initValue)

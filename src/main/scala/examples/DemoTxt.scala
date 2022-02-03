@@ -10,7 +10,7 @@ import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import util._
 import core.SolverTools._
-import core.solver.Strategy.{CoMoment, CoMoment3, Cumulant}
+import core.solver.Strategy._
 import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StaticSchema2, StructuredDynamicSchema}
 

@@ -1,10 +1,9 @@
 package experiments
 
-import core.SolverTools.fastMoments
-import core.{DataCube, RandomizedMaterializationScheme}
+import core.SolverTools._
+import core.{DataCube, RandomizedMaterializationScheme, SolverTools}
 import core.solver.Strategy.{CoMoment3, CoMomentFrechet, MeanProduct}
 import core.solver.{Strategy, UniformSolver}
-import experiments.CubeData.dc
 import util.{AutoStatsGatherer, ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import java.io.{File, PrintStream}
@@ -12,20 +11,20 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
-class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name: String = "", containsAllCuboids: Boolean = false)(implicit  shouldRecord: Boolean) extends Experiment(dc_expt, "US-Online", name) {
+class UniformSolverOnlineExpt[T:Fractional:ClassTag]( val ename2: String = "", containsAllCuboids: Boolean = false)(implicit  shouldRecord: Boolean) extends Experiment( "US-Online", ename2) {
 
-  fileout.println("Name,Query,QSize,Counter,TimeElapsed(s),DOF,Error")
+  fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query")
   println("Uniform Solver of type " + implicitly[ClassTag[T]])
 
 
-  def error(naive: Array[Double], solver: Array[Double]) = {
-    val length = naive.length
-    val deviation = (0 until length).map(i => Math.abs(naive(i) - solver(i))).sum
-    val sum = naive.sum
-    deviation / sum
+  override def warmup(nw: Int): Unit = if(!containsAllCuboids) super.warmup(nw) else {
+    //Cannot use default warmup because of "containsAllCuboid" set to true
+    val dcwarm = DataCube.load2("warmupall")
+    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, false))
+    println("Warmup Complete")
   }
-
-  def run(qu: Seq[Int], output: Boolean = true): Unit = {
+  var queryCounter=0
+  def run(dc: DataCube, dcname: String,  qu: Seq[Int], output: Boolean = true): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -72,8 +71,9 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag](dc_expt: DataCube, val name
         val err = error(naiveRes, sol)
         if(count % step == 0 || dof < 100 || count < 100)
           println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
-        fileout.println(s"$name,$qstr,${q.size},$count,${time},$dof,$err,$maxdim")
+        fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr")
       }
+      queryCounter += 1
     }
   }
 
