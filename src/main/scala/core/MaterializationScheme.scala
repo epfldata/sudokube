@@ -295,6 +295,12 @@ object MaterializationScheme {
   def all_cuboids(n_bits: Int) = new MaterializationScheme(n_bits) {
     override val projections: IndexedSeq[List[Int]] = (0 until 1 << n_bits).map(i => Bits.fromInt(i).sorted)
   }
+  def all_subsetsOf(n_bits: Int, q: Seq[Int]) = new MaterializationScheme(n_bits) {
+    override val projections: IndexedSeq[List[Int]] = {
+      val idxes = q.toIndexedSeq
+      (0 until 1 << q.length).map(i => Bits.fromInt(i).map(idxes).sorted) :+ (0 until n_bits).toList
+    }
+  }
 }
 
 /** TODO: also support the construction from a previously stored

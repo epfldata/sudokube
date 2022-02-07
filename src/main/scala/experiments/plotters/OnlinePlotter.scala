@@ -9,15 +9,15 @@ import java.io.{File, FileReader, PrintStream}
 
 object OnlinePlotter {
 
-  object YKEY extends Enumeration {
-    val DOF,ERROR,MAXDIM = Value
+  object KEY extends Enumeration {
+    val TIME,DOF,ERROR,MAXDIM = Value
   }
-  import YKEY._
-  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Ykey: Int) = {
+  import KEY._
+  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey:Int, Ykey: Int) = {
 
     val data = CSVReader.read(new FileReader(s"expdata/current/$name")).tail
     val iterKey = 1
-    val Xkey = 4
+
 
     val seriesData = data.
       filter(filterf).
@@ -57,7 +57,7 @@ object OnlinePlotter {
       res1 :+ (maxt + 0.01 -> 0.0)
   }
 
-  def myplot(name: String, ykey: YKEY.Value) = {
+  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value) = {
     val isQuerySize = name.endsWith("qs.csv")
     def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
     def filterQuerySize(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
@@ -67,13 +67,16 @@ object OnlinePlotter {
 
     def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuerySize(r)
     def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuerySize(r) else groupCube(r)
-    import YKEY._
-    val valueKey = ykey match {
+    import KEY._
+
+    def toKeyCol(key: KEY.Value) = key match {
+      case TIME => 4
       case DOF => 5
       case ERROR => 6
       case MAXDIM => 7
     }
-    val data = getData(name, filterf, groupf, valueKey)
+
+    val data = getData(name, filterf, groupf, toKeyCol(xkey), toKeyCol(ykey))
 
     def avgf(vs :Seq[Double]) = vs.sum/vs.size
     def minf(vs: Seq[Double]) = vs.min

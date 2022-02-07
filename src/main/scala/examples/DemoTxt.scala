@@ -24,7 +24,7 @@ object DemoTxt {
   import frontend._, backend._, core._, core.RationalTools._
 
   def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3, CoMoment3)
+    val solver = new UniformSolver[Rational](3, Avg2)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
@@ -393,7 +393,7 @@ object DemoTxt {
     val display = FeatureFrameSSB(sf, dc, 50)
   }
   def main(args: Array[String]): Unit = {
-    //uniformSolver()
+    uniformSolver()
     //prepare()
     //test1()
     //loadtest()
@@ -404,7 +404,7 @@ object DemoTxt {
     //feature()
     //parPlan()
     //backend_naive()
-    ssb_demo()
+    //ssb_demo()
 
 
   }

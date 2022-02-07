@@ -281,33 +281,44 @@ object Experimenter {
   }
 
   def debug(): Unit = {
-    implicit val shouldRecord = false
+    implicit val shouldRecord = true
     val cg = NYC
     val isSMS = false
-    val param = "15_28_0"
-    val name = (if (isSMS) "_sms_" else "_rms2_") + param
-    val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    //val param = "15_28_0"
+    //val name = (if (isSMS) "_sms_" else "_rms2_") + param
+    //val fullname = cg.inputname + name
+    //val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
     val sch = cg.schema()
-
+    val names = List("mb-test", "NYC_sms_15_28_0", "NYC_rms2_15_28_0")
+    val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355, 393, 428)
+    //val dc = new PartialDataCube(MaterializationScheme.all_subsetsOf(sch.n_bits, q1), cg.inputname + "_base")
+    //dc.build()
+    //dc.save2("mb-test")
+    //val dc = PartialDataCube.load2("mb-test", "NYC_base")
     //val qss = List(12)
     //val nq = 100
     //val queries = qss.flatMap { qs =>
     //  (0 until nq).map(_ => sch.root.samplePrefix(qs)).distinct
     //}
-    val queries = List(List(62, 95, 134, 178, 205, 249))
+    val queries = List(q1)
     //val q1 = List(141, 142, 143, 144, 165, 192)
     //val q2 = List(116, 117, 118, 119, 120, 129, 130, 131, 137, 138, 139, 155, 172, 180, 192)
     //val queries = List(q1, q2)
     ////val numQs = sch.root.numPrefixUpto(15)
     ////(0 until 15).map(i => println(s"$i => " + numQs(i)))
     //
-    //val expt = new UniformSolverOnlineExpt[Double](dc, fullname)
-    val expt = new UniformSolverFullExpt[Double](fullname)
+    val expt = new UniformSolverOnlineExpt[Double]("mb-test")
+    //val expt = new UniformSolverFullExpt[Double](fullname)
     //import RationalTools._
     //val expt = new LPSolverFullExpt[Rational](dc, fullname)
     //expt.warmup(10)
-    queries.foreach(q => expt.run(dc, fullname, q, true))
+
+    names.foreach{fulln =>
+      val dc = PartialDataCube.load2(fulln, "NYC_base")
+      queries.foreach(q => expt.run(dc, fulln, q, true))
+      dc.cuboids.head.backend.reset
+    }
+
     //val sample = Exponential
     //val cg = MBSimple(12)
 
