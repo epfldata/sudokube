@@ -139,10 +139,17 @@ object OnlinePlotter {
     //myplot(name2, false, false)
     //myplot(name2, true, false)
 
+    def argsMap(s: String) = s match {
+      case "time" => TIME
+      case "dof" =>  DOF
+      case "error" => ERROR
+    }
     val name3 = args(0)
+    val xkey = args.lift(1).map(argsMap).getOrElse(TIME)
+    val ykey = args.lift(2).map(argsMap).getOrElse(ERROR)
     //myplot(name3, DOF, true)
     //myplot(name3, MAXDIM, true)
-    myplot(name3, ERROR )
+    myplot(name3, xkey, ykey)
 
   }
 }
