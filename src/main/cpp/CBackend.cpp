@@ -4,7 +4,7 @@
 #include "Keys.h"
 
 extern void reset();
-extern unsigned int   shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+extern  int   shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int   srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);

@@ -18,6 +18,8 @@ class CBackend extends Backend[Payload] {
   override def isDense(h: Int): Boolean = h < 0
   override def extractDense(h: Int): Int = -h
   override def extractSparse(h: Int): Int = h
+  override def sparseToHybrid(s: Int): Int = s
+  override def denseToHybrid(d: Int): Int = -d
 
   @native protected def reset0(): Unit
   @native protected def shhash(s_id: Int, pos: Array[Int]): Int

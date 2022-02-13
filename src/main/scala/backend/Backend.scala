@@ -30,6 +30,8 @@ abstract class Backend[MEASURES_T] {
   def isDense(h: HYBRID_T): Boolean
   def extractDense(h: HYBRID_T): DENSE_T
   def extractSparse(h: HYBRID_T): SPARSE_T
+  def sparseToHybrid(s: SPARSE_T): HYBRID_T
+  def denseToHybrid(d: DENSE_T): HYBRID_T
 
   def allones(n: Int): MASK_T = Array.fill(n)(1)
   protected val be_this = this

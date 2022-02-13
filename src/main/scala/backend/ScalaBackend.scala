@@ -19,6 +19,8 @@ object ScalaBackend extends Backend[Payload] {
   override def isDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Boolean = (h._1 != null)
   override def extractDense(h: (Array[Payload], Seq[(BigBinary, Payload)])): Array[Payload] = h._1
   override def extractSparse(h: (Array[Payload], Seq[(BigBinary, Payload)])): Seq[(BigBinary, Payload)] = h._2
+  override def sparseToHybrid(s: Seq[(BigBinary, Payload)]): (Array[Payload], Seq[(BigBinary, Payload)]) = (null, s)
+  override def denseToHybrid(d: Array[Payload]): (Array[Payload], Seq[(BigBinary, Payload)]) = (d, null)
 
   override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean],
                                nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = ???
