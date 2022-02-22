@@ -122,77 +122,6 @@ object DemoTxt {
   }
 
 
-  def iowa(): Unit = {
-    val sch = new schema.DynamicSchema
-    val name = "Iowa200k"
-    val rf = Math.pow(2, -195)
-    val base = 2
-    val R = Profiler("Sch.Read") {
-      sch.read(s"/Users/sachin/Downloads/$name.csv", Some("Sale (Dollars)"), o => (o.asInstanceOf[String].toDouble * 100).toLong)
-    }
-    //val name = "Iowa2M"
-    //val R = Profiler("Sch.Read"){sch.read(s"$name.csv")}
-    println("NBITS =" + sch.n_bits)
-    sch.columnList.map(kv => kv._1 -> kv._2.bits.length).sortBy(_._2).foreach(println)
-    Profiler.print()
-    //
-    //val dc  = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
-    //Profiler("Build"){dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))}
-    //Profiler.print()
-    //dc.save2(s"${name}_volL_2p-195_2")
-  }
-
-  def iowa2() = {
-    val rf = Math.pow(2, -115)
-    val base = 1.5
-    val dcBase = DataCube.load("Iowa200k_base")
-    val dc = new DataCube(RandomizedMaterializationScheme(dcBase.m.n_bits, rf, base))
-    dc.buildFrom(dcBase)
-    dc.save("Iowa200_all")
-  }
-
-  def test1() = {
-    implicit val bpos = new BitPosRegistry
-    val e2 = LD2("col1", new NatCol(1000))
-    val e1 = LD2("col1", new NatCol(60))
-    val s = new StructuredDynamicSchema(Vector(e2, e1))
-    println("Schema bits = " + s.n_bits)
-    s.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val tups = List(
-      Vector(11, 3),
-      Vector(512, 2),
-      Vector(33, 55)
-    )
-    tups.map(s.encode_tuple(_).toPaddedString(16)).foreach(println)
-    ()
-  }
-
-  def combTest() = {
-    (10 to 10).map { n =>
-      (0 to n).map{ k =>
-        val l1 = Profiler("L1"){mk_comb_bi(n, k)}.sorted
-        val l2 = Profiler("L2"){comb2(n, k)}.sorted
-        println((n, k))
-        println("L1 = " + l1)
-        println("L2 = " + l2)
-      }
-    }
-    Profiler.print()
-  }
-  def iowa3() = {
-    val name = "Iowa200k"
-    val dir = "/Users/sachin/Downloads"
-    val cols = Vector(1, 2, 11, 13, 17, 18).map(_ - 1)
-    val pathin = s"$dir/$name.csv"
-    val pathout = s"$dir/${name}_cols${cols.length}.csv"
-    val csvin = CSVReader.read(new FileReader(pathin))
-
-    val csvout = csvin.map(row => cols.map(c => row(c)))
-    CSVWriter.write(new FileWriter(pathout), csvout)
-    println(csvout.head)
-
-  }
-
   def investment(): Unit = {
 
     val sch = new schema.DynamicSchema
@@ -236,36 +165,7 @@ object DemoTxt {
     val R = sch.read("Shoppen.json")
     val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .005, 1.02))
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
-
     Exploration.col_names(sch)
-
-  }
-
-
-  def large() = {
-    // "Large" example:
-
-    /*
-        import frontend._
-        val dcw = experiments.Tools.mkDC(100, 0.1, 1.05, 100000, Sampling.f2)
-        dcw.save("s2_d100_100k.dc")
-    */
-
-    val sch = schema.StaticSchema.mk(100)
-    val dc = core.DataCube.load("s2_d100_100k.dc")
-
-    //dc.m.projections
-    //dc.m.projections.map(_.length).groupBy(x => x).mapValues(_.length).toList.sorted
-
-    //dc.naive_eval(List(0, 1, 2, 3))
-
-    val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable)
-
-    //od.l_run(List(0, 1, 2, 3), 4)
-    od.l_run(List(0, 1, 2, 3, 4, 5), 50)
-
-    //od.ui.visible = false
-
   }
 
   def feature() = {
@@ -322,27 +222,6 @@ object DemoTxt {
 
   }
 
-  def parPlan() = {
-    val m = RandomizedMaterializationScheme(100, 0.1, 1.05)
-    println(m.projections.size)
-    val seq = m.create_build_plan()
-    val par = m.create_parallel_build_plan(8)
-
-    println(seq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n"))
-
-    par.foreach(pseq => println(pseq.map(kv => kv._3 -> kv._2).mkString("", " ", "\n")))
-  }
-
-  def sample(n: Int): Unit = {
-    val map = collection.mutable.HashMap[Long, Int]() withDefaultValue (0)
-    (1 to n).foreach { i =>
-      val s = Sampling.f2(1 << 20)
-      map(s) += 1
-    }
-    //map.foreach(println)
-    println(map.size)
-    map.filter(_._2 > 4).foreach(println)
-  }
   def backend_naive() = {
     val n_bits = 10
     val n_rows = 40
@@ -393,20 +272,10 @@ object DemoTxt {
     val display = FeatureFrameSSB(sf, dc, 50)
   }
   def main(args: Array[String]): Unit = {
-    uniformSolver()
-    //prepare()
-    //test1()
-    //loadtest()
-    //combTest()
     //investment()
-    //sample(1000)
-    //large()
-    //feature()
-    //parPlan()
+    //uniformSolver()
     //backend_naive()
+    //loadtest()
     //ssb_demo()
-
-
   }
-
 }
