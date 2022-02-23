@@ -4,7 +4,7 @@ import backend.CBackend
 import combinatorics.Combinatorics
 import core._
 import frontend.experiments.Tools
-import frontend.generators.{MBProb, MBSimple, MBSparsity, MBValue, NYC, SSB}
+import frontend.generators.{MicroBench, NYC, SSB}
 
 import java.io.PrintStream
 
@@ -197,89 +197,6 @@ object Experimenter {
 
   }
 
-  def mb_simple()(implicit shouldRecord: Boolean) = {
-    val expt = new UniformSolverOnlineExpt[Double]("mb-simple", true)
-    if (shouldRecord) expt.warmup()
-    List(6, 8, 10, 12).foreach { nb =>
-      val cg = MBSimple(nb)
-      val fullname = cg.inputname + "_all"
-      val num_iters = if(nb < 12) 100 else 10
-      (0 until num_iters).foreach { i =>
-        val (sch, r_its) = cg.generate2()
-        sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
-        val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
-        dc.cuboids.head.backend.reset
-      }
-    }
-  }
-
-  def mb_sparse()(implicit shouldRecord: Boolean) = {
-    val expt = new UniformSolverOnlineExpt[Double]("mb-sparse", true)
-    if (shouldRecord) expt.warmup()
-    List(0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.99, 0.995).foreach { s =>
-      val cg = MBSparsity(s)
-      val fullname = cg.inputname + "_all"
-
-      val num_iters = 3
-      (0 until num_iters).foreach { i =>
-        val (sch, r_its) = cg.generate2()
-        sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
-        val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
-        dc.cuboids.head.backend.reset
-      }
-    }
-  }
-
-  def mb_maxv()(implicit shouldRecord: Boolean) = {
-    val expt = new UniformSolverOnlineExpt[Double]("mb-maxv", true)
-    if (shouldRecord) expt.warmup()
-    List(10, 100, 1000, 10000).foreach { s =>
-      val cg = MBValue(s)
-      val fullname = cg.inputname + "_all"
-
-      val num_iters = 100
-      (0 until num_iters).foreach { i =>
-        val (sch, r_its) = cg.generate2()
-        sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
-        val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
-        dc.cuboids.head.backend.reset
-      }
-    }
-  }
-
-  def mb_prob()(implicit shouldRecord: Boolean) = {
-    val expt = new UniformSolverOnlineExpt[Double]("mb-prob", true)
-    if (shouldRecord) expt.warmup()
-    List(0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 0.9, 0.99).foreach { s =>
-      val cg = MBProb(s)
-      val fullname = cg.inputname + "_all"
-
-      val num_iters = 3
-      (0 until num_iters).foreach { i =>
-        val (sch, r_its) = cg.generate2()
-        sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
-        val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
-        dc.cuboids.head.backend.reset
-      }
-    }
-  }
-
   def mb2(): Unit = {
     implicit val shouldRecord = true
     val cg = NYC
@@ -304,8 +221,90 @@ object Experimenter {
         dc.cuboids.head.backend.reset
       }
     }
-
   }
+
+  def mb_dims()(implicit shouldRecord: Boolean): Unit = {
+    val expt = new UniformSolverOnlineExpt[Double]("mb-dims", true)
+    if (shouldRecord) expt.warmup()
+    List(6, 8, 10, 12).foreach { nb =>
+      val cg = MicroBench(nb, 100000, 0.5, 0.25)
+      val fullname = cg.inputname + "_all"
+      val num_iters = 30
+      (0 until num_iters).foreach { i =>
+        val (sch, r_its) = cg.generate2()
+        sch.initBeforeEncode()
+        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+        val q = 0 until cg.n_bits
+        expt.run(dc, fullname, q)
+        dc.cuboids.head.backend.reset
+      }
+    }
+  }
+
+
+  def mb_total()(implicit shouldRecord: Boolean): Unit = {
+    val expt = new UniformSolverOnlineExpt[Double]("mb-total", true)
+    if (shouldRecord) expt.warmup()
+    List(2, 3, 4, 5).foreach { tot =>
+      val cg = MicroBench(10, math.pow(10, tot).toInt, 0.5, 0.25)
+      val fullname = cg.inputname + "_all"
+      val num_iters = 30
+      (0 until num_iters).foreach { i =>
+        val (sch, r_its) = cg.generate2()
+        sch.initBeforeEncode()
+        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+        val q = 0 until cg.n_bits
+        expt.run(dc, fullname, q)
+        dc.cuboids.head.backend.reset
+      }
+    }
+  }
+
+
+  def mb_stddev()(implicit shouldRecord: Boolean): Unit = {
+    val expt = new UniformSolverOnlineExpt[Double]("mb-stddev", true)
+    if (shouldRecord) expt.warmup()
+    List(0.2, 0.4, 0.6, 0.8).foreach { stddev =>
+      val cg = MicroBench(10, 100000, stddev, 0.25)
+      val fullname = cg.inputname + "_all"
+      val num_iters = 30
+      (0 until num_iters).foreach { i =>
+        val (sch, r_its) = cg.generate2()
+        sch.initBeforeEncode()
+        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+        val q = 0 until cg.n_bits
+        expt.run(dc, fullname, q)
+        dc.cuboids.head.backend.reset
+      }
+    }
+  }
+
+  def mb_prob()(implicit shouldRecord: Boolean): Unit = {
+    val expt = new UniformSolverOnlineExpt[Double]("mb-prob", true)
+    if (shouldRecord) expt.warmup()
+    List(0.1, 0.2, 0.3, 0.4).foreach { prob =>
+      val cg = MicroBench(10, 100000, 0.5, prob)
+      val fullname = cg.inputname + "_all"
+      val num_iters = 30
+      (0 until num_iters).foreach { i =>
+        val (sch, r_its) = cg.generate2()
+        sch.initBeforeEncode()
+        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+        val q = 0 until cg.n_bits
+        expt.run(dc, fullname, q)
+        dc.cuboids.head.backend.reset
+      }
+    }
+  }
+
   def debug(): Unit = {
     implicit val shouldRecord = false
     val cg = NYC
@@ -316,9 +315,9 @@ object Experimenter {
     //val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
 
 
-    //val q1 = List(141, 142, 143, 144, 165, 192)
+    val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355, 393, 428)
     //val q2 = List(116, 117, 118, 119, 120, 129, 130, 131, 137, 138, 139, 155, 172, 180, 192)
-    //val queries = List(q1, q2)
+    val queries = List(q1)
     ////val numQs = sch.root.numPrefixUpto(15)
     ////(0 until 15).map(i => println(s"$i => " + numQs(i)))
     //
@@ -366,11 +365,10 @@ object Experimenter {
     //uniform_cubes(false)
     //uniform_qsize(true)
     //uniform_qsize(false)
-    //mb_simple()
-    //mb_maxv()
-    //mb_sparse()
-    //mb_prob()
-    mb2()
+    mb_dims()
+    mb_total()
+    mb_stddev()
+    mb_prob()
     //cubestats()
     //multi_storage(true)
     //multi_storage(false)

@@ -276,16 +276,18 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   //assumes query is of form 0..x and all cuboids are materialized
   def prepare_online_full(query: Seq[Int], cheap_size: Int) = {
     val PI = projections.zipWithIndex
-    val qmax = query.max
-    val res = PI.flatMap{ xid =>
-      val len = xid._1.size
-      //select only cheap cuboids that are useful without projection
-      if(len < cheap_size || xid._1.max > qmax) None else {
-        val mask = Seq.fill(len)(1)
-        Some(ProjectionMetaData(xid._1, xid._1, mask, xid._2))
+    val qBS = query.toSet
+    val qIS = query.toIndexedSeq
+    val res = PI.flatMap { xid =>
+      val pset = xid._1.toSet
+      if(pset.size < cheap_size || !pset.diff(qBS).isEmpty) None else {
+        val ab0 = pset // unnormalized
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(xid._1, qBS)
+        Some(ProjectionMetaData(ab, ab0, mask, xid._2))
       }
-    }
-    res.sortBy(_.mask.length)
+    }.sortBy(_.mask.length)
+    res
   }
 }
 object MaterializationScheme {

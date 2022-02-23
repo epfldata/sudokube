@@ -15,7 +15,7 @@ object OnlinePlotter {
   import KEY._
   def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey:Int, Ykey: Int) = {
 
-    val data = CSVReader.read(new FileReader(s"expdata/current/$name")).tail
+    val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
     val iterKey = 1
 
 
@@ -97,7 +97,7 @@ object OnlinePlotter {
 
     val t1 = "Mean " + ykey
     //plt.title = t1 + (if(isQuerySize) " for cube log(rf) = -16" else " for query size 10")
-    val csvout = new PrintStream(s"expdata/current/${name.dropRight(4)}-$ykey.csv")
+    val csvout = new PrintStream(s"expdata/${name.dropRight(4)}-$ykey.csv")
 
     data.map { case (n, d1) =>
       //val (n,d1) = data.head

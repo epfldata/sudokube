@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Avg2, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Avg2, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, CoMoment4, Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 /**
@@ -36,6 +36,8 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
 
   //Which moments do we know ?
   val knownSums = collection.mutable.BitSet()
+
+  val qArray = Array.fill(N)(Array.fill(qsize)(num.zero))
 
   //Stores products of 1D moments. p1 = m1/m0  p2 = m2/m0, p3 = p1 * p2
   val meanProducts = new Array[T](N)
@@ -244,7 +246,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
           }
         }
       } else {
-        lattice.nodes(0).value = delta
+        lattice.nodes(row).value = delta
       }
     }
   }
@@ -437,7 +439,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
     //}
 
     //For strategies other than CoMoment3, we iterate over all missing moments and set values
-    if (strategy != CoMoment3 && strategy != MeanProduct) {
+    if (strategy != CoMoment3 && strategy != MeanProduct && strategy != CoMoment4) {
       Profiler(s"SetDefaultValueAll $strategy") {
         toSolve.foreach { r =>
           setDefaultValue(r)
@@ -488,10 +490,30 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
       }
 
     }
+    if(strategy == CoMoment4){
+      fillMissingComoment4()
+    }
 
     //println(sumValues.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
   }
-
+  def fillMissingComoment4() = {
+    (0 until N).foreach{i =>
+      val bits = Bits.fromInt(i)
+      val w = bits.length
+      val parents = bits.map(b => i - (1<<b))
+      if(!knownSums(i)) {
+          val qsum = parents.map{k => num.times(qArray(k)(w-1), meanProducts(i-k))}.sum
+          //println(s"m[$i] = $qsum")
+          sumValues(i) = qsum
+      }
+      (w + 1 to qsize).map { j =>
+        val qsum = parents.map{k =>num.times(qArray(k)(j-1), meanProducts(i-k))}.sum
+        val q = num.minus(sumValues(i), num.div(qsum, num.fromInt(j-w+1)))
+        //println(s"q[$i][$j] = $q")
+        qArray(i)(j-1) = q
+      }
+    }
+  }
 
   /** Adds a cuboid data to solver */
   def add(cols: Seq[Int], values: Array[T]) = {
@@ -527,7 +549,7 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
           strategy match {
             //special handling of negative values for these algorithms
             //this can only result in lower error (at least, I think so)
-            case CoMomentFrechet | Cumulant2 | CoMoment3 | MeanProduct =>
+            case  _ =>
               if (num.lt(diff, num.zero)) {
                 val half = num.div(result(j) , num.fromInt(2))
                 result(j + h) = half
@@ -542,7 +564,6 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
                 //result(j + h) = num.zero
               } else
                 result(j) = diff
-            case _ => result(j) = diff
           }
         }
       }
