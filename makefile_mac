@@ -6,7 +6,7 @@ CP=~/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.7.jar
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_281.jdk/Contents/Home
 
 all:
-    sbt compile
+	sbt compile
 	javah -cp $(CP):target/scala-2.12/classes:. backend.CBackend
 	g++ -std=c++11 -dynamiclib -O3 -I/usr/include -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin -I. src/main/cpp/CBackend.cpp src/main/cpp/CubeArrays.cpp  -o libCBackend.dylib
 
