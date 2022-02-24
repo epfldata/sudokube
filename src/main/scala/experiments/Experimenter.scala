@@ -57,7 +57,7 @@ object Experimenter {
         |\begin{tabular}{|c|c|c|c|c|c|}
         |\hline
         |""".stripMargin +
-        "Dataset & " + split("Base \\\\ Size") + s"& logn & " + "$d_{min}$ & " + split("RMS \\\\ Ovrhd.") + "&" + split("SMS \\\\ Ovrhd.") + " \\\\ \n \\hline \n")
+        "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Ovrhd.") + "&" + split("SMS \\\\ Ovrhd.") + " \\\\ \n \\hline \n")
     val params = List(
       "NYC" -> "14_23_0",
       "NYC" -> "15_20_0",
@@ -90,7 +90,7 @@ object Experimenter {
       else ("\\hline\nSSB", s"$baseGB GB")
 
 
-      fileout.println(s"$ds & $bs & $logN & $mod & $rmsovrhead & $smsvrhead \\\\")
+      fileout.println(s"$ds & $bs & " + "$2^{" + logN +"}$" +s" & $mod & $rmsovrhead & $smsvrhead \\\\")
 
     }
     fileout.println(
@@ -358,19 +358,26 @@ object Experimenter {
 
   def main(args: Array[String]) {
     implicit val shouldRecord = true
-    //debug()
-    //lpp_qsize(true)
-    //lpp_qsize(false)
-    //uniform_cubes(true)
-    //uniform_cubes(false)
-    //uniform_qsize(true)
-    //uniform_qsize(false)
-    mb_dims()
-    mb_total()
-    mb_stddev()
-    mb_prob()
-    //cubestats()
-    //multi_storage(true)
-    //multi_storage(false)
+
+    args.lift(0).getOrElse("debug") match {
+      case "Fig7" =>
+        multi_storage(false)
+        multi_storage(true)
+      case "Tab1" =>  cubestats()
+      case "Fig8" =>
+        lpp_qsize(false)
+        lpp_qsize(true)
+      case "Fig9" =>
+        uniform_qsize(false)
+        uniform_qsize(true)
+      case "Fig10" =>
+        uniform_cubes(false)
+        uniform_cubes(true)
+      case "Fig11" =>
+        mb_dims()
+        mb_stddev()
+        mb_prob()
+      case _ => debug()
+    }
   }
 }
