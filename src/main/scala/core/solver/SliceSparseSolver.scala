@@ -99,7 +99,7 @@ class SliceSparseSolver[T](
       if (total == num.zero) {
         solved_vars ++= vars
         vars.foreach { v =>
-          if (M.data(v) == None) {  //Do not replace existing equation
+          if (M.data(v) == None) { //Do not replace existing equation
             M.data(v) = Some(SparseRow(n_vars + 1, Map(v -> num.one)))
             n_det_vars += 1
             new_pivots = v :: new_pivots
@@ -183,7 +183,7 @@ class SliceSparseSolver[T](
   }
 
   override protected def propagate_bounds0(vars: Seq[Int]): Seq[Int] = {
-    val pi = new ProgressIndicator(det_vars.size, "PropBounds0")
+    //val pi = new ProgressIndicator(det_vars.size, "PropBounds0")
     val result = (for (row <- det_vars) yield {
       val r_vars = M(row).domain.filter(k => k != n_vars && sliceFunc(k)) //only update slice vars
       val i = r_vars.intersect(vars)
@@ -198,7 +198,7 @@ class SliceSparseSolver[T](
         }
         else None
       }).flatten)
-      pi.step
+      //pi.step
       res
     }).flatten.flatten.toSet.toList
     result

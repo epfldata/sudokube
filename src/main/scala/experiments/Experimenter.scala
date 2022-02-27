@@ -26,6 +26,7 @@ object Experimenter {
     fileout.println("Name," + (0 to maxD).mkString(","))
     cubes.foreach { n =>
       val names = n.split("_")
+      println(s"Getting cuboid distribution for $n")
       val logN = names(2).toInt
       val mod = names(3).toInt
       val dc = PartialDataCube.load2(n, cg.inputname + "_base")
@@ -72,12 +73,14 @@ object Experimenter {
       val rmsname = cgname + "_rms_" + cubename
       val smsname = cgname + "_sms_" + cubename
 
+      println(s"Getting storage overhead for $rmsname")
       val dcrms = PartialDataCube.load2(rmsname, cgname + "_base")
       val basesize = dcrms.cuboids.last.numBytes
       val baseGB = Tools.round(basesize / math.pow(10, 9), 2)
       val rmsovrhead = Tools.round(dcrms.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0, 4)
       dcrms.cuboids.head.backend.reset
 
+      println(s"Getting storage overhead for $smsname")
       val dcsms = PartialDataCube.load2(smsname, cgname + "_base")
       val smsvrhead = Tools.round(dcsms.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0, 4)
       dcsms.cuboids.head.backend.reset
@@ -102,33 +105,38 @@ object Experimenter {
 
   def lpp_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
     val cg = SSB(100)
+
     val param = "15_14"
     val ms = (if (isSMS) "sms" else "rms")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
     val sch = cg.schema()
-    val qss = List(6, 8, 10, 12)
 
-    val queries = qss.flatMap { qs =>
-      (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
-    }
 
     val expname2 = s"query-dim-$ms"
 
     import RationalTools._
     val expt = new LPSolverBatchExpt[Rational](expname2)
     if (shouldRecord) expt.warmup()
-    val ql = queries.length
-    queries.zipWithIndex.foreach { case (q, i) =>
-      println(s"Full Query $i/$ql")
-      expt.run(dc, fullname, q, true)
+    val qss = List(6, 8, 10, 12)
+    qss.foreach { qs =>
+      println(s"LP Solver Experiment for MS = $ms Query Dimensionality = $qs")
+      val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Batch Query $i/$ql")
+        expt.run(dc, fullname, q, true)
+      }
     }
+
+
     dc.cuboids.head.backend.reset
   }
 
 
   def moment_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+
     val cg = SSB(100)
     val param = "15_14"
     val ms = (if (isSMS) "sms" else "rms")
@@ -136,30 +144,34 @@ object Experimenter {
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
     val sch = cg.schema()
-    val qss = List(6, 9, 12, 15)
-    val queries = qss.flatMap { qs =>
-      (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
-    }
 
     val expname2 = s"query-dim-$ms"
     val exptfull = new MomentSolverBatchExpt[Double](expname2)
     if (shouldRecord) exptfull.warmup()
-    val ql = queries.length
-    queries.zipWithIndex.foreach { case (q, i) =>
-      println(s"Full Query $i/$ql")
-      exptfull.run(dc, fullname, q)
-    }
 
     val exptonline = new MomentSolverOnlineExpt[Double](expname2)
     if (shouldRecord) exptonline.warmup()
-    queries.zipWithIndex.foreach { case (q, i) =>
-      println(s"Online Query $i/$ql")
-      exptonline.run(dc, fullname, q)
+
+    val qss = List(6, 9, 12, 15)
+    qss.foreach { qs =>
+      val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
+      println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Batch Query ${i + 1}/$ql")
+        exptfull.run(dc, fullname, q)
+      }
+
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Online Query ${i + 1}/$ql")
+        exptonline.run(dc, fullname, q)
+      }
     }
     dc.cuboids.head.backend.reset
   }
 
   def moment_mat_params(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
+
     val cg = NYC
     val params = List(
       (14, 10),
@@ -181,15 +193,15 @@ object Experimenter {
     params.foreach { p =>
       val fullname = s"${cg.inputname}_${ms}_${p._1}_${p._2}"
       val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
-
+      println(s"Moment Solver Materialization Parameters Experiment for $fullname")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Full Query $i/$ql")
+        println(s"Batch Query ${i + 1}/$ql")
         exptfull.run(dc, fullname, q)
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Online Query $i/$ql")
+        println(s"Online Query ${i + 1}/$ql")
         exptonline.run(dc, fullname, q)
       }
 
@@ -201,11 +213,14 @@ object Experimenter {
   def mb_dims()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val expt = new MomentSolverOnlineExpt[Double]("mb-dims", true)
     if (shouldRecord) expt.warmup()
+
     List(6, 8, 10, 12).foreach { nb =>
+      println("Microbenchmark for Dimensionality = " + nb)
       val cg = MicroBench(nb, 100000, 0.5, 0.25)
       val fullname = cg.inputname + "_all"
 
-      (0 until numIters).foreach { i =>
+      (1 to numIters).foreach { i =>
+        println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
@@ -223,9 +238,11 @@ object Experimenter {
     val expt = new MomentSolverOnlineExpt[Double]("mb-total", true)
     if (shouldRecord) expt.warmup()
     List(2, 3, 4, 5).foreach { tot =>
+      println("Microbenchmark Total = 10^" + tot)
       val cg = MicroBench(10, math.pow(10, tot).toInt, 0.5, 0.25)
       val fullname = cg.inputname + "_all"
-      (0 until numIters).foreach { i =>
+      (1 to numIters).foreach { i =>
+        println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
@@ -243,9 +260,11 @@ object Experimenter {
     val expt = new MomentSolverOnlineExpt[Double]("mb-stddev", true)
     if (shouldRecord) expt.warmup()
     List(0.2, 0.4, 0.6, 0.8).foreach { stddev =>
+      println("Microbenchmark for stddev = " + stddev)
       val cg = MicroBench(10, 100000, stddev, 0.25)
       val fullname = cg.inputname + "_all"
-      (0 until numIters).foreach { i =>
+      (1 to numIters).foreach { i =>
+        println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
@@ -262,9 +281,11 @@ object Experimenter {
     val expt = new MomentSolverOnlineExpt[Double]("mb-prob", true)
     if (shouldRecord) expt.warmup()
     List(0.1, 0.2, 0.3, 0.4).foreach { prob =>
+      println("Microbenchmark for prob = " + prob)
       val cg = MicroBench(10, 100000, 0.5, prob)
       val fullname = cg.inputname + "_all"
-      (0 until numIters).foreach { i =>
+      (1 to numIters).foreach { i =>
+        println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))

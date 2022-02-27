@@ -312,7 +312,7 @@ void dense_print(unsigned int d_id, unsigned int n_bits) {
  */
 void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
                      unsigned int id_array[], unsigned int numCuboids) {
-    printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
+    //printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "r");
     assert(fp != NULL);
     byte **buffer_array = new byte *[numCuboids];
