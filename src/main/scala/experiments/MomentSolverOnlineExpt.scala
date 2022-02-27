@@ -11,10 +11,10 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
-class UniformSolverOnlineExpt[T:Fractional:ClassTag]( val ename2: String = "", containsAllCuboids: Boolean = false)(implicit  shouldRecord: Boolean) extends Experiment( "US-Online", ename2) {
+class MomentSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment( "moment-online", ename2) {
 
   fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query")
-  println("Uniform Solver of type " + implicitly[ClassTag[T]])
+  //println("Moment Solver of type " + implicitly[ClassTag[T]])
 
 
   override def warmup(nw: Int): Unit = if(!containsAllCuboids) super.warmup(nw) else {
@@ -27,7 +27,7 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag]( val ename2: String = "", c
   def run(dc: DataCube, dcname: String,  qu: Seq[Int], output: Boolean = true): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
-    println(s"\nQuery size = ${q.size} \nQuery = " + qu)
+    //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
     val s = new UniformSolver(q.size, CoMoment3)
     var maxDimFetched = 0
@@ -41,7 +41,7 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag]( val ename2: String = "", c
       dc.m.prepare_online_agg(q, 1)
     }
     val totalsize = l.size
-    println("Prepare over. #Cuboids to fetch = " + totalsize)
+    //println("Prepare over. #Cuboids to fetch = " + totalsize)
     Profiler.print()
     val pi = new ProgressIndicator(l.size)
     //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
@@ -69,8 +69,8 @@ class UniformSolverOnlineExpt[T:Fractional:ClassTag]( val ename2: String = "", c
     if(output) {
       stg.stats.foreach { case (time, count, (maxdim, (dof, sol))) =>
         val err = error(naiveRes, sol)
-        if(count % step == 0 || dof < 100 || count < 100)
-          println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
+        //if(count % step == 0 || dof < 100 || count < 100)
+        //  println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
         fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr")
       }
       queryCounter += 1

@@ -57,8 +57,7 @@ object OnlinePlotter {
       res1 :+ (maxt + 0.01 -> 0.0)
   }
 
-  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value) = {
-    val isQuerySize = name.endsWith("qs.csv")
+  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, isQuerySize: Boolean) = {
     def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
     def filterQuerySize(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
     val isLPP = name.startsWith("LP")
@@ -144,12 +143,14 @@ object OnlinePlotter {
       case "dof" =>  DOF
       case "error" => ERROR
     }
-    val name3 = args(0)
-    val xkey = args.lift(1).map(argsMap).getOrElse(TIME)
-    val ykey = args.lift(2).map(argsMap).getOrElse(ERROR)
+    val name = args(0)
+    val isQuerySize = args(1) == "qsize"
+    val xkey = args.lift(2).map(argsMap).getOrElse(TIME)
+    val ykey = args.lift(3).map(argsMap).getOrElse(ERROR)
+
     //myplot(name3, DOF, true)
     //myplot(name3, MAXDIM, true)
-    myplot(name3, xkey, ykey)
+    myplot(name, xkey, ykey, isQuerySize)
 
   }
 }

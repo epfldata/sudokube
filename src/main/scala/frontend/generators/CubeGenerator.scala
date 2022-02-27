@@ -33,9 +33,9 @@ abstract class CubeGenerator(val inputname: String) {
 
   def loadBase() = {
     val sch = schema()
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    println("Total = "+sch.n_bits)
-    println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
+    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    //println("Total = "+sch.n_bits)
+    //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
     val dc = DataCube.load2(baseName)
     (sch, dc)
   }
@@ -62,20 +62,20 @@ abstract class CubeGenerator(val inputname: String) {
   }
   def multiload(params: Seq[(Double, Double)]) = {
     val sch = StructuredDynamicSchema.load(inputname)
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
     val dcs = params.map{p => p -> loadDC(p._1, p._2)}
     (sch, dcs)
   }
   def load2() = {
     val sch = StructuredDynamicSchema.load(inputname)
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
     val dc = DataCube.load2(s"${inputname}_sch")
     (sch, dc)
   }
   def load(lrf: Double, lbase: Double) = {
     val sch = StructuredDynamicSchema.load(inputname)
-    sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    println("Total = "+sch.n_bits)
+    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
+    //println("Total = "+sch.n_bits)
     val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }

@@ -114,11 +114,11 @@ class SliceSparseSolver[T](
       }
     }
 
-    println((n_det_vars - old_n_det_vars) + " rows (out of "
-      + eqs.length + ") added (#df=" + df
-      + ", #det=" + n_det_vars
-      + ", #solved=" + solved_vars.size
-      + ", cum.span=" + cumulative_interval_span + ")")
+    //println((n_det_vars - old_n_det_vars) + " rows (out of "
+    //  + eqs.length + ") added (#df=" + df
+    //  + ", #det=" + n_det_vars
+    //  + ", #solved=" + solved_vars.size
+    //  + ", cum.span=" + cumulative_interval_span + ")")
     new_pivots
   }
 
@@ -208,9 +208,9 @@ class SliceSparseSolver[T](
     val all_vars = (0 until n_vars)
     val unsolved_vars = all_vars.filter(!solved_vars.contains(_))
     val obj_vars = unsolved_vars.filter(sliceFunc)
-    println(s"Computing bounds for ${
-      obj_vars.length
-    }/$n_vars")
+    //println(s"Computing bounds for ${
+    //  obj_vars.length
+    //}/$n_vars")
 
     if (df > 30) {
       val p1 = Profiler.noprofile("Super Prop Bounds") {

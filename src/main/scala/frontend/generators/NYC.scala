@@ -87,8 +87,8 @@ object NYC extends CubeGenerator("NYC") {
     val allDims = dims0to9 ++ dim10to19 ++ dims20to29 ++ dims30to39 // ++ dims40to42
 
     val sch = new StaticSchema2(allDims)
-    sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
-    println("Total = "+sch.n_bits)
+    //sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
+    //println("Total = "+sch.n_bits)
     sch
   }
 
@@ -100,37 +100,22 @@ object NYC extends CubeGenerator("NYC") {
 
   def main(args: Array[String]): Unit = {
     //saveBase()
-    //val sch = schema()
+    val sch = schema()
     val cg = this
-    val (sch,dc) = loadBase()
-    //sch.root.numPrefixUpto(25).zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
 
     List(
-      //(15, 22, 0)
-      (16, 29, 0),(15, 28, 0),(14, 27, 0)
-      //(16, 21, 0), (16, 25, 0), (16, 29, 0)
-      //(15, 20, 0), (15, 24, 0), (15, 28, 0),
-      //(14, 19, 0), (14, 23, 0), (14, 27, 0)
-    ).map { case (maxN, maxD, logsf) =>
+      (16, 10),(14, 10),
+      (15, 6), (15, 10), (15, 14)
+    ).map { case (maxN, minD) =>
+      val logsf = 0
+      val maxD = maxN + minD - 1
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
-      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
+      dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
       val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
       dc3.build()
-      dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+      dc3.save2(s"${cg.inputname}_sms_${maxN}_${minD}")
     }
-    //val base = dc.cuboids.head
-    //(0 to 5).foreach { i => val d = 6 + 3*i
-    //  val q= Tools.rand_q(sch.n_bits, d)
-    //  val mask = (0 until sch.n_bits).map(i => if(q.contains(i)) 1 else 0).toArray
-    //  val start = System.currentTimeMillis()
-    //  val c = base.rehash(mask)
-    //  val end = System.currentTimeMillis()
-    //  val dur = (end-start)/1000.0
-    //  println(s"Dim $d  Size=${c.size} Time=$dur s\n\n")
-    //}
-    //Util.collect_n(100, () => sch.root.samplePrefix(10)).foreach(println)
-    //buildFromBase(-80.6, 0.19)
 
   }
 }

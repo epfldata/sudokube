@@ -209,9 +209,9 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
   def getDefaultValueCumulant2(row: Int) = {
     val parts = getPart(row)
     if (parts.size > 1000) {
-      println(parts.size)
+      //println(parts.size)
       val parts2 = parts.map(p => p.toSet).toSet
-      println(parts2.size)
+      //println(parts2.size)
       assert(parts.map(part => part.map(x => knownSums(x)).reduce(_ && _)).reduce(_ && _))
       //parts.foreach( x => println(x.size))
       ()

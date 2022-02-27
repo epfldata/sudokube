@@ -6,15 +6,15 @@ import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import scala.reflect.ClassTag
 
-class LPSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("LP-Online", ename2) {
+class LPSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("lp-online", ename2) {
   fileout.println("Name,Query,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim")
-  println("LP Solver of type " + implicitly[ClassTag[T]])
+  //println("LP Solver of type " + implicitly[ClassTag[T]])
 
 
   def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
     val qstr = qu.mkString(":")
-    println(s"\nQuery size = ${q.size} \nQuery = " + qu)
+    //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
 
     val naiveRes = Profiler("Naive Full") {
@@ -30,7 +30,7 @@ class LPSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "")(implici
       dc.m.prepare_online_agg(q, 30)
     }
     val totalsize = l.size
-    println("Prepare over. #Cuboids to fetch = " + totalsize)
+    //println("Prepare over. #Cuboids to fetch = " + totalsize)
     Profiler.print()
     val pi = new ProgressIndicator(l.size)
 
@@ -55,8 +55,8 @@ class LPSolverOnlineExpt[T:Fractional:ClassTag](val ename2: String = "")(implici
     if (output) {
       stg.stats.foreach { case (time, count, (maxDim, (dof, solved, span))) =>
         val err = span/total
-        if (count % step == 0 || dof < 100 || count < 100)
-          println(s"$count @ $time : dof=$dof err=$err maxDim=$maxDim")
+        //if (count % step == 0 || dof < 100 || count < 100)
+        //  println(s"$count @ $time : dof=$dof err=$err maxDim=$maxDim")
         fileout.println(s"$dcname,$qstr,${q.size},$count,${time},$dof,$err,$maxDim")
       }
     }

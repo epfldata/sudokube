@@ -15,11 +15,11 @@ import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 
-class UniformSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("US-Full", ename2){
+class MomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("moment-batch", ename2){
 
   val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
   fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  SolversTotalTime(us), UPrepareTime(us), UFetchTime(us), USolveMaxDimFetched, " + strategies.map(a => s"$a SolveTime(us), $a Err").mkString(", "))
-  println("Uniform Solver of type " + implicitly[ClassTag[T]])
+  //println("Moment Solver of type " + implicitly[ClassTag[T]])
 
   def uniform_solve(dc: DataCube, q: Seq[Int]) = {
 
@@ -27,7 +27,7 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(impl
       dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1)
     }
     val maxDimFetch = l.last.mask.length
-    println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
+    //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
     val fetched =  Profiler("USolve Fetch") {
      l.map { pm =>
        (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
@@ -57,12 +57,12 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(impl
 
   def run(dc: DataCube, dcname:String, qu: Seq[Int], output: Boolean = true) = {
     val q = qu.sorted
-    println(s"\nQuery size = ${q.size} \nQuery = " + qu)
+    //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Full"){
       val l = Profiler("NaivePrepare"){dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)}
       val maxDim = l.head.mask.length
-      println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
+      //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
       val res = Profiler("NaiveFetch"){dc.fetch(l).map(p => p.sm.toDouble)}
       (res, maxDim)
     }
@@ -77,8 +77,8 @@ class UniformSolverFullExpt[T:Fractional:ClassTag](val ename2: String = "")(impl
     val dof = solverRes.head.dof
     val knownSums = solverRes.head.knownSums
 
-    println("DOF = " + dof)
-    println("Errors = " + errors.map(_._2).mkString("   "))
+    //println("DOF = " + dof)
+    //println("Errors = " + errors.map(_._2).mkString("   "))
 
     val prec = 1000.0
     //val allcums = naiveCum.indices.map { i =>

@@ -51,6 +51,25 @@ object Util {
     ab
   }
 
+  // Intersection for two sorted lists a and b
+  def intersect(a: List[Int], b: List[Int]): List[Int] = {
+    var x = a
+    var y = b
+    var result = List[Int]()
+    while(x != Nil && y != Nil) {
+      if(x.head > y.head)
+        y = y.tail
+      else if (x.head < y.head)
+        x = x.tail
+      else {
+        result = x.head :: result
+        x = x.tail
+        y = y.tail
+      }
+    }
+    result.reverse
+  }
+
   def complement[T](univ: Seq[T], s: Seq[T]) =
     univ.filter(x => ! s.contains(x))
 

@@ -103,8 +103,8 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val allDims = Vector(ordDims, custDims, suppDims, partDims)
     val sch = new StaticSchema2(allDims)
 
-    sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
-    println("Total = "+sch.n_bits)
+    //sch.columnVector.map(c => s"${c.name} has ${c.encoder.bits.size} bits = ${c.encoder.bits}").foreach(println)
+    //println("Total = "+sch.n_bits)
 
     //sch.queriesUpto(25).mapValues(_.size).toList.sortBy(_._1).foreach{case (k,v) => println(s"$k\t $v")}
     sch
@@ -171,7 +171,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     else
       (0 until sf*10).map { i => fetchPart("lineorder", (0 until 17).toVector)(i) }
 
-    println("LO Parts  = " + los.size)
+    //println("LO Parts  = " + los.size)
     val jos = los.map{ case (n, it) => n -> it.map(joinFunc)}
 
     (sch, jos)
@@ -183,46 +183,19 @@ object SSBTest {
     val cg = SSB(100)
     //val (sch, dc) = cg.saveBase
     val sch = cg.schema()
-    //val (sch,dc) = cg.loadBase()
-
-    //{
-    //  val maxN = 15
-    //  val maxD = 19
-    //  val logsf = 0
-    //  val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
-    //  dc2.build()
-    //  dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
-    //  val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
-    //  dc3.build()
-    //  dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
-    //}
 
     List(
-      //(15, 19), (15, 22)
-      (15, 28)
-    ).map { case (maxN, maxD) =>
-      //val maxN = 15
-      //val maxD = 25
+      (15, 14)
+    ).map { case (maxN, minD) =>
+      val maxD = maxN + minD - 1
       val logsf = 0
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
       dc2.build()
-      dc2.save2(s"${cg.inputname}_rms2_${maxN}_${maxD}_${logsf}")
+      dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
       val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
       dc3.build()
-      dc3.save2(s"${cg.inputname}_sms_${maxN}_${maxD}_${logsf}")
+      dc3.save2(s"${cg.inputname}_sms_${maxN}_${minD}")
     }
-
-    //val base = dc.cuboids.head
-    //(0 to 20).foreach { d =>
-    //  val q= Tools.rand_q(sch.n_bits, d)
-    //  val mask = (0 until sch.n_bits).map(i => if(q.contains(i)) 1 else 0).toArray
-    //  val start = System.currentTimeMillis()
-    //  val c = base.rehash(mask)
-    //  val end = System.currentTimeMillis()
-    //  val dur = (end-start)/1000.0
-    //  println(s"Dim $d  Size=${c.size} Time=$dur s\n\n")
-    //}
-    //cg.saveBase()
 
   }
 }
