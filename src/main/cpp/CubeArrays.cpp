@@ -747,6 +747,757 @@ unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int ma
     return d_id;
 }
 
+unsigned int s2drehash_optimized1(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 1.\n");
+    // mask = {0,1,2,3}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t bits = ~(~0L << 4);
+        size_t i = from_key[0] & bits; // CHANGE HERE
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized2(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 2.\n");
+    // mask = mask = {0,1,2,3,4,5,6,7}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t bits = ~(~0L << 8);
+        size_t i = from_key[0] & bits; // CHANGE HERE
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized3(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 3.\n");
+    // mask = mask = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t bits = ~(~0L << 16);
+        size_t from = from_key[0] | (from_key[1] << 8);
+        size_t i = from & bits; // CHANGE HERE
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized4(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 4.\n");
+    // mask = {4,5,6,7}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t bits = (~(~0L << 4))<<4;
+        size_t i = (from_key[0] & bits)>>4;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized5(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 5.\n");
+    // mask = {4,5,6,7,12,13,14,15}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        //{4,5,6,7}
+        size_t bits = (~(~0L << 4))<<4;
+        size_t i = (from_key[0] & bits)>>4;
+
+        //{12,13,14,15}
+        i |= (from_key[1] & bits);
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized6(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 6.\n");
+    // mask = {1,3,5,7}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        size_t from = from_key[0];
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1;
+        i |= (from & bit) >> 1; // right shift by rpos - wpos
+
+        // rpos=3 wpos=1
+        bit = 1 << 3;
+        i |= (from & bit) >> 2;
+
+        // rpos=5 wpos=2
+        bit = 1 << 5;
+        i |= (from & bit) >> 3;
+
+        // rpos=7 wpos=3
+        bit = 1 << 7;
+        i |= (from & bit) >> 4;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized7(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,3,5,7,9,11,13,15}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        size_t from = from_key[0] | (from_key[1] << 8);;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1;
+        i |= (from & bit) >> 1; // right shift by rpos - wpos
+
+        // rpos=3 wpos=1
+        bit = 1 << 3;
+        i |= (from & bit) >> 2;
+
+        // rpos=5 wpos=2
+        bit = 1 << 5;
+        i |= (from & bit) >> 3;
+
+        // rpos=7 wpos=3
+        bit = 1 << 7;
+        i |= (from & bit) >> 4;
+
+        // rpos=9 wpos=4
+        bit = 1 << 9;
+        i |= (from & bit) >> 5;
+
+        // rpos=11 wpos=5
+        bit = 1 << 11;
+        i |= (from & bit) >> 6;
+
+        // rpos=13 wpos=6
+        bit = 1 << 13;
+        i |= (from & bit) >> 7;
+
+        // rpos=15 wpos=7
+        bit = 1 << 15;
+        i |= (from & bit) >> 8;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized8(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,34,203,301}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1; //left shift by rpos%8
+        i |= (from_key[0] & bit) >> 1; // get from_key[rpos/8] .. and right shift by (rpos%8 - wpos)
+
+        // rpos=34 wpos=1
+        bit = 1 << 2;
+        i |= (from_key[4] & bit) >> 1;
+
+        // rpos=203 wpos=2
+        bit = 1 << 3;
+        i |= (from_key[25] & bit) >> 1;
+
+        // rpos=301 wpos=3
+        bit = 1 << 5;
+        i |= (from_key[37] & bit) >> 2;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        // printf("i: %d I_stan: %d\n", i, i_standard);
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized9(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,34,73,145,203,262,301,390}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1; //left shift by rpos%8
+        i |= (from_key[0] & bit) >> 1; // get from_key[rpos/8] .. and right shift by (rpos%8 - wpos)
+
+        // rpos=34 wpos=1
+        bit = 1 << 2;
+        i |= (from_key[4] & bit) >> 1;
+
+        // rpos=73 wpos=2
+        bit = 1 << 1;
+        i |= (from_key[9] & bit) << 1;
+
+        // rpos=145 wpos=3
+        bit = 1 << 1;
+        i |= (from_key[18] & bit) << 2;
+
+        // rpos=203 wpos=4
+        bit = 1 << 3; //left shift by rpos%8
+        i |= (from_key[25] & bit) << 1; // get from_key[rpos/8] .. and right shift by (rpos%8 - wpos)
+
+        // rpos=262 wpos=5
+        bit = 1 << 6;
+        i |= (from_key[32] & bit) >> 1;
+
+        // rpos=301 wpos=6
+        bit = 1 << 5;
+        i |= (from_key[37] & bit) << 1;
+
+        // rpos=390 wpos=7
+        bit = 1 << 6;
+        i |= (from_key[48] & bit) << 1;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        // printf("i: %d I_stan: %d\n", i, i_standard);
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized10(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,34,73,88,120,145,203,210,237,262,285,291,301,333,345,390}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1;
+        i |= (from_key[0] & bit) >> 1;
+
+        // rpos=34 wpos=1
+        bit = 1 << 2;
+        i |= (from_key[4] & bit) >> 1;
+
+        // rpos=73 wpos=2
+        bit = 1 << 1;
+        i |= (from_key[9] & bit) << 1;
+
+        // rpos=88 wpos=3
+        bit = 1 << 0;
+        i |= (from_key[11] & bit) << 3;
+
+        // rpos=120 wpos=4
+        bit = 1 << 0;
+        i |= (from_key[15] & bit) << 4;
+
+        // rpos=145 wpos=5
+        bit = 1 << 1;
+        i |= (from_key[18] & bit) << 4;
+
+        // rpos=203 wpos=6
+        bit = 1 << 3;
+        i |= (from_key[25] & bit) << 3;
+
+        // rpos=210 wpos=7
+        bit = 1 << 2;
+        i |= (from_key[26] & bit) << 5;
+
+        // rpos=237 wpos=8
+        bit = 1 << 5;
+        i |= (from_key[29] & bit) << 3;
+
+        // rpos=262 wpos=9
+        bit = 1 << 6;
+        i |= (from_key[32] & bit) << 3;
+
+        // rpos=285 wpos=10
+        bit = 1 << 5;
+        i |= (from_key[35] & bit) << 5;
+
+        // rpos=291 wpos=11
+        bit = 1 << 3;
+        i |= (from_key[36] & bit) << 8;
+
+        // rpos=301 wpos=12
+        bit = 1 << 5;
+        i |= (from_key[37] & bit) << 7;
+
+        // rpos=333 wpos=13
+        bit = 1 << 5;
+        i |= (from_key[41] & bit) << 8;
+
+        // rpos=345 wpos=14
+        bit = 1 << 1;
+        i |= (from_key[43] & bit) << 13;
+
+        // rpos=390 wpos=15
+        bit = 1 << 6;
+        i |= (from_key[48] & bit) << 9;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        // printf("i: %d I_stan: %d\n", i, i_standard);
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized11(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,34,73,88,145,203,210,262,285,291,333,390}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1;
+        i |= (from_key[0] & bit) >> 1;
+
+        // rpos=34 wpos=1
+        bit = 1 << 2;
+        i |= (from_key[4] & bit) >> 1;
+
+        // rpos=73 wpos=2
+        bit = 1 << 1;
+        i |= (from_key[9] & bit) << 1;
+
+        // rpos=88 wpos=3
+        bit = 1 << 0;
+        i |= (from_key[11] & bit) << 3;
+
+        // rpos=145 wpos=4
+        bit = 1 << 1;
+        i |= (from_key[18] & bit) << 3;
+
+        // rpos=203 wpos=5
+        bit = 1 << 3;
+        i |= (from_key[25] & bit) << 2;
+
+        // rpos=210 wpos=6
+        bit = 1 << 2;
+        i |= (from_key[26] & bit) << 4;
+
+        // rpos=262 wpos=7
+        bit = 1 << 6;
+        i |= (from_key[32] & bit) << 1;
+
+        // rpos=285 wpos=8
+        bit = 1 << 5;
+        i |= (from_key[35] & bit) << 3;
+
+        // rpos=291 wpos=9
+        bit = 1 << 3;
+        i |= (from_key[36] & bit) << 6;
+
+        // rpos=333 wpos=10
+        bit = 1 << 5;
+        i |= (from_key[41] & bit) << 5;
+
+        // rpos=390 wpos=11
+        bit = 1 << 6;
+        i |= (from_key[48] & bit) << 5;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        // printf("i: %d I_stan: %d\n", i, i_standard);
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
+// CHANGE HERE
+unsigned int s2drehash_optimized12(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) {
+    // printf("Ruuning s2drehash optimized 7.\n");
+    // mask = {1,34,48,73,88,103,120,145,180,203,210,237,254,262,285,291,301,315,333,345,390,405}
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << masksum;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash calloc : %lu MB\n", numMB);
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        byte *from_key = getKey(store, r, recSize);
+        size_t i = 0;
+        unsigned int  bit;
+
+        // rpos=1 wpos=0
+        bit = 1 << 1;
+        i |= (from_key[0] & bit) >> 1;
+
+        // rpos=34 wpos=1
+        bit = 1 << 2;
+        i |= (from_key[4] & bit) >> 1;
+
+        // rpos=48 wpos=2
+        bit = 1 << 0;
+        i |= (from_key[6] & bit) << 2;
+
+        // rpos=73 wpos=3
+        bit = 1 << 1;
+        i |= (from_key[9] & bit) << 2;
+
+        // rpos=88 wpos=4
+        bit = 1 << 0;
+        i |= (from_key[11] & bit) << 4;
+
+        // rpos=103 wpos=5
+        bit = 1 << 7;
+        i |= (from_key[12] & bit) >> 2;
+
+        // rpos=120 wpos=6
+        bit = 1 << 0;
+        i |= (from_key[15] & bit) << 6;
+
+        // rpos=145 wpos=7
+        bit = 1 << 1;
+        i |= (from_key[18] & bit) << 6;
+
+        // rpos=180 wpos=8
+        bit = 1 << 4;
+        i |= (from_key[22] & bit) << 4;
+
+        // rpos=203 wpos=9
+        bit = 1 << 3;
+        i |= (from_key[25] & bit) << 6;
+
+        // rpos=210 wpos=10
+        bit = 1 << 2;
+        i |= (from_key[26] & bit) << 8;
+
+        // rpos=237 wpos=11
+        bit = 1 << 5;
+        i |= (from_key[29] & bit) << 6;
+
+        // rpos=254 wpos=12
+        bit = 1 << 6;
+        i |= (from_key[31] & bit) << 6;
+
+        // rpos=262 wpos=13
+        bit = 1 << 6;
+        i |= (from_key[32] & bit) << 7;
+
+        // rpos=285 wpos=14
+        bit = 1 << 5;
+        i |= (from_key[35] & bit) << 9;
+
+        // rpos=291 wpos=15
+        bit = 1 << 3;
+        i |= (from_key[36] & bit) << 12;
+
+        // rpos=301 wpos=16
+        bit = 1 << 5;
+        i |= (from_key[37] & bit) << 11;
+
+        // rpos=315 wpos=17
+        bit = 1 << 3;
+        i |= (from_key[39] & bit) << 14;
+
+        // rpos=333 wpos=18
+        bit = 1 << 5;
+        i |= (from_key[41] & bit) << 13;
+
+        // rpos=345 wpos=19
+        bit = 1 << 1;
+        i |= (from_key[43] & bit) << 18;
+
+        // rpos=390 wpos=20
+        bit = 1 << 6;
+        i |= (from_key[48] & bit) << 14;
+
+        // rpos=405 wpos=21
+        bit = 1 << 5;
+        i |= (from_key[50] & bit) << 16;
+    #ifdef ASSERT
+        if (r==0) printf("Assert starting.\n");
+        size_t i_standard = project_Key_to_Long(masksum, maskpos, getKey(store, r, recSize));
+        // printf("i: %d I_stan: %d\n", i, i_standard);
+        assert(i==i_standard);
+    #endif
+        newstore[i] += *getVal(store, r, recSize);
+    }
+
+    unsigned int d_id = globalRegistry.r_add(newstore, newsize, bitsToBytes(masksum));
+    return d_id;
+}
+
 /**
  * Converts a dense cuboid to a sparse cuboid. Aggregation of records with same key is not yet implemented
  * @param d_id  Id of source cuboid
