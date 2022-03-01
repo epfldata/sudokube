@@ -99,7 +99,7 @@ object NYC extends CubeGenerator("NYC") {
   }
 
   def main(args: Array[String]): Unit = {
-    //saveBase()
+    saveBase()
     val sch = schema()
     val cg = this
 

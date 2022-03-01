@@ -178,11 +178,11 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   }
 }
 
-object SSBTest {
+object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
-    //val (sch, dc) = cg.saveBase
-    val sch = cg.schema()
+    val (sch, dc) = cg.saveBase
+    //val sch = cg.schema()
 
     List(
       (15, 14)
