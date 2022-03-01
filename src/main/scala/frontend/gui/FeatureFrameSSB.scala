@@ -1,7 +1,7 @@
 package frontend.gui
 
 import core._
-import core.solver.UniformSolver
+import core.solver.MomentSolverAll
 import frontend.generators.SSB
 import frontend.schema._
 import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol, StaticMemCol}
@@ -241,7 +241,7 @@ case class FeatureFrameSSB(sf: Int, dc: DataCube, cheap_size: Int) {
 
       def cond(id: Int) = (id / (1 << aggcols.length)) == filtvalue
 
-      def callBackMI(s: UniformSolver[Double]) = {
+      def callBackMI(s: MomentSolverAll[Double]) = {
         val result = s.solution
         //val series = new YIntervalSeries("Moment")
         momentSeries.clear()

@@ -10,7 +10,14 @@ import java.io.PrintStream
 
 object Experimenter {
 
-
+  def schemas(): Unit = {
+    List(NYC, SSB(100)).foreach{cg =>
+      val sch = cg.schema()
+      println(cg.inputname)
+      sch.columnVector.map(c => c.name + ", " + c.encoder.bits.size).foreach(println)
+      println("\n\n")
+    }
+  }
   def cuboid_distribution(isSMS: Boolean) = {
     val ms = if (isSMS) "sms" else "rms"
     val cg = NYC
@@ -372,6 +379,8 @@ object Experimenter {
         mb_dims()
         mb_stddev()
         mb_prob()
+      case "schema" =>
+        schemas()
       case _ => debug()
     }
   }

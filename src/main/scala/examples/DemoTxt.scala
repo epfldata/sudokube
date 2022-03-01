@@ -3,7 +3,7 @@ package examples
 import backend.CBackend
 import breeze.io.{CSVReader, CSVWriter}
 import combinatorics.Combinatorics.{comb, comb2, mk_comb_bi}
-import core.solver.UniformSolver
+import core.solver.MomentSolverAll
 import experiments.MomentSolverBatchExpt
 import frontend.experiments.Tools
 import frontend.generators._
@@ -23,8 +23,8 @@ object DemoTxt {
 
   import frontend._, backend._, core._, core.RationalTools._
 
-  def uniformSolver(): Unit = {
-    val solver = new UniformSolver[Rational](3, Avg2)
+  def momentSolver(): Unit = {
+    val solver = new MomentSolverAll[Rational](3, Avg2)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
@@ -50,6 +50,21 @@ object DemoTxt {
     //println(res.mkString(" "))
   }
 
+  def momentSolver2() = {
+    val solver = new MomentSolverAll[Rational](3, CoMoment3)
+    val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
+    solver.add(List(2), Array(5, 12).map(Rational(_, 1)))
+    solver.add(List(0, 1), Array(7, 3, 6, 1).map(Rational(_, 1)))
+    solver.add(List(1, 2), Array(1, 4, 9, 3))
+    solver.add(List(0, 2), Array(3, 2, 10, 2).map(Rational(_, 1)))
+    println("Moments before =" + solver.sumValues.mkString(" "))
+    solver.fillMissing()
+    println("Moments after =" + solver.sumValues.mkString(" "))
+    val result = solver.fastSolve().map(_.toDouble)
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result.toArray))
+    solver.verifySolution()
+  }
   def test() = {
     val data = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val nbits = 10
@@ -273,7 +288,8 @@ object DemoTxt {
   }
   def main(args: Array[String]): Unit = {
     //investment()
-    //uniformSolver()
+    //momentSolver()
+    momentSolver2()
     //backend_naive()
     //loadtest()
     //ssb_demo()

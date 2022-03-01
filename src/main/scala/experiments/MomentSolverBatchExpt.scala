@@ -38,7 +38,7 @@ class MomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(impl
     val result = strategies.map { a =>
       Profiler(s"USolve Solve ${a}") {
         val s = Profiler(s"USolve Constructor ${a}") {
-          new UniformSolver[T](q.length, a)
+          new MomentSolverAll[T](q.length, a)
         }
         Profiler(s"USolve Add ${s.strategy}") {
           fetched.foreach { case (bits, array) => s.add(bits, array) }

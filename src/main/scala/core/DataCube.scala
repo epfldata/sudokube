@@ -349,8 +349,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }
   }
 
-  def online_agg_moment(query: List[Int], cheap_size: Int, callback: UniformSolver[Double] => Boolean) = {
-    val s = new UniformSolver[Double](query.size, CoMoment3)
+  def online_agg_moment(query: List[Int], cheap_size: Int, callback: MomentSolverAll[Double] => Boolean) = {
+    val s = new MomentSolverAll[Double](query.size, CoMoment3)
     var l = m.prepare_online_agg(query, cheap_size)
     var cont = true
     while (!(l.isEmpty) && cont) {

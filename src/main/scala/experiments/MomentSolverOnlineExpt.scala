@@ -3,7 +3,7 @@ package experiments
 import core.SolverTools._
 import core.{DataCube, RandomizedMaterializationScheme, SolverTools}
 import core.solver.Strategy.{CoMoment3, CoMomentFrechet, MeanProduct}
-import core.solver.{Strategy, UniformSolver}
+import core.solver.{Strategy, MomentSolverAll}
 import util.{AutoStatsGatherer, ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import java.io.{File, PrintStream}
@@ -31,7 +31,7 @@ class MomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "", 
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
-    val s = new UniformSolver(q.size, CoMoment3)
+    val s = new MomentSolverAll(q.size, CoMoment3)
     var maxDimFetched = 0
     val stg = new ManualStatsGatherer((maxDimFetched, s.getStats))
     stg.start()

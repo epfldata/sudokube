@@ -21,7 +21,7 @@ object Strategy extends Enumeration {
  * @param strategy Strategy to be used for solving
  * @tparam T Type of the value (Double / Rational)
  */
-class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
+class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMoment)(implicit num: Fractional[T]) {
   import Strategy._
 
   val N = 1 << qsize
@@ -459,33 +459,13 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
           }
         /*
         Change moment calculates the moment and stores in the array "moment".
-         Move it back to the array "sumValues" and do other stuff that we do like applying bounds if needed
+         Move it back to the array "sumValues"
          */
         toSolve.foreach { r =>
           val v1 = moments(r)
 
-          var v2 = v1
-          var s = 1
-          while (s < r && num.gt(v2, num.zero)) {
-            if ((s & r) == s)
-              v2 = num.min(v2, sumValues(r - s))
-            s = s << 1
-          }
-          if (num.lt(v2, num.zero))
-            v2 = num.zero
+          sumValues(r) = v1
 
-          //val v3 = getDefaultValueCoMoment(r, true)
-          //assert(num.equiv(v3, v2))
-
-          //val prec = 1000000
-          //val diffp = num.div(num.fromInt(prec+1), num.fromInt(prec))
-          //val diffm = num.div(num.fromInt(prec-1), num.fromInt(prec))
-
-          //assert(num.lteq(sumValues(r), num.times(v2, diffp)))
-          //assert(num.gteq(sumValues(r), num.times(v2, diffm)))
-
-          sumValues(r) = v2
-          //println(s"Filling2 $r = ${num.toDouble(v1).toLong}")
         }
       }
 
@@ -551,17 +531,10 @@ class UniformSolver[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMome
             //this can only result in lower error (at least, I think so)
             case  _ =>
               if (num.lt(diff, num.zero)) {
-                val half = num.div(result(j) , num.fromInt(2))
-                result(j + h) = half
-                result(j) = half
-                //result(j + h) = result(j)
-                //result(j) = num.zero
-
+                result(j + h) = result(j)
+                result(j) = num.zero
               } else if (num.lt(result(j + h), num.zero)) {
-                val half = num.div(result(j), num.fromInt(2))
-                result(j + h) = half
-                result(j) = half
-                //result(j + h) = num.zero
+                result(j + h) = num.zero
               } else
                 result(j) = diff
           }
