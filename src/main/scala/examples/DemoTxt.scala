@@ -51,7 +51,7 @@ object DemoTxt {
   }
 
   def momentSolver2() = {
-    val solver = new MomentSolverAll[Rational](3, CoMoment3)
+    val solver = new MomentSolverAll[Rational](3, CoMoment4)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(Rational(_, 1)))
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(Rational(_, 1)))

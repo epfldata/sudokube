@@ -84,7 +84,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     var build_plan: List[(Set[Int], Int, Int)] =
       List((ps.head._1.toSet, ps.head._2, -1))
 
-    val pi = new ProgressIndicator(ps.tail.length)
+    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", false)
 
     ps.tail.foreach {
       case ((l: List[Int]), (i: Int)) => {
@@ -103,7 +103,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     build_plan.reverse
   }
 
-  def create_parallel_build_plan(nthreads: Int) = {
+  def create_parallel_build_plan(nthreads: Int)(showProgress: Boolean) = {
     val ps = projections.zipWithIndex.sortBy(_._1.length).reverse.toList
     assert(ps.head._1.length == n_bits)
     import collection.mutable.ArrayBuffer
@@ -112,7 +112,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     build_plan ++= (0 until nthreads).map { tid => tid -> ArrayBuffer((BitSet(ps.head._1: _*), ps.head._2, -1)) }
 
     val thread_size = collection.mutable.Map[Int, Int]().withDefaultValue(0)
-    val pi = new ProgressIndicator(ps.tail.length)
+    val pi = new ProgressIndicator(ps.tail.length, "Create parallel build plan", showProgress)
 
     ps.tail.foreach {
       case ((l: List[Int]), (i: Int)) => {
@@ -158,7 +158,9 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         pi.step
       }
     }
-    println
+    if (showProgress) {
+      println
+    }
     build_plan.values.toList
   }
 

@@ -3,21 +3,25 @@ package experiments
 import backend.CBackend
 import combinatorics.Combinatorics
 import core._
+import core.solver.Strategy._
+import core.solver._
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
+import util.Profiler
 
 import java.io.PrintStream
 
 object Experimenter {
 
   def schemas(): Unit = {
-    List(NYC, SSB(100)).foreach{cg =>
+    List(NYC, SSB(100)).foreach { cg =>
       val sch = cg.schema()
       println(cg.inputname)
       sch.columnVector.map(c => c.name + ", " + c.encoder.bits.size).foreach(println)
       println("\n\n")
     }
   }
+
   def cuboid_distribution(isSMS: Boolean) = {
     val ms = if (isSMS) "sms" else "rms"
     val cg = NYC
@@ -305,6 +309,124 @@ object Experimenter {
     }
   }
 
+  def moment01()(implicit numIters: Int) = {
+    println("Running Moment 01")
+    import SolverTools.error
+    //val solver = new CoMoment4Solver(3, true, Moment0Transformer)
+    //val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
+    //solver.add(List(2), Array(5, 12).map(_.toDouble))
+    //solver.add(List(0, 1), Array(7, 3, 6, 1).map(_.toDouble))
+    //solver.add(List(1, 2), Array(1, 4, 9, 3).map(_.toDouble))
+    //solver.add(List(0, 2), Array(3, 2, 10, 2).map(_.toDouble))
+    //val mta = solver.momentsToAdd.toMap
+    //println("Moments before =" + solver.moments.indices.map(i => mta.getOrElse(i, Double.NegativeInfinity)).mkString(" "))
+    //solver.fillMissing()
+    //println("Moments after =" + solver.moments.mkString(" "))
+    //val result = solver.solve()
+    //println(result.mkString(" "))
+    //println("Error = " + error(actual, result))
+
+    val cg = SSB(100)
+    val param = "15_14"
+    val sch = cg.schema()
+
+    List(true, false).map { isSMS =>
+      val ms = (if (isSMS) "sms" else "rms")
+      val name = s"_${ms}_${param}"
+      val fullname = cg.inputname + name
+      val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+
+      val queries = List(12, 14, 16).flatMap{ qs => (0 until numIters).map(_ => sch.root.samplePrefix(qs))}.distinct
+
+      val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
+      fileout.println("Query, Moment0Error, Moment1Error")
+      queries.zipWithIndex.foreach { case (qu, qid) =>
+        println(s"$ms  Query ${qid + 1}/${queries.length}")
+        val q = qu.sorted
+        val naiveRes = {
+          val l = dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
+          dc.fetch(l).map(p => p.sm)
+        }
+
+        def solverRes(trans: MomentTransformer) = {
+          val l = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+          val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray))
+          val s = new CoMoment4Solver(qu.size, true, trans)
+          fetched.foreach { case (bits, array) => s.add(bits, array) }
+          s.fillMissing()
+          s.solve()
+        }
+
+        val solver0Res = solverRes(Moment0Transformer)
+        val solver1Res = solverRes(Moment1Transformer)
+
+        fileout.println(s"${qu.size}, ${qu.mkString(";")}, ${error(naiveRes, solver0Res)}, ${error(naiveRes, solver1Res)}")
+      }
+    }
+
+  }
+
+  def solverScaling()(implicit numIters: Int) = {
+    List(14, 15, 16).foreach { nb =>
+      println("\n\nMicrobenchmark for Dimensionality = " + nb)
+      val cg = MicroBench(nb, 100000, 0.5, 0.25)
+      val fullname = cg.inputname + "_all"
+      Profiler.resetAll()
+      (1 to numIters).foreach { i =>
+        //println(s"Trial $i/$numIters")
+        val (sch, r_its) = cg.generate2()
+        sch.initBeforeEncode()
+        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
+        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+
+        val q = 0 until cg.n_bits
+
+        val s0 = new MomentSolverAll[Double](nb, CoMoment3)
+        val s1 = new MomentSolverAll[Double](nb, CoMoment4)
+        val s2 = new CoMoment4Solver(nb, false, Moment1Transformer)
+        var l = dc.m.prepare(q, nb-1, nb-1)
+        while (!(l.isEmpty)) {
+          val fetched = dc.fetch2[Double](List(l.head))
+          val bits = l.head.accessible_bits
+          Profiler.profile("s0 Add") {
+            s0.add(bits, fetched.toArray)
+          }
+          Profiler.profile("s1 Add") {
+            s1.add(bits, fetched.toArray)
+          }
+          Profiler.profile("s2 Add") {
+            s2.add(bits, fetched.toArray)
+          }
+          l = l.tail
+        }
+
+        Profiler.profile("s0 FillMiss") {
+          s0.fillMissing()
+        }
+        Profiler.profile("s0 Solve") {
+          s0.fastSolve()
+        }
+
+        Profiler.profile("s1 FillMiss") {
+          s1.fillMissing()
+        }
+        Profiler.profile("s1 Solve") {
+          s1.fastSolve()
+        }
+
+        Profiler.profile("s2 FillMiss") {
+          s2.fillMissing()
+        }
+        Profiler.profile("s2 Solve") {
+          s2.solve()
+        }
+        dc.cuboids.head.backend.reset
+      }
+      Profiler.print()
+    }
+  }
+
+
   def debug(): Unit = {
     implicit val shouldRecord = false
     val cg = NYC
@@ -381,6 +503,8 @@ object Experimenter {
         mb_prob()
       case "schema" =>
         schemas()
+      case "moment01" => moment01()
+      case "scaling" => solverScaling()
       case _ => debug()
     }
   }

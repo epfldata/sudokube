@@ -2,18 +2,22 @@
 package util
 
 
-class ProgressIndicator(num_steps: Int, name: String = "") {
+class ProgressIndicator(num_steps: Int, name: String = "", showProgress: Boolean = true) {
   private val one_percent = num_steps.toDouble / 100
   private var done = 0
   private val startTime = System.nanoTime()
-  print(name + "  ")
-  def step  = this.synchronized {
-    done += 1 
-    if(done % one_percent < 1) print((done/one_percent).toInt + "%")
-    if(done == num_steps) {
-      val endTime = System.nanoTime()
-      val ms = (endTime - startTime)/(1000*1000)
-      println(s"  took $ms ms")
+  if(showProgress) {
+    print(name + "  ")
+  }
+  def step  = if(showProgress) {
+    this.synchronized {
+      done += 1
+      if (done % one_percent < 1) print((done / one_percent).toInt + "%")
+      if (done == num_steps) {
+        val endTime = System.nanoTime()
+        val ms = (endTime - startTime) / (1000 * 1000)
+        println(s"  took $ms ms")
+      }
     }
   }
 }

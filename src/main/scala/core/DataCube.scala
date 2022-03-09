@@ -30,7 +30,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /* protected */
   var cuboids = Array[Cuboid]()
 
-  def shouldOutput = m.n_bits > 25
+  def showProgress = m.n_bits > 25
 
   /** this is too slow. */
   def simple_build(full_cube: Cuboid) {
@@ -57,22 +57,18 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   def build(full_cube: Cuboid) {
     assert(full_cube.n_bits == m.n_bits)
 
-    if (shouldOutput)
-      println("Creating build plan...")
 
     val parallel = true
     val ab = Util.mkAB[Cuboid](m.projections.length, _ => full_cube)
     if (parallel) {
       val cores = Runtime.getRuntime.availableProcessors - 2
       val par_build_plan = Profiler("CreateBuildPlan") {
-        m.create_parallel_build_plan(cores)
+        m.create_parallel_build_plan(cores)(showProgress)
       }
-      if (shouldOutput)
-        println(s"Dividing plan into $cores threads")
 
       // puts a ref to the same object into all fields of the array.
       val backend = full_cube.backend
-      val pi = new ProgressIndicator(par_build_plan.map(_.length).sum)
+      val pi = new ProgressIndicator(par_build_plan.map(_.length).sum, s"Dividing plan into $cores threads", showProgress)
       val full_cube_id = par_build_plan.head.head._2
       ab(full_cube_id) = full_cube
 
@@ -87,14 +83,13 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
                 // completion status updates
                 //if(ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
-                if (shouldOutput)
                   pi.step
               }
             }
           }
         }
       }
-      if (shouldOutput)
+      if (showProgress)
         println(s"Starting projections  ")
       threadBuffer.foreach(_.start())
       Profiler("Projections") {
@@ -103,12 +98,10 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     } else {
       val build_plan = m.create_build_plan()
 
-      if (shouldOutput)
-        println("Projecting...")
 
       // puts a ref to the same object into all fields of the array.
       val backend = full_cube.backend
-      val pi = new ProgressIndicator(build_plan.length)
+      val pi = new ProgressIndicator(build_plan.length, "Projecting...", showProgress)
 
       build_plan.foreach {
         case (_, id, -1) => ab(id) = full_cube
@@ -117,7 +110,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
           ab(id) = ab(parent_id).rehash(mask)
 
           // completion status updates
-          if (shouldOutput) {
+          if (showProgress) {
             if (ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
             pi.step
           }
@@ -125,11 +118,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       }
     }
     cuboids = ab.toArray
+    if(showProgress)
     println
 
     // statistics output
     val real_size = cuboids.map(c => c.size).sum
-    if (shouldOutput) {
+    if (showProgress) {
       println("Real size: " + real_size + " data points ("
         + real_size.toDouble / full_cube.size.toLong + "x base cube size).")
     }
