@@ -83,7 +83,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
                 // completion status updates
                 //if(ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
-                  pi.step
+                pi.step
               }
             }
           }
@@ -118,8 +118,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       }
     }
     cuboids = ab.toArray
-    if(showProgress)
-    println
+    if (showProgress)
+      println
 
     // statistics output
     val real_size = cuboids.map(c => c.size).sum
@@ -134,7 +134,6 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
    *
    * @param l a list of (isSparseCuboid, n_bits, size) triples, one list
    *          entry for each cuboid to load.
-   *
    * @deprecated Use load2 for multiple cuboids from a single file
    */
   protected def load(backend: Backend[Payload], l: List[(Boolean, Int, BigInt)], name_prefix: String) {
@@ -370,6 +369,18 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       fetch(l).map(p => p.sm.toDouble)
     }
   }
+
+  def savePrimaryMoments(moments: (Long, Array[Long]), cubename: String) = {
+    val filename = s"cubedata/$cubename/${cubename}.m1s"
+    val out = new ObjectOutputStream(new FileOutputStream(filename))
+    out.writeObject(moments)
+  }
+
+  def loadPrimaryMoments(cubename: String) = {
+    val filename = s"cubedata/$cubename/${cubename}.m1s"
+    val in = new ObjectInputStream(new FileInputStream(filename))
+    in.readObject().asInstanceOf[(Long, Array[Long])]
+  }
 } // end DataCube
 
 /**
@@ -448,6 +459,7 @@ class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCu
 
 object DataCube {
   /** creates and loads a DataCube.
+   *
    * @param filename is the name of the metadata file.
    *
    *                 Example:

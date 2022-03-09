@@ -1,0 +1,45 @@
+import backend.CBackend
+import core.SolverTools
+import core.solver.Moment1Transformer
+import frontend.Sampling
+import frontend.experiments.Tools
+import frontend.experiments.Tools.mkDC
+import org.scalatest.{FlatSpec, Matchers, color}
+
+import java.io.File
+import scala.reflect.io.Directory
+
+class PrimaryMomentsSpec extends FlatSpec with Matchers {
+
+  "Primary Moments" should "match naive eval " in {
+    val nbits = 13
+    val qsize = 5
+
+    val dc = mkDC(nbits, 1, 1.5, 4096, Sampling.f1, CBackend.b)
+    val (t1, m1) = SolverTools.primaryMoments(dc)
+
+    val m2 = Array.fill(nbits)(0L)
+    val t2 = dc.naive_eval(List(1)).sum.toLong
+
+    m2.indices.foreach(i => m2(i) = dc.naive_eval(List(i))(1).toLong)
+    assert(t1 == t2)
+    assert(m1.sameElements(m2))
+    val cubename = "testprimarymoment"
+    val dir = new Directory(new File(s"cubedata/$cubename"))
+    if (!dir.exists) dir.createDirectory()
+    dc.savePrimaryMoments((t1, m1), cubename)
+    val (t3, m3) = dc.loadPrimaryMoments(cubename)
+    assert(t1 == t3)
+    assert(m1.sameElements(m3))
+
+    val q = Tools.rand_q(nbits, qsize)
+    val m4 = SolverTools.preparePrimaryMomentsForQuery(q, (t1, m1))
+
+    val m5 = Moment1Transformer.getMoments(dc.naive_eval(q))
+    m4.foreach{
+      case (0, t) => assert(t == t1)
+      case (i , m) => assert(m5(i) == m)
+    }
+    dir.deleteRecursively()
+  }
+}

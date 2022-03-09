@@ -337,7 +337,7 @@ object Experimenter {
       val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
 
       val queries = List(12, 14, 16).flatMap{ qs => (0 until numIters).map(_ => sch.root.samplePrefix(qs))}.distinct
-
+      val moments = dc.loadPrimaryMoments(cg.inputname + "_base")
       val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
       fileout.println("Query, Moment0Error, Moment1Error")
       queries.zipWithIndex.foreach { case (qu, qid) =>
@@ -351,7 +351,8 @@ object Experimenter {
         def solverRes(trans: MomentTransformer) = {
           val l = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
           val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray))
-          val s = new CoMoment4Solver(qu.size, true, trans)
+          val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, moments)
+          val s = new CoMoment4Solver(qu.size, true, trans, primaryMoments)
           fetched.foreach { case (bits, array) => s.add(bits, array) }
           s.fillMissing()
           s.solve()
@@ -378,12 +379,12 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
         dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
+        val moments = SolverTools.primaryMoments(dc)
         val q = 0 until cg.n_bits
-
+        val pm2 = SolverTools.preparePrimaryMomentsForQuery(q, moments)
         val s0 = new MomentSolverAll[Double](nb, CoMoment3)
         val s1 = new MomentSolverAll[Double](nb, CoMoment4)
-        val s2 = new CoMoment4Solver(nb, false, Moment1Transformer)
+        val s2 = new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
         var l = dc.m.prepare(q, nb-1, nb-1)
         while (!(l.isEmpty)) {
           val fetched = dc.fetch2[Double](List(l.head))
@@ -472,12 +473,18 @@ object Experimenter {
     //val resMax = res.max.toInt
     //val step = math.max(resMax/1000,1)
     //res.groupBy(x => (x.toInt/step) * step).mapValues(_.length).toList.sortBy(_._1).foreach(println)
-    val fullname = "NYC_sms_16_10"
-    val dc = PartialDataCube.load2(fullname, "NYC_base")
+    //val fullname = "NYC_sms_16_10"
+
+    List("NYC_rms_16_10" -> "NYC_base", "SSB-sf100_rms_15_14" -> "SSB-sf100_base").foreach { case (fullname, basename) =>
+      val dc = PartialDataCube.load2(fullname, basename)
+      val moments = SolverTools.primaryMoments(dc)
+      dc.savePrimaryMoments(moments, basename)
+
+    }
     //val m2 =new EfficientMaterializationScheme(dc.m)
-    val expt = new MomentSolverBatchExpt[Double](fullname)
+    //val expt = new MomentSolverBatchExpt[Double](fullname)
     //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
-    queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
+    //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }
 
   def main(args: Array[String]) {

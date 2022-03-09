@@ -4,11 +4,25 @@ import util.{Bits, Profiler}
 
 import scala.collection.mutable.ListBuffer
 
-abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentTransformer) {
+//primary moments are calculated assuming transformer is Moment1
+abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) {
   val N = 1 << qsize
   val solverName: String
   lazy val name = solverName + transformer.name
+
   val moments = Array.fill(N)(0.0)
+  if (transformer == Moment1Transformer)
+    primaryMoments.foreach { case (i, m) => moments(i) = m }
+  else if (transformer == Moment0Transformer) {
+    val pmMap = primaryMoments.toMap
+    pmMap.foreach {
+      case (0, m) => moments(0) = m
+      case (i, m) => moments(i) = pmMap(0) - m
+    }
+  } else {
+    ???
+  }
+
   val knownSet = collection.mutable.BitSet()
 
   val momentProducts = new Array[Double](N)
@@ -82,7 +96,7 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   }
 }
 
-class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransformer) extends MomentSolver(qsize, batchmode, transformer) {
+class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
   val qArray = Array.fill(N)(Array.fill(qsize)(0.0))
 
   override val solverName: String = "Comoment4"
