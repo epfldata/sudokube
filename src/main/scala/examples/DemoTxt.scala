@@ -163,8 +163,8 @@ object DemoTxt {
       x => (x._1(0) >= 1996) && (x._1(0) < 2020))
   */
 
-    val qV = List(0, 12)
-    val qH = List(11)
+    val qV = List(0, 12) //Company
+    val qH = List(1) //even or odd years
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
