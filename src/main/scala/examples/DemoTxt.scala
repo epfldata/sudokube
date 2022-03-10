@@ -141,12 +141,15 @@ object DemoTxt {
   def investment(): Unit = {
 
     val sch = new schema.DynamicSchema
+
     val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
+    //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
+
+    val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
+
     val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
     val dc = new DataCube(matscheme)
-
-    //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
-    dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
+    dc.build(basecuboid)
 
     /*
     Exploration.col_names(sch)
