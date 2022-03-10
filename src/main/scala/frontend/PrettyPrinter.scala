@@ -3,6 +3,7 @@ package frontend
 import core._
 import breeze.linalg._
 import schema._
+import util.Bits
 
 
 // TODO: let the user choose which dimensions to put where.
@@ -10,18 +11,29 @@ object PrettyPrinter {
 
   def formatPivotTable(
     sch: Schema,
-    q: List[Int],
+    qV: List[Int],
+    qH: List[Int])(
     bou: Seq[Interval[Rational]]
   ) = {
 
-    val n_bits = q.length
-    val bH = n_bits / 2
-    val bV = n_bits - bH
-    val qV = q.take(bV)
-    val qH = q.drop(bV)
+
+    val bH = qH.size
+    val bV = qV.size
+
 
     val r: Array[String] = bou.map(x => x.format(y => y.toString)).toArray
-    val M = new DenseMatrix(1 << bV, 1 << bH, r)
+
+    val q_unsorted = (qV ++ qH)
+    val q_sorted = q_unsorted.sorted
+    val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
+    val permf = Bits.permute_bits(q_unsorted.size, perm)
+    val r2 = new Array[String](r.size)
+    r.indices.foreach( i => r2(permf(i)) = r(i))
+    //println("perm = " + perm.mkString(" "))
+    //println("R = " + r.mkString(";"))
+    //println("R2 = " + r2.mkString(";"))
+
+    val M = new DenseMatrix(1 << bV, 1 << bH, r2)
 
     val top = DenseMatrix.zeros[String](1, M.cols)
     for(i <- 0 to M.cols - 1) top(0, i) = ('a' + i).toChar.toString

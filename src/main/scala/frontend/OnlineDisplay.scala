@@ -6,7 +6,7 @@ import scala.swing._
 
 
 case class OnlineDisplay(schema: Schema, dc: DataCube,
-  draw: (Schema, List[Int], Seq[Interval[Rational]]) => String
+  draw: (Seq[Interval[Rational]]) => String
 ) {
 
   // this is slow!
@@ -31,7 +31,7 @@ case class OnlineDisplay(schema: Schema, dc: DataCube,
 
     def callback(s: SparseSolver[Rational]) = {
       s.propagate_bounds(0 to s.n_vars - 1)
-      ui.ta.text = draw(schema, q, s.bounds)
+      ui.ta.text = draw(s.bounds)
       last_s = Some(s)
       (! ex) // keep going?
     }

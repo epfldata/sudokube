@@ -65,6 +65,7 @@ object DemoTxt {
     println("Error = " + error(actual, result.toArray))
     solver.verifySolution()
   }
+
   def test() = {
     val data = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val nbits = 10
@@ -141,7 +142,10 @@ object DemoTxt {
 
     val sch = new schema.DynamicSchema
     val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .0000000008, 10))
+    val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+    val dc = new DataCube(matscheme)
+
+    //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 
     /*
@@ -159,17 +163,22 @@ object DemoTxt {
       x => (x._1(0) >= 1996) && (x._1(0) < 2020))
   */
 
-    val q = List(0, 12, 1)
+    val qV = List(0, 12)
+    val qH = List(11)
+
+    //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
+    val q = (qV ++ qH).sorted
 
     // solves to df=2 using only 2-dim cuboids
     //val s = dc.solver[Rational](q, 2)
     //s.compute_bounds
 
     // runs up to the full cube
-    dc.naive_eval(q)
+    val r = dc.naive_eval(q)
+    println("r =" + r.mkString(" "))
 
     // this one need to run up to the full cube
-    val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable)
+    val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
     od.l_run(q, 2)
   }
 
@@ -190,9 +199,9 @@ object DemoTxt {
     val n_bits = n_cols * n_bits_per_col
     val n_rows = 100 * (1 << n_bits_per_col) + 10 //60 * 1000 * 1000
 
-    val time = new LD2("Time", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
-    val prod = new LD2("Product", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
-    val loc = new LD2("Location", new StaticNatCol(0, (1<<n_bits_per_col)-2, StaticNatCol.defaultToInt))
+    val time = new LD2("Time", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
+    val prod = new LD2("Product", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
+    val loc = new LD2("Location", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
     val sch2 = new StaticSchema2(Vector(time, prod, loc))
     //val columnMap = Map(0 -> "Time", "1" ->)
     //val sch = schema.StaticSchema.mk(n_cols, n_bits_per_col, Map(0 -> "Time", 1 -> "Product", 2 -> "Location"))
@@ -202,7 +211,9 @@ object DemoTxt {
       println(s"prefix($c $n) = $res")
       res
     }
-    def offset(c: Int, vs: Seq[Int]) = vs.reverse.map(n_bits_per_col*(c+1)-1-_).toList
+
+    def offset(c: Int, vs: Seq[Int]) = vs.reverse.map(n_bits_per_col * (c + 1) - 1 - _).toList
+
     //--------------CUBE DATA GENERATION-------------
     val vgs = collection.mutable.ArrayBuffer[ValueGenerator]()
     vgs += ConstantValueGenerator(100)
@@ -212,14 +223,14 @@ object DemoTxt {
     //vgs += SinValueGenerator(List(1, 5, 7), List(11, 12), 0, 1, 8)
     //vgs += SinValueGenerator(List(1, 2, 5), List(20, 22), 0, 1, 8)
 
-    vgs += TrendValueGenerator(prefix(0, 4), prefix(1, 3) ++ prefix(2, 5), 147, 1, 15*256*1)
+    vgs += TrendValueGenerator(prefix(0, 4), prefix(1, 3) ++ prefix(2, 5), 147, 1, 15 * 256 * 1)
     vgs += TrendValueGenerator(prefix(0, 2), prefix(1, 2), 3, -1, 100)
     //  //vgs += TrendValueGenerator( List(4, 5, 6, 7), List(), 0, 1, 10)
     // vgs += TrendValueGenerator( prefix(0, 2), prefix(1, 3), 5, 1, 1*3)
     //vgs += TrendValueGenerator(List(2, 3, 4, 5, 6, 7), List(15), 0, -1, 30)
     val vg = SumValueGenerator(vgs)
 
-    val R = ParallelTupleGenerator2(sch2, n_rows, 1000,  Sampling.f1, vg).data
+    val R = ParallelTupleGenerator2(sch2, n_rows, 1000, Sampling.f1, vg).data
     println("mkDC: Creating maximum-granularity cuboid...")
     val fc = CBackend.b.mkParallel(n_bits, R)
     println("...done")
@@ -243,18 +254,19 @@ object DemoTxt {
     val n_queries = 10
     val query_size = 5
     val rnd = new Random(1L)
-    val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1<<n_bits)) -> rnd.nextInt(10).toLong)
+    val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
     val fullcub = CBackend.b.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
     val dc = new DataCube(RandomizedMaterializationScheme(n_bits, 0.1, 1.8))
     dc.build(fullcub)
-    (0 until n_queries).map{i =>
+    (0 until n_queries).map { i =>
       val q = Tools.rand_q(n_bits, query_size)
       println("\nQuery =" + q)
       val res = dc.naive_eval(q)
-      println("Result = "+res.mkString(" "))
+      println("Result = " + res.mkString(" "))
     }
   }
+
   def ssb_demo() = {
     val sf = 100
     val cg = SSB(sf)
@@ -283,13 +295,14 @@ object DemoTxt {
     //println("size =" + size.encoder.bits.mkString(","))
     //println("color =" + color.encoder.bits.mkString(","))
 
-    val dc = PartialDataCube.load2(cg.inputname+"_rms2_15_22_0", cg.inputname+"_base")
+    val dc = PartialDataCube.load2(cg.inputname + "_rms2_15_22_0", cg.inputname + "_base")
     val display = FeatureFrameSSB(sf, dc, 50)
   }
+
   def main(args: Array[String]): Unit = {
-    //investment()
+    investment()
     //momentSolver()
-    momentSolver2()
+    //momentSolver2()
     //backend_naive()
     //loadtest()
     //ssb_demo()

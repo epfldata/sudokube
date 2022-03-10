@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @SerialVersionUID(1L)
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
-  def bits: Seq[Int]
+  def bits: Seq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
   def bitsMin : Int
   def isRange: Boolean
   def encode_locally(v: T) : Int
@@ -137,7 +137,7 @@ abstract class StaticColEncoder[T] extends ColEncoder[T] {
 
 abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T] {
   val register = new RegisterIdx(bitPosRegistry)
-  override def bits: Seq[Int] = register.bits
+  override def bits: Seq[Int] = register.bits.reverse  //Static schema has bits in increasing order
   override def bitsMin: Int = register.bitsMin
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx
