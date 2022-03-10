@@ -1,6 +1,6 @@
 package core.solver
 
-import util.{Bits, Profiler}
+import util.{BigBinary, Bits, Profiler}
 
 import scala.collection.mutable.ListBuffer
 
@@ -24,11 +24,14 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   }
 
   val knownSet = collection.mutable.BitSet()
+  knownSet += 0
+  (0 until qsize).foreach { b => knownSet += (1 << b) }
 
   val momentProducts = new Array[Double](N)
   val knownMomentProducts = collection.mutable.BitSet()
 
-  var shouldBuildMomentProducts = true
+  buildMomentProducts()
+  moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = momentProducts(i) * moments(0) }
   val momentsToAdd = new ListBuffer[(Int, Double)]()
   var solution = Array.fill(N)(0.0)
 
@@ -101,43 +104,98 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
 
   override val solverName: String = "Comoment4"
 
-  override def fillMissing(): Unit = {
-    Profiler.profile("AddMoments") {
-      momentsToAdd.foreach { case (i, m) =>
-        moments(i) = m
-      }
-    }
-    Profiler.profile("MomentProduct") {
-      val allsingleton = (0 until qsize).map { b => knownSet(1 << b) }.reduce(_ && _)
-      if (shouldBuildMomentProducts)
-        buildMomentProducts()
-      shouldBuildMomentProducts = !allsingleton
-    }
-    (0 until N).foreach { i =>
+  override def fillMissing(): Unit = if (batchmode) fillMissingBatch() else fillMissingOnline()
 
-      val bits = Bits.fromInt(i)
-      val w = bits.length
-      val parents = bits.map(b => i - (1 << b))
-      Profiler("part1") {
-        if (!knownSet(i)) {
-          val qsum = Profiler.profile("qsum1") {
-            parents.map { k => qArray(k)(w - 1) * momentProducts(i - k) }.sum
-          }
-          //println(s"m[$i] = $qsum")
-          moments(i) = qsum
+  def fillMissingBatch(): Unit = {
+    Profiler("FillMissingBatch") {
+      Profiler.profile("AddMoments") {
+        momentsToAdd.foreach { case (i, m) =>
+          moments(i) = m
         }
       }
-      Profiler("part2") {
-        (w + 1 to qsize).map { j =>
-          val qsum = Profiler.profile("qsum2") {
-            parents.map { k => qArray(k)(j - 1) * momentProducts(i - k) }.sum
+      (0 until N).foreach { i =>
+        val bits = Bits.fromInt(i)
+        val w = bits.length
+        val parents = bits.map(b => i - (1 << b))
+        Profiler("part1") {
+          if (!knownSet(i)) {
+            val qsum = Profiler.profile("qsum1") {
+              parents.map { k => qArray(k)(w - 1) * momentProducts(i - k) }.sum
+            }
+            //println(s"m[$i] = $qsum")
+            moments(i) = qsum
           }
-          //q[S][j-1] = m[S] - 1/(j+1-|S|) sum_s [ q[S-s][j-1] ]
-          val q = moments(i) - (qsum / (j - w + 1))
-          //println(s"q[$i][$j] = $q")
-          qArray(i)(j - 1) = q
+        }
+        Profiler("part2") {
+          (w + 1 to qsize).map { j =>
+            val qsum = Profiler.profile("qsum2") {
+              parents.map { k => qArray(k)(j - 1) * momentProducts(i - k) }.sum
+            }
+            //q[S][j-1] = m[S] - 1/(j+1-|S|) sum_s [ q[S-s][j-1] ]
+            val q = moments(i) - (qsum / (j - w + 1))
+            //println(s"q[$i][$j] = $q")
+            qArray(i)(j - 1) = q
+          }
         }
       }
+    }
+  }
+
+  def fillMissingOnline() = {
+    Profiler("FillMissingOnline") {
+      // set_size, set as int
+      val toProcess = collection.mutable.SortedSet[(Int, Int)]()
+      //val toProcess = collection.mutable.PriorityQueue[(Int, Int)]()
+      //val toProcess2 = collection.mutable.Set[Int]()
+
+      def children(i: Int, set0: Seq[Int]) = set0.map(b => i + (1 << b))
+
+      val newmoments = momentsToAdd.toMap
+
+      Profiler("PQ init") {
+        toProcess ++= newmoments.keys.map(k => BigBinary(k).hamming_weight -> k)
+      }
+
+      //println("Initial set = " + toProcess.mkString(" "))
+      Profiler("PQ loop") {
+        while (!toProcess.isEmpty) {
+          val (w, i) = toProcess.head
+          toProcess -= ((w, i))
+          //val (w, i) = toProcess.dequeue()
+
+          //println(s"Process $i  ${Bits.fromInt(i).mkString("{", ",", "}")} with size $w")
+          val (_, set0, set1) = Bits.hwZeroOne(i, qsize)
+          val deltamom = if (knownSet(i)) {
+            newmoments(i) - moments(i)
+          } else {
+            qArray(i)(w - 1)
+          }
+          moments(i) += deltamom
+
+          Profiler("Child processing") {
+            children(i, set0).foreach { c =>
+              Profiler("Child q update") {
+                (w + 1 to qsize).foreach { j =>
+                  val deltaq = (deltamom - qArray(i)(j - 1))
+                  qArray(c)(j - 1) += deltaq * momentProducts(c - i) / (j - w)
+                }
+              }
+              val n = ((w + 1) -> c)
+              Profiler("PQ update") {
+                if (!toProcess.contains(n)) {
+                  toProcess += n
+                }
+                //if(!toProcess2.contains(c)){
+                //  toProcess += n
+                //  toProcess2 += c
+                //}
+              }
+            }
+            (w to qsize).foreach { j => qArray(i)(j - 1) = 0 }
+          }
+        }
+      }
+      momentsToAdd.clear()
     }
   }
 }

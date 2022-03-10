@@ -367,8 +367,8 @@ object Experimenter {
 
   }
 
-  def solverScaling()(implicit numIters: Int) = {
-    List(14, 15, 16).foreach { nb =>
+  def solverScaling(batch: Boolean = true)(implicit numIters: Int) = {
+    List(15, 16, 17).foreach { nb =>
       println("\n\nMicrobenchmark for Dimensionality = " + nb)
       val cg = MicroBench(nb, 100000, 0.5, 0.25)
       val fullname = cg.inputname + "_all"
@@ -379,12 +379,13 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
         dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-        val moments = SolverTools.primaryMoments(dc)
+        val moments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
         val pm2 = SolverTools.preparePrimaryMomentsForQuery(q, moments)
         val s0 = new MomentSolverAll[Double](nb, CoMoment3)
         val s1 = new MomentSolverAll[Double](nb, CoMoment4)
-        val s2 = new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
+        val s2 = new CoMoment4Solver(nb, true, Moment1Transformer, pm2)
+        val s3 = new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
         var l = dc.m.prepare(q, nb-1, nb-1)
         while (!(l.isEmpty)) {
           val fetched = dc.fetch2[Double](List(l.head))
@@ -398,28 +399,81 @@ object Experimenter {
           Profiler.profile("s2 Add") {
             s2.add(bits, fetched.toArray)
           }
+          Profiler.profile("s3 Add") {
+            s3.add(bits, fetched.toArray)
+          }
+
+          if(!batch) {
+            Profiler.profile("s0 FillMiss") {
+              s0.fillMissing()
+            }
+            Profiler.profile("s0 Solve") {
+              s0.fastSolve()
+            }
+
+            Profiler.profile("s1 FillMiss") {
+              s1.fillMissing()
+            }
+            Profiler.profile("s1 Solve") {
+              s1.fastSolve()
+            }
+
+            Profiler.profile("s2 FillMiss") {
+              s2.fillMissing()
+            }
+            Profiler.profile("s2 Solve") {
+              s2.solve()
+            }
+
+            Profiler.profile("s3 FillMiss") {
+              s3.fillMissing()
+            }
+            Profiler.profile("s3 Solve") {
+              s3.solve()
+            }
+          }
+
           l = l.tail
         }
 
-        Profiler.profile("s0 FillMiss") {
-          s0.fillMissing()
-        }
-        Profiler.profile("s0 Solve") {
-          s0.fastSolve()
-        }
+        if(batch) {
+          Profiler.profile("s0 FillMiss") {
+            s0.fillMissing()
+          }
+          Profiler.profile("s0 Solve") {
+            s0.fastSolve()
+          }
 
-        Profiler.profile("s1 FillMiss") {
-          s1.fillMissing()
-        }
-        Profiler.profile("s1 Solve") {
-          s1.fastSolve()
-        }
+          Profiler.profile("s1 FillMiss") {
+            s1.fillMissing()
+          }
+          Profiler.profile("s1 Solve") {
+            s1.fastSolve()
+          }
 
-        Profiler.profile("s2 FillMiss") {
-          s2.fillMissing()
+          Profiler.profile("s2 FillMiss") {
+            s2.fillMissing()
+          }
+          Profiler.profile("s2 Solve") {
+            s2.solve()
+          }
+
+          Profiler.profile("s3 FillMiss") {
+            s3.fillMissing()
+          }
+          Profiler.profile("s3 Solve") {
+            s3.solve()
+          }
         }
-        Profiler.profile("s2 Solve") {
-          s2.solve()
+        import Tools.round
+        //println("Diff = ")
+        s1.sumValues.indices.foreach{i =>
+          val m0 = round(s0.sumValues(i), 8)
+          val m1 = round(s1.sumValues(i), 8)
+          val m2 = round(s2.moments(i), 8)
+          val m3 = round(s3.moments(i), 8)
+          if(m0 != m1 || m0 != m2 || m0 != m3)
+            println(s"$i ::: $m0 $m1 $m2 $m3")
         }
         dc.cuboids.head.backend.reset
       }
@@ -511,7 +565,7 @@ object Experimenter {
       case "schema" =>
         schemas()
       case "moment01" => moment01()
-      case "scaling" => solverScaling()
+      case "scaling" => solverScaling(false)
       case _ => debug()
     }
   }

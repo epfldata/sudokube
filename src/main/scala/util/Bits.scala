@@ -171,6 +171,26 @@ object Bits {
     }
     result
   }
+  //Returns the hamming weight, positions of 0 and positions of i from bits 0 --- maxb-1
+  def hwZeroOne(i: Int, maxb: Int) = {
+    var i2 = i
+    var result1 = List[Int]()
+    var result0 = List[Int]()
+    var pos = 0
+    var hw = 0
+    var maxb2 = maxb
+    while(maxb2 > 0) {
+      if((i2 % 2) == 1) {
+        result1 = pos :: result1
+        hw += 1
+      } else
+        result0 = pos :: result0
+      pos += 1
+      i2 = i2 >> 1
+      maxb2 -= 1
+    }
+    (hw, result0, result1)
+  }
 
   def project(i: Int, idxes: Int): Int = {
     var idx2 = idxes
