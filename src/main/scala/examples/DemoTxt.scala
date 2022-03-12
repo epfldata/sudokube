@@ -4,7 +4,7 @@ import backend.CBackend
 import breeze.io.{CSVReader, CSVWriter}
 import combinatorics.Combinatorics.{comb, comb2, mk_comb_bi}
 import core.solver.MomentSolverAll
-import experiments.MomentSolverBatchExpt
+import experiments.OldMomentSolverBatchExpt
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}

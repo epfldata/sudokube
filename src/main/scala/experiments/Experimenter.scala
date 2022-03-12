@@ -157,10 +157,46 @@ object Experimenter {
     val sch = cg.schema()
 
     val expname2 = s"query-dim-$ms"
-    val exptfull = new MomentSolverBatchExpt[Double](expname2)
+    val exptfull = new OldMomentSolverBatchExpt[Double](expname2)
     if (shouldRecord) exptfull.warmup()
 
-    val exptonline = new MomentSolverOnlineExpt[Double](expname2)
+    val exptonline = new OldMomentSolverOnlineExpt[Double](expname2)
+    if (shouldRecord) exptonline.warmup()
+
+    val qss = List(6, 9, 12, 15)
+    qss.foreach { qs =>
+      val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
+      println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Batch Query ${i + 1}/$ql")
+        exptfull.run(dc, fullname, q)
+      }
+
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Online Query ${i + 1}/$ql")
+        exptonline.run(dc, fullname, q)
+      }
+    }
+    dc.cuboids.head.backend.reset
+  }
+
+  def moment_query_dimensionality2(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+
+    val cg = SSB(100)
+    val param = "15_14"
+    val ms = (if (isSMS) "sms" else "rms")
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val sch = cg.schema()
+
+    val expname2 = s"query-dim-$ms"
+    val exptfull = new CoMoment4BatchExpt(expname2)
+    if (shouldRecord) exptfull.warmup()
+
+    val exptonline = new CoMoment4OnlineExpt(expname2)
     if (shouldRecord) exptonline.warmup()
 
     val qss = List(6, 9, 12, 15)
@@ -195,10 +231,10 @@ object Experimenter {
     val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
     val ms = (if (isSMS) "sms" else "rms")
     val expname2 = s"mat-params-$ms"
-    val exptfull = new MomentSolverBatchExpt[Double](expname2)
+    val exptfull = new OldMomentSolverBatchExpt[Double](expname2)
     if (shouldRecord) exptfull.warmup()
 
-    val exptonline = new MomentSolverOnlineExpt[Double](expname2)
+    val exptonline = new OldMomentSolverOnlineExpt[Double](expname2)
     if (shouldRecord) exptonline.warmup()
 
     params.foreach { p =>
@@ -222,7 +258,7 @@ object Experimenter {
   }
 
   def mb_dims()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new MomentSolverOnlineExpt[Double]("mb-dims", true)
+    val expt = new OldMomentSolverOnlineExpt[Double]("mb-dims", true)
     if (shouldRecord) expt.warmup()
 
     List(6, 8, 10, 12).foreach { nb =>
@@ -246,7 +282,7 @@ object Experimenter {
 
 
   def mb_total()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new MomentSolverOnlineExpt[Double]("mb-total", true)
+    val expt = new OldMomentSolverOnlineExpt[Double]("mb-total", true)
     if (shouldRecord) expt.warmup()
     List(2, 3, 4, 5).foreach { tot =>
       println("Microbenchmark Total = 10^" + tot)
@@ -268,7 +304,7 @@ object Experimenter {
 
 
   def mb_stddev()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new MomentSolverOnlineExpt[Double]("mb-stddev", true)
+    val expt = new OldMomentSolverOnlineExpt[Double]("mb-stddev", true)
     if (shouldRecord) expt.warmup()
     List(0.2, 0.4, 0.6, 0.8).foreach { stddev =>
       println("Microbenchmark for stddev = " + stddev)
@@ -289,7 +325,7 @@ object Experimenter {
   }
 
   def mb_prob()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new MomentSolverOnlineExpt[Double]("mb-prob", true)
+    val expt = new OldMomentSolverOnlineExpt[Double]("mb-prob", true)
     if (shouldRecord) expt.warmup()
     List(0.1, 0.2, 0.3, 0.4).foreach { prob =>
       println("Microbenchmark for prob = " + prob)
@@ -336,8 +372,9 @@ object Experimenter {
       val fullname = cg.inputname + name
       val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
 
-      val queries = List(12, 14, 16).flatMap{ qs => (0 until numIters).map(_ => sch.root.samplePrefix(qs))}.distinct
-      val moments = dc.loadPrimaryMoments(cg.inputname + "_base")
+      val queries = List(12, 14, 16).flatMap { qs => (0 until numIters).map(_ => sch.root.samplePrefix(qs)) }.distinct
+      dc.loadPrimaryMoments(cg.inputname + "_base")
+
       val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
       fileout.println("Query, Moment0Error, Moment1Error")
       queries.zipWithIndex.foreach { case (qu, qid) =>
@@ -351,7 +388,7 @@ object Experimenter {
         def solverRes(trans: MomentTransformer) = {
           val l = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
           val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray))
-          val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, moments)
+          val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
           val s = new CoMoment4Solver(qu.size, true, trans, primaryMoments)
           fetched.foreach { case (bits, array) => s.add(bits, array) }
           s.fillMissing()
@@ -382,11 +419,19 @@ object Experimenter {
         val moments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
         val pm2 = SolverTools.preparePrimaryMomentsForQuery(q, moments)
-        val s0 = new MomentSolverAll[Double](nb, CoMoment3)
-        val s1 = new MomentSolverAll[Double](nb, CoMoment4)
-        val s2 = new CoMoment4Solver(nb, true, Moment1Transformer, pm2)
-        val s3 = new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
-        var l = dc.m.prepare(q, nb-1, nb-1)
+        val s0 = Profiler.profile("s0 Construct") {
+          new MomentSolverAll[Double](nb, CoMoment3)
+        }
+        val s1 = Profiler.profile("s1 Construct") {
+          new MomentSolverAll[Double](nb, CoMoment4)
+        }
+        val s2 = Profiler.profile("s2 Construct") {
+          new CoMoment4Solver(nb, true, Moment1Transformer, pm2)
+        }
+        val s3 = Profiler.profile("s3 Construct") {
+          new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
+        }
+        var l = dc.m.prepare(q, nb - 1, nb - 1)
         while (!(l.isEmpty)) {
           val fetched = dc.fetch2[Double](List(l.head))
           val bits = l.head.accessible_bits
@@ -403,7 +448,7 @@ object Experimenter {
             s3.add(bits, fetched.toArray)
           }
 
-          if(!batch) {
+          if (!batch) {
             Profiler.profile("s0 FillMiss") {
               s0.fillMissing()
             }
@@ -436,7 +481,7 @@ object Experimenter {
           l = l.tail
         }
 
-        if(batch) {
+        if (batch) {
           Profiler.profile("s0 FillMiss") {
             s0.fillMissing()
           }
@@ -467,12 +512,12 @@ object Experimenter {
         }
         import Tools.round
         //println("Diff = ")
-        s1.sumValues.indices.foreach{i =>
+        s1.sumValues.indices.foreach { i =>
           val m0 = round(s0.sumValues(i), 8)
           val m1 = round(s1.sumValues(i), 8)
           val m2 = round(s2.moments(i), 8)
           val m3 = round(s3.moments(i), 8)
-          if(m0 != m1 || m0 != m2 || m0 != m3)
+          if (m0 != m1 || m0 != m2 || m0 != m3)
             println(s"$i ::: $m0 $m1 $m2 $m3")
         }
         dc.cuboids.head.backend.reset
@@ -484,17 +529,18 @@ object Experimenter {
 
   def debug(): Unit = {
     implicit val shouldRecord = false
-    val cg = NYC
+    val cg = SSB(100)
     val isSMS = false
-    //val param = "15_28_0"
-    //val name = (if (isSMS) "_sms_" else "_rms2_") + param
-    //val fullname = cg.inputname + name
-    //val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
-
-
+    val param = "15_14"
+    val name = (if (isSMS) "_sms_" else "_rms_") + param
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val sch = cg.schema()
     //val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355)
     //val q2 = List(116, 117, 118, 119, 120, 129, 130, 131, 137, 138, 139, 155, 172, 180, 192)
-    val queries = (0 to 4).map(i => Tools.rand_q(429, 10))
+    val q = List(141, 142, 143, 144, 152, 153, 154, 155, 165, 171, 172, 180, 185, 186, 192)
+    //val queries = (0 to 4).map(i => Tools.rand_q(429, 10))
     ////val numQs = sch.root.numPrefixUpto(15)
     ////(0 until 15).map(i => println(s"$i => " + numQs(i)))
     //
@@ -517,6 +563,7 @@ object Experimenter {
     //dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
 
     //val q = 0 until 12
+    //val q = sch.root.samplePrefix(15)
     //val res = dc.naive_eval(q)
     //val zeroes = res.filter(_ == 0.0).length
     //val sparse = zeroes.toDouble / res.length
@@ -529,14 +576,20 @@ object Experimenter {
     //res.groupBy(x => (x.toInt/step) * step).mapValues(_.length).toList.sortBy(_._1).foreach(println)
     //val fullname = "NYC_sms_16_10"
 
-    List("NYC_rms_16_10" -> "NYC_base", "SSB-sf100_rms_15_14" -> "SSB-sf100_base").foreach { case (fullname, basename) =>
-      val dc = PartialDataCube.load2(fullname, basename)
-      val moments = SolverTools.primaryMoments(dc)
-      dc.savePrimaryMoments(moments, basename)
-
-    }
+    //List("NYC_rms_16_10" -> "NYC_base", "SSB-sf100_rms_15_14" -> "SSB-sf100_base").foreach { case (fullname, basename) =>
+    //  val dc = PartialDataCube.load2(fullname, basename)
+    //  dc.primaryMoments = SolverTools.primaryMoments(dc)
+    //  dc.savePrimaryMoments(basename)
+    //}
+    //List("warmup", "warmupall").foreach{n =>
+    //  val dc = DataCube.load2(n)
+    //  dc.primaryMoments = SolverTools.primaryMoments(dc)
+    //  dc.savePrimaryMoments(n)
+    //}
     //val m2 =new EfficientMaterializationScheme(dc.m)
     //val expt = new MomentSolverBatchExpt[Double](fullname)
+    val expt = new CoMoment4BatchExpt(fullname)
+    (0 until 10).foreach{x => expt.run(dc, fullname, q)}
     //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
     //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }
@@ -555,6 +608,11 @@ object Experimenter {
       case "Fig9" =>
         moment_query_dimensionality(false)
         moment_query_dimensionality(true)
+      case "momentdims" =>
+        //moment_query_dimensionality(false)
+        //moment_query_dimensionality(true)
+        moment_query_dimensionality2(false)
+        moment_query_dimensionality2(true)
       case "Fig10" =>
         moment_mat_params(false)
         moment_mat_params(true)

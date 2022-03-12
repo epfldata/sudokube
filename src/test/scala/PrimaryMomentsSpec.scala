@@ -27,8 +27,13 @@ class PrimaryMomentsSpec extends FlatSpec with Matchers {
     val cubename = "testprimarymoment"
     val dir = new Directory(new File(s"cubedata/$cubename"))
     if (!dir.exists) dir.createDirectory()
-    dc.savePrimaryMoments((t1, m1), cubename)
-    val (t3, m3) = dc.loadPrimaryMoments(cubename)
+    dc.primaryMoments = (t1, m1)
+    dc.savePrimaryMoments(cubename)
+
+    val dc2 = new core.DataCube(dc.m)
+    dc2.loadPrimaryMoments(cubename)
+    val (t3, m3) = dc2.primaryMoments
+
     assert(t1 == t3)
     assert(m1.sameElements(m3))
 

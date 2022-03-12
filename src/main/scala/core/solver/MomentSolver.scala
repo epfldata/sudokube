@@ -10,19 +10,22 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   val solverName: String
   lazy val name = solverName + transformer.name
 
-  val moments = Array.fill(N)(0.0)
-  if (transformer == Moment1Transformer)
-    primaryMoments.foreach { case (i, m) => moments(i) = m }
-  else if (transformer == Moment0Transformer) {
-    val pmMap = primaryMoments.toMap
-    pmMap.foreach {
-      case (0, m) => moments(0) = m
-      case (i, m) => moments(i) = pmMap(0) - m
-    }
-  } else {
-    ???
+  val moments = Profiler.profile("Moments construct") {
+    Array.fill(N)(0.0)
   }
-
+  Profiler.profile("Moments init") {
+    if (transformer == Moment1Transformer)
+      primaryMoments.foreach { case (i, m) => moments(i) = m }
+    else if (transformer == Moment0Transformer) {
+      val pmMap = primaryMoments.toMap
+      pmMap.foreach {
+        case (0, m) => moments(0) = m
+        case (i, m) => moments(i) = pmMap(0) - m
+      }
+    } else {
+      ???
+    }
+  }
   val knownSet = collection.mutable.BitSet()
   knownSet += 0
   (0 until qsize).foreach { b => knownSet += (1 << b) }
@@ -30,9 +33,12 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   val momentProducts = new Array[Double](N)
   val knownMomentProducts = collection.mutable.BitSet()
 
-  buildMomentProducts()
-  moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = momentProducts(i) * moments(0) }
+  Profiler.profile("ExtraMoments init") {
+    buildMomentProducts()
+    moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = momentProducts(i) * moments(0) }
+  }
   val momentsToAdd = new ListBuffer[(Int, Double)]()
+
   var solution = Array.fill(N)(0.0)
 
   def dof = N - knownSet.size
@@ -100,7 +106,10 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
 }
 
 class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
-  val qArray = Array.fill(N)(Array.fill(qsize)(0.0))
+  val qArray = Profiler.profile("qArray Construct") {
+    println(s"N  = $N qsize = $qsize")
+    Array.fill(qsize)(Array.fill(N)(0.0))
+  }
 
   override val solverName: String = "Comoment4"
 
@@ -120,7 +129,7 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
         Profiler("part1") {
           if (!knownSet(i)) {
             val qsum = Profiler.profile("qsum1") {
-              parents.map { k => qArray(k)(w - 1) * momentProducts(i - k) }.sum
+              parents.map { k => qArray(w - 1)(k) * momentProducts(i - k) }.sum
             }
             //println(s"m[$i] = $qsum")
             moments(i) = qsum
@@ -129,12 +138,12 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
         Profiler("part2") {
           (w + 1 to qsize).map { j =>
             val qsum = Profiler.profile("qsum2") {
-              parents.map { k => qArray(k)(j - 1) * momentProducts(i - k) }.sum
+              parents.map { k => qArray(j - 1)(k) * momentProducts(i - k) }.sum
             }
             //q[S][j-1] = m[S] - 1/(j+1-|S|) sum_s [ q[S-s][j-1] ]
             val q = moments(i) - (qsum / (j - w + 1))
             //println(s"q[$i][$j] = $q")
-            qArray(i)(j - 1) = q
+            qArray(j - 1)(i) = q
           }
         }
       }
@@ -168,7 +177,7 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
           val deltamom = if (knownSet(i)) {
             newmoments(i) - moments(i)
           } else {
-            qArray(i)(w - 1)
+            qArray(w - 1)(i)
           }
           moments(i) += deltamom
 
@@ -176,8 +185,8 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
             children(i, set0).foreach { c =>
               Profiler("Child q update") {
                 (w + 1 to qsize).foreach { j =>
-                  val deltaq = (deltamom - qArray(i)(j - 1))
-                  qArray(c)(j - 1) += deltaq * momentProducts(c - i) / (j - w)
+                  val deltaq = (deltamom - qArray(j - 1)(i))
+                  qArray(j - 1)(c) += deltaq * momentProducts(c - i) / (j - w)
                 }
               }
               val n = ((w + 1) -> c)
@@ -191,7 +200,7 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
                 //}
               }
             }
-            (w to qsize).foreach { j => qArray(i)(j - 1) = 0 }
+            (w to qsize).foreach { j => qArray(j - 1)(i) = 0 }
           }
         }
       }

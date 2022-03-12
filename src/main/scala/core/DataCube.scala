@@ -24,12 +24,12 @@ import scala.concurrent.{Await, ExecutionContext, Future, future}
  * The DataCube instance itself stores the Cuboids -- the data or proxies
  * to the data held in the backend.
  */
-@SerialVersionUID(1L)
+@SerialVersionUID(2L)
 class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /* protected */
   var cuboids = Array[Cuboid]()
-
+  var primaryMoments : (Long, Array[Long]) = null
   def showProgress = m.n_bits > 25
 
   /** this is too slow. */
@@ -370,16 +370,16 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }
   }
 
-  def savePrimaryMoments(moments: (Long, Array[Long]), cubename: String) = {
+  def savePrimaryMoments(cubename: String) = {
     val filename = s"cubedata/$cubename/${cubename}.m1s"
     val out = new ObjectOutputStream(new FileOutputStream(filename))
-    out.writeObject(moments)
+    out.writeObject(primaryMoments)
   }
 
   def loadPrimaryMoments(cubename: String) = {
     val filename = s"cubedata/$cubename/${cubename}.m1s"
     val in = new ObjectInputStream(new FileInputStream(filename))
-    in.readObject().asInstanceOf[(Long, Array[Long])]
+    primaryMoments = in.readObject().asInstanceOf[(Long, Array[Long])]
   }
 } // end DataCube
 

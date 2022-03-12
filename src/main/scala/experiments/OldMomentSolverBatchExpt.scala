@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 
-class MomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("moment-batch", ename2){
+class OldMomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("moment-batch", ename2){
 
   val strategies = List(Strategy.CoMoment3) //Strategy.values.toList
   fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  SolversTotalTime(us), UPrepareTime(us), UFetchTime(us), USolveMaxDimFetched, " + strategies.map(a => s"$a SolveTime(us), $a Err").mkString(", "))
