@@ -181,7 +181,7 @@ object Experimenter {
     dc.cuboids.head.backend.reset
   }
 
-  def moment_query_dimensionality2(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def newmoment_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
 
     val cg = SSB(100)
     val param = "15_14"
@@ -255,6 +255,45 @@ object Experimenter {
       dc.cuboids.head.backend.reset
     }
 
+  }
+
+  def newmoment_mat_params(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
+    val cg = NYC
+    val params = List(
+      (14, 10),
+      (15, 6), (15, 10), (15, 14),
+      (16, 10)
+    )
+    val sch = cg.schema()
+
+    val qs = 10
+    val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
+    val ms = (if (isSMS) "sms" else "rms")
+    val expname2 = s"mat-params-$ms"
+    val exptfull = new CoMoment4BatchExpt(expname2)
+    if (shouldRecord) exptfull.warmup()
+
+    val exptonline = new CoMoment4OnlineExpt(expname2)
+    if (shouldRecord) exptonline.warmup()
+
+    params.foreach { p =>
+      val fullname = s"${cg.inputname}_${ms}_${p._1}_${p._2}"
+      val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+      dc.loadPrimaryMoments(cg.inputname + "_base")
+      println(s"Moment Solver Materialization Parameters Experiment for $fullname")
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Batch Query ${i + 1}/$ql")
+        exptfull.run(dc, fullname, q)
+      }
+
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Online Query ${i + 1}/$ql")
+        exptonline.run(dc, fullname, q)
+      }
+
+      dc.cuboids.head.backend.reset
+    }
   }
 
   def mb_dims()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
@@ -589,7 +628,7 @@ object Experimenter {
     //val m2 =new EfficientMaterializationScheme(dc.m)
     //val expt = new MomentSolverBatchExpt[Double](fullname)
     val expt = new CoMoment4BatchExpt(fullname)
-    (0 until 10).foreach{x => expt.run(dc, fullname, q)}
+    (0 until 10).foreach { x => expt.run(dc, fullname, q) }
     //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
     //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }
@@ -608,14 +647,15 @@ object Experimenter {
       case "Fig9" =>
         moment_query_dimensionality(false)
         moment_query_dimensionality(true)
-      case "momentdims" =>
-        //moment_query_dimensionality(false)
-        //moment_query_dimensionality(true)
-        moment_query_dimensionality2(false)
-        moment_query_dimensionality2(true)
+      case "Fig9new" =>
+        newmoment_query_dimensionality(false)
+        newmoment_query_dimensionality(true)
       case "Fig10" =>
         moment_mat_params(false)
         moment_mat_params(true)
+      case "Fig10new" =>
+        newmoment_mat_params(false)
+        newmoment_mat_params(true)
       case "Fig11" =>
         mb_dims()
         mb_stddev()

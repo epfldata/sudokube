@@ -191,9 +191,9 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
               }
               val n = ((w + 1) -> c)
               Profiler("PQ update") {
-                if (!toProcess.contains(n)) {
+                //if (!toProcess.contains(n)) {
                   toProcess += n
-                }
+                //}
                 //if(!toProcess2.contains(c)){
                 //  toProcess += n
                 //  toProcess2 += c
