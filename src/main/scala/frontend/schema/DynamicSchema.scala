@@ -63,7 +63,7 @@ import util.BigBinaryTools._
     See also the documentation for ColEncoder.decode_dim for a continuation of
     this example.
 */
-class DynamicSchema extends Schema  {
+class DynamicSchema extends Schema {
 
   override def n_bits: Int = bitPosRegistry.n_bits
 
