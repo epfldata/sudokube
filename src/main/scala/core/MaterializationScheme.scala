@@ -314,7 +314,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
     import Util.intersect
 
-    var testxx = scala.collection.mutable.Map[Seq[Int], ProjectionMetaData]()
+    val abMapProjSingle = scala.collection.mutable.Map[IndexedSeq[Int], ProjectionMetaData]()
     var ret = List[ProjectionMetaData]()
 
     //For each projection, do filtering
@@ -328,19 +328,20 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
           val mask = Bits.mk_list_mask(p, qBS)
           //Only keep min mask.length when same ab
-          if(testxx.contains(ab)){
-            if(mask.length < testxx(ab).mask.length){
-              testxx -= ab
-              testxx += (ab, ProjectionMetaData(ab, ab0, mask, id))
+          if(abMapProjSingle.contains(ab)){
+            if(mask.length < abMapProjSingle(ab).mask.length){
+              abMapProjSingle -= ab
+              abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
             }
           } else {
-            testxx += (ab, ProjectionMetaData(ab, ab0, mask, id))
+            abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
           }
         }
       }
     }
 
-    ret = testxx.values.toList
+    //Final filtering for dominating cuboids, could be optimized
+    ret = abMapProjSingle.values.toList
 
     ret.filter(x => !ret.exists(y => y.dominates(x, cheap_size))
     ).sortBy(-_.accessible_bits.length)
