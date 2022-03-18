@@ -192,7 +192,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     res
   }
 
-
   /** returns the metadata of cuboids that are suggested to be used to answer
    * a given query. The results are ordered large cuboids (i.e. with many
    * dimensions shared with the query) first.
@@ -245,7 +244,9 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
        Needs to be revisited should we ever have cuboids of varying sort
        orders.
     */
+
     val qp0 = qproject(query).filter(_.mask.length <= max_fetch_dim)
+
     val qp1: List[ProjectionMetaData] =
 
       qp0.groupBy(_.accessible_bits).mapValues(l =>
@@ -303,6 +304,46 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
       }
     }
     projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_opt(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                 ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    var testxx = scala.collection.mutable.Map[Seq[Int], ProjectionMetaData]()
+    var ret = List[ProjectionMetaData]()
+
+    //For each projection, do filtering
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p) //compute intersection
+        val res = hm.get(ab0)
+        val s = p.size
+        //Not sure if this is needed, need to verify with SBJ
+        if ((res.isDefined && s < res.get._1) || !res.isDefined) {
+          val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+          val mask = Bits.mk_list_mask(p, qBS)
+          //Only keep min mask.length when same ab
+          if(testxx.contains(ab)){
+            if(mask.length < testxx(ab).mask.length){
+              testxx -= ab
+              testxx += (ab, ProjectionMetaData(ab, ab0, mask, id))
+            }
+          } else {
+            testxx += (ab, ProjectionMetaData(ab, ab0, mask, id))
+          }
+        }
+      }
+    }
+
+    ret = testxx.values.toList
+
+    ret.filter(x => !ret.exists(y => y.dominates(x, cheap_size))
+    ).sortBy(-_.accessible_bits.length)
   }
 
 
