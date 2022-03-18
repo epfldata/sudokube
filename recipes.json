@@ -1,0 +1,31 @@
+[
+    { "name": "Black Chana Masala",
+      "Type": "Dish",
+      "Region": "India",
+      "rating": 4
+    },
+  
+    { "Type": "Dish",
+        "Region": "India",
+        "name": "Healthy Chicken Korma",
+        "rating": 5,
+        "Vegetarian": "0"
+    },
+
+    {"Type": "Dish",
+        "Region": "Italy",
+        "name": "Tagliatelles à la citrouille",
+        "rating": 8
+    },
+    {"Type": "Dessert",
+        "Region": "Europe",
+        "name": "Truffes au chocolat",
+        "rating": 3,
+        "Vegetarian": "1"
+    },
+    {
+        "Type": "Dessert",
+        "Region": "Europe",
+        "name": "Biscuits de Noel aux amandes",
+        "rating": 9}
+  ]

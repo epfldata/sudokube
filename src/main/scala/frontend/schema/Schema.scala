@@ -19,7 +19,7 @@ trait Schema extends Serializable {
   protected def encode_column(key: String, v: Any) : BigBinary
 
   def encode_tuple(t: Seq[(String, Any)]): BigBinary = {
-    val cols = Profiler("EncodeColumn"){(t.map { case (key, v) => encode_column(key, v) })}
+    val cols = Profiler("EncodeColumn"){(t.map { case (key, v) => git(key, v) })}
       Profiler("ColumnSum"){cols.sum}
   }
 

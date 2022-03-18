@@ -28,7 +28,7 @@ object UserCube {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Int].toLong)
     for ((u, v) <- R) {
-      println("decodé " + sch.decode_tuple(u) + " : " + v + "\n")
+      println("initial : " + u + ", decodé " + sch.decode_tuple(u) + " : " + v + "\n")
     }
     val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
     val dc = new DataCube(matScheme)
