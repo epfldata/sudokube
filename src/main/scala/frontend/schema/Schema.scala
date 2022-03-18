@@ -41,6 +41,7 @@ trait Schema extends Serializable {
       } else
         throw new UnsupportedOperationException("Only CSV or JSON supported")
     }
+    println("items = " + items + "\n")
 
     if (measure_key == None) {
       items.map(l => (encode_tuple(l.toList), 1L))
