@@ -200,7 +200,7 @@ object DemoTxt {
     
     //Exploration.dist(sch, dc, "name" )*/
     val qV = userCube.query(List(("Region", 2), ("Type", 1)))
-    val qH = List()
+    val qH = userCube.query(List(("Vegetarian", 1)))
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
