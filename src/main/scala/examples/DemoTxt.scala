@@ -16,6 +16,7 @@ import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StaticSchema2, Struc
 
 import java.io.{FileReader, FileWriter}
 import java.util.Date
+import scala.::
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
@@ -187,10 +188,6 @@ object DemoTxt {
 
   def cooking(): Unit = {
 
-    val sch = new schema.DynamicSchema
-    val R = sch.read("recipes.json", Some("rating"), _.asInstanceOf[Int].toLong)
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .0000000008, 10))
-    dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
 
     val userCube = UserCube.createFromJson("recipes.json", "rating")
 
@@ -202,9 +199,8 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    
-    val qV = List(2, 4) //Company
-    val qH = List(6) //even or odd years
+    val qV = userCube.query(List(("Region", 2), ("Type", 1)))
+    val qH = List()
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
@@ -213,11 +209,12 @@ object DemoTxt {
     //val s = dc.solver[Rational](q, 2)
     //s.compute_bounds
 
+
+
     // runs up to the full cube
-    dc.solver(q, 3)
 
     // this one need to run up to the full cube
-    val od = OnlineDisplay(userCube.sch, userCube.cube, PrettyPrinter.formatPivotTable(sch, qV, qH))
+    val od = OnlineDisplay(userCube.sch, userCube.cube, PrettyPrinter.formatPivotTable(userCube.sch, qV, qH))
     od.l_run(q, 2)
 
   

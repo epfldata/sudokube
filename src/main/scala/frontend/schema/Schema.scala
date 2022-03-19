@@ -19,7 +19,7 @@ trait Schema extends Serializable {
   protected def encode_column(key: String, v: Any) : BigBinary
 
   def encode_tuple(t: Seq[(String, Any)]): BigBinary = {
-    val cols = Profiler("EncodeColumn"){(t.map { case (key, v) => git(key, v) })}
+    val cols = Profiler("EncodeColumn"){(t.map { case (key, v) => encode_column(key, v) })}
       Profiler("ColumnSum"){cols.sum}
   }
 
@@ -41,7 +41,6 @@ trait Schema extends Serializable {
       } else
         throw new UnsupportedOperationException("Only CSV or JSON supported")
     }
-    println("items = " + items + "\n")
 
     if (measure_key == None) {
       items.map(l => (encode_tuple(l.toList), 1L))

@@ -12,8 +12,20 @@ class UserCube(val cube: DataCube, val sch : Schema) {
     sch.save(filename)
   }
 
-  def query(q: List[(String, Int)]) : Unit = {
+  def query(q: List[(String, Int)]) : List[Int] = {
+    q.flatMap(x => accCorrespondingBits(x._1, x._2, 0, Nil))
+  }
 
+  def accCorrespondingBits(field: String, thresh: Int, n : Int, acc: List[Int]): List[Int] = {
+    if (n < sch.n_bits && acc.size < thresh) {
+      if (sch.decode_dim(List(n)).apply(0).map(x => x.split("[= ]").apply(0)).apply(0).equals(field)) {
+        accCorrespondingBits(field, thresh, n+1, n :: acc)
+      } else {
+        accCorrespondingBits(field, thresh, n+1, acc)
+      }
+    } else {
+      acc
+    }
   }
 }
 
@@ -27,9 +39,6 @@ object UserCube {
   def createFromJson(filename: String, fieldToConsider: String): UserCube = {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Int].toLong)
-    for ((u, v) <- R) {
-      println("initial : " + u + ", decodé " + sch.decode_tuple(u) + " : " + v + "\n")
-    }
     val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
     val dc = new DataCube(matScheme)
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))

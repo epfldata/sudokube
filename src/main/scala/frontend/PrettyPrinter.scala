@@ -29,11 +29,12 @@ object PrettyPrinter {
     val permf = Bits.permute_bits(q_unsorted.size, perm)
     val r2 = new Array[String](r.size)
     r.indices.foreach( i => r2(permf(i)) = r(i))
-    //println("perm = " + perm.mkString(" "))
+    //println("permf = " + perm.mkString(" "))
     //println("R = " + r.mkString(";"))
     //println("R2 = " + r2.mkString(";"))
 
     val M = new DenseMatrix(1 << bV, 1 << bH, r2)
+
 
     val top = DenseMatrix.zeros[String](1, M.cols)
     for(i <- 0 to M.cols - 1) top(0, i) = ('a' + i).toChar.toString
@@ -52,7 +53,26 @@ object PrettyPrinter {
     println(sch.decode_dim(qH).zipWithIndex.map{
       case(p, i) => (top(0, i), p)})
 
-    DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M)).toString
+
+
+    val d = DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M))
+
+    exchangeRows(d, r)
+
+    d.toString()
+  }
+
+  def exchangeRows(matrix : DenseMatrix[String], r: Array[String]): DenseMatrix[String] = {
+    val temp = matrix.copy
+    r.indices.foreach(i => performExchange(i, temp, matrix, r))
+    r.indices.foreach(i => println(matrix.valueAt(i+1) + " becomes : " + temp.valueAt(i+1)))
+    temp
+  }
+
+  def performExchange(i : Int, newMat: DenseMatrix[String], oldMat : DenseMatrix[String], r: Array[String]): Unit = {
+    if (i/newMat.rows == 0 || i%newMat.rows == 0) {
+      newMat.update((i%newMat.rows+1), (i/newMat.rows), r(i))
+    }
   }
 
   def printRelTable(sch: Schema, q: List[Int], bou: Seq[Interval[Rational]]) {
