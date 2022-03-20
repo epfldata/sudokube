@@ -314,7 +314,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
     import Util.intersect
 
-    val abMapProjSingle = scala.collection.mutable.Map[IndexedSeq[Int], ProjectionMetaData]()
+    var abMapProjSingle = scala.collection.mutable.Map[IndexedSeq[Int], ProjectionMetaData]()
     var ret = List[ProjectionMetaData]()
 
     //For each projection, do filtering
@@ -331,20 +331,37 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           if(abMapProjSingle.contains(ab)){
             if(mask.length < abMapProjSingle(ab).mask.length){
               abMapProjSingle -= ab
-              abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
+              val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
+              if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
+                abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
+                abMapProjSingle += newp
+              }
+              //abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
             }
           } else {
-            abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
+            val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
+            if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
+              abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
+              abMapProjSingle += newp
+            }
           }
         }
       }
     }
 
     //Final filtering for dominating cuboids, could be optimized
-    ret = abMapProjSingle.values.toList
 
+    abMapProjSingle.values.toList.sortBy(-_.accessible_bits.length)
+    /*abMapProjSingle.filter(x => !abMapProjSingle.exists(y => y._2.dominates(x._2, cheap_size))).values.toList.sortBy(-_.accessible_bits.length)
+    */
+
+    /* Simpler implem, no performance difference
+    ret = abMapProjSingle.values.toList
     ret.filter(x => !ret.exists(y => y.dominates(x, cheap_size))
     ).sortBy(-_.accessible_bits.length)
+
+     */
+
   }
 
 
