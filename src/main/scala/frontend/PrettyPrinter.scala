@@ -26,20 +26,22 @@ object PrettyPrinter {
     val q_unsorted = (qV ++ qH)
     val q_sorted = q_unsorted.sorted
     val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
-    val permBack = qV.sorted.map(b => qV.indexOf(b)).toArray
     val permf = Bits.permute_bits(q_unsorted.size, perm)
-    val permfBack = Bits.permute_bits(qV.sorted.size, permBack)
     val r2 = new Array[String](r.size)
     r.indices.foreach( i => r2(permf(i)) = r(i))
     //println("permf = " + permf(6))
     //println("R = " + r.mkString(";"))
     //println("R2 = " + r2.mkString(";"))
+    val permBack = q_sorted.map(b => q_unsorted.indexOf(b)).toArray
+    val permfBack = Bits.permute_bits(q_unsorted.size, permBack)
 
-    val M = new DenseMatrix(1 << bV, 1 << bH, r2)
+    var M = new DenseMatrix(1 << bV, 1 << bH, r2)
 
 
     val top = DenseMatrix.zeros[String](1, M.cols)
-    for(i <- 0 to M.cols - 1) top(0, i) = ('a' + i).toChar.toString
+    for(i <- 0 until M.cols) {
+      top(0, i) = ('a' + i).toChar.toString
+    }
     if (qH.nonEmpty) {
       sch.decode_dim(qH).zipWithIndex.foreach(pair => top(0, pair._2) = pair._1.mkString(","))
     }
@@ -48,7 +50,7 @@ object PrettyPrinter {
     for(i <- 1 to M.rows ) left(i, 0) = ('A' -1 + i).toChar.toString
     left(0, 0) = ""
     if (qV.nonEmpty) {
-      sch.decode_dim(qV).zipWithIndex.foreach(pair => left(pair._2+1, 0) = pair._1.mkString(","))
+      sch.decode_dim(qV).zipWithIndex.foreach(pair => left(pair._2 + 1, 0) = pair._1.mkString(","))
     }
 
     // the n_bits/2 least significant bits are on the vertical axis
@@ -58,25 +60,23 @@ object PrettyPrinter {
     println(sch.decode_dim(qV).zipWithIndex.map{
       case(p, i) => (left(i + 1, 0), p)})
 
-
     println(sch.decode_dim(qH).zipWithIndex.map{
       case(p, i) => (top(0, i), p)})
 
+    M = exchangeRows(M, permfBack)
 
-
-    val d = DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M))
-
-    exchangeRows(d, permfBack).toString()
+    DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M)).toString()
 
   }
 
+
+
+  //TODO : fix the row exchange
   def exchangeRows(matrix : DenseMatrix[String], permfBack: BigInt => Int): DenseMatrix[String] = {
     val temp = matrix.copy
-    for (i <- 0 until matrix.rows-1) {
+    for (i <- 0 until matrix.rows) {
       for (j <- 0 until matrix.cols) {
-        if (matrix.valueAt(i, j) != null) {
-          temp.update(i, j, matrix.valueAt(permfBack(i), j))
-        }
+        //temp.update(i, j, matrix.valueAt(permfBack(i*matrix.cols + j)))
       }
     }
     temp
