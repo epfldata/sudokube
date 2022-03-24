@@ -46,6 +46,9 @@ object PrettyPrinter {
       top(0, i) = ('a' + i).toChar.toString
 
     }
+    for (i<- 0 until (1 << bV)) {
+      println(permfBackqV(i))
+    }
     if (qH.nonEmpty) {
       sch.decode_dim(qH).zipWithIndex.foreach(pair => top(0, permfBackqH(pair._2)) = pair._1.mkString(","))
     }
