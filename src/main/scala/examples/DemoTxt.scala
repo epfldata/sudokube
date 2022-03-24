@@ -211,7 +211,6 @@ object DemoTxt {
     //s.compute_bounds
 
 
-
     // runs up to the full cube
 
     // this one need to run up to the full cube
