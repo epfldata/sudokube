@@ -18,7 +18,7 @@ class UserCube(val cube: DataCube, val sch : Schema) {
 
   def accCorrespondingBits(field: String, thresh: Int, n : Int, acc: List[Int]): List[Int] = {
     if (n < sch.n_bits && acc.size < thresh) {
-      if (sch.decode_dim(List(n)).apply(0).map(x => x.split("[= ]").apply(0)).apply(0).equals(field)) {
+      if (sch.decode_dim(List(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
         accCorrespondingBits(field, thresh, n+1, n :: acc)
       } else {
         accCorrespondingBits(field, thresh, n+1, acc)

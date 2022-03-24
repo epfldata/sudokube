@@ -13,9 +13,20 @@
     },
 
     {"Type": "Dish",
-        "Region": "Japan",
+        "Region": "Italy",
         "name": "Tagliatelles à la citrouille",
         "rating": 8
+    },
+
+    {"Type": "Dessert",
+        "Region": "Italy",
+        "name": "Panna Cotta",
+        "rating": 7,
+        "Vegetarian": "1"
+    },
+    {"Type": "Dessert",
+        "name": "Mousse au chocolat",
+        "rating": 4
     },
     {"Type": "Dessert",
         "Region": "Europe",
