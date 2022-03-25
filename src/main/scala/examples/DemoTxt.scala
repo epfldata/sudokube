@@ -199,7 +199,7 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    val qV = userCube.query(List(("Type", 1), ("Region", 1)))
+    val qV = userCube.query(List(("Region", 1), ("Type", 1)))
     val qH = userCube.query(List(("Vegetarian", 1)))
     //val qH = userCube.query(List())
 

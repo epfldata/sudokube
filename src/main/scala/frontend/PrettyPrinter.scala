@@ -47,6 +47,7 @@ object PrettyPrinter {
 
     }
     for (i<- 0 until (1 << bV)) {
+      println(permf(i))
       println(permfBackqV(i))
     }
     if (qH.nonEmpty) {
