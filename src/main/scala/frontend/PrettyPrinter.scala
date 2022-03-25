@@ -51,7 +51,7 @@ object PrettyPrinter {
       println(permfBackqV(i))
     }
     if (qH.nonEmpty) {
-      sch.decode_dim(qH).zipWithIndex.foreach(pair => top(0, permfBackqH(pair._2)) = pair._1.mkString(","))
+      sch.decode_dim(qH).zipWithIndex.foreach(pair => top(0, permfBackqH(pair._2)) = pair._1.mkString(",").replace(" in List", "="))
     }
 
     val left: DenseMatrix[String] = DenseMatrix.zeros[String](M.rows + 1, 1)
@@ -60,7 +60,8 @@ object PrettyPrinter {
     }
     left(0, 0) = ""
     if (qV.nonEmpty) {
-      sch.decode_dim(qV).zipWithIndex.foreach(pair => left(permfBackqV(pair._2) + 1, 0) = pair._1.mkString(","))
+      sch.decode_dim(qV)
+        .zipWithIndex.foreach(pair => left(permfBackqV(pair._2) + 1, 0) = pair._1.mkString(",").replace(" in List", "="))
     }
 
 
@@ -77,7 +78,7 @@ object PrettyPrinter {
   }
 
 
-  //TODO : fix the row exchange
+  //TODO : fix the row exchange to sort in order of query
   def exchangeCells(matrix : DenseMatrix[String], permfBackV: BigInt => Int, permfBackH: BigInt => Int): DenseMatrix[String] = {
     val temp = matrix.copy
     for (i <- 0 until matrix.rows) {

@@ -199,23 +199,24 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    val qV = userCube.query(List(("Region", 1), ("Type", 1)))
-    val qH = userCube.query(List(("Vegetarian", 1)))
+    userCube.query(List(("Type", 1), ("Region", 3)),List(("Vegetarian", 1)), "moment")
     //val qH = userCube.query(List())
 
-    //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
-    val q = (qV ++ qH).sorted
+    /*val q = (qV ++ qH).sorted
 
     // solves to df=2 using only 2-dim cuboids
     //val s = dc.solver[Rational](q, 2)
     //s.compute_bounds
+
+    val r = userCube.cube.naive_eval(q)
+    println("r =" + r.mkString(" "))
 
 
     // runs up to the full cube
 
     // this one need to run up to the full cube
     val od = OnlineDisplay(userCube.sch, userCube.cube, PrettyPrinter.formatPivotTable(userCube.sch, qV, qH))
-    od.l_run(q, 2)
+    od.l_run(q, 2)*/
 
   
   }
