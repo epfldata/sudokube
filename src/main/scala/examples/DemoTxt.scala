@@ -140,8 +140,7 @@ object DemoTxt {
 
   def investment(): Unit = {
 
-    val sch = new schema.DynamicSchema
-
+    val sch = new schema.TimeSeriesSchema
     val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
     //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
 
@@ -165,9 +164,10 @@ object DemoTxt {
     Exploration.nat_decode_dim(sch, "date", grp_bits).zip(dc.naive_eval(q2)).filter(
       x => (x._1(0) >= 1996) && (x._1(0) < 2020))
   */
-
-    val qV = List(0, 12) //Company
-    val qH = List(1) //even or odd years
+    println("test");
+    print(sch.columnList.map(_._2.bits)); //(x,y) -> y.bits
+    val qV = List(0, 17, 26) //Company
+    val qH = List() //even or odd years
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
@@ -183,6 +183,11 @@ object DemoTxt {
     // this one need to run up to the full cube
     val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
     od.l_run(q, 2)
+  }
+
+  def bigJson() : Unit = {
+    val sch = new schema.DynamicSchema
+    val R = sch.read("2015-01-01-15.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
   }
 
   def shoppen() = {
