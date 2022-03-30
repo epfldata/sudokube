@@ -199,7 +199,8 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    userCube.query(List(("Type", 1), ("Region", 3)),List(("Vegetarian", 1)), "moment")
+    val matrix = userCube.querySlice(List(("Region", 3, List()), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List("1", "NULL"))), "moment")
+    println(matrix)
     //val qH = userCube.query(List())
 
     /*val q = (qV ++ qH).sorted

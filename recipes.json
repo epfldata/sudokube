@@ -2,20 +2,23 @@
     { "name": "Black Chana Masala",
       "Type": "Dish",
       "Region": "India",
-      "rating": 4
+      "rating": 4,
+        "spicy": 1
     },
   
     { "Type": "Dish",
         "Region": "India",
         "name": "Healthy Chicken Korma",
         "rating": 5,
-        "Vegetarian": "0"
+        "Vegetarian": "0",
+        "spicy": 1
     },
 
     {"Type": "Dish",
         "Region": "Italy",
         "name": "Tagliatelles à la citrouille",
-        "rating": 8
+        "rating": 8,
+        "spicy": 0
     },
 
     {"Type": "Dessert",
@@ -26,7 +29,8 @@
     },
     {"Type": "Dessert",
         "name": "Mousse au chocolat",
-        "rating": 4
+        "rating": 4,
+        "spicy": 0
     },
     {"Type": "Dessert",
         "Region": "Europe",
