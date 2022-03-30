@@ -18,7 +18,7 @@ class UserCube(val cube: DataCube, val sch : Schema) {
   }
 
   @tailrec
-  private def accCorrespondingBits(field: String, thresh: Int, n : Int, acc: List[Int]): List[Int] = {
+  final def accCorrespondingBits(field: String, thresh: Int, n : Int, acc: List[Int]): List[Int] = {
     if (n < sch.n_bits && acc.size < thresh) {
       if (sch.decode_dim(List(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
         accCorrespondingBits(field, thresh, n+1, acc ::: List(n))
@@ -33,7 +33,12 @@ class UserCube(val cube: DataCube, val sch : Schema) {
   def querySlice(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], method: String) : DenseMatrix[String] = {
     var matrix = query(qV.map(x => (x._1, x._2)), qH.map(x => (x._1, x._2)), method)
     matrix = matrix.delete(sliceV(qV.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._0)
-    matrix.delete(sliceH(qH.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._1)
+    val result = matrix.delete(sliceH(qH.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._1)
+    if (result.cols == 1 || result.rows == 1) {
+      new DenseMatrix[String](1, 1)
+    } else {
+      result
+    }
   }
 
   @tailrec
