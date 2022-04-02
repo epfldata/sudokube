@@ -311,7 +311,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val qL = query.toList
     val qIS = query.toIndexedSeq
     val qBS = query.toSet
-    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
     import Util.intersect
 
     var abMapProjSingle = scala.collection.mutable.Map[IndexedSeq[Int], ProjectionMetaData]()
@@ -321,29 +320,26 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
         val ab0 = intersect(qL, p) //compute intersection
-        val res = hm.get(ab0)
         val s = p.size
         //Not sure if this is needed, need to verify with SBJ
-        if ((res.isDefined && s < res.get._1) || !res.isDefined) {
-          val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
-          val mask = Bits.mk_list_mask(p, qBS)
-          //Only keep min mask.length when same ab
-          if(abMapProjSingle.contains(ab)){
-            if(mask.length < abMapProjSingle(ab).mask.length){
-              abMapProjSingle -= ab
-              val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
-              if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
-                abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
-                abMapProjSingle += newp
-              }
-              //abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
-            }
-          } else {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+        val mask = Bits.mk_list_mask(p, qBS)
+        //Only keep min mask.length when same ab
+        if(abMapProjSingle.contains(ab)){
+          if(mask.length < abMapProjSingle(ab).mask.length){
+            abMapProjSingle -= ab
             val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
             if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
               abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
               abMapProjSingle += newp
             }
+            //abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
+          }
+        } else {
+          val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
+          if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
+            abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
+            abMapProjSingle += newp
           }
         }
       }
@@ -570,7 +566,7 @@ case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: 
 
 //Wrapper for materialization scheme to try other MS
 class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
-  /** the metadata describing each projection in this scheme. */
+    /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
   val pset = projections.map(_.toSet)
   val pbset = projections.map(p => BitSet(p: _*))
@@ -640,5 +636,17 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 
 
 }
+
+
+/*class OptMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+
+  override val projections: IndexedSeq[List[Int]] = m.projections
+  val pset = projections.map(_.toSet)
+  val pbset = projections.map(p => BitSet(p: _*))
+
+
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+  }
+}*/
 
 
