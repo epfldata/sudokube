@@ -12,11 +12,24 @@ import scala.annotation.tailrec
 class UserCube(val cube: DataCube, val sch : Schema) {
 
 
+  /**
+   * saves the datacube into a file
+   * @param filename: the file to save into
+   */
   def save(filename: String): Unit = {
     cube.save2(filename)
     sch.save(filename)
   }
 
+
+  /**
+   * recursively search for the first thresh bits of a specific value
+   * @param field: the field to consider
+   * @param thresh: maximum number of bits to collect
+   * @param n: the index of the current bit
+   * @param acc: accumlator of the bits numbers
+   * @return the first thresh bits of a specific field, or a Nil
+   */
   @tailrec
   final def accCorrespondingBits(field: String, thresh: Int, n : Int, acc: List[Int]): List[Int] = {
     if (n < sch.n_bits && acc.size < thresh) {
@@ -30,10 +43,16 @@ class UserCube(val cube: DataCube, val sch : Schema) {
     }
   }
 
-  def querySlice(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], method: String) : DenseMatrix[String] = {
-    var matrix = query(qV.map(x => (x._1, x._2)), qH.map(x => (x._1, x._2)), method)
-    matrix = matrix.delete(sliceV(qV.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._0)
-    val result = matrix.delete(sliceH(qH.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._1)
+  /**
+   * @param qV query to display vertically, in the form (field to consider, on n bits, with list of specific values)
+   * @param qH query to display vertically, in the form (field to consider, on n bits, with list of specific values)
+   * @param method method of query, naive or moment
+   * @return DenseMatrix, final result of query, with headers, in qV and qH order
+   */
+  def querySliceMatrix(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], method: String) : DenseMatrix[String] = {
+    var matrix = queryMatrix(qV.map(x => (x._1, x._2)), qH.map(x => (x._1, x._2)), method)
+    matrix = matrix.delete(sliceVMatrix(qV.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._0)
+    val result = matrix.delete(sliceHMatrix(qH.map(x => (x._1, x._3)).sortBy(x=>x._1), matrix, 1, Nil), Axis._1)
     if (result.cols == 1 || result.rows == 1) {
       new DenseMatrix[String](1, 1)
     } else {
@@ -41,37 +60,60 @@ class UserCube(val cube: DataCube, val sch : Schema) {
     }
   }
 
+  /**
+   * recursively slice a matrix horizontal header, cell by cell
+   * @param qH_sorted specific values to retain for specific fields, in pair
+   * @param matrix matrix to slice
+   * @param n current cell index
+   * @param acc accumulator of cols to delete
+   * @return final acc of cols to delete
+   */
   @tailrec
-  private def sliceH(qH_sorted: List[(String, List[String])], matrix: DenseMatrix[String], n:Int, acc: List[Int]): List[Int] = {
+  private def sliceHMatrix(qH_sorted: List[(String, List[String])], matrix: DenseMatrix[String], n:Int, acc: List[Int]): List[Int] = {
 
     if (n == matrix.cols) {
       acc
     } else {
       val splitString = matrix(0, n).split(";").sorted
       if (!testLine(splitString, qH_sorted, 0)) {
-        sliceH(qH_sorted, matrix, n + 1, acc)
+        sliceHMatrix(qH_sorted, matrix, n + 1, acc)
       } else {
-        sliceH(qH_sorted, matrix, n + 1, n :: acc)
+        sliceHMatrix(qH_sorted, matrix, n + 1, n :: acc)
       }
     }
   }
 
+  /**
+   * recursively slice a matrix vertical header, cell by cell
+   * @param qV_sorted specific values to retain for specific fields, in pair
+   * @param matrix matrix to slice
+   * @param n current cell index
+   * @param acc accumulator of cols to delete
+   * @return final acc of cols to delete
+   */
   @tailrec
-  private def sliceV(qV_sorted: List[(String, List[String])], matrix: DenseMatrix[String], n:Int, acc: List[Int]): List[Int] = {
+  private def sliceVMatrix(qV_sorted: List[(String, List[String])], matrix: DenseMatrix[String], n:Int, acc: List[Int]): List[Int] = {
 
     if (n == matrix.rows) {
       acc
     } else {
       val splitString = matrix(n, 0).split(";").sorted
       if (!testLine(splitString, qV_sorted, 0)) {
-        sliceV(qV_sorted, matrix, n + 1, acc)
+        sliceVMatrix(qV_sorted, matrix, n + 1, acc)
       } else {
-        sliceV(qV_sorted, matrix, n + 1, n :: acc)
+        sliceVMatrix(qV_sorted, matrix, n + 1, n :: acc)
       }
     }
   }
 
 
+  /**
+   * recursively checks if the provided string checks the criterions of qV_sorted
+   * @param splitString string to test
+   * @param qV_sorted criterions, in form (field, list of acceptable values)
+   * @param n index of field considered
+   * @return true <=> all the conditions are fulfilled
+   */
   private def testLine(splitString: Array[String], qV_sorted: List[(String, List[String])], n: Int): Boolean = {
     if (n != splitString.length) {
       if (qV_sorted(n)._2.isEmpty) {
@@ -89,7 +131,15 @@ class UserCube(val cube: DataCube, val sch : Schema) {
 
   }
 
-  def query(qV: List[(String, Int)], qH: List[(String, Int)], method: String) : DenseMatrix[String] = {
+
+  /**
+   * simple query aggregation, without slicing
+   * @param qV query to display vertically, in the form (field to consider, on n bits)
+   * @param qH query to display horizontally, in the form (field to consider, on n bits)
+   * @param method method of query, naive or moment
+   * @return reconstructed matrix, with headers
+   */
+  def queryMatrix(qV: List[(String, Int)], qH: List[(String, Int)], method: String) : DenseMatrix[String] = {
     val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
@@ -102,6 +152,11 @@ class UserCube(val cube: DataCube, val sch : Schema) {
     matrix
   }
 
+  /**
+   * util method to solve query with moment method
+   * @param q_sorted bits of query, sorted
+   * @return array of result, raw
+   */
   def momentMethod(q_sorted: List[Int]):Array[String] = {
     var moment_method_result: Array[Double] = Array.empty
     def callback(s: MomentSolverAll[Double]) = {
@@ -112,6 +167,12 @@ class UserCube(val cube: DataCube, val sch : Schema) {
     moment_method_result.map(b => b.toString)
   }
 
+  /**
+   * @param qV bits of query vertically
+   * @param qH bits of query horizontally
+   * @param src source array, to transform in matrix
+   * @return DenseMatrix concatenated with top and left headers
+   */
   def createResultMatrix(qV : List[List[Int]], qH : List[List[Int]], src: Array[String]): DenseMatrix[String] = {
     val bH = qH.flatten.size
     val bV = qV.flatten.size
@@ -163,7 +224,13 @@ class UserCube(val cube: DataCube, val sch : Schema) {
   }
 
 
-  //TODO : fix the row exchange to sort in order of query
+  /**
+   * reorder cells of source matrix according the permfBackV and permfBackH
+   * @param matrix source matrix, to reorder
+   * @param permfBackV function of reorder, vertically
+   * @param permfBackH function of reorder, horizontally
+   * @return
+   */
   def exchangeCells(matrix : DenseMatrix[String], permfBackV: BigInt => Int, permfBackH: BigInt => Int): DenseMatrix[String] = {
     val temp = matrix.copy
     for (i <- 0 until matrix.rows) {
@@ -177,12 +244,24 @@ class UserCube(val cube: DataCube, val sch : Schema) {
 }
 
 object UserCube {
+
+  /**
+   * create a UserCube from a saved file
+   * @param filename name of the file to load from
+   * @return a new UserCube
+   */
   def load(filename: String): UserCube = {
     val cube = DataCube.load2(filename)
     val schema = Schema.load(filename)
     new UserCube(cube, schema)
   }
 
+  /**
+   * create a UserCube from a json file
+   * @param filename name of the JSON file
+   * @param fieldToConsider field to consider as aggregate value
+   * @return a new UserCube
+   */
   def createFromJson(filename: String, fieldToConsider: String): UserCube = {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Int].toLong)

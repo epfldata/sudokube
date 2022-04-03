@@ -200,7 +200,7 @@ object DemoTxt {
     
     //Exploration.dist(sch, dc, "name" )*/
     //val matrix = userCube.query(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
-    val matrix = userCube.querySlice(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List("NoneValue"))), "moment")
+    val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List("NoneValue"))), "moment")
     println(matrix.toString(Int.MaxValue, Int.MaxValue))
     //val qH = userCube.query(List())
 
