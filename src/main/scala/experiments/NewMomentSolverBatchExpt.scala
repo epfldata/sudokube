@@ -81,7 +81,7 @@ abstract class NewMomentSolverBatchExpt(ename2: String = "")(implicit shouldReco
     //}
     //allMoments.sortBy { case (i, nm, mm) => Math.abs(mm - nm) }.map { case (i, nm, mm) => s"$i ${known(i)} ==> $nm  $mm"}.foreach(println)
 
-    val ntotal = Profiler.durations("Naive Totoal")._2 / 1000
+    val ntotal = Profiler.durations("Naive Total")._2 / 1000
     val nprepare = Profiler.durations("Naive Prepare")._2 / 1000
     val nfetch = Profiler.durations("Naive Fetch")._2 / 1000
     val mprep = Profiler.durations("Moment Prepare")._2 / 1000
