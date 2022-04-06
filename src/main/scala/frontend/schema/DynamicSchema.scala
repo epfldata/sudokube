@@ -2,7 +2,8 @@
 package frontend.schema
 import frontend.schema.encoders.{ColEncoder, MemCol, NatCol}
 import util._
-import util.BigBinaryTools._
+
+import java.io.{File, FileOutputStream, ObjectOutputStream}
 
 
 /** A schema that can grow dynamically.

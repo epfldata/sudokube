@@ -191,6 +191,8 @@ object DemoTxt {
 
     val userCube = UserCube.createFromJson("recipes.json", "rating")
 
+    userCube.save("essai.txt")
+    val cube = UserCube.load("essai.txt")
     /* 
     Exploration.col_names(sch)
 
@@ -199,12 +201,12 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    val matrix = userCube.queryMatrix(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
+    val matrix = cube.queryMatrix(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
     //val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List("NoneValue"))), "moment")
     println(matrix.toString(Int.MaxValue, Int.MaxValue))
     //val qH = userCube.query(List())
 
-    val array = userCube.queryArray(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
+    val array = cube.queryArray(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
 
     /*val q = (qV ++ qH).sorted
 

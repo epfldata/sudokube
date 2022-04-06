@@ -145,7 +145,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param method method of query, naive or moment
    * @return reconstructed matrix, with headers
    */
-  def queryMatrix(qV: List[(String, Int)], qH: List[(String, Int)], method: String, resultOption: String): DenseMatrix[String] = {
+  def queryMatrix(qV: List[(String, Int)], qH: List[(String, Int)], method: String): DenseMatrix[String] = {
     val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
