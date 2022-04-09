@@ -231,9 +231,16 @@ class UserCube(val cube: DataCube, val sch: Schema) {
 
     val left: DenseMatrix[String] = DenseMatrix.zeros[String](M.rows + 1, 1)
     left(0, 0) = ""
+    var linesExcluded: List[Int] = Nil
     if (qV.nonEmpty) {
       sch.decode_dim(qV.flatten.sorted)
-        .zipWithIndex.foreach(pair => left(permfBackqV(pair._2) + 1, 0) = pair._1.mkString(";").replace(" in List", "="))
+        .zipWithIndex.foreach(pair => {
+        val newValue = pair._1.mkString(";").replace(" in List", "=")
+        if (testLine(newValue.split(";").sorted, List(("Vegetarian", List("1"))), 0)) {
+          linesExcluded = permfBackqV(pair._2) :: linesExcluded
+        }
+        left(permfBackqV(pair._2) + 1, 0) = pair._1.mkString(";").replace(" in List", "=")})
+      println(linesExcluded)
     }
 
 

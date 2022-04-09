@@ -26,6 +26,7 @@ trait Schema extends Serializable {
   def decode_tuple(i: BigBinary): Seq[(String, Any)] =
     columnList.map { case (key, c) => (key, c.decode(i)) }
 
+
   def read(filename: String, measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long]
           ): Seq[(BigBinary, Long)] = {
 

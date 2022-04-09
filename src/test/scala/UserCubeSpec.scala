@@ -47,7 +47,14 @@ class UserCubeSpec extends FlatSpec with Matchers{
     matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List()),
       ("Type", 1, List())),List(("Vegetarian", 1, List("NoneValue"))), "moment")
     assert(matrix.rows == 1 && matrix.cols == 1)
+  }
 
+  "UserCube" should "be able to load and save cubes" in {
+    val userCube = UserCube.createFromJson("recipes.json", "rating")
+    userCube.save("test")
+    val loaded = UserCube.load("test")
+    assert(loaded.cube.naive_eval(List(0)).sameElements(userCube.cube.naive_eval(List(0))))
+    assert(loaded.sch.n_bits == userCube.sch.n_bits)
   }
 
 }
