@@ -140,7 +140,7 @@ object DemoTxt {
 
   def investment(): Unit = {
 
-    val sch = new schema.TimeSeriesSchema
+    val sch = new schema.TypeSchema
     val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
     //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
 
@@ -166,8 +166,8 @@ object DemoTxt {
   */
     println("test");
     print(sch.columnList.map(_._2.bits)); //(x,y) -> y.bits
-    val qV = List(3,4,5) //Company
-    val qH = List(1) //even or odd years
+    val qH = sch.columns("date").bits.toList //Company
+    val qV = sch.columns("company").bits.toList ++ sch.columns("k_amount").bits.toList//even or odd years
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted

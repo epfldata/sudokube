@@ -1,10 +1,10 @@
 [
   { "company": "Google",    "date": 1998, "k_amount": 10 },
-  { "company": "Greenplum", "date" : "aaaaaa", "k_amount": 200 },
-  { "company": "Greenplum", "date": 2007, "k_amount": 1500 },
-  { "company": "Greenplum", "date": 2008, "k_amount": 20000 },
-  { "company": "Snowflake", "date": 2011, "k_amount": 150 },
-  { "company": "Snowflake", "date": 2013, "k_amount": 3500 },
+  { "company": "Greenplum", "date": "1999/10/01" },
+  { "company": "Greenplum", "date": "2007-03-4", "k_amount": 1500 },
+  { "company": "Greenplum", "date": "01/01/2008", "k_amount": 20000 },
+  { "company": "Snowflake", "date": "01-01-2011", "k_amount": 1.50 },
+  { "company": "Snowflake", "date": "abcd", "k_amount": 3500 },
   { "company": "Snowflake", "date": 2015, "k_amount": 30000 }
 ]
 
