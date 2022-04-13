@@ -14,7 +14,7 @@ class IsNullColEncoder[T](init_size: Int = 1
     def decode_locally(i: Int): T = {
         if(i == 0) {
             None.asInstanceOf[T]
-        }else 1.asInstanceOf[T]
+        }else "NOT_NULL".asInstanceOf[T]
             
     }
     

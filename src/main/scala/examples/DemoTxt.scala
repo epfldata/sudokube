@@ -166,8 +166,8 @@ object DemoTxt {
   */
     println("test");
     print(sch.columnList.map(_._2.bits)); //(x,y) -> y.bits
-    val qV = List(1, 2) //Company
-    val qH = List(3) //even or odd years
+    val qV = List(3,4,5) //Company
+    val qH = List(1) //even or odd years
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted

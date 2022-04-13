@@ -31,7 +31,7 @@ class TimeSeriesSchema extends Schema {
       } else
         throw new UnsupportedOperationException("Only CSV or JSON supported")
     }
-    items.zip(Range(1, items.size+1)).map(l => (encode_tuple(List((columnTimeLabel, l._2)) ++ l._1.toList), 1L))
+    items.zip(Range(0, items.size)).map(l => (encode_tuple(List((columnTimeLabel, l._2)) ++ l._1.toList), 1L))
   }
 
     protected def encode_column(key: String, v: Any) = {
