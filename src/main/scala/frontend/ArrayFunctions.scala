@@ -1,7 +1,11 @@
 package frontend
 
+import frontend.UserCube.testLine
 import frontend.schema.Schema
 import util.Bits
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object ArrayFunctions {
 
@@ -13,7 +17,7 @@ object ArrayFunctions {
    * @param src source array, to transform in matrix
    * @return densematrix decomposed, in forme (array for the top header, array of the left header, values for cells)
    */
-  def createResultArray(sch: Schema, qV: List[List[Int]], qH: List[List[Int]], src: Array[String]): (Array[String], Array[String], Array[String]) = {
+  def createResultArray(sch: Schema,sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], src: Array[String]): (Array[String], Array[String], Array[String]) = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 
@@ -22,7 +26,7 @@ object ArrayFunctions {
     val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
     val permf = Bits.permute_bits(q_unsorted.size, perm)
 
-    val permBackqV = qV.flatten.sorted.map(b => qV.reverse.flatten.indexOf(b)).toArray
+    val permBackqV = qV.flatten.sorted.map(b => qV.flatten.indexOf(b)).toArray
     val permfBackqV = Bits.permute_bits(qV.flatten.size, permBackqV)
     val permBackqH = qH.flatten.sorted.map(b => qH.reverse.flatten.indexOf(b)).toArray
     val permfBackqH = Bits.permute_bits(qH.flatten.size, permBackqH)
@@ -30,40 +34,47 @@ object ArrayFunctions {
     val resultArray = new Array[String](cols * rows)
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
-        resultArray(i * cols + j) = src(permf(j * rows + i))
+        resultArray(i*cols+j) = src(permf(j * rows + i))
       }
     }
 
-
+    var linesExcludedH: List[Int] = Nil
     val top = new Array[String](cols)
     if (qH.nonEmpty) {
-      sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => top(permfBackqH(pair._2)) = pair._1.mkString(";").replace(" in List", "="))
+      sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
+        val newValue = pair._1.mkString(";").replace(" in List", "=")
+        if (testLine(newValue.split(";").sorted, sliceH, 0)) {
+          linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
+        } else {
+          top(permfBackqH(pair._2)) = newValue
+        }
+      })
     }
 
     val left = new Array[String](rows)
+    var linesExcludedV: List[Int] = Nil
     if (qV.nonEmpty) {
-      sch.decode_dim(qV.flatten.sorted).zipWithIndex.foreach(pair => left(permfBackqV(pair._2)) = pair._1.mkString(";").replace(" in List", "="))
+      sch.decode_dim(qV.flatten.sorted)
+        .zipWithIndex.foreach(pair => {
+        val newValue = pair._1.mkString(";").replace(" in List", "=")
+        if (testLine(newValue.split(";").sorted, sliceV, 0)) {
+          linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
+        } else {
+          left(permfBackqV(pair._2)) = newValue}})
     }
-    (top, left, exchangeCellsArray((cols, rows), resultArray, permfBackqV, permfBackqH))
+
+    (top, left, deleteRowsCols(linesExcludedV, linesExcludedH, rows, cols, resultArray))
   }
 
-  /**
-   * reorder cells of source matrix according the permfBackV and permfBackH
-   *
-   * @param cols_rows  dimension of array, cols first, then rows
-   * @param src        source array
-   * @param permfBackV function of reorder, vertically
-   * @param permfBackH function of reorder, horizontally
-   * @return
-   */
-  def exchangeCellsArray(cols_rows: (Int, Int), src: Array[String], permfBackV: BigInt => Int, permfBackH: BigInt => Int): Array[String] = {
-    val temp = new Array[String](cols_rows._2 * cols_rows._1)
-    for (i <- 0 until cols_rows._2) {
-      for (j <- 0 until cols_rows._1) {
-        temp(i * cols_rows._1 + j) = src(permfBackV(i) * cols_rows._1 + permfBackH(j))
+  def deleteRowsCols(rowsExcluded: List[Int], colsExcluded: List[Int], rows: Int, cols: Int, src: Array[String]): Array[String] = {
+    var temp: List[String] = Nil
+    for (i<- 0 until rows) {
+      for (j<- 0 until cols) {
+        if (!rowsExcluded.contains(i) && !colsExcluded.contains(j))
+        temp = temp ::: List(src(i*cols + j))
       }
     }
-    temp
+    temp.toArray
   }
 
 }

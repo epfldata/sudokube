@@ -199,13 +199,14 @@ object DemoTxt {
     println(result)
     
     //Exploration.dist(sch, dc, "name" )*/
-    val matrix = userCube.queryMatrix(List(("Vegetarian", 1)),List(("Region", 2)), "moment")
-    //val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List("NoneValue"))), "moment")
+    //val matrix = userCube.queryMatrix(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
+    val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, Nil), ("Type", 1, Nil)),List(("Vegetarian", 1, List())), "moment")
     println(matrix.toString(Int.MaxValue, Int.MaxValue))
     //val qH = userCube.query(List())
 
-    val array = userCube.queryArray(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
-
+    //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
+    val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), "moment")
+    println(array._3.mkString("Array(", ", ", ")"))
     /*val q = (qV ++ qH).sorted
 
     // solves to df=2 using only 2-dim cuboids
