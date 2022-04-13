@@ -53,7 +53,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    */
   def querySliceMatrix(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], method: String): DenseMatrix[String] = {
     var matrix = queryMatrix(qV.map(x => (x._1, x._2)), qH.map(x => (x._1, x._2)), method)
-    matrix = matrix.delete(sliceVMatrix(qV.map(x => (x._1, x._3)).sortBy(x => x._1), matrix, 1, Nil), Axis._0)
+    //matrix = matrix.delete(sliceVMatrix(qV.map(x => (x._1, x._3)).sortBy(x => x._1), matrix, 1, Nil), Axis._0)
     val result = matrix.delete(sliceHMatrix(qH.map(x => (x._1, x._3)).sortBy(x => x._1), matrix, 1, Nil), Axis._1)
     if (result.cols == 1 || result.rows == 1) {
       new DenseMatrix[String](1, 1)
@@ -219,32 +219,40 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     var M = new DenseMatrix[String](1 << bV, 1 << bH)
     for (i <- 0 until M.rows) {
       for (j <- 0 until M.cols) {
-        M(i, j) = src(permf(j * M.rows + i))
+        M(permfBackqV(i), permfBackqH(j)) = src(permf(j * M.rows + i))
       }
     }
 
 
-    val top = DenseMatrix.zeros[String](1, M.cols)
+    var top = DenseMatrix.zeros[String](1, M.cols)
+    var linesExcludedH: List[Int] = Nil
     if (qH.nonEmpty) {
-      sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => top(0, permfBackqH(pair._2)) = pair._1.mkString(";").replace(" in List", "="))
+      sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
+        val newValue = pair._1.mkString(";").replace(" in List", "=")
+        if (testLine(newValue.split(";").sorted, List(("Region", List("India"))), 0)) {
+          linesExcludedH = permfBackqV(pair._2) :: linesExcludedH
+        } else {
+        top(0, permfBackqH(pair._2)) = newValue
+      }
+      })
     }
 
-    val left: DenseMatrix[String] = DenseMatrix.zeros[String](M.rows + 1, 1)
+    var left: DenseMatrix[String] = DenseMatrix.zeros[String](M.rows + 1, 1)
     left(0, 0) = ""
-    var linesExcluded: List[Int] = Nil
+    var linesExcludedV: List[Int] = Nil
     if (qV.nonEmpty) {
       sch.decode_dim(qV.flatten.sorted)
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
         if (testLine(newValue.split(";").sorted, List(("Vegetarian", List("1"))), 0)) {
-          linesExcluded = permfBackqV(pair._2) :: linesExcluded
-        }
-        left(permfBackqV(pair._2) + 1, 0) = pair._1.mkString(";").replace(" in List", "=")})
-      println(linesExcluded)
+          linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
+        } else {
+        left(permfBackqV(pair._2) + 1, 0) = newValue}})
     }
-
-
-    M = exchangeCellsMatrix(M, permfBackqV, permfBackqH)
+    M = M.delete(linesExcludedV, Axis._0)
+    M = M.delete(linesExcludedH, Axis._1)
+    left = left.delete(linesExcludedV.map(i => i + 1), Axis._0)
+    top = top.delete(linesExcludedH, Axis._1)
     if (qV.isEmpty && qH.isEmpty) {
       M
     } else if (qV.isEmpty) {
@@ -255,25 +263,6 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M))
     }
 
-  }
-
-
-  /**
-   * reorder cells of source matrix according the permfBackV and permfBackH
-   *
-   * @param matrix     source matrix, to reorder
-   * @param permfBackV function of reorder, vertically
-   * @param permfBackH function of reorder, horizontally
-   * @return
-   */
-  def exchangeCellsMatrix(matrix: DenseMatrix[String], permfBackV: BigInt => Int, permfBackH: BigInt => Int): DenseMatrix[String] = {
-    val temp = matrix.copy
-    for (i <- 0 until matrix.rows) {
-      for (j <- 0 until matrix.cols) {
-        temp.update(i, j, matrix.valueAt(permfBackV(i), permfBackH(j)))
-      }
-    }
-    temp
   }
 
 
