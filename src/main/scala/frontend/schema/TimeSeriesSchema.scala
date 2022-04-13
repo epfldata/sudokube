@@ -45,10 +45,11 @@ class TimeSeriesSchema extends Schema {
         }
         else {
           val c = if(v.isInstanceOf[Int]) {
-          columns.getOrElse(key, new IsNullColEncoder[Option[Int]])
-          } else columns.getOrElse(key, new IsNullColEncoder[Option[String]])
+          columns.getOrElse(key, new IsNullColEncoder[Option[Int]]/*TypeColEncoder[Int]*/)
+          } else columns.getOrElse(key, new IsNullColEncoder[Option[String]]/*TypeColEncoder[String]*/)
           columns(key) = c
           c.encode_any(Some(v))
+         // c.encode_any(v)
         }
 
     }
