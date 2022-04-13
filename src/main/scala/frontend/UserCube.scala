@@ -3,7 +3,7 @@ package frontend
 import backend.CBackend
 import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
-import core.{DataCube, Interval, RandomizedMaterializationScheme2, Rational, SparseSolver}
+import core.{DataCube, RandomizedMaterializationScheme2}
 import frontend.UserCube.testLine
 import frontend.schema.Schema
 import util.Bits
@@ -68,7 +68,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   }
 
   /**
-   * simple query aggregation, without slicing
+   * simple query aggregation, may include slicing
    *
    * @param qV     query to display vertically, in the form (field to consider, on n bits)
    * @param qH     query to display horizontally, in the form (field to consider, on n bits)
@@ -101,7 +101,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param qV     query to display vertically, in the form (field to consider, on n bits)
    * @param qH     query to display horizontally, in the form (field to consider, on n bits)
    * @param method method of query, naive or moment
-   * @return densematrix decomposed, in forme (array for the top header, array of the left header, values for cells)
+   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
   def queryArray(qV: List[(String, Int)], qH: List[(String, Int)], method: String): (Array[String], Array[String], Array[String]) = {
     val queryBitsV = getBitsForField(qV)
@@ -121,7 +121,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param qV     query to display vertically, in the form (field to consider, on n bits)
    * @param qH     query to display horizontally, in the form (field to consider, on n bits)
    * @param method method of query, naive or moment
-   * @return densematrix decomposed, in forme (array for the top header, array of the left header, values for cells)
+   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
   def queryArrayS(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], method: String): (Array[String], Array[String], Array[String]) = {
     val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
@@ -154,6 +154,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   }
 
   /**
+   * create result matrix and reorder the result to conform to the query order
    * @param qV  bits of query vertically
    * @param qH  bits of query horizontally
    * @param src source array, to transform in matrix
@@ -163,12 +164,13 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     val bH = qH.flatten.size
     val bV = qV.flatten.size
 
-
+    //first permute the query result, globally sorted, into the global order given
     val q_unsorted = (qV.flatten ++ qH.flatten)
     val q_sorted = q_unsorted.sorted
     val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
     val permf = Bits.permute_bits(q_unsorted.size, perm)
 
+    //then permute the headers for vertical and horizontal
     val permBackqV = qV.flatten.sorted.map(b => qV.flatten.indexOf(b)).toArray
     val permfBackqV = Bits.permute_bits(qV.flatten.size, permBackqV)
     val permBackqH = qH.flatten.sorted.map(b => qH.flatten.indexOf(b)).toArray
@@ -180,7 +182,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       }
     }
 
-
+    //prepare the top header, and select the columns to slice if necessary
     var top = DenseMatrix.zeros[String](1, M.cols)
     var linesExcludedH: List[Int] = Nil
     if (qH.nonEmpty) {
@@ -189,11 +191,12 @@ class UserCube(val cube: DataCube, val sch: Schema) {
         if (testLine(newValue.split(";").sorted, sliceH, 0)) {
           linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
         } else {
-        top(0, permfBackqH(pair._2)) = newValue
-      }
+          top(0, permfBackqH(pair._2)) = newValue
+        }
       })
     }
 
+    //prepare the left header, and select the rows to discard if necessary
     var left: DenseMatrix[String] = DenseMatrix.zeros[String](M.rows + 1, 1)
     left(0, 0) = ""
     var linesExcludedV: List[Int] = Nil
@@ -204,27 +207,34 @@ class UserCube(val cube: DataCube, val sch: Schema) {
         if (testLine(newValue.split(";").sorted, sliceV, 0)) {
           linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
         } else {
-        left(permfBackqV(pair._2) + 1, 0) = newValue}})
+          left(permfBackqV(pair._2) + 1, 0) = newValue
+        }
+      })
     }
+    //discard the selected columns/rows
     M = M.delete(linesExcludedV, Axis._0)
     M = M.delete(linesExcludedH, Axis._1)
     left = left.delete(linesExcludedV.map(i => i + 1), Axis._0)
     top = top.delete(linesExcludedH, Axis._1)
+
+    //case if all rows/columns have been deleted
     if (M.rows == 0 || M.cols == 0) {
       return DenseMatrix.zeros[String](1, 1)
     }
 
+    //treat each specific case separately
     if (qV.isEmpty && qH.isEmpty) {
       M
     } else if (qV.isEmpty) {
       DenseMatrix.vertcat(top, M)
     } else if (qH.isEmpty) {
+      //delete the top header if it contains only one category
       DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M)).delete(0, Axis._0)
     } else {
       DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M))
     }
 
-}
+  }
 
 
 }
@@ -272,12 +282,12 @@ object UserCube {
       if (qV_sorted(n)._2.isEmpty) {
         return testLine(splitString, qV_sorted, n + 1)
       }
-        for (i <- qV_sorted(n)._2.indices) {
-          if (splitString(n).contains(qV_sorted(n)._2(i))) {
-            return testLine(splitString, qV_sorted, n + 1)
-          }
+      for (i <- qV_sorted(n)._2.indices) {
+        if (splitString(n).contains(qV_sorted(n)._2(i))) {
+          return testLine(splitString, qV_sorted, n + 1)
         }
-        true
+      }
+      true
 
     } else {
       false
