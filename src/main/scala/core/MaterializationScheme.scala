@@ -6,7 +6,8 @@ import util._
 import combinatorics._
 import frontend.schema.Schema2
 
-import scala.collection.BitSet
+import scala.collection.{BitSet, mutable}
+import scala.collection.mutable.ListBuffer
 
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
@@ -321,7 +322,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
       if (p.size <= max_fetch_dim) {
         val ab0 = intersect(qL, p) //compute intersection
         val s = p.size
-        //Not sure if this is needed, need to verify with SBJ
         val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
         val mask = Bits.mk_list_mask(p, qBS)
         //Only keep min mask.length when same ab
@@ -638,15 +638,32 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 }
 
 
-/*class OptMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
 
-  override val projections: IndexedSeq[List[Int]] = m.projections
-  val pset = projections.map(_.toSet)
-  val pbset = projections.map(p => BitSet(p: _*))
+  var DAG = new mutable.HashMap[Int, List[DagVertex]]()
+  var root: DagVertex
 
+  def addVertex(p: Set[Int]): Boolean = {
+    val DagV = new DagVertex(p, p.size)
+    if(root == Nil){
+      root = DagV
+    } else {
+      val queue = collection.mutable.Queue[DagVertex]()
+      queue.enqueue(root)
+      while(!queue.isEmpty){
+        val newDagV = queue.dequeue()
 
-  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+      }
+    }
   }
-}*/
+}
+
+class DagVertex(val p: Set[Int], val p_length: Int){
+  var children = new ListBuffer[DagVertex]()
+
+  def addChild(v: DagVertex): Unit ={
+    children += v
+  }
+}
 
 
