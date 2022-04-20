@@ -652,7 +652,13 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
       queue.enqueue(root)
       while(!queue.isEmpty){
         val newDagV = queue.dequeue()
-
+        val queue_oldsize = queue.size
+        newDagV.children.foreach(child =>if(child.p.intersect(p).size == p.size) {
+          queue.enqueue(child)
+        })
+        if (queue_oldsize == queue.size){
+          newDagV.addChild(DagV)
+        }
       }
     }
   }
