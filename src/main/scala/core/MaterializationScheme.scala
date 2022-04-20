@@ -641,15 +641,17 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
 
   var DAG = new mutable.HashMap[Int, List[DagVertex]]()
-  var root: DagVertex
+  var root = new DagVertex(Set(0), 0)
 
-  def addVertex(p: Set[Int]): Boolean = {
+  def addVertex(p: Set[Int]): Int = {
     val DagV = new DagVertex(p, p.size)
-    if(root == Nil){
+    if(root.p_length == 0){
       root = DagV
+      -1
     } else {
       val queue = collection.mutable.Queue[DagVertex]()
       queue.enqueue(root)
+      var retNumChild = 0
       while(!queue.isEmpty){
         val newDagV = queue.dequeue()
         val queue_oldsize = queue.size
@@ -658,8 +660,10 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
         })
         if (queue_oldsize == queue.size){
           newDagV.addChild(DagV)
+          retNumChild += 1
         }
       }
+      retNumChild
     }
   }
 }
