@@ -191,8 +191,8 @@ object DemoTxt {
 
     val userCube = UserCube.createFromJson("recipes.json", "rating")
 
-    //val matrix = userCube.queryMatrix(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
-    val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, Nil), ("Type", 1, Nil)),List(), "moment")
+    val matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), "moment")
+    //val matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, Nil), ("Type", 1, Nil)),List(), "moment")
     println(matrix.toString(Int.MaxValue, Int.MaxValue))
     //val qH = userCube.query(List())
 

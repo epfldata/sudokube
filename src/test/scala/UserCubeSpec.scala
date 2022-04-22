@@ -14,21 +14,21 @@ class UserCubeSpec extends FlatSpec with Matchers{
   "UserCube" should "return good matrix(not sliced)" in {
     val userCube = UserCube.createFromJson("recipes.json", "rating")
     val matrix = userCube.queryMatrix(List(("Region", 2), ("spicy", 1)),List(("Vegetarian", 1)), "moment")
-    assert("15.0" == matrix(2, 1))
+    assert("15.0" == matrix(3, 1))
     assert("12.0" == matrix(4, 1))
-    assert("5.0" == matrix(7, 2))
+    assert("5.0" == matrix(6, 2))
   }
 
   "UserCube" should "sort result matrix by order of parameters" in {
     val userCube = UserCube.createFromJson("recipes.json", "rating")
     var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)),List(("Vegetarian", 1)), "moment")
-    assert("15.0" == matrix(3, 1))
+    assert("15.0" == matrix(5, 1))
     assert("12.0" == matrix(7, 1))
-    assert("5.0" == matrix(6, 2))
+    assert("5.0" == matrix(4, 2))
     matrix = userCube.queryMatrix(List(("Vegetarian", 1)),List(("spicy", 1), ("Region", 2)), "moment")
-    assert("15.0" == matrix(1, 3))
+    assert("15.0" == matrix(1, 5))
     assert("12.0" == matrix(1, 7))
-    assert("5.0" == matrix(2, 6))
+    assert("5.0" == matrix(2, 4))
   }
 
   "UserCube" should "return same result in naive or moment method" in {
