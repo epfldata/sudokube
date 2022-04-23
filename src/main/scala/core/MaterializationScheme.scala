@@ -6,6 +6,7 @@ import util._
 import combinatorics._
 import frontend.schema.Schema2
 
+import scala.collection.immutable.HashMap
 import scala.collection.{BitSet, mutable}
 import scala.collection.mutable.ListBuffer
 
@@ -633,19 +634,37 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
     println()
     res0
   }
-
-
 }
 
+class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+  /** the metadata describing each projection in this scheme. */
+  override val projections: IndexedSeq[List[Int]] = m.projections
 
+  val projectionsDAG = new ProjectionsDag(projections)
+
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+
+  }
+}
+
+/**
+ * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
+ * @param ps The list of projections.
+ */
 class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
 
-  var DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil)
+  var DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
   var root = new DagVertex(Set(0), 0)
 
+  /**
+   * Adds a projection vertex to the graph via BFS.
+   * Can be the child of multiple other vertices.
+   * Gets added to the DAG hashmap with its size as key.
+   * @param p The projection to be added
+   * @return -1 if added vertex is first => root (vertices are added sorted decreasing), otherwise the number of parents it has (should never be 0)
+   */
   def addVertex(p: Set[Int]): Int = {
     val DagV = new DagVertex(p, p.size)
-    DAG
     if(root.p_length == 0){
       root = DagV
       DAG(p.size) ::= DagV
@@ -669,14 +688,45 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
       retNumChild
     }
   }
+
+  /**
+   * Adds all the projection vertices from the object
+   * @return The number of vertices added (should == projections.length)
+   */
+  def addAllVertices(): Int = {
+    var addedVtcs = 0
+    ps.foreach(p => {
+      val vertexRet = addVertex(p.toSet)
+      if(vertexRet == 0){
+        println("Error while adding projection vertex : doesn't have any parent")
+      } else {
+        addedVtcs += 1
+      }
+    })
+    addedVtcs
+ }
+
+  /**
+   * Finalizes the DAG
+   * @return The Immutable Map
+   */
+  def finish(): Map[Int, List[DagVertex]] = {
+    DAG.toMap
+  }
+
+  class DagVertex(val p: Set[Int], val p_length: Int){
+    var children = new ListBuffer[DagVertex]()
+
+    /**
+     * Adds a child to the vertex
+     * @param v the vertex of the child to add
+     */
+    def addChild(v: DagVertex): Unit ={
+      children += v
+    }
 }
 
-class DagVertex(val p: Set[Int], val p_length: Int){
-  var children = new ListBuffer[DagVertex]()
 
-  def addChild(v: DagVertex): Unit ={
-    children += v
-  }
 }
 
 
