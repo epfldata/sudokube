@@ -639,8 +639,7 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-
-  val projectionsDAG = new ProjectionsDag(projections)
+  val projectionsDAG = new ProjectionsDag(projections).addAllVertices().finish()
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
 
@@ -693,7 +692,7 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
    * Adds all the projection vertices from the object
    * @return The number of vertices added (should == projections.length)
    */
-  def addAllVertices(): Int = {
+  def addAllVertices(): ProjectionsDag = {
     var addedVtcs = 0
     ps.foreach(p => {
       val vertexRet = addVertex(p.toSet)
@@ -703,7 +702,7 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
         addedVtcs += 1
       }
     })
-    addedVtcs
+    this
  }
 
   /**
