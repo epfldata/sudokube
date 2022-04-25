@@ -639,7 +639,7 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-  val projectionsDAG = new ProjectionsDag(projections).addAllVertices().finish()
+  val projectionsDAGroot = new ProjectionsDag(projections).addAllVertices().finish()
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
 
@@ -655,7 +655,7 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
   var DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
   var root = new DagVertex(Set(0), 0)
 
-  /**
+   /**
    * Adds a projection vertex to the graph via BFS.
    * Can be the child of multiple other vertices.
    * Gets added to the DAG hashmap with its size as key.
@@ -664,6 +664,10 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
    */
   def addVertex(p: Set[Int]): Int = {
     val DagV = new DagVertex(p, p.size)
+
+    /**
+     * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure
+     */
     if(root.p_length == 0){
       root = DagV
       DAG(p.size) ::= DagV
@@ -675,7 +679,7 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
       while(!queue.isEmpty){
         val newDagV = queue.dequeue()
         val queue_oldsize = queue.size
-        newDagV.children.foreach(child =>if(child.p.intersect(p).size == p.size) {
+        newDagV.children.foreach(child => if(child.p.contains(p)) {
           queue.enqueue(child)
         })
         if (queue_oldsize == queue.size){
@@ -703,14 +707,14 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
       }
     })
     this
- }
+  }
 
   /**
    * Finalizes the DAG
    * @return The Immutable Map
    */
-  def finish(): Map[Int, List[DagVertex]] = {
-    DAG.toMap
+  def finish(): DagVertex = {
+    root
   }
 
   class DagVertex(val p: Set[Int], val p_length: Int){
@@ -720,12 +724,10 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
      * Adds a child to the vertex
      * @param v the vertex of the child to add
      */
-    def addChild(v: DagVertex): Unit ={
+    def addChild(v: DagVertex): Unit = {
       children += v
     }
-}
-
-
+  }
 }
 
 
