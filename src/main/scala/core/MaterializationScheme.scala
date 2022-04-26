@@ -642,7 +642,41 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
   val projectionsDAGroot = new ProjectionsDag(projections).addAllVertices().finish()
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
-
+    val ret = new ListBuffer[ProjectionMetaData]()
+    val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
+    queue.enqueue((projectionsDAGroot, query))
+    projectionsDAGroot.hasBeenDone = true
+    while(!queue.isEmpty){
+      val (vert_deq, intersect_deq) = queue.dequeue()
+      if(vert_deq.p_length >= max_fetch_dim){
+        vert_deq.children.foreach(child => {
+          if(!child._1.hasBeenDone) {
+            child._1.hasBeenDone = true
+            queue.enqueue((child._1, intersect_deq)) //remove child._2 from intersect_deq
+          }
+        })
+      } else {
+        var good_children = 0
+        vert_deq.children.foreach(child => {
+          val newdif = intersect_deq.intersect(child._2)
+          if(newdif.isEmpty){
+            if(!child._1.hasBeenDone){
+              queue.enqueue((child._1, intersect_deq))
+              child._1.hasBeenDone = true
+            }
+            good_children += 1
+          } else {
+            if(!child._1.hasBeenDone){
+              queue.enqueue((child._1, intersect_deq)) //remove newdif from intersect_deq
+              child._1.hasBeenDone = true
+            }
+          }
+        })
+        if(good_children == 0){
+          ret += null //ProjectionMetaData(intersect_deq, ) NEED TO ADD THIS CORRECTLY
+        }
+      }
+    }
   }
 }
 
@@ -716,17 +750,18 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
   def finish(): DagVertex = {
     root
   }
+}
 
-  class DagVertex(val p: Set[Int], val p_length: Int){
-    var children = new ListBuffer[DagVertex]()
+class DagVertex(val p: Set[Int], val p_length: Int){
+  var children = new ListBuffer[(DagVertex, Seq[Int])]()
+  var hasBeenDone = false
 
-    /**
-     * Adds a child to the vertex
-     * @param v the vertex of the child to add
-     */
-    def addChild(v: DagVertex): Unit = {
-      children += v
-    }
+  /**
+   * Adds a child to the vertex
+   * @param v the vertex of the child to add
+   */
+  def addChild(v: DagVertex): Unit = {
+    children += v
   }
 }
 
