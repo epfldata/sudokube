@@ -642,6 +642,9 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
   val projectionsDAGroot = new ProjectionsDag(projections).addAllVertices().finish()
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+
     val ret = new ListBuffer[ProjectionMetaData]()
     val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
     queue.enqueue((projectionsDAGroot, query))
@@ -652,7 +655,7 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
         vert_deq.children.foreach(child => {
           if(!child._1.hasBeenDone) {
             child._1.hasBeenDone = true
-            queue.enqueue((child._1, intersect_deq)) //remove child._2 from intersect_deq
+            queue.enqueue((child._1, intersect_deq.filter(dim => !child._2.contains(dim))))
           }
         })
       } else {
@@ -667,16 +670,20 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
             good_children += 1
           } else {
             if(!child._1.hasBeenDone){
-              queue.enqueue((child._1, intersect_deq)) //remove newdif from intersect_deq
+              queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
               child._1.hasBeenDone = true
             }
           }
         })
         if(good_children == 0){
-          ret += null //ProjectionMetaData(intersect_deq, ) NEED TO ADD THIS CORRECTLY
+          val ab0 = intersect_deq.toList
+          val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+          val mask = Bits.mk_list_mask(vert_deq.p.toList, qBS)
+          ret += ProjectionMetaData(ab, ab0, mask, vert_deq.id)
         }
       }
     }
+    ret.toList
   }
 }
 
@@ -752,7 +759,7 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
   }
 }
 
-class DagVertex(val p: Set[Int], val p_length: Int){
+class DagVertex(val p: Set[Int], val p_length: Int, val id: Int){
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
   var hasBeenDone = false
 
