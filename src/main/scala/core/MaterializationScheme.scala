@@ -692,36 +692,36 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
   def buildDag(): DagVertex = {
     val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
-    var root = new DagVertex(Set(0), 0, 0)
+    var root = new DagVertex(Seq(0), 0, 0)
     var addedVtcs = 0
     projections.zipWithIndex.foreach { case (p, id) =>
       val pset = p.toSet
-      val DagV = new DagVertex(pset, p.size, id)
+      val new_dag_v = new DagVertex(p, p.size, id)
       /**
        * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure with SBJ
        */
       var vertexRet = 0
       if(root.p_length == 0){
-        root = DagV
-        DAG(p.size) ::= DagV
+        root = new_dag_v
+        DAG(p.size) ::= new_dag_v
         vertexRet = -1
       } else {
-        val queue = collection.mutable.Queue[DagVertex]()
-        queue.enqueue(root)
+        val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
+        queue.enqueue((root, root.p))
         while(queue.nonEmpty){
-          val newDagV = queue.dequeue()
+          val deq_dagV = queue.dequeue()
           val queue_oldsize = queue.size
-          newDagV.children.foreach(child =>
+          deq_dagV._1.children.foreach(child =>
             if(p.forall(p_dim => child._1.p.contains(p_dim))) {
-              queue.enqueue(child._1)
+              queue.enqueue((child._1, deq_dagV._1.p))
             }
           )
           if (queue_oldsize == queue.size){
-            newDagV.addChild(DagV)
+            deq_dagV._1.addChild(new_dag_v)
             vertexRet += 1
           }
         }
-        DAG(p.size) ::= DagV
+        DAG(p.size) ::= new_dag_v
       }
       if(vertexRet == 0){
         println("Error while adding projection vertex " + id + " : doesn't have any parent")
@@ -742,7 +742,7 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
  * @param p_length Its length
  * @param id Its id (index in sequence of projections)
  */
-class DagVertex(val p: Set[Int], val p_length: Int, val id: Int){
+class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int){
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
   var hasBeenDone = false
 
@@ -751,7 +751,8 @@ class DagVertex(val p: Set[Int], val p_length: Int, val id: Int){
    * @param v the vertex of the child to add
    */
   def addChild(v: DagVertex): Unit = {
-    children += v
+    children += (v, p.filter(dim => !v.p.contains(dim)))
+
   }
 }
 
