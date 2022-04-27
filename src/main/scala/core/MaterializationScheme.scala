@@ -6,8 +6,8 @@ import frontend.schema.Schema2
 import planning._
 import util._
 
+import scala.collection.BitSet
 import scala.collection.mutable.ListBuffer
-import scala.collection.{BitSet, mutable}
 
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
@@ -635,7 +635,7 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
   }
 }
 
-class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+case class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
 
@@ -690,20 +690,24 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
   }
 
   def buildDag(): DagVertex = {
-    val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
+    //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
     var root = new DagVertex(Seq(0), 0, 0)
     var addedVtcs = 0
+    var i = 0
     projections.zipWithIndex.foreach { case (p, id) =>
-      val pset = p.toSet
+      print("Curr : " + i + "\n")
+      i+= 1
       val new_dag_v = new DagVertex(p, p.size, id)
       /**
        * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure with SBJ
        */
       var vertexRet = 0
+
+      //TODO: Move if statement outside of loop since root is first
       if(root.p_length == 0){
         root = new_dag_v
-        DAG(p.size) ::= new_dag_v
+        //DAG(p.size) ::= new_dag_v
         vertexRet = -1
       } else {
         val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
@@ -721,7 +725,7 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
             vertexRet += 1
           }
         }
-        DAG(p.size) ::= new_dag_v
+        //DAG(p.size) ::= new_dag_v
       }
       if(vertexRet == 0){
         println("Error while adding projection vertex " + id + " : doesn't have any parent")
@@ -751,8 +755,8 @@ class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int){
    * @param v the vertex of the child to add
    */
   def addChild(v: DagVertex): Unit = {
-    val test = p.filter(dim => !v.p.contains(dim))
-    children += ((v, test))
+    val child_diff = p.filter(dim => !v.p.contains(dim))
+    children += ((v, child_diff))
 
   }
 }
