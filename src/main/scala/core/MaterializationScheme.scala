@@ -638,7 +638,11 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-  val projectionsDAGroot = new ProjectionsDag(projections).addAllVertices().finish()
+
+  /**
+   * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
+   */
+  var projectionsDAGroot = buildDag()
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
     val qIS = query.toIndexedSeq
@@ -684,82 +688,60 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
     }
     ret.toList
   }
-}
 
-/**
- * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
- * @param ps The list of projections.
- */
-class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
+  def buildDag(): DagVertex = {
+    val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
-  var DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
-  var root = new DagVertex(Set(0), 0, 0)
-
-   /**
-   * Adds a projection vertex to the graph via BFS.
-   * Can be the child of multiple other vertices.
-   * Gets added to the DAG hashmap with its size as key.
-   * @param p The projection to be added
-   * @return -1 if added vertex is first => root (vertices are added sorted decreasing), otherwise the number of parents it has (should never be 0)
-   */
-  def addVertex(p: Set[Int], id: Int): Int = {
-    val DagV = new DagVertex(p, p.size, id)
-
-    /**
-     * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure
-     */
-    if(root.p_length == 0){
-      root = DagV
-      DAG(p.size) ::= DagV
-      -1
-    } else {
-      val queue = collection.mutable.Queue[DagVertex]()
-      queue.enqueue(root)
-      var retNumChild = 0
-      while(!queue.isEmpty){
-        val newDagV = queue.dequeue()
-        val queue_oldsize = queue.size
-        newDagV.children.foreach(child =>
-          if(p.forall(p_dim => child._1.p.contains(p_dim))) {
-          queue.enqueue(child._1)
-          }
-        )
-        if (queue_oldsize == queue.size){
-          newDagV.addChild(DagV)
-          retNumChild += 1
-        }
-      }
-      DAG(p.size) ::= DagV
-      retNumChild
-    }
-  }
-
-  /**
-   * Adds all the projection vertices from the object
-   * @return The number of vertices added (should == projections.length)
-   */
-  def addAllVertices(): ProjectionsDag = {
+    var root = new DagVertex(Set(0), 0, 0)
     var addedVtcs = 0
-    ps.zipWithIndex.foreach { case (p, id) =>
-      val vertexRet = addVertex(p.toSet, id)
+    projections.zipWithIndex.foreach { case (p, id) =>
+      val pset = p.toSet
+      val DagV = new DagVertex(pset, p.size, id)
+      /**
+       * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure with SBJ
+       */
+      var vertexRet = 0
+      if(root.p_length == 0){
+        root = DagV
+        DAG(p.size) ::= DagV
+        vertexRet = -1
+      } else {
+        val queue = collection.mutable.Queue[DagVertex]()
+        queue.enqueue(root)
+        while(queue.nonEmpty){
+          val newDagV = queue.dequeue()
+          val queue_oldsize = queue.size
+          newDagV.children.foreach(child =>
+            if(p.forall(p_dim => child._1.p.contains(p_dim))) {
+              queue.enqueue(child._1)
+            }
+          )
+          if (queue_oldsize == queue.size){
+            newDagV.addChild(DagV)
+            vertexRet += 1
+          }
+        }
+        DAG(p.size) ::= DagV
+      }
       if(vertexRet == 0){
-        println("Error while adding projection vertex : doesn't have any parent")
+        println("Error while adding projection vertex " + id + " : doesn't have any parent")
       } else {
         addedVtcs += 1
       }
     }
-    this
-  }
-
-  /**
-   * Finalizes the DAG
-   * @return The Immutable Map
-   */
-  def finish(): DagVertex = {
+    if(addedVtcs != projections.length){
+      println("Error, not all vertices were added.")
+    }
     root
   }
 }
 
+/**
+ * A vertex to be used in the DAG, represents a single projection
+ * @param p The projection
+ * @param p_length Its length
+ * @param id Its id (index in sequence of projections)
+ */
 class DagVertex(val p: Set[Int], val p_length: Int, val id: Int){
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
   var hasBeenDone = false
