@@ -1,14 +1,13 @@
 //package ch.epfl.data.sudokube
 package core
 
-import planning._
-import util._
 import combinatorics._
 import frontend.schema.Schema2
+import planning._
+import util._
 
-import scala.collection.immutable.HashMap
-import scala.collection.{BitSet, mutable}
 import scala.collection.mutable.ListBuffer
+import scala.collection.{BitSet, mutable}
 
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
@@ -694,7 +693,7 @@ class DAGMaterializationScheme(m: MaterializationScheme) extends Materialization
 class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
 
   var DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
-  var root = new DagVertex(Set(0), 0)
+  var root = new DagVertex(Set(0), 0, 0)
 
    /**
    * Adds a projection vertex to the graph via BFS.
@@ -703,8 +702,8 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
    * @param p The projection to be added
    * @return -1 if added vertex is first => root (vertices are added sorted decreasing), otherwise the number of parents it has (should never be 0)
    */
-  def addVertex(p: Set[Int]): Int = {
-    val DagV = new DagVertex(p, p.size)
+  def addVertex(p: Set[Int], id: Int): Int = {
+    val DagV = new DagVertex(p, p.size, id)
 
     /**
      * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure
@@ -720,9 +719,11 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
       while(!queue.isEmpty){
         val newDagV = queue.dequeue()
         val queue_oldsize = queue.size
-        newDagV.children.foreach(child => if(child.p.contains(p)) {
-          queue.enqueue(child)
-        })
+        newDagV.children.foreach(child =>
+          if(p.forall(p_dim => child._1.p.contains(p_dim))) {
+          queue.enqueue(child._1)
+          }
+        )
         if (queue_oldsize == queue.size){
           newDagV.addChild(DagV)
           retNumChild += 1
@@ -739,14 +740,14 @@ class ProjectionsDag(ps: IndexedSeq[List[Int]]) {
    */
   def addAllVertices(): ProjectionsDag = {
     var addedVtcs = 0
-    ps.foreach(p => {
-      val vertexRet = addVertex(p.toSet)
+    ps.zipWithIndex.foreach { case (p, id) =>
+      val vertexRet = addVertex(p.toSet, id)
       if(vertexRet == 0){
         println("Error while adding projection vertex : doesn't have any parent")
       } else {
         addedVtcs += 1
       }
-    })
+    }
     this
   }
 
