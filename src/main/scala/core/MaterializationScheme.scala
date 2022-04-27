@@ -751,7 +751,8 @@ class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int){
    * @param v the vertex of the child to add
    */
   def addChild(v: DagVertex): Unit = {
-    children += (v, p.filter(dim => !v.p.contains(dim)))
+    val test = p.filter(dim => !v.p.contains(dim))
+    children += ((v, test))
 
   }
 }
