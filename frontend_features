@@ -1,0 +1,97 @@
+order :
+1. Compound aggregates: suppose we have several cubes (on same data) with sums of fact^0 (count), fact^1 (sum), fact^2 (sum of squares) and so on: evaluate average, variance, and other higher-order moments
+
+2. slightly more SQL where with arbitrary boolean condition in where ("slice"), having , conditions involving > and < on where "dicing"
+
+3. window based aggregates
+   input: timelike-dimension and window definition
+   window can be defined either by gap of "number of rows" or "values of rows"
+
+4. checking if two columns are XOR of each other (NULL and not NULL). In general apply binary function f to 2 columns that returns bool and reduce using exists/forall
+
+
+   A B | Count
+   1 2    1
+   3 5    1
+   10 2   1
+   3 4    1
+
+   input is two (prefixes of) dimensions  and a binary function f : (d1, d2) =>  Bool and then reduce by either "forall (and)" or "exists (or)"
+
+5. input: (cosmetic dimension, bits) (X)
+   		Y = fact  (ideally, another cosmetic dimension too)
+   		Y = mX + c
+
+6. monotonicity
+   			input (cosmetic , bits)
+   			Y = fact  (ideally, another cosmetic dimension too)
+   			is Y monotonically increasing/decreasing wrt X
+   			we also want some sort of smoothing
+
+
+
+
+
+
+
+0 1 2 3 4
+
+
+b0:0, b1:0, b2:0 b3:0, agg: 0
+b0:1, b1:0, b2:0 b3:0, agg: 1
+
+
+
+
+((b0:0, b1:0, b2:0, b3:0), 0)
+
+
+
+((Time,2),
+
+(("Time":Q1, "Location":FrenchRegion) , 0)
+(("Time":Q2, "Location":GermanRegion) , 1)
+
+
+Frontend library tasks
+time series : trends (slope, offset)
+
+double peak: do we have a case where in some time frame value Y increase decrease and increase and then like (like "M"-shape)
+
+
+
+A B | E
+------------
+1 5   1
+2 3   2
+14 6   4
+55 9   5
+
+
+1 3
+2 2
+14 4
+55 5
+
+
+1 3
+2 6
+14 9
+55 5
+
+mapping from cosmetic to grouping (group by week for example)
+input is some prefix of cosmetic dimension and a group-by function
+
+
+
+transform dimensions : rebuilding cubes with new dimensions, dropped dims, transformed dims. NOT QUERYING
+
+Given Cube1, build new cube Cube2 with column A renamed to column B / column A is dropped / has a new column C which is f(a, b)
+
+
+
+does the FunctionalDependency (c1, c2, c3) => (c4, c5, c6) hold? (also with prefixes)
+A => B
+
+(a1, b1)
+there does not exist (a1, b2)

@@ -1,6 +1,6 @@
 package frontend
 
-import frontend.UserCube.testLine
+import frontend.UserCube.testLineAnd
 import frontend.schema.Schema
 import util.Bits
 
@@ -45,7 +45,7 @@ object ArrayFunctions {
     if (qH.nonEmpty) {
       sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLine(newValue.split(";").sorted, sliceH, 0)) {
+        if (testLineAnd(newValue.split(";").sorted, sliceH, 0)) {
           linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
         } else {
           top(permfBackqH(pair._2)) = newValue
@@ -60,7 +60,7 @@ object ArrayFunctions {
       sch.decode_dim(qV.flatten.sorted)
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLine(newValue.split(";").sorted, sliceV, 0)) {
+        if (testLineAnd(newValue.split(";").sorted, sliceV, 0)) {
           linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
         } else {
           left(permfBackqV(pair._2)) = newValue

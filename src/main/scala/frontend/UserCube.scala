@@ -4,7 +4,7 @@ import backend.CBackend
 import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
 import core.{DataCube, RandomizedMaterializationScheme2}
-import frontend.UserCube.testLine
+import frontend.UserCube.testLineAnd
 import frontend.schema.Schema
 import util.Bits
 
@@ -188,7 +188,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     if (qH.nonEmpty) {
       sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLine(newValue.split(";").sorted, sliceH, 0)) {
+        if (testLineAnd(newValue.split(";").sorted, sliceH, 0)) {
           linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
         } else {
           top(0, permfBackqH(pair._2)) = newValue
@@ -204,7 +204,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       sch.decode_dim(qV.flatten.sorted)
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLine(newValue.split(";").sorted, sliceV, 0)) {
+        if (testLineAnd(newValue.split(";").sorted, sliceV, 0)) {
           linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
         } else {
           left(permfBackqV(pair._2) + 1, 0) = newValue
@@ -270,21 +270,21 @@ object UserCube {
   }
 
   /**
-   * recursively checks if the provided string checks the criterions of qV_sorted
+   * recursively checks if the provided string checks all the criteria of qV_sorted
    *
    * @param splitString string to test
-   * @param qV_sorted   criterions, in form (field, list of acceptable values)
+   * @param q_sorted   criteria, in form (field, list of acceptable values)
    * @param n           index of field considered
-   * @return true <=> all the conditions are fulfilled
+   * @return true <=> one of the condition is not fulfilled
    */
-  def testLine(splitString: Array[String], qV_sorted: List[(String, List[String])], n: Int): Boolean = {
+  def testLineAnd(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
     if (n != splitString.length) {
-      if (qV_sorted(n)._2.isEmpty) {
-        return testLine(splitString, qV_sorted, n + 1)
+      if (q_sorted(n)._2.isEmpty) {
+        return testLineAnd(splitString, q_sorted, n + 1)
       }
-      for (i <- qV_sorted(n)._2.indices) {
-        if (splitString(n).contains(qV_sorted(n)._2(i))) {
-          return testLine(splitString, qV_sorted, n + 1)
+      for (i <- q_sorted(n)._2.indices) {
+        if (splitString(n).contains(q_sorted(n)._2(i))) {
+          return testLineAnd(splitString, q_sorted, n + 1)
         }
       }
       true
@@ -292,6 +292,30 @@ object UserCube {
     } else {
       false
     }
+  }
 
+  /**
+   * recursively checks if the provided string checks one of the criteria of qV_sorted
+   *
+   * @param splitString string to test
+   * @param q_sorted   criteria, in form (field, list of acceptable values)
+   * @param n           index of field considered
+   * @return true <=> all the conditions are not fulfilled
+   */
+  def testLineOr(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
+    if (n != splitString.length) {
+      if (q_sorted(n)._2.isEmpty) {
+        return testLineOr(splitString, q_sorted, n + 1)
+      }
+      for (i <- q_sorted(n)._2.indices) {
+        if (splitString(n).contains(q_sorted(n)._2(i))) {
+          return testLineOr(splitString, q_sorted, n + 1)
+        }
+      }
+      true
+
+    } else {
+      false
+    }
   }
 }
