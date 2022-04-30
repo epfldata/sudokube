@@ -25,6 +25,11 @@ case object TestLine {
       }
       for (i <- q_sorted(n)._2.indices) {
         q_sorted(n)._2(i) match {
+          case s if s.startsWith("!") =>
+            //when specified that the string must NOT equal a value
+            if (!splitString(n).contains(q_sorted(n)._2(i))) {
+              return testLineAnd(splitString, q_sorted, n + 1)
+            }
           case s if s.startsWith(">") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
 
@@ -76,6 +81,11 @@ case object TestLine {
       }
       for (i <- q_sorted(n)._2.indices) {
         q_sorted(n)._2(i) match {
+          case s if s.startsWith("!") =>
+            //when specified that the string must NOT equal a value
+            if (!splitString(n).contains(q_sorted(n)._2(i))) {
+              return false
+            }
           case s if s.startsWith(">") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
             if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong > s.replaceFirst(">", "").toLong)) {

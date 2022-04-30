@@ -1,7 +1,7 @@
 order :
-1. Compound aggregates: suppose we have several cubes (on same data) with sums of fact^0 (count), fact^1 (sum), fact^2 (sum of squares) and so on: evaluate average, variance, and other higher-order moments
+1. Compound aggregates: suppose we have several cubes (on same data) with sums of fact^0 (count), fact^1 (sum), fact^2 (sum of squares) and so on: evaluate average, variance, and other higher-order moments CHECK
 
-2. slightly more SQL where with arbitrary boolean condition in where ("slice"), having , conditions involving > and < on where "dicing"
+2. slightly more SQL where with arbitrary boolean condition in where ("slice"), having , conditions involving > and < on where "dicing" CHECK
 
 3. window based aggregates
    input: timelike-dimension and window definition
@@ -27,6 +27,17 @@ order :
    			Y = fact  (ideally, another cosmetic dimension too)
    			is Y monotonically increasing/decreasing wrt X
    			we also want some sort of smoothing
+
+7. trends analysis (slope, offset) + detection of double peak
+
+8. mapping from cosmetic to grouping (group by week for example)
+   input is some prefix of cosmetic dimension and a group-by function
+9. Given Cube1, build new cube Cube2 with column A renamed to column B / column A is dropped / has a new column C which is f(a, b)
+
+10. test of functionnal dependency
+
+
+
 
 
 

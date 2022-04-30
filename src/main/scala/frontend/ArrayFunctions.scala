@@ -93,4 +93,8 @@ object ArrayFunctions {
     temp.toArray
   }
 
+  def toTuplesBit(src: Array[String], rows: Int, col: Int): (List[(Int, Boolean)], Double) = {
+
+  }
+
 }
