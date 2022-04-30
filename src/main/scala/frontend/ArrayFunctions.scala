@@ -1,6 +1,6 @@
 package frontend
 
-import frontend.UserCube.testLineAnd
+import frontend.TestLine.testLineOp
 import frontend.schema.Schema
 import util.Bits
 
@@ -15,7 +15,7 @@ object ArrayFunctions {
    * @param src source array, to transform in matrix
    * @return densematrix decomposed, in forme (array for the top header, array of the left header, values for cells)
    */
-  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], src: Array[String]): (Array[String], Array[String], Array[String]) = {
+  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): (Array[String], Array[String], Array[String]) = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 
@@ -45,7 +45,7 @@ object ArrayFunctions {
     if (qH.nonEmpty) {
       sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLineAnd(newValue.split(";").sorted, sliceH, 0)) {
+        if (testLineOp(op, newValue.split(";").sorted, sliceH)) {
           linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
         } else {
           top(permfBackqH(pair._2)) = newValue
@@ -60,7 +60,7 @@ object ArrayFunctions {
       sch.decode_dim(qV.flatten.sorted)
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLineAnd(newValue.split(";").sorted, sliceV, 0)) {
+        if (testLineOp(op, newValue.split(";").sorted, sliceV)) {
           linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
         } else {
           left(permfBackqV(pair._2)) = newValue
