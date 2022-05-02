@@ -1,5 +1,8 @@
 target
 .idea
+.metals
+.vscode
+*.DS_Store
 *.csuk
 *.dc
 *.txt
