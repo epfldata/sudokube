@@ -145,3 +145,5 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
 void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], unsigned int MaskSum) {
     
 }
+
+void fetch(std::string CubeID, unsigned int CuboidID);
