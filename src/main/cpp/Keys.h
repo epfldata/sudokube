@@ -39,9 +39,8 @@ inline value_t *getVal(byte **array, size_t idx, size_t recSize) {
  * Converts number of bits to number of bytes
  */
 inline unsigned int bitsToBytes(unsigned int bits) {
-    return bits / 8 + 1;
+    return (bits + 7) >> 3;
 }
-
 
 inline void print_key(int n_bits, byte *key) {
     for(int pos = n_bits - 1; pos >= 0; pos--) {

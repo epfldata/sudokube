@@ -3,7 +3,7 @@
 # to generate the c header file for JNI integration.
 
 CP=~/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.7.jar
-JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_281.jdk/Contents/Home
+JAVA_HOME=/Users/jayatila/.sdkman/candidates/java/current/
 
 all:
 	sbt compile

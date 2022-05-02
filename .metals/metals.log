@@ -1,0 +1,96 @@
+2022.03.12 13:28:13 INFO  tracing is disabled for protocol LSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /Users/jayatila/Documents/Sudokube/sudokube/.metals/lsp.trace.json or /Users/jayatila/Library/Caches/org.scalameta.metals/lsp.trace.json
+2022.03.12 13:28:13 INFO  logging to file /Users/jayatila/Documents/Sudokube/sudokube/.metals/metals.log
+2022.03.12 13:28:13 INFO  Started: Metals version 0.11.2 in workspace '/Users/jayatila/Documents/Sudokube/sudokube' for client Visual Studio Code 1.64.2.
+2022.03.12 13:28:13 INFO  Parse release: 1.8.0_322
+2022.03.12 13:28:18 INFO  time: initialize in 4.19s
+2022.03.12 13:28:18 WARN  Build server is not auto-connectable.
+2022.03.12 14:04:43 INFO  shutting down Metals
+2022.04.18 20:03:46 INFO  tracing is disabled for protocol LSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /Users/jayatila/Documents/Sudokube/sudokube/.metals/lsp.trace.json or /Users/jayatila/Library/Caches/org.scalameta.metals/lsp.trace.json
+2022.04.18 20:03:46 INFO  logging to file /Users/jayatila/Documents/Sudokube/sudokube/.metals/metals.log
+2022.04.18 20:03:46 INFO  Started: Metals version 0.11.2 in workspace '/Users/jayatila/Documents/Sudokube/sudokube' for client Visual Studio Code 1.66.1.
+2022.04.18 20:03:46 INFO  Parse release: 1.8.0_322
+2022.04.18 20:03:47 INFO  time: initialize in 0.53s
+2022.04.18 20:03:47 WARN  Build server is not auto-connectable.
+2022.04.18 20:03:47 INFO  skipping build import with status 'Requested'
+2022.04.19 07:23:47 WARN  no build target for: /Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala
+2022.04.19 07:23:47 ERROR Failed to fetch mtags for 3.1.1
+Error downloading org.scalameta:mtags_3.1.1:0.11.2
+  not found: /Users/jayatila/.ivy2/local/org.scalameta/mtags_3.1.1/0.11.2/ivys/ivy.xml
+  download error: Caught java.net.UnknownHostException (repo1.maven.org) while downloading https://repo1.maven.org/maven2/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/public/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/snapshots/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+2022.04.19 07:23:47 INFO  no build target found for /Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala. Using presentation compiler with project's scala-library version: 2.12.15
+2022.04.19 07:23:47 ERROR Failed to fetch mtags for 3.1.1
+Error downloading org.scalameta:mtags_3.1.1:0.11.2
+  not found: /Users/jayatila/.ivy2/local/org.scalameta/mtags_3.1.1/0.11.2/ivys/ivy.xml
+  download error: Caught java.net.UnknownHostException (repo1.maven.org) while downloading https://repo1.maven.org/maven2/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/public/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/snapshots/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+2022.04.19 07:23:47 INFO  no build target found for /Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala. Using presentation compiler with project's scala-library version: 2.12.15
+2022.04.19 07:23:48 ERROR Failed to fetch mtags for 3.1.1
+Error downloading org.scalameta:mtags_3.1.1:0.11.2
+  not found: /Users/jayatila/.ivy2/local/org.scalameta/mtags_3.1.1/0.11.2/ivys/ivy.xml
+  download error: Caught java.net.UnknownHostException (repo1.maven.org) while downloading https://repo1.maven.org/maven2/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/public/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/snapshots/org/scalameta/mtags_3.1.1/0.11.2/mtags_3.1.1-0.11.2.pom
+2022.04.19 07:23:48 INFO  no build target found for /Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala. Using presentation compiler with project's scala-library version: 2.12.15
+2022.04.19 07:25:13 INFO  No mtags for 3.1.1.
+2022.04.19 07:25:13 INFO  no build target found for /Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala. Using presentation compiler with project's scala-library version: 2.12.15
+Apr 19, 2022 7:25:13 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "textDocument/didClose",
+  "params": {
+    "textDocument": {
+      "uri": "file:///Users/jayatila/Documents/Sudokube/sudokube/project/Dependencies.scala"
+    }
+  }
+}
+java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$null$0(GenericEndpoint.java:67)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:152)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:220)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:187)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:194)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:94)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:113)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at java.lang.Thread.run(Thread.java:750)
+Caused by: java.lang.reflect.InvocationTargetException
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$null$0(GenericEndpoint.java:65)
+	... 11 more
+Caused by: coursierapi.error.SimpleResolutionError$1: Error downloading org.scala-lang:scala3-library_3:3.1.1
+  not found: /Users/jayatila/.ivy2/local/org.scala-lang/scala3-library_3/3.1.1/ivys/ivy.xml
+  download error: Caught java.net.UnknownHostException (repo1.maven.org) while downloading https://repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.1.1/scala3-library_3-3.1.1.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/public/org/scala-lang/scala3-library_3/3.1.1/scala3-library_3-3.1.1.pom
+  download error: Caught java.net.UnknownHostException (oss.sonatype.org) while downloading https://oss.sonatype.org/content/repositories/snapshots/org/scala-lang/scala3-library_3/3.1.1/scala3-library_3-3.1.1.pom
+	at coursierapi.error.SimpleResolutionError.of(SimpleResolutionError.java:11)
+	at coursierapi.shaded.coursier.internal.api.ApiHelper$.simpleResError(ApiHelper.scala:326)
+	at coursierapi.shaded.coursier.internal.api.ApiHelper$.doFetch(ApiHelper.scala:359)
+	at coursierapi.shaded.coursier.internal.api.ApiHelper.doFetch(ApiHelper.scala)
+	at coursierapi.Fetch.fetchResult(Fetch.java:244)
+	at coursierapi.Fetch.fetch(Fetch.java:239)
+	at scala.meta.internal.metals.Embedded$.downloadDependency(Embedded.scala:238)
+	at scala.meta.internal.metals.Embedded$.scalaLibrary(Embedded.scala:316)
+	at scala.meta.internal.metals.Compilers.createStandaloneCompiler(Compilers.scala:114)
+	at scala.meta.internal.metals.Compilers.$anonfun$fallbackCompiler$1(Compilers.scala:154)
+	at java.util.HashMap.compute(HashMap.java:1198)
+	at java.util.Collections$SynchronizedMap.compute(Collections.java:2684)
+	at scala.meta.internal.metals.Compilers.fallbackCompiler(Compilers.scala:124)
+	at scala.meta.internal.metals.Compilers.fromBuildTarget$1(Compilers.scala:440)
+	at scala.meta.internal.metals.Compilers.loadCompiler(Compilers.scala:447)
+	at scala.meta.internal.metals.Compilers.didClose(Compilers.scala:199)
+	at scala.meta.internal.metals.MetalsLanguageServer.didClose(MetalsLanguageServer.scala:1207)
+	... 16 more
+
+Apr 20, 2022 2:36:05 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+Apr 21, 2022 8:20:09 PM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace

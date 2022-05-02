@@ -1,6 +1,7 @@
 //package ch.epfl.data.sudokube
 package combinatorics
 import util._
+import scala.collection.Map
 
 
 /** Tools for calculating the degrees of freedom of a sudokube LP instance
