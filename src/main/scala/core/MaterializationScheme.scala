@@ -325,11 +325,11 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
         val mask = Bits.mk_list_mask(p, qBS)
         //Only keep min mask.length when same ab
-        if(abMapProjSingle.contains(ab)){
-          if(mask.length < abMapProjSingle(ab).mask.length){
+        if (abMapProjSingle.contains(ab)) {
+          if (mask.length < abMapProjSingle(ab).mask.length) {
             abMapProjSingle -= ab
             val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
-            if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
+            if (!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))) {
               abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
               abMapProjSingle += newp
             }
@@ -337,7 +337,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           }
         } else {
           val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
-          if(!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))){
+          if (!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))) {
             abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
             abMapProjSingle += newp
           }
@@ -566,7 +566,7 @@ case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: 
 
 //Wrapper for materialization scheme to try other MS
 class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
-    /** the metadata describing each projection in this scheme. */
+  /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
   val pset = projections.map(_.toSet)
   val pbset = projections.map(p => BitSet(p: _*))
@@ -652,33 +652,33 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
     val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
     queue.enqueue((projectionsDAGroot, query))
     projectionsDAGroot.hasBeenDone = true
-    while(!queue.isEmpty){
+    while (!queue.isEmpty) {
       val (vert_deq, intersect_deq) = queue.dequeue()
-      if(vert_deq.p_length >= max_fetch_dim){
+      if (vert_deq.p_length >= max_fetch_dim) {
         vert_deq.children.foreach(child => {
-          if(!child._1.hasBeenDone) {
+          if (!child._1.hasBeenDone) {
             child._1.hasBeenDone = true
-            queue.enqueue((child._1, intersect_deq.filter(dim => !child._2.contains(dim))))
+            queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
       } else {
         var good_children = 0
         vert_deq.children.foreach(child => {
           val newdif = intersect_deq.intersect(child._2)
-          if(newdif.isEmpty){
-            if(!child._1.hasBeenDone){
+          if (newdif.isEmpty) {
+            if (!child._1.hasBeenDone) {
               queue.enqueue((child._1, intersect_deq))
               child._1.hasBeenDone = true
             }
             good_children += 1
           } else {
-            if(!child._1.hasBeenDone){
-              queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
+            if (!child._1.hasBeenDone) {
+              queue.enqueue((child._1, intersect_deq.diff(newdif)))
               child._1.hasBeenDone = true
             }
           }
         })
-        if(good_children == 0){
+        if (good_children == 0) {
           val ab0 = intersect_deq.toList
           val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
           val mask = Bits.mk_list_mask(vert_deq.p.toList, qBS)
@@ -692,48 +692,37 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
   def buildDag(): DagVertex = {
     //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
-    var root = new DagVertex(Seq(0), 0, 0)
-    var addedVtcs = 0
-    var i = 0
-    projections.zipWithIndex.foreach { case (p, id) =>
+    val root = new DagVertex(projections.head, projections.head.length, 0)
+    var addedVtcs = 1
+    var i = 1
+    projections.tail.zipWithIndex.foreach { case (p, id) =>
       print("Curr : " + i + "\n")
-      i+= 1
-      val new_dag_v = new DagVertex(p, p.size, id)
-      /**
-       * TODO: ROOT NEEDS TO BE FULL DIM PROJ (always available) should work like this since full dim is first to be added but need to make sure with SBJ
-       */
+      i += 1
+      val new_dag_v = new DagVertex(p, p.size, id+1)
       var vertexRet = 0
-
-      //TODO: Move if statement outside of loop since root is first
-      if(root.p_length == 0){
-        root = new_dag_v
-        //DAG(p.size) ::= new_dag_v
-        vertexRet = -1
-      } else {
-        val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
-        queue.enqueue((root, root.p))
-        while(queue.nonEmpty){
-          val deq_dagV = queue.dequeue()
-          val queue_oldsize = queue.size
-          deq_dagV._1.children.foreach(child =>
-            if(p.forall(p_dim => child._1.p.contains(p_dim))) {
-              queue.enqueue((child._1, deq_dagV._1.p))
-            }
-          )
-          if (queue_oldsize == queue.size){
-            deq_dagV._1.addChild(new_dag_v)
-            vertexRet += 1
+      val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
+      queue.enqueue((root, root.p))
+      while (queue.nonEmpty) {
+        val deq_dagV = queue.dequeue()
+        val queue_oldsize = queue.size
+        deq_dagV._1.children.foreach(child =>
+          if (p.forall(p_dim => child._1.p.contains(p_dim))) {
+            queue.enqueue((child._1, deq_dagV._1.p))
           }
+        )
+        if (queue_oldsize == queue.size) {
+          deq_dagV._1.addChild(new_dag_v)
+          vertexRet += 1
         }
-        //DAG(p.size) ::= new_dag_v
       }
-      if(vertexRet == 0){
-        println("Error while adding projection vertex " + id + " : doesn't have any parent")
+
+      if (vertexRet == 0) {
+        println("Error while adding projection vertex " + (id+1) + " : doesn't have any parent")
       } else {
         addedVtcs += 1
       }
     }
-    if(addedVtcs != projections.length){
+    if (addedVtcs != projections.length) {
       println("Error, not all vertices were added.")
     }
     root
@@ -742,21 +731,23 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
 
 /**
  * A vertex to be used in the DAG, represents a single projection
- * @param p The projection
+ *
+ * @param p        The projection
  * @param p_length Its length
- * @param id Its id (index in sequence of projections)
+ * @param id       Its id (index in sequence of projections)
  */
-class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int){
+class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
   var hasBeenDone = false
 
   /**
    * Adds a child to the vertex
+   *
    * @param v the vertex of the child to add
    */
   def addChild(v: DagVertex): Unit = {
-    val child_diff = p.filter(dim => !v.p.contains(dim))
-    children += ((v, child_diff))
+    val test = p.filter(dim => !v.p.contains(dim))
+    children += ((v, test))
 
   }
 }
