@@ -17,6 +17,8 @@ class PrepareSpec extends FlatSpec with Matchers {
       val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      println("DAG PREPARE LENGTH : " + testp.length)
+      println("NEW PREPARE LENGTH : " + newp.length)
       assert(oldp.filterNot(optp.toSet).isEmpty)
     }
     println("Time for RMS")

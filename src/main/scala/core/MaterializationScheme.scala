@@ -638,6 +638,7 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 case class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
+  val proj_zip_sorted = projections.zipWithIndex.sortBy(_._1.length).reverse
 
   /**
    * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
@@ -657,12 +658,13 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
       val (vert_deq, intersect_deq) = queue.dequeue()
       if (vert_deq.p_length >= max_fetch_dim) {
         vert_deq.children.foreach(child => {
+          println("test" + child + "\n")
           if (!child._1.hasBeenDone) {
             child._1.hasBeenDone = true
             queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
-      } else if(vert_deq.p_length <= cheap_size){
+      } /*else if(vert_deq.p_length <= cheap_size){
         //When we reach cheap size, is basically the same algorithm as prepare_new
         var good_children = 0
         //Still iterate through children since if one of the children has the same intersection then
@@ -673,23 +675,36 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
             queue.enqueue((child._1, intersect_deq))
             child._1.hasBeenDone = true
             good_children += 1
+          } else {
+            child._1.hasBeenDone = true
+            queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
         if (good_children == 0) {
-          val ab0 = intersect_deq
-          val res = hm_cheap.get(ab0)
+          print("Yeet Added ")
+          val res = hm_cheap.get(intersect_deq)
           if(res.isDefined){
+            print(" Yeet is defined : " + intersect_deq)
             if(vert_deq.p_length < res.get.p_length){
-              hm_cheap(ab0) = vert_deq
+              println(" Yeet is replaced")
+              hm_cheap(intersect_deq) = vert_deq
             }
+            print("\n")
+          } else {
+            println(" Yeet is not defined\n")
+            hm_cheap(intersect_deq) = vert_deq
           }
         }
-      } else {
+      }*/ else {
         var good_children = 0
+        //print("=========== Under max_fetch_dims : ==============\n")
         vert_deq.children.foreach(child => {
           val newdif = intersect_deq.intersect(child._2)
+          //print("Newdif = " + newdif + ", ")
           if (newdif.isEmpty) {
+            //print("isempty, ")
             if (!child._1.hasBeenDone) {
+              //print("hasnt been done,")
               queue.enqueue((child._1, intersect_deq))
               child._1.hasBeenDone = true
             }
@@ -709,6 +724,7 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
         }
       }
     }
+    //Add all cheap projs to ret
     hm_cheap.foreach({ case (ab0, dv) =>
       val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
       val mask = Bits.mk_list_mask(dv.p.toList, qBS)
@@ -720,11 +736,15 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
   def buildDag(): DagVertex = {
     //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
-    val root = new DagVertex(projections.head, projections.head.length, 0)
+    val root = new DagVertex(proj_zip_sorted.head._1, proj_zip_sorted.head._1.length, proj_zip_sorted.head._2)
+    print("Root p_length : " + root.p_length)
     var addedVtcs = 1
     var i = 1
-    projections.tail.zipWithIndex.foreach { case (p, id) =>
-      print("Curr : " + i + "\n")
+    proj_zip_sorted.tail.foreach { case (p, id) =>
+      if(p.length > root.p_length){
+        println("UH OH WTF ????? p_length = " + p.length + " \n")
+      }
+      //print("Curr : " + i + "\n")
       i += 1
       val new_dag_v = new DagVertex(p, p.size, id+1)
       var vertexRet = 0
@@ -775,6 +795,7 @@ class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
    */
   def addChild(v: DagVertex): Unit = {
     val test = p.filter(dim => !v.p.contains(dim))
+    //println(test + "\n")
     children += ((v, test))
 
   }
