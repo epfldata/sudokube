@@ -665,38 +665,34 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
             queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
-      } /*else if(vert_deq.p_length <= cheap_size){
+      } else if(vert_deq.p_length <= cheap_size){
         //When we reach cheap size, is basically the same algorithm as prepare_new
         var good_children = 0
         //Still iterate through children since if one of the children has the same intersection then
         //it will dominate => reduce further computation
         vert_deq.children.foreach(child => {
           val newdif = intersect_deq.intersect(child._2)
-          if (newdif.isEmpty && !child._1.hasBeenDone) {
+          if (newdif.isEmpty && child._1.hasBeenDone == 0) {
             queue.enqueue((child._1, intersect_deq))
-            child._1.hasBeenDone = true
+            child._1.hasBeenDone = 1
             good_children += 1
           } else {
-            child._1.hasBeenDone = true
+            child._1.hasBeenDone = 1
             queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
         if (good_children == 0) {
-          print("Yeet Added ")
           val res = hm_cheap.get(intersect_deq)
           if(res.isDefined){
-            print(" Yeet is defined : " + intersect_deq)
             if(vert_deq.p_length < res.get.p_length){
-              println(" Yeet is replaced")
               hm_cheap(intersect_deq) = vert_deq
             }
             print("\n")
           } else {
-            println(" Yeet is not defined\n")
             hm_cheap(intersect_deq) = vert_deq
           }
         }
-      }*/ else {
+      } else {
         var good_children = 0
         vert_deq.children.foreach(child => {
           val newdif = intersect_deq.intersect(child._2)
@@ -755,8 +751,7 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
           if (deq_vert.p.diff(child._1.p).isEmpty) {
             queue.enqueue(child._1)
           }
-        }
-        )
+        })
         if (queue_oldsize == queue.size) {
           deq_vert.addChild(new_vert)
           vertexRet += 1

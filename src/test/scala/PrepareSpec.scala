@@ -18,13 +18,15 @@ class PrepareSpec extends FlatSpec with Matchers {
       val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      println(testp.length)
+      println(newp.length)
       assert(oldp.filterNot(optp.toSet).isEmpty)
     }
     println("Time for RMS")
     Profiler.print()
   }
 
-  "Old and New Prepare " should " match " in RMS(200, 15, 15, 100, 10, 40, 40)
+  "Old and New Prepare " should " match " in RMS(150, 15, 9, 100, 10, 40, 40)
   //"Old and New Prepare " should " match " in RMS(10, 2, 3, 100, 5, 10, 10)
 
 }
