@@ -653,14 +653,15 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
     val ret = new ListBuffer[ProjectionMetaData]()
     val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
     queue.enqueue((projectionsDAGroot, query))
-    projectionsDAGroot.hasBeenDone = true
-    while (!queue.isEmpty) {
+    projectionsDAGroot.hasBeenDone = 1
+    var i = 0
+    while (queue.nonEmpty) {
+      i+= 1
       val (vert_deq, intersect_deq) = queue.dequeue()
       if (vert_deq.p_length >= max_fetch_dim) {
         vert_deq.children.foreach(child => {
-          println("test" + child + "\n")
-          if (!child._1.hasBeenDone) {
-            child._1.hasBeenDone = true
+          if (child._1.hasBeenDone == 0) {
+            child._1.hasBeenDone = 1
             queue.enqueue((child._1, intersect_deq.diff(child._2)))
           }
         })
@@ -697,22 +698,18 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
         }
       }*/ else {
         var good_children = 0
-        //print("=========== Under max_fetch_dims : ==============\n")
         vert_deq.children.foreach(child => {
           val newdif = intersect_deq.intersect(child._2)
-          //print("Newdif = " + newdif + ", ")
           if (newdif.isEmpty) {
-            //print("isempty, ")
-            if (!child._1.hasBeenDone) {
-              //print("hasnt been done,")
+            if (child._1.hasBeenDone == 0) {
               queue.enqueue((child._1, intersect_deq))
-              child._1.hasBeenDone = true
+              child._1.hasBeenDone = 1
             }
             good_children += 1
           } else {
-            if (!child._1.hasBeenDone) {
+            if (child._1.hasBeenDone == 0) {
               queue.enqueue((child._1, intersect_deq.diff(newdif)))
-              child._1.hasBeenDone = true
+              child._1.hasBeenDone = 1
             }
           }
         })
@@ -730,40 +727,41 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
       val mask = Bits.mk_list_mask(dv.p.toList, qBS)
       ret += ProjectionMetaData(ab, ab0, mask, dv.id)
     })
+    resetDag(projectionsDAGroot)
     ret.toList
   }
 
+  /**
+   *
+   * @return The root of the DAG
+   */
   def buildDag(): DagVertex = {
     //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
 
     val root = new DagVertex(proj_zip_sorted.head._1, proj_zip_sorted.head._1.length, proj_zip_sorted.head._2)
-    print("Root p_length : " + root.p_length)
     var addedVtcs = 1
     var i = 1
     proj_zip_sorted.tail.foreach { case (p, id) =>
-      if(p.length > root.p_length){
-        println("UH OH WTF ????? p_length = " + p.length + " \n")
-      }
-      //print("Curr : " + i + "\n")
+      print("Curr : " + i + "\n")
       i += 1
-      val new_dag_v = new DagVertex(p, p.size, id+1)
+      val new_vert = new DagVertex(p, p.size, id+1)
       var vertexRet = 0
-      val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
-      queue.enqueue((root, root.p))
+      val queue = collection.mutable.Queue[DagVertex]()
+      queue.enqueue(root)
       while (queue.nonEmpty) {
-        val deq_dagV = queue.dequeue()
+        val deq_vert = queue.dequeue()
         val queue_oldsize = queue.size
-        deq_dagV._1.children.foreach(child =>
-          if (p.forall(p_dim => child._1.p.contains(p_dim))) {
-            queue.enqueue((child._1, deq_dagV._1.p))
+        deq_vert.children.foreach(child => {
+          if (deq_vert.p.diff(child._1.p).isEmpty) {
+            queue.enqueue(child._1)
           }
+        }
         )
         if (queue_oldsize == queue.size) {
-          deq_dagV._1.addChild(new_dag_v)
+          deq_vert.addChild(new_vert)
           vertexRet += 1
         }
       }
-
       if (vertexRet == 0) {
         println("Error while adding projection vertex " + (id+1) + " : doesn't have any parent")
       } else {
@@ -774,6 +772,24 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
       println("Error, not all vertices were added.")
     }
     root
+  }
+
+  /**
+   * Sets all the vertices "hasBeenDone" to 0 to prepare for new query
+   */
+  def resetDag(root: DagVertex): Unit = {
+    val queue = collection.mutable.Queue[DagVertex]()
+    root.hasBeenDone = 0
+    queue.enqueue(root)
+    while (queue.nonEmpty) {
+      val deq_vert = queue.dequeue()
+      deq_vert.children.foreach(child => {
+        if(child._1.hasBeenDone == 1) {
+          child._1.hasBeenDone = 0
+          queue.enqueue(child._1)
+        }
+      })
+    }
   }
 }
 
@@ -786,7 +802,7 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
  */
 class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
-  var hasBeenDone = false
+  var hasBeenDone = 0
 
   /**
    * Adds a child to the vertex
@@ -794,9 +810,9 @@ class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
    * @param v the vertex of the child to add
    */
   def addChild(v: DagVertex): Unit = {
-    val test = p.filter(dim => !v.p.contains(dim))
+    val child_diff = p.diff(v.p)
     //println(test + "\n")
-    children += ((v, test))
+    children += ((v, child_diff))
 
   }
 }
