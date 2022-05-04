@@ -2,7 +2,11 @@ package frontend
 
 import frontend.TestLine.testLineOp
 import frontend.schema.Schema
-import util.Bits
+import util.{BigBinary, Bits}
+
+import java.util
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 object ArrayFunctions {
 
@@ -13,7 +17,7 @@ object ArrayFunctions {
    * @param qV  bits of query vertically
    * @param qH  bits of query horizontally
    * @param src source array, to transform in matrix
-   * @return densematrix decomposed, in forme (array for the top header, array of the left header, values for cells)
+   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
   def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): (Array[String], Array[String], Array[String]) = {
     val cols = 1 << qH.flatten.size
@@ -69,7 +73,7 @@ object ArrayFunctions {
     }
 
     //return the result in decomposed format
-    (top, left, deleteRowsCols(linesExcludedV, linesExcludedH, rows, cols, resultArray))
+    (top.indices.collect { case i if !linesExcludedH.contains((i)) => top(i) }.toArray.map(i => if(i == null) "" else i), left.indices.collect { case i if !linesExcludedV.contains((i)) => left(i) }.toArray.map(i => if(i == null) "" else i), deleteRowsCols(linesExcludedV, linesExcludedH, rows, cols, resultArray))
   }
 
   /**
@@ -93,8 +97,58 @@ object ArrayFunctions {
     temp.toArray
   }
 
-  def toTuplesBit(src: Array[String], rows: Int, col: Int): (List[(Int, Boolean)], Double) = {
+  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): Array[String] = {
+    val cols = 1 << qH.flatten.size
+    val rows = 1 << qV.flatten.size
 
+    //functions to reorder the values, with the order provided by the query
+    val q_unsorted = (qV.flatten ++ qH.flatten)
+    val q_sorted = q_unsorted.sorted
+
+    val srcWithIndexes = new Array[String](cols*rows)
+    for (i <- src.indices) {
+      val charArray = asNdigitBinary(i, (cols*rows).toBinaryString.length-1).toCharArray
+      srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted).mkString("(", ",", ");" + src(i)))
+    }
+    val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, srcWithIndexes)
+    res._3
   }
+
+  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): Array[String] = {
+    val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, src)
+    val cols = res._1.length
+    val rows = res._2.length
+    for (i <- 0 until rows) {
+      for (j <- 0 until cols) {
+        res._3(i * cols + j) = "(" + res._1(j) + res._2(i) + ");" + res._3(i * cols + j)
+      }
+    }
+    res._3
+  }
+
+  @tailrec
+  def decomposeBits(src: Array[Char], acc: List[String], q_sorted: List[Int]): List[String] = {
+    src match {
+      case Array() => acc
+      case _ => decomposeBits(src.tail, acc ::: List("b%d=%s".format(q_sorted.head, src.head)), q_sorted.tail)
+    }
+  }
+
+  def asNdigitBinary(source: Int, digits: Int): String = {
+    val l: java.lang.Long = source.toBinaryString.toLong
+    String.format("%0" + digits + "d", l)
+  }
+
+  /**
+   *
+   * window based aggregates
+   * input: timelike-dimension and window definition
+   * window can be defined either by gap of "number of rows" or "values of rows"
+   */
+  def window_aggregate(source: Array[String], dim_prefix: String,gap: Int, windows_type: WINDOW): Array[String] = {
+    null
+  }
+
+
 
 }

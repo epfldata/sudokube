@@ -1,4 +1,5 @@
 order :
+tuple output CHECK
 1. Compound aggregates: suppose we have several cubes (on same data) with sums of fact^0 (count), fact^1 (sum), fact^2 (sum of squares) and so on: evaluate average, variance, and other higher-order moments CHECK
 
 2. slightly more SQL where with arbitrary boolean condition in where ("slice"), having , conditions involving > and < on where "dicing" CHECK

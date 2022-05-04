@@ -5,7 +5,7 @@ import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
 import core.{DataCube, RandomizedMaterializationScheme2}
 import TestLine.testLineOp
-import frontend.schema.Schema
+import frontend.schema.{ARRAY, MATRIX, ResultForm, Schema, TUPLES_BIT, TUPLES_PREFIX}
 import util.Bits
 
 import scala.annotation.tailrec
@@ -44,85 +44,16 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       acc
     }
   }
-
-
   /**
    * simple query aggregation, without slicing
    *
    * @param qV     query to display vertically, in the form (field to consider, on n bits)
    * @param qH     query to display horizontally, in the form (field to consider, on n bits)
    * @param method method of query, naive or moment
+   * @param resultForm Allows to choose to return a matrix, an array, a tuple with bits displayed or a tuple with the prefixes displayed
    * @return reconstructed matrix, with headers
    */
-  def queryMatrix(qV: List[(String, Int)], qH: List[(String, Int)], operator: Operator, method: Method): DenseMatrix[String] = {
-    val queryBitsV = getBitsForField(qV)
-    val queryBitsH = getBitsForField(qH)
-    val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
-    var resultArray: Array[String] = Array.empty
-    method match {
-      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b.toString)
-      case MOMENT => resultArray = momentMethod(q_sorted)
-    }
-    createResultMatrix(qV.map(x => (x._1, Nil)), qH.map(x => (x._1, Nil)), queryBitsV, queryBitsH, operator, resultArray)
-  }
-
-  /**
-   * simple query aggregation, may include slicing
-   *
-   * @param qV     query to display vertically, in the form (field to consider, on n bits)
-   * @param qH     query to display horizontally, in the form (field to consider, on n bits)
-   * @param method method of query, naive or moment
-   * @return reconstructed matrix, with headers
-   */
-  def querySliceMatrix(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: Operator, method: Method): DenseMatrix[String] = {
-    val queryBitsV = getBitsForFieldS(qV)
-    val queryBitsH = getBitsForFieldS(qH)
-    val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
-    var resultArray: Array[String] = Array.empty
-    method match {
-      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b.toString)
-      case MOMENT => resultArray = momentMethod(q_sorted)
-    }
-    createResultMatrix(qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
-  }
-
-  def getBitsForFieldS(input: List[(String, Int, List[String])]): List[List[Int]] = {
-    input.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
-  }
-
-  def getBitsForField(input: List[(String, Int)]): List[List[Int]] = {
-    input.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
-  }
-
-  /**
-   * simple query aggregation, without slicing
-   *
-   * @param qV     query to display vertically, in the form (field to consider, on n bits)
-   * @param qH     query to display horizontally, in the form (field to consider, on n bits)
-   * @param method method of query, naive or moment
-   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
-   */
-  def queryArray(qV: List[(String, Int)], qH: List[(String, Int)], operator: Operator, method: Method): (Array[String], Array[String], Array[String]) = {
-    val queryBitsV = getBitsForField(qV)
-    val queryBitsH = getBitsForField(qH)
-    val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
-    var resultArray: Array[String] = Array.empty
-    method match {
-      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b.toString)
-      case MOMENT => resultArray = momentMethod(q_sorted)
-    }
-    ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, Nil)), qH.map(x => (x._1, Nil)), queryBitsV, queryBitsH, operator, resultArray)
-  }
-
-  /**
-   * simple query aggregation, with slicing
-   *
-   * @param qV     query to display vertically, in the form (field to consider, on n bits)
-   * @param qH     query to display horizontally, in the form (field to consider, on n bits)
-   * @param method method of query, naive or moment
-   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
-   */
-  def queryArrayS(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: Operator, method: Method): (Array[String], Array[String], Array[String]) = {
+  def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: Operator, method: Method, resultForm: ResultForm): Any = {
     val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
@@ -131,7 +62,12 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b.toString)
       case MOMENT => resultArray = momentMethod(q_sorted)
     }
-    ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+    resultForm match {
+      case MATRIX => createResultMatrix(qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+      case ARRAY => ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+    }
   }
 
   /**

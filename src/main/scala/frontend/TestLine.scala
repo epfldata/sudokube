@@ -30,27 +30,27 @@ case object TestLine {
             if (!splitString(n).contains(q_sorted(n)._2(i))) {
               return testLineAnd(splitString, q_sorted, n + 1)
             }
+          case s if s.startsWith(">=") =>
+            //retrieve all the numbers in this string, and test if one of them matches the criterion
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat >= s.replaceFirst(">=", "").toFloat)) {
+              return testLineAnd(splitString, q_sorted, n + 1)
+            }
+          case s if s.startsWith("<=") =>
+            //retrieve all the numbers in this string, and test if one of them matches the criterion
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat <= s.replaceFirst("<=", "").toFloat)) {
+              return testLineAnd(splitString, q_sorted, n + 1)
+            }
           case s if s.startsWith(">") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
 
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong > s.replaceFirst(">", "").toLong)) {
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat > s.replaceFirst(">", "").toFloat)) {
               return testLineAnd(splitString, q_sorted, n + 1)
             }
 
           case s if s.startsWith("<") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
 
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong < s.replaceFirst("<", "").toLong)) {
-              return testLineAnd(splitString, q_sorted, n + 1)
-            }
-          case s if s.startsWith(">=") =>
-            //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong >= s.replaceFirst(">=", "").toLong)) {
-              return testLineAnd(splitString, q_sorted, n + 1)
-            }
-          case s if s.startsWith("<=") =>
-            //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong <= s.replaceFirst("<=", "").toLong)) {
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat < s.replaceFirst("<", "").toFloat)) {
               return testLineAnd(splitString, q_sorted, n + 1)
             }
           case _ =>
@@ -86,24 +86,24 @@ case object TestLine {
             if (!splitString(n).contains(q_sorted(n)._2(i))) {
               return false
             }
-          case s if s.startsWith(">") =>
-            //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong > s.replaceFirst(">", "").toLong)) {
-              return false
-            }
-          case s if s.startsWith("<") =>
-            //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong < s.replaceFirst("<", "").toLong)) {
-              return false
-            }
           case s if s.startsWith(">=") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong >= s.replaceFirst(">=", "").toLong)) {
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat >= s.replaceFirst(">=", "").toFloat)) {
               return false
             }
           case s if s.startsWith("<=") =>
             //retrieve all the numbers in this string, and test if one of them matches the criterion
-            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toLong <= s.replaceFirst("<=", "").toLong)) {
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat <= s.replaceFirst("<=", "").toFloat)) {
+              return false
+            }
+          case s if s.startsWith(">") =>
+            //retrieve all the numbers in this string, and test if one of them matches the criterion
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat > s.replaceFirst(">", "").toFloat)) {
+              return false
+            }
+          case s if s.startsWith("<") =>
+            //retrieve all the numbers in this string, and test if one of them matches the criterion
+            if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat < s.replaceFirst("<", "").toFloat)) {
               return false
             }
           case _ =>

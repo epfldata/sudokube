@@ -8,7 +8,7 @@ import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
-import frontend.schema.{LD2, StaticSchema2}
+import frontend.schema.{LD2, StaticSchema2, TUPLES_PREFIX}
 import util._
 
 import scala.util.Random
@@ -188,13 +188,15 @@ object DemoTxt {
     val userCube = UserCube.createFromJson("recipes.json", "rating")
 
     //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
-    var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n")
+    /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n")*/
     //val qH = userCube.query(List())
 
     //matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), OR, MOMENT)
-    matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)),List(), OR, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue))
+    /*matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)),List(), OR, MOMENT)
+    println(matrix.toString(Int.MaxValue, Int.MaxValue))*/
+
+    println(userCube.query(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)), List(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[String]].mkString("Array(", ",\n", ")"))
 
     //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
     //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
