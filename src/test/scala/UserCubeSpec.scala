@@ -1,8 +1,7 @@
 import breeze.linalg.DenseMatrix
 import breeze.stats.distributions.Density
 import core.solver.MomentSolverAll
-import frontend.schema.MATRIX
-import frontend.{AND, MOMENT, NAIVE, UserCube}
+import frontend.{AND, MATRIX, MOMENT, NAIVE, UserCube}
 import org.scalatest.{FlatSpec, Matchers}
 
 class UserCubeSpec extends FlatSpec with Matchers{

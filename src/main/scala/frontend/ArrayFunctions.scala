@@ -140,12 +140,12 @@ object ArrayFunctions {
   }
 
   /**
-   *
-   * window based aggregates
-   * input: timelike-dimension and window definition
-   * window can be defined either by gap of "number of rows" or "values of rows"
+   * performs window based aggregates, either by number of rows (e.g.
    */
-  def window_aggregate(source: Array[String], dim_prefix: String,gap: Int, windows_type: WINDOW): Array[String] = {
+  def window_aggregate(source: Array[String], dim_prefix: String,gap: Int, window_type: WINDOW): Array[String] = {
+    window_type match {
+      case NUM_ROWS =>
+    }
     null
   }
 

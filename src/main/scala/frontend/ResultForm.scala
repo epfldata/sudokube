@@ -1,4 +1,4 @@
-package frontend.schema
+package frontend
 
 sealed class ResultForm
 case object MATRIX extends ResultForm

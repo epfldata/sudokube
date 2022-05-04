@@ -4,11 +4,12 @@ import combinatorics.Combinatorics.comb
 import core.SolverTools._
 import core.solver.MomentSolverAll
 import core.solver.Strategy._
+import frontend.TUPLES_PREFIX
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
-import frontend.schema.{LD2, StaticSchema2, TUPLES_PREFIX}
+import frontend.schema.{LD2, StaticSchema2}
 import util._
 
 import scala.util.Random

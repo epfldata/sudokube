@@ -5,7 +5,7 @@ import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
 import core.{DataCube, RandomizedMaterializationScheme2}
 import TestLine.testLineOp
-import frontend.schema.{ARRAY, MATRIX, ResultForm, Schema, TUPLES_BIT, TUPLES_PREFIX}
+import frontend.schema.Schema
 import util.Bits
 
 import scala.annotation.tailrec
