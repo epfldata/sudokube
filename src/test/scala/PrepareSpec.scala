@@ -26,7 +26,7 @@ class PrepareSpec extends FlatSpec with Matchers {
     Profiler.print()
   }
 
-  "Old and New Prepare " should " match " in RMS(200, 15, 15, 100, 10, 40, 40)
+  "Old and New Prepare " should " match " in RMS(150, 15, 9, 100, 10, 40, 40)
   //"Old and New Prepare " should " match " in RMS(10, 2, 3, 100, 5, 10, 10)
 
 }
