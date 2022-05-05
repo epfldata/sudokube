@@ -4,6 +4,7 @@ import frontend.schema.{BitPosRegistry, RegisterIdx}
 import util.{BigBinary, Profiler}
 
 import collection.mutable.ArrayBuffer
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
@@ -65,7 +66,7 @@ class MemCol[T](init_size: Int = 8
   override def queries(): Set[Seq[Int]] = Set(Nil, bits)
 
   /* protected */
-  var encode_map = new collection.mutable.OpenHashMap[T, Int](math.max(2, init_size))
+  var encode_map = new mutable.HashMap[T, Int]
   var decode_map = new collection.mutable.ArrayBuffer[T](init_size)
   register.registerIdx(init_size)
 

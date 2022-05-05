@@ -6,7 +6,7 @@ import breeze.io.CSVReader
 import util._
 import util.BigBinaryTools._
 import combinatorics.Big
-import frontend.schema.encoders.ColEncoder
+import frontend.schema.encoders.{ColEncoder, MemCol, StaticMemCol}
 
 import java.io._
 
@@ -26,6 +26,7 @@ trait Schema extends Serializable {
   def decode_tuple(i: BigBinary): Seq[(String, Any)] =
     columnList.map { case (key, c) => (key, c.decode(i)) }
 
+
   def read(filename: String, measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long]
           ): Seq[(BigBinary, Long)] = {
 
@@ -42,7 +43,7 @@ trait Schema extends Serializable {
         throw new UnsupportedOperationException("Only CSV or JSON supported")
     }
 
-    if (measure_key == None) {
+    if (measure_key.isEmpty) {
       items.map(l => (encode_tuple(l.toList), 1L))
     }
     else {
@@ -57,25 +58,25 @@ trait Schema extends Serializable {
   /** saves the schema as a file. Note: Schema.load is used to load, not
       read()!
    */
-  def save(filename: String) {
+  def save(filename: String): Unit = {
     val file = new File("cubedata/"+filename+"/"+filename+".sch")
     if(!file.exists())
       file.getParentFile.mkdirs()
     val oos = new ObjectOutputStream(new FileOutputStream(file))
     oos.writeObject(this)
-    oos.close
+    oos.close()
   }
 
   def decode_dim(q_bits: List[Int]): Seq[Seq[String]] = {
-    val relevant_cols = columnList.filter(!_._2.bits.intersect(q_bits).isEmpty)
-    val universe = relevant_cols.map {
+    val relevant_cols = columnList.filter(_._2.bits.intersect(q_bits).nonEmpty)
+    val universe = relevant_cols.flatMap {
       case (_, c) => c.bits
-    }.flatten.sorted
+    }.sorted
 
     Bits.group_values(q_bits, universe).map(
       x => relevant_cols.map {
         case (key, c) => {
-          val l = x.map(y =>
+          val l = x.flatMap(y =>
             try {
               val w = c.decode(y) match {
                 case Some(u) => u.toString
@@ -86,10 +87,9 @@ trait Schema extends Serializable {
             }
             catch {
               case e: Exception => None
-            }
-          ).flatten.toSet.toList.sorted // duplicate elimination
+            }).toSet.toList.sorted // duplicate elimination
 
-          if (l.length == 1) key + "=" + l(0)
+          if (l.length == 1) key + "=" + l.head
           else key + " in " + l
         }
       })
@@ -100,9 +100,14 @@ trait Schema extends Serializable {
 object Schema {
   def load(filename: String): Schema = {
     val file = new File("cubedata/"+filename+"/"+filename+".sch")
-    val ois = new ObjectInputStream(new FileInputStream(file))
+    val ois = new ObjectInputStream(new FileInputStream(file)){
+      override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+        try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+        catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+      }
+    }
     val sch = ois.readObject.asInstanceOf[Schema]
-    ois.close
+    ois.close()
     sch
   }
 }

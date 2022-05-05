@@ -1,27 +1,25 @@
 package examples
 
-import backend.CBackend
-import breeze.io.{CSVReader, CSVWriter}
-import combinatorics.Combinatorics.{comb, comb2, mk_comb_bi}
+import combinatorics.Combinatorics.comb
+import core.SolverTools._
 import core.solver.MomentSolverAll
-import experiments.OldMomentSolverBatchExpt
+import core.solver.Strategy._
+import frontend.TUPLES_PREFIX
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
+import frontend.schema.encoders.StaticNatCol
+import frontend.schema.{LD2, StaticSchema2}
 import util._
-import core.SolverTools._
-import core.solver.Strategy._
-import frontend.schema.encoders.{DateCol, MemCol, NatCol, NestedMemCol, PositionCol, StaticDateCol, StaticNatCol}
-import frontend.schema.{BitPosRegistry, DynamicSchema, LD2, StaticSchema2, StructuredDynamicSchema}
 
-import java.io.{FileReader, FileWriter}
-import java.util.Date
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 object DemoTxt {
 
-  import frontend._, backend._, core._, core.RationalTools._
+  import backend._
+  import core.RationalTools._
+  import core._
+  import frontend._
 
   def momentSolver(): Unit = {
     val solver = new MomentSolverAll[Rational](3, Avg2)
@@ -185,6 +183,29 @@ object DemoTxt {
     od.l_run(q, 2)
   }
 
+  def cooking(): Unit = {
+
+
+    val userCube = UserCube.createFromJson("recipes.json", "rating")
+
+    //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
+    /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n")*/
+    //val qH = userCube.query(List())
+
+    //matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), OR, MOMENT)
+    /*matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)),List(), OR, MOMENT)
+    println(matrix.toString(Int.MaxValue, Int.MaxValue))*/
+
+    println(userCube.query(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)), List(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[String]].mkString("Array(", ",\n", ")"))
+
+    //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
+    //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
+    //println(array._3.mkString("Array(", ", ", ")"))
+
+  
+  }
+
   def shoppen() = {
     // exploration example -- unknown file
 
@@ -303,11 +324,12 @@ object DemoTxt {
   }
 
   def main(args: Array[String]): Unit = {
-    investment()
+    //investment()
     //momentSolver()
     //momentSolver2()
     //backend_naive()
     //loadtest()
     //ssb_demo()
+    cooking()
   }
 }

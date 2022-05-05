@@ -2,7 +2,8 @@
 package frontend.schema
 import frontend.schema.encoders.{ColEncoder, MemCol, NatCol}
 import util._
-import util.BigBinaryTools._
+
+import java.io.{File, FileOutputStream, ObjectOutputStream}
 
 
 /** A schema that can grow dynamically.
@@ -63,7 +64,7 @@ import util.BigBinaryTools._
     See also the documentation for ColEncoder.decode_dim for a continuation of
     this example.
 */
-class DynamicSchema extends Schema  {
+class DynamicSchema extends Schema {
 
   override def n_bits: Int = bitPosRegistry.n_bits
 

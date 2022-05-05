@@ -30,7 +30,7 @@ case class OnlineDisplay(schema: Schema, dc: DataCube,
     import RationalTools._
 
     def callback(s: SparseSolver[Rational]) = {
-      s.propagate_bounds(0 to s.n_vars - 1)
+      s.propagate_bounds(0 until s.n_vars)
       ui.ta.text = draw(s.bounds)
       last_s = Some(s)
       (! ex) // keep going?

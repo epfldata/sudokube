@@ -1,7 +1,7 @@
-package frontend.schema
+/*package frontend.schema
 import frontend.schema.encoders.ColEncoder
 import util.BigBinary
-/*
+
 case class MigrosSchema(prod_bits: Int, time_bits: Int, loc_bits: Int) extends Schema {
   override def n_bits: Int = prod_bits + time_bits + loc_bits
 
