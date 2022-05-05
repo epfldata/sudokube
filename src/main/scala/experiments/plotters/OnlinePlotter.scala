@@ -10,7 +10,7 @@ import java.io.{File, FileReader, PrintStream}
 object OnlinePlotter {
 
   object KEY extends Enumeration {
-    val TIME,DOF,ERROR,MAXDIM = Value
+    val TIME,DOF,ERROR,MAXDIM,ENTROPY = Value
   }
   import KEY._
   def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey:Int, Ykey: Int) = {
@@ -28,7 +28,7 @@ object OnlinePlotter {
   seriesData
   }
 
-  def getSeries(data: Vector[List[(Double, Double)]], agg: Seq[Double] => Double, initValue: Double) = {
+  def getSeries(data: Vector[List[(Double, Double)]], agg: Seq[Double] => Double, initValue: Double, ykey: KEY.Value) = {
     val data2 = data.toArray
     val N = data.size
     //println(s"N = $N")
@@ -54,7 +54,10 @@ object OnlinePlotter {
     }
     val res1 = result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
     val maxt = res1.last._1
-      res1 :+ (maxt + 0.01 -> 0.0)
+      ykey match {
+        case ERROR => res1 :+ (maxt + 0.01 -> 0.0)
+        case _ => res1
+      }
   }
 
   def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, isQuerySize: Boolean) = {
@@ -73,6 +76,7 @@ object OnlinePlotter {
       case DOF => 5
       case ERROR => 6
       case MAXDIM => 7
+      case ENTROPY => 9
     }
 
     val data = getData(name, filterf, groupf, toKeyCol(xkey), toKeyCol(ykey))
@@ -101,7 +105,7 @@ object OnlinePlotter {
     data.map { case (n, d1) =>
       //val (n,d1) = data.head
       println(s"Averaging over ${d1.length} entries for $n")
-      val avg = getSeries(d1, avgf, initValue)
+      val avg = getSeries(d1, avgf, initValue, ykey)
       //val min = getSeries(d1, minf, initValue)
       //val max = getSeries(d1, maxf, initValue)
 
@@ -142,6 +146,7 @@ object OnlinePlotter {
       case "time" => TIME
       case "dof" =>  DOF
       case "error" => ERROR
+      case "entropy" => ENTROPY
     }
     val name = args(0)
     val isQuerySize = args(1) == "qsize"

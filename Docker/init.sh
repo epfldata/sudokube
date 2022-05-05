@@ -12,7 +12,8 @@ make \
 cmake  \
 build-essential \
 openjdk-8-jdk \
-unzip 
+unzip \
+rclone
 
 
 wget https://github.com/sbt/sbt/releases/download/v1.2.7/sbt-1.2.7.zip

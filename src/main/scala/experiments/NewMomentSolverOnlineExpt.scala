@@ -8,7 +8,7 @@ import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 abstract class NewMomentSolverOnlineExpt(ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 
-  fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query")
+  fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,Entropy")
 
   def solver(qsize: Int, pm: Seq[(Int, Double)]) : MomentSolver
   override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
@@ -70,9 +70,10 @@ abstract class NewMomentSolverOnlineExpt(ename2: String = "", containsAllCuboids
     if (output) {
       stg.stats.foreach { case (time, count, (maxdim, (dof, sol))) =>
         val err = error(naiveRes, sol)
+        val entr = entropy(sol)
         //if(count % step == 0 || dof < 100 || count < 100)
         //  println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
-        fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr")
+        fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$entr")
       }
       queryCounter += 1
     }

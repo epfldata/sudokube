@@ -107,7 +107,6 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
 
 class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
   val qArray = Profiler.profile("qArray Construct") {
-    println(s"N  = $N qsize = $qsize")
     Array.fill(qsize)(Array.fill(N)(0.0))
   }
 

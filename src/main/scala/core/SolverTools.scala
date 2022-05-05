@@ -53,6 +53,11 @@ object SolverTools {
     deviation / sum
   }
 
+  def entropy(result: Array[Double]) = {
+    val sum = result.sum
+    val ps = result.map(x => x/sum).map(p => if(p == 0.0) 0.0 else p * math.log(p))
+    -ps.sum
+  }
   /// creates initial intervals [0, +\infty) for each variable.
   def mk_all_non_neg[T](n_vars: Int)(implicit num: Numeric[T]
   ): collection.mutable.ArrayBuffer[Interval[T]] = {
