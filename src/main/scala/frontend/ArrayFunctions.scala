@@ -19,7 +19,7 @@ object ArrayFunctions {
    * @param src source array, to transform in matrix
    * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
-  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): (Array[String], Array[String], Array[String]) = {
+  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 
@@ -36,7 +36,7 @@ object ArrayFunctions {
     val permfBackqH = Bits.permute_bits(qH.flatten.size, permBackqH)
 
     //fill in the resultArray with the correct values
-    val resultArray = new Array[String](cols * rows)
+    val resultArray = new Array[Any](cols * rows)
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         resultArray(i * cols + j) = src(permf(j * rows + i))
@@ -85,8 +85,8 @@ object ArrayFunctions {
    * @param src source array, not sliced yet
    * @return array containing the same elements of the src array, in the same order, but for the discarded rows and columns
    */
-  def deleteRowsCols(rowsExcluded: List[Int], colsExcluded: List[Int], rows: Int, cols: Int, src: Array[String]): Array[String] = {
-    var temp: List[String] = Nil
+  def deleteRowsCols(rowsExcluded: List[Int], colsExcluded: List[Int], rows: Int, cols: Int, src: Array[Any]): Array[Any] = {
+    var temp: List[Any] = Nil
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         if (!rowsExcluded.contains(i) && !colsExcluded.contains(j)) {
@@ -97,7 +97,7 @@ object ArrayFunctions {
     temp.toArray
   }
 
-  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): Array[String] = {
+  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 
@@ -105,22 +105,22 @@ object ArrayFunctions {
     val q_unsorted = (qV.flatten ++ qH.flatten)
     val q_sorted = q_unsorted.sorted
 
-    val srcWithIndexes = new Array[String](cols*rows)
+    val srcWithIndexes = new Array[Any](cols*rows)
     for (i <- src.indices) {
       val charArray = asNdigitBinary(i, (cols*rows).toBinaryString.length-1).toCharArray
-      srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted).mkString("(", ",", ");" + src(i)))
+      srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted), src(i))
     }
     val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, srcWithIndexes)
     res._3
   }
 
-  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[String]): Array[String] = {
+  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
     val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, src)
     val cols = res._1.length
     val rows = res._2.length
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
-        res._3(i * cols + j) = "(" + res._1(j) + res._2(i) + ");" + res._3(i * cols + j)
+        res._3(i * cols + j) = (res._1(j) + res._2(i), res._3(i * cols + j))
       }
     }
     res._3
@@ -142,7 +142,7 @@ object ArrayFunctions {
   /**
    * performs window based aggregates, either by number of rows (e.g.
    */
-  def window_aggregate(source: Array[String], dim_prefix: String,gap: Int, window_type: WINDOW): Array[String] = {
+  def window_aggregate(source: Array[Any], dim_prefix: String,gap: Int, window_type: WINDOW): Array[Any] = {
     window_type match {
       case NUM_ROWS =>
     }

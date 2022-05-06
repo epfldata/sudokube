@@ -57,9 +57,9 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
-    var resultArray: Array[String] = Array.empty
+    var resultArray: Array[Any] = Array.empty
     method match {
-      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b.toString)
+      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b)
       case MOMENT => resultArray = momentMethod(q_sorted)
     }
     resultForm match {
@@ -76,7 +76,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param q_sorted bits of query, sorted
    * @return array of result, raw
    */
-  def momentMethod(q_sorted: List[Int]): Array[String] = {
+  def momentMethod(q_sorted: List[Int]): Array[Any] = {
     var moment_method_result: Array[Double] = Array.empty
 
     def callback(s: MomentSolverAll[Double]) = {
@@ -95,7 +95,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param src source array, to transform in matrix
    * @return DenseMatrix concatenated with top and left headers
    */
-  def createResultMatrix(sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: Operator, src: Array[String]): DenseMatrix[String] = {
+  def createResultMatrix(sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: Operator, src: Array[Any]): DenseMatrix[String] = {
     val bH = qH.flatten.size
     val bV = qV.flatten.size
 
@@ -113,7 +113,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     var M = new DenseMatrix[String](1 << bV, 1 << bH)
     for (i <- 0 until M.rows) {
       for (j <- 0 until M.cols) {
-        M(i, j) = src(permf(j * M.rows + i))
+        M(i, j) = src(permf(j * M.rows + i)).toString
       }
     }
 
@@ -169,6 +169,20 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       DenseMatrix.horzcat(left, DenseMatrix.vertcat(top, M))
     }
 
+  }
+
+  def aggregateAndSlice(aggregateColumns: List[(String, Int)], sliceColumns: List[(String, List[String])], op: Operator, method: Method): Array[Any] = {
+    val queryBits = aggregateColumns.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
+    val sliceBits = sliceColumns.map(x => accCorrespondingBits(x._1, sch.n_bits, 0, Nil))
+    val q_unsorted = (queryBits.flatten ++ sliceBits.flatten)
+    var resultArray: Array[Any] = Array.empty
+    method match {
+      case NAIVE => resultArray = cube.naive_eval(q_unsorted.sorted).map(b => b)
+      case MOMENT => resultArray = momentMethod(q_unsorted.sorted)
+    }
+    val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, Nil, queryBits ++ sliceBits, Nil, op, resultArray)
+    println(res.mkString("(", ";\n ", ")"))
+    res
   }
 
 

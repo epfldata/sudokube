@@ -3,9 +3,10 @@ package frontend
 
 case object TestLine {
   def testLineOp(op: Operator, splitString: Array[String], q_sorted: List[(String, List[String])]): Boolean = {
+    val newString = splitString.filter(x => q_sorted.map(y => y._1).contains(x.split("=")(0)))
     op match {
-      case AND => testLineAnd(splitString.sortBy(string => string.toLowerCase), q_sorted, 0)
-      case OR => testLineOr(splitString.sortBy(string => string.toLowerCase), q_sorted, 0)
+      case AND => testLineAnd(newString.sortBy(string => string.toLowerCase), q_sorted, 0)
+      case OR => testLineOr(newString.sortBy(string => string.toLowerCase), q_sorted, 0)
       case _ => false
     }
   }
