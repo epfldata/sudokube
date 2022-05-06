@@ -5,6 +5,7 @@ import frontend.schema.Schema
 import util.{BigBinary, Bits}
 
 import java.util
+import scala.:+
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -85,7 +86,7 @@ object ArrayFunctions {
    * @param src source array, not sliced yet
    * @return array containing the same elements of the src array, in the same order, but for the discarded rows and columns
    */
-  def deleteRowsCols(rowsExcluded: List[Int], colsExcluded: List[Int], rows: Int, cols: Int, src: Array[Any]): Array[Any] = {
+  private def deleteRowsCols(rowsExcluded: List[Int], colsExcluded: List[Int], rows: Int, cols: Int, src: Array[Any]): Array[Any] = {
     var temp: List[Any] = Nil
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
@@ -97,25 +98,24 @@ object ArrayFunctions {
     temp.toArray
   }
 
-  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
-    val cols = 1 << qH.flatten.size
+  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])], qV: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
     val rows = 1 << qV.flatten.size
 
     //functions to reorder the values, with the order provided by the query
-    val q_unsorted = (qV.flatten ++ qH.flatten)
+    val q_unsorted = qV.flatten
     val q_sorted = q_unsorted.sorted
 
-    val srcWithIndexes = new Array[Any](cols*rows)
+    val srcWithIndexes = new Array[Any](rows)
     for (i <- src.indices) {
-      val charArray = asNdigitBinary(i, (cols*rows).toBinaryString.length-1).toCharArray
+      val charArray = asNdigitBinary(i, (rows).toBinaryString.length-1).toCharArray
       srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted), src(i))
     }
-    val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, srcWithIndexes)
+    val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, srcWithIndexes)
     res._3
   }
 
-  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
-    val res = createResultArray(sch, sliceV, sliceH, qV, qH, op, src)
+  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], qV: List[List[Int]], op : Operator,src: Array[Any]): Array[Any] = {
+    val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, src)
     val cols = res._1.length
     val rows = res._2.length
     for (i <- 0 until rows) {
@@ -127,26 +127,57 @@ object ArrayFunctions {
   }
 
   @tailrec
-  def decomposeBits(src: Array[Char], acc: List[String], q_sorted: List[Int]): List[String] = {
+  private def decomposeBits(src: Array[Char], acc: List[String], q_sorted: List[Int]): List[String] = {
     src match {
       case Array() => acc
       case _ => decomposeBits(src.tail, acc ::: List("b%d=%s".format(q_sorted.head, src.head)), q_sorted.tail)
     }
   }
 
-  def asNdigitBinary(source: Int, digits: Int): String = {
+  private def asNdigitBinary(source: Int, digits: Int): String = {
     val l: java.lang.Long = source.toBinaryString.toLong
     String.format("%0" + digits + "d", l)
   }
 
-  /**
-   * performs window based aggregates, either by number of rows (e.g.
-   */
-  def window_aggregate(source: Array[Any], dim_prefix: String,gap: Int, window_type: WINDOW): Array[Any] = {
-    window_type match {
-      case NUM_ROWS =>
+  private def accumulateRows(source: Array[(String, Any)], n: Int, max: Int, acc: (String, Any)): (String, Any) = {
+    if (n == max) {
+      acc
+    } else {
+      val add = (acc._1, acc._2.toString.toDouble + source(n)._2.toString.toDouble)
+      accumulateRows(source, n+1, max, add)
     }
-    null
+  }
+
+  private def accumulateRowsValues(source: Array[(String, Any)], n: Int, max: Int, acc: (String, Any)): (String, Any) = {
+    if (source(n)._2.asInstanceOf[Double] >= max) {
+      acc
+    } else {
+      val add = (acc._1, acc._2.asInstanceOf[Double] + source(n)._2.asInstanceOf[Double])
+      accumulateRows(source, n+1, max, add)
+    }
+  }
+
+  private def build_aggregate_row(window_type: WINDOW, source: Array[(String, Any)], gap: Int, n: Int, acc: Array[(String, Any)]): Array[(String, Any)]= {
+    if (n == source.length) {
+      acc
+    } else {
+      window_type match {
+        case NUM_ROWS => build_aggregate_row(window_type, source, gap, n+1, acc :+ accumulateRows(source, n, Math.min(source.length, n+gap), (source(n)._1, 0.0)))
+        case VALUES_ROWS => build_aggregate_row(window_type, source, gap, n+1, acc :+ accumulateRowsValues(source, n, Math.min(source.length, n+gap), (source(n)._1, 0.0)))
+        case _ => null
+      }
+    }
+  }
+
+  /**
+   * performs window based aggregates on tuplePrefix
+   * We assume that the array is sorted by the dim_prefix column
+   */
+  def window_aggregate(source: Array[Any], dim_prefix: String,gap: Int, window_type: WINDOW): Array[(String, Any)] = {
+    if (!source(0).asInstanceOf[(String, Any)]._1.contains(dim_prefix)) {
+      return null
+    }
+    build_aggregate_row(window_type, source.map(x => x.asInstanceOf[(String, Any)]), gap, 0, Array.empty)
   }
 
 

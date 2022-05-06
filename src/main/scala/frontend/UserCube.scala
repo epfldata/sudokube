@@ -65,8 +65,8 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     resultForm match {
       case MATRIX => createResultMatrix(qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
       case ARRAY => ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
-      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
-      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
+      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)), queryBitsV, operator, resultArray)
+      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), queryBitsV, operator, resultArray)
     }
   }
 
@@ -180,7 +180,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       case NAIVE => resultArray = cube.naive_eval(q_unsorted.sorted).map(b => b)
       case MOMENT => resultArray = momentMethod(q_unsorted.sorted)
     }
-    val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, Nil, queryBits ++ sliceBits, Nil, op, resultArray)
+    val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, queryBits ++ sliceBits, op, resultArray)
     println(res.mkString("(", ";\n ", ")"))
     res
   }

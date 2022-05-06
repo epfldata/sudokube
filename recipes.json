@@ -3,7 +3,7 @@
       "Type": "Dish",
       "Region": "India",
       "rating": 4,
-        "spicy": 1
+        "spicy": 4
     },
   
     { "Type": "Dish",
@@ -11,14 +11,14 @@
         "name": "Healthy Chicken Korma",
         "rating": 5,
         "Vegetarian": "0",
-        "spicy": 1
+        "spicy": 2
     },
 
     {"Type": "Dish",
         "Region": "Italy",
         "name": "Tagliatelles à la citrouille",
         "rating": 8,
-        "spicy": 0
+        "spicy": 1
     },
 
     {"Type": "Dessert",
@@ -30,7 +30,7 @@
     {"Type": "Dessert",
         "name": "Mousse au chocolat",
         "rating": 4,
-        "spicy": 0
+        "spicy": 1
     },
     {"Type": "Dessert",
         "Region": "Europe",

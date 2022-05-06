@@ -198,12 +198,14 @@ object DemoTxt {
     println(matrix.toString(Int.MaxValue, Int.MaxValue))*/
 
     //println(userCube.query(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)), List(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[String]].mkString("Array(", ",\n", ")"))
-    userCube.aggregateAndSlice(List(("spicy", 1), ("Type", 2)), List(("Region", List("India")), ("Vegetarian", List(">=0"))), AND, MOMENT)
+    //userCube.aggregateAndSlice(List(("spicy", 1), ("Type", 2)), List(("Region", List("India")), ("Vegetarian", List(">=0"))), AND, MOMENT)
     //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
     //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
     //println(array._3.mkString("Array(", ", ", ")"))
 
-  
+    val array = userCube.query(List(("spicy", 3, List(">=0"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]]
+    println(array.mkString("(", "\n ", ")"))
+    println(ArrayFunctions.window_aggregate(array, "spicy", 2, NUM_ROWS).mkString("(", "\n ", ")"))
   }
 
   def shoppen() = {
