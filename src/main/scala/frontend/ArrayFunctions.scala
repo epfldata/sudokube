@@ -148,25 +148,29 @@ object ArrayFunctions {
     }
   }
 
-  private def accumulateRowsValues(source: Array[(String, Any)], n: Int, max: Int, acc: (String, Any)): (String, Any) = {
-    if (source(n)._2.asInstanceOf[Double] >= max) {
+  private def accumulateRowsValues(source: Array[(String, Any)], prefix: String, n: Int, max: Int, acc: (String, Any)): (String, Any) = {
+    if (findValueOfPrefix(source(n)._1, prefix) > max || n == source.length) {
       acc
     } else {
-      val add = (acc._1, acc._2.asInstanceOf[Double] + source(n)._2.asInstanceOf[Double])
-      accumulateRows(source, n+1, max, add)
+      val add = (acc._1, acc._2.toString.toDouble + source(n)._2.toString.toDouble)
+      accumulateRowsValues(source,prefix, n+1, max, add)
     }
   }
 
-  private def build_aggregate_row(window_type: WINDOW, source: Array[(String, Any)], gap: Int, n: Int, acc: Array[(String, Any)]): Array[(String, Any)]= {
+  private def build_aggregate_row(window_type: WINDOW, prefix: String, source: Array[(String, Any)], gap: Int, n: Int, acc: Array[(String, Any)]): Array[(String, Any)]= {
     if (n == source.length) {
       acc
     } else {
       window_type match {
-        case NUM_ROWS => build_aggregate_row(window_type, source, gap, n+1, acc :+ accumulateRows(source, n, Math.min(source.length, n+gap), (source(n)._1, 0.0)))
-        case VALUES_ROWS => build_aggregate_row(window_type, source, gap, n+1, acc :+ accumulateRowsValues(source, n, Math.min(source.length, n+gap), (source(n)._1, 0.0)))
+        case NUM_ROWS => build_aggregate_row(window_type, prefix, source, gap, n+1, acc :+ accumulateRows(source, n, Math.min(source.length-1, n+gap), (source(n)._1, 0.0)))
+        case VALUES_ROWS => build_aggregate_row(window_type, prefix, source, gap, n+1, acc :+ accumulateRowsValues(source, prefix, n, gap-findValueOfPrefix(source(n)._1, prefix), (source(n)._1, 0.0)))
         case _ => null
       }
     }
+  }
+
+  private def findValueOfPrefix(src: String, prefix: String): Int = {
+    src.split(";").filter(x => x.contains(prefix))(0).split("=")(1).toInt
   }
 
   /**
@@ -177,7 +181,7 @@ object ArrayFunctions {
     if (!source(0).asInstanceOf[(String, Any)]._1.contains(dim_prefix)) {
       return null
     }
-    build_aggregate_row(window_type, source.map(x => x.asInstanceOf[(String, Any)]), gap, 0, Array.empty)
+    build_aggregate_row(window_type, dim_prefix, source.map(x => x.asInstanceOf[(String, Any)]), gap, 0, Array.empty)
   }
 
 
