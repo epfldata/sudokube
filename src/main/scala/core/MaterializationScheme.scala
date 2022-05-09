@@ -307,6 +307,48 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     projs.sortBy(-_.accessible_bits.size)
   }
 
+  def prepare_new_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                     ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    val trie = new SetTrie()
+    projections.zipWithIndex.sortBy(-_._1.length).foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          if (trie.existsSuperSet(ab0)) {
+            hm(ab0) = (0, -1, List())
+          } else {
+            trie.insert(ab0)
+            hm(ab0) = (s, id, p)
+          }
+        }
+      }
+    }
+
+    var projs = List[ProjectionMetaData]()
+
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if(p.nonEmpty){
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+      }
+    }
+
+    projs
+  }
+
   def prepare_opt(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
                  ): List[ProjectionMetaData] = {
     val qL = query.toList
@@ -638,7 +680,7 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
 case class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-  val proj_zip_sorted = projections.zipWithIndex.sortBy(_._1.length).reverse
+  val proj_zip_sorted = projections.zipWithIndex.sortBy(-_._1.length)
 
   /**
    * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
@@ -711,7 +753,7 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
             if (child._1.hasBeenDone == 0) {
               val new_intersect = intersect_deq.filter(dim => !newdif.contains(dim))
               if(new_intersect.nonEmpty){
-                queue.enqueue((child._1, new_intersect))
+                queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
               }
               child._1.hasBeenDone = 1
             }

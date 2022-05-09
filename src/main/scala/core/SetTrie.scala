@@ -13,6 +13,17 @@ class SetTrie() {
       insert(t, c)
   }
 
+  def insert_remove_SubSet(s: List[Int], n: Node=root): Unit = s match {
+    case Nil => ()
+    case h :: t =>
+      val c = n.findOrElseInsert(h)
+      // if c terminator, get c.ab0, put placeholder in hm (to avoid trying to insert new ab0), remove terminator on c
+      insert(t, c)
+    case h :: Nil =>
+      val c = n.findOrElseInsert(h)
+      //if c has children, don't do anything else (s is subset of other)
+  }
+
 
   def existsSuperSet(s: List[Int], n: Node = root): Boolean= s match {
     case Nil => true
