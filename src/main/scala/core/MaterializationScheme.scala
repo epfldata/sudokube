@@ -662,7 +662,10 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
         vert_deq.children.foreach(child => {
           if (child._1.hasBeenDone == 0) {
             child._1.hasBeenDone = 1
-            queue.enqueue((child._1, intersect_deq.filter(dim => !child._2.contains(dim))))
+            val new_intersect = intersect_deq.filter(dim => !child._2.contains(dim))
+            if(new_intersect.nonEmpty){
+              queue.enqueue((child._1, new_intersect))
+            }
           }
         })
       } else if(vert_deq.p_length <= cheap_size){
@@ -678,7 +681,10 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
             good_children += 1
           } else {
             child._1.hasBeenDone = 1
-            queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
+            val new_intersect = intersect_deq.filter(dim => !newdif.contains(dim))
+            if(new_intersect.nonEmpty){
+              queue.enqueue((child._1, new_intersect))
+            }
           }
         })
         if (good_children == 0) {
@@ -703,7 +709,10 @@ case class DAGMaterializationScheme(m: MaterializationScheme) extends Materializ
             good_children += 1
           } else {
             if (child._1.hasBeenDone == 0) {
-              queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
+              val new_intersect = intersect_deq.filter(dim => !newdif.contains(dim))
+              if(new_intersect.nonEmpty){
+                queue.enqueue((child._1, new_intersect))
+              }
               child._1.hasBeenDone = 1
             }
           }
