@@ -5,27 +5,16 @@ import collection.mutable.SortedSet
 class SetTrie() {
   val root =  Node(-1)
 
-  def insert(s: List[Int], n: Node = root): Unit = s match {
+  def insert(s: List[Int], n: Node = root, ab0: List[Int] = List()): Unit = s match {
     //s is assumed to have distinct elements
     case Nil => ()
     case h :: t =>
-      val c = n.findOrElseInsert(h)
-      insert(t, c)
-  }
-
-  def insert_remove_SubSet(s: List[Int], n: Node=root): Unit = s match {
-    case Nil => ()
-    case h :: t =>
-      val c = n.findOrElseInsert(h)
-      // if c terminator, get c.ab0, put placeholder in hm (to avoid trying to insert new ab0), remove terminator on c
-      insert(t, c)
-    case h :: Nil =>
-      val c = n.findOrElseInsert(h)
-      //if c has children, don't do anything else (s is subset of other)
+      val c = n.findOrElseInsert(h, ab0)
+      insert(t, c, ab0)
   }
 
 
-  def existsSuperSet(s: List[Int], n: Node = root): Boolean= s match {
+  def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
     case Nil => true
     case h :: t =>
       var found = false
@@ -44,17 +33,42 @@ class SetTrie() {
       found
   }
 
-  class Node(val b: Int, val children: SortedSet[Node]) {
-    def findOrElseInsert(v: Int) = {
+  def existsSuperSet_andGetSubsets(s: List[Int], n: Node = root, can_be_subset: Boolean): (List[List[Int]], Boolean) = s match {
+    case Nil => (List(), true)
+    case h :: t =>
+      var found = (List[List[Int]](), false)
+      val child = n.children.iterator
+      var ce = n.b
+      while (child.hasNext && ce <= h) {
+        val cn = child.next()
+        ce = cn.b
+        if(can_be_subset){
+          found = ((cn.term_ab0 :: found._1, found._2))
+        }
+        if(ce < h) {
+          val ret = existsSuperSet_andGetSubsets(s, cn, false)
+          found = (ret._1 ::: found._1, ret._2 || found._2)
+        } else if(ce == h) {
+          val ret = existsSuperSet_andGetSubsets(t, cn, can_be_subset)
+          found = (ret._1 ::: found._1, ret._2 || found._2)
+        } else
+          ()
+      }
+      found
+  }
+
+  class Node(val b: Int, val children: SortedSet[Node], val term_ab0: List[Int] = List()) {
+    def findOrElseInsert(v: Int, ab0: List[Int] = List()) = {
       val c = children.find(_.b == v)
       if (c.isDefined)
         c.get
       else {
-        val nc = new Node(v, SortedSet())
+        val nc = new Node(v, SortedSet(), ab0)
         children += nc
         nc
       }
     }
+
   }
 
   object Node {

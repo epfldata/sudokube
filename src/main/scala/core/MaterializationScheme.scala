@@ -326,10 +326,12 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           if (s < res.get._1)
             hm(ab0) = (s, id, p)
         } else {
-          if (trie.existsSuperSet(ab0)) {
+          val test = trie.existsSuperSet_andGetSubsets(ab0, can_be_subset = true)
+          test._1.foreach(ab0_to_rem => hm(ab0_to_rem) = (0, -1, List()))
+          if (test._2) {
             hm(ab0) = (0, -1, List())
           } else {
-            trie.insert(ab0)
+            trie.insert(ab0, ab0 = ab0)
             hm(ab0) = (s, id, p)
           }
         }
@@ -338,15 +340,15 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 
     var projs = List[ProjectionMetaData]()
 
+
     hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
-      if(p.nonEmpty){
+      if(p.nonEmpty) {
         val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
         val mask = Bits.mk_list_mask(p, qBS)
         projs = ProjectionMetaData(ab, s, mask, id) :: projs
       }
     }
-
-    projs
+    projs.sortBy(-_.accessible_bits.size)
   }
 
   def prepare_opt(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int

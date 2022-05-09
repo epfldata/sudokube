@@ -20,7 +20,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       val newnewp = Profiler("NewNewPrepare"){m.prepare_new_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       print("NewNew len : " + newnewp.length)
       print(", New len : " + newp.length + "\n")
-      assert(oldp.filterNot(newnewp.toSet).isEmpty)
+      //assert(oldp.filterNot(newnewp.toSet).isEmpty)
     }
     println("Time for RMS")
     Profiler.print()
