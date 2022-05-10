@@ -16,6 +16,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   val projections: IndexedSeq[List[Int]]
 
 
+
   object info {
     def wc_estimate(s: Int) = {
       projections.map(x => {
@@ -316,7 +317,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     import Util.intersect
 
     val trie = new SetTrie()
-    projections.zipWithIndex.sortBy(-_._1.length).foreach { case (p, id) =>
+    projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
         val ab0 = intersect(qL, p)
         val res = hm.get(ab0)
@@ -326,9 +327,14 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           if (s < res.get._1)
             hm(ab0) = (s, id, p)
         } else {
-          val test = trie.existsSuperSet_andGetSubsets(ab0, can_be_subset = true)
-          test._1.foreach(ab0_to_rem => hm(ab0_to_rem) = (0, -1, List()))
+          val test = trie.existsSuperSet_andGetSubsets(ab0, can_be_subset = true, can_be_superset = true)
+          if(test._1.nonEmpty){
+            test._1.foreach(ab0_to_rem => hm(ab0_to_rem) = (0, -1, List()))
+          }
+          //print("TEST AB0 : " + ab0 + "\n")
+          //println("TEST RET : " + test + "\n")
           if (test._2) {
+            trie.insert(ab0, ab0 = ab0)
             hm(ab0) = (0, -1, List())
           } else {
             trie.insert(ab0, ab0 = ab0)
@@ -340,9 +346,52 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 
     var projs = List[ProjectionMetaData]()
 
-
+    println("NEWNEW SIZE" + hm.size)
     hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
       if(p.nonEmpty) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_new_new2(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                      ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    val trie = new SetTrie()
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          if(trie.existsSuperSet(ab0)){
+            hm(ab0) = (0, -1, List())
+          } else {
+            trie.insert(ab0)
+            hm(ab0) = (s, id, p)
+          }
+        }
+      }
+    }
+
+
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if (p.nonEmpty && !trie.existsSuperSet(s)) {
         val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
         val mask = Bits.mk_list_mask(p, qBS)
         projs = ProjectionMetaData(ab, s, mask, id) :: projs
@@ -676,6 +725,68 @@ class EfficientMaterializationScheme(m: MaterializationScheme) extends Materiali
     Profiler.resetAll()
     println()
     res0
+  }
+}
+
+case class testMaterializationScheme(m: MaterializationScheme) extends  MaterializationScheme(m.n_bits){
+
+  override val projections: IndexedSeq[List[Int]] = m.projections
+  val filteredProjections = {
+    val trie = new SetTrie()
+    var projs_good = List[List[Int]]()
+    var projs_bad = List[List[Int]]()
+    var i = 0
+    projections.sortBy(-_.size).foreach{
+      case p =>
+        println("ITER : " + i)
+        i += 1
+        if(trie.existsSuperSet(p)){
+          projs_bad = p :: projs_bad
+        } else {
+          projs_good = p :: projs_good
+          trie.insert(p)
+        }
+    }
+    print("TOTAL SIZE : " + projections.size)
+    println("GOOD SIZE : " + projs_good.size)
+    println("BAD SIZE : " + projs_bad.size)
+    projs_good
+  }
+
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    filteredProjections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          hm(ab0) = (s, id, p)
+        }
+      }
+    }
+
+    val trie = new SetTrie()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if (!trie.existsSuperSet(s)) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+        trie.insert(s)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
   }
 }
 
