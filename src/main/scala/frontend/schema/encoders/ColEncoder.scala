@@ -48,13 +48,8 @@ abstract class ColEncoder[T] extends Serializable {
   }
 
   def decode(b: BigBinary) : T = {
-    val y = b.toSeq.zipWithIndex.map {
-      case(v, i) => {
-        val j = bits.indexWhere(_ == i)
-        if(j >= 0) Some(v << j) else None
-      }
-    }.flatten.sum
 
+    val y = b.unpup(bits).toInt
     /*
         val mask = BigBinary(bits.map(x => Big.pow2(x)).sum)
         val f = Bits.mk_project_f(mask, bits.max + 1)

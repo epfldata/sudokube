@@ -113,8 +113,9 @@ case class BigBinary(val toBigInt: BigInt) {
   */
   def pup(bit_indexes: Seq[Int]): BigBinary = {
     if (bit_indexes.isInstanceOf[Range]) {
+      val mask = (1 << bit_indexes.size) - 1
       //Assumes there are no ones in toBigInt beyond bit_indexes.length
-      BigBinary(toBigInt << bit_indexes.head)
+      BigBinary((toBigInt & mask) << bit_indexes.head)
     }
     else {
       val bi = bit_indexes.foldLeft((toBigInt, BigInt(0))) {
@@ -126,6 +127,27 @@ case class BigBinary(val toBigInt: BigInt) {
       }
       BigBinary(bi._2)
     }
+  }
+
+  /** opposite of pup. Extracts values at specific bits from bigbinary
+   * {{{
+   *a00b0c.pup(List(0, 2, 5)) = abc  ... a,b,c bits
+   *a00c0b.pup(List(2, 0, 5)) = abc
+   * }}}
+   */
+  def unpup(bit_indexes: Seq[Int]): BigBinary = {
+    val bi = if (bit_indexes.isInstanceOf[Range]) {
+      toBigInt >> bit_indexes.head & ((1 << bit_indexes.size) - 1)
+    }
+    else {
+      toSeq.zipWithIndex.map {
+        case (v, i) => {
+          val j = bit_indexes.indexWhere(_ == i)
+          if (j >= 0) Some(BigInt(v) << j) else None
+        }
+      }.flatten.sum
+    }
+    BigBinary(bi)
   }
 }
 
