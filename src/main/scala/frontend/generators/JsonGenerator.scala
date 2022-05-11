@@ -10,13 +10,23 @@ import java.time.Year
 
 object JsonGenerator {
     def main(args: Array[String]): Unit = {
-        JsonWriter.gen("random.json", 100, List(SimpleField("date", DateGenerator()),SimpleField("email", EmailGenerator()), SimpleFieldInt("id", IntGenerator()), NestedJson("nested", List(SimpleField("name", NameGenerator())))))
+        //JsonWriter.gen("random.json", 100, List(SimpleField("date", DateGenerator()),SimpleField("email", EmailGenerator()), SimpleFieldInt("id", IntGenerator()), NestedJson("nested", List(SimpleField("name", NameGenerator())))))
+        val jsonWriter = new JsonWriter(List(SimpleField("date", DateGenerator(format = Format.YEAR))), 6)
+        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.YEAR_MONTH))), 1)
+        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.DATE))), 2)
+        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.HOUR))), 3)
+        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.MINUTE))), 4)
+        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.SECONDS))), 5)
+        jsonWriter.gen("random.json")
   }
 }
 
-object JsonWriter {
+class JsonWriter(var currentSchema : List[Field], val numberOfLign : Int) {
+
+    var mapSchema = scala.collection.mutable.Map[Int,List[Field]]()
+    mapSchema.put(0, currentSchema)
     
-    def gen(filename : String, length : Int, schema : List[Field]) : Unit = {
+    def gen(filename : String) : Unit = {
 
         val mapper = new ObjectMapper() with ScalaObjectMapper
         mapper.registerModule(DefaultScalaModule)
@@ -24,9 +34,25 @@ object JsonWriter {
         val fileWriter = new FileWriter(file, true)
         val sequenceWriter = mapper.writerWithDefaultPrettyPrinter().writeValuesAsArray(fileWriter)
 
-        for(i <- 0 to length - 1) {
-             val map = scala.collection.mutable.Map[String,Any]()
-            for (f <- schema) {
+        for(i <- 0 to numberOfLign - 1) {
+            if(mapSchema.keySet.contains(i)){
+                currentSchema = mapSchema.getOrElse(i, currentSchema);
+            }
+            val map = convert()
+            sequenceWriter.write(map)
+        }
+        sequenceWriter.close()
+    }
+
+    def modifySchema(newSchema : List[Field], lignOfModification : Int) : Unit = {
+        if(lignOfModification >= 0 && lignOfModification < numberOfLign){
+            mapSchema.put(lignOfModification, newSchema)
+        }
+    }
+
+    private def convert() = {
+        val map = scala.collection.mutable.Map[String,Any]()
+            for (f <- currentSchema) {
                 f match {
                     case SimpleField(key,value) => map.put(key, value.generate())
                     case SimpleFieldInt(key, value) => map.put(key, value.generate())
@@ -35,9 +61,7 @@ object JsonWriter {
                     case NestedJson(key, value) => map.put(key, mapNesterJson(value))
                 }
             }
-             sequenceWriter.write(map)
-        }
-        sequenceWriter.close()
+        map
     }
 
     private def mapNesterJson(schema : List[Field]) : scala.collection.mutable.Map[String,Any] = {
@@ -68,12 +92,6 @@ case class SimpleFieldFloat(key : String, value : MyGenerator[Float]) extends Fi
 case class NestedJson(key : String, value : List[Field]) extends Field
 
 
-object Order {
-    val YEAR_FIRST = 0
-    val DAY_FIRST = 1
-    val RANDOM = 2
-}
-
 abstract class MyGenerator[T]() {
     def generate() : T
 }
@@ -86,69 +104,127 @@ case class EmailGenerator(hostName : String = "gmail.com", localEmailLength: Int
     }
 }
 
-case class NameGenerator(length : Int = 4) extends MyGenerator[String] {
-     private val ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz"
+case class NameGenerator(length : Int = 4, private var ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz") extends MyGenerator[String] {
 
      def generate() : String = {
        return RandomStringUtils.random(length, ALLOWED_CHARS)
     }
 }
 
-case class DateGenerator(separetor : Char = '/', yearBegin : Int = 1903, order : Int = Order.RANDOM) extends MyGenerator[String] {
-    private val months = Map((1,31), (2,29), (3,31), (4, 30),(5,31), (6,30), (7,31), (8,31), (9,30), (10,31), (11, 31), (12,31))
+object Format {
+        val DATE = 0
+        val HOUR = 1
+        val MINUTE = 4
+        val SECONDS = 5
+        val YEAR = 2
+        val YEAR_MONTH = 3
+    }
+
+    object Order {
+        val YEAR_FIRST = 0
+        val DAY_FIRST = 1
+        val RANDOM = 2
+    }
+
+case class DateGenerator(separetor : Char = '/', yearBegin : Int = 1903, order : Int =  Order.RANDOM, format : Int = Format.DATE) extends MyGenerator[String] {
+    private val months = Map((1,31), (2,28), (3,31), (4, 30),(5,31), (6,30), (7,31), (8,31), (9,30), (10,31), (11, 31), (12,31))
+
+    def generateYear() : String = {
+        IntGenerator(1900,Year.now.getValue).generate().toString()
+    }
+
+    def generateYM() : String = {
+        val year = generateYear()
+        val separator = NameGenerator(1, "/-").generate()
+        val month = formatValue(IntGenerator(1, 12).generate())
+        formatDate(year, separator, month)
+    }
+
+    private def formatValue(value : Int) : String = {
+        if(value < 10) {
+            "0" + value.toString()
+        }else 
+            value.toString()
+    }
+
+    private def formatDate(year : String, separator : String, month : String, day : String = "") : String = {
+        val randomBoolean = IntGenerator(0,1).generate()
+        if(order == Order.YEAR_FIRST) {
+            val end = if(day.isEmpty()) "" else separator + day
+            year + separator + month + end
+        }
+        else if(order == Order.DAY_FIRST) {
+            val end = if(day.isEmpty()) "" else day + separator
+            end + month + separator + year
+        }
+        else { 
+            if(randomBoolean == 0){
+                val end = if(day.isEmpty()) "" else separator + day
+                year + separator + month + end
+            }else{
+                val end = if(day.isEmpty()) "" else day + separator
+                end + month + separator + year
+            }
+        }
+    }
 
     def generate() : String = {
+        format match {
+            case Format.DATE => generateDate()
+            case Format.HOUR => generateDateWithHour()
+            case Format.MINUTE => generateMin()
+            case Format.SECONDS => generateSec()
+            case Format.YEAR => generateYear()
+            case Format.YEAR_MONTH => generateYM()
+        }
+    }
+
+    def generateDateWithHour() : String = {
+        val date = generateDate()
+        val hour = formatValue(IntGenerator(0,23).generate())
+        date + "T" + hour + ":00:00.000Z"
+    }
+
+    def generateSec() : String = {
+        val date = generateDate()
+        val hour = formatValue(IntGenerator(0,23).generate())
+        val separator = ":"
+        val gen = IntGenerator(0, 59)
+        val min = formatValue(gen.generate())
+        var sec = formatValue(gen.generate())
+        val miniSec = IntGenerator(0, 999).generate()
+        var miniSecStr : String = formatValue(miniSec)
+        if(miniSec < 100){
+            miniSecStr = "0" + miniSecStr
+        }
+        sec = sec + "." + miniSecStr
+        date + "T" + hour + separator + min + separator + sec + "Z"
+    }
+
+    def generateMin() : String = {
+        val date = generateDate()
+        val hour = formatValue(IntGenerator(0,23).generate())
+        val separator = ":"
+        val gen = IntGenerator(0, 59)
+        val min = formatValue(gen.generate())
+        date + "T" + hour + separator + min + separator + "00.000Z"
+    }
+
+    def generateDate() : String = {
         val year = IntGenerator(1900,Year.now.getValue).generate()
-        var month = IntGenerator(1,12).generate()
+        val month = IntGenerator(1,12).generate()
         var day = 0
-        if(month == 2 && year % 4 == 0) {
-            day = IntGenerator(1,28).generate()
+        if(month == 2 && year % 4 == 0 && year % 100 != 0) {
+            day = IntGenerator(1,29).generate()
         }
         else {
              day = IntGenerator(1,months.getOrElse(month,28)).generate()
         }
-
-        var dayStr = ""
-        if(day < 10) {
-            dayStr = "0" + day.toString()
-        }
-        else {
-            dayStr = day.toString()
-        }
-
-        var monthStr = ""
-        if(month < 10) {
-            monthStr = "0" + month.toString()
-        }
-
-        else {
-            monthStr = month.toString()
-        }
-
-        var yearStr = ""
-        if(year < 10) {
-            yearStr = "0" + year.toString()
-        }
-        else {
-            yearStr = year.toString()
-        }
-        
-        if(order == Order.YEAR_FIRST) {
-              return yearStr + separetor + monthStr + separetor + dayStr
-        }
-        else if(order == Order.DAY_FIRST) {
-            return dayStr + separetor + monthStr + separetor + yearStr
-        }
-        else {
-            val rdm = Random.nextInt(2)
-
-            if(rdm == 0) {
-                return yearStr + separetor + monthStr + separetor + dayStr
-            }
-            else {
-                return dayStr + separetor + monthStr + separetor + yearStr
-            }
-        }
+        val dayStr = formatValue(day)
+        val monthStr = formatValue(month)
+        val yearStr = year.toString()
+        val separator = NameGenerator(1, "/-").generate()
+        formatDate(yearStr, separator, monthStr, dayStr)
     }
 
 }
