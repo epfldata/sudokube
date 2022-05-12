@@ -36,6 +36,31 @@ class SetTrie() {
       found
   }
 
+  def existsCheaperOrCheapSuperSet(s: List[Int], s_cost: Int, cheap_size: Int, curr_size: Int = 1, n: Node = root): Boolean = s match {
+    case Nil => if(n.children.nonEmpty) true else false
+    case h :: t =>
+      if(curr_size > cheap_size && curr_size > s_cost){
+        false
+      } else {
+        var found = false
+        val child = n.children.iterator
+        var ce = n.b
+        while (child.hasNext && !found && ce <= h) {
+          val cn = child.next()
+          ce = cn.b
+          if(ce < h) {
+            found = existsCheaperOrCheapSuperSet(s, s_cost, cheap_size, curr_size+1, cn)
+          } else if(ce == h) {
+            found = existsCheaperOrCheapSuperSet(t, s_cost, cheap_size, curr_size+1, cn)
+          } else
+            ()
+        }
+        found
+      }
+
+
+  }
+
   def existsSuperSet_andGetSubsets(s: List[Int], n: Node = root, can_be_subset: Boolean, can_be_superset: Boolean): (List[List[Int]], Boolean) = s match {
     case Nil => (List(), true)
     case h :: t =>

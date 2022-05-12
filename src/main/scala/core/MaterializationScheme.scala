@@ -271,6 +271,49 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     qp2
   }
 
+  def prepare_online_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                 ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    val trie = new SetTrie()
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          if(trie.existsSuperSet(ab0)){
+            hm(ab0) = (0, -1, List())
+          } else {
+            trie.insert(ab0)
+            hm(ab0) = (s, id, p)
+          }
+        }
+      }
+    }
+
+
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if (p.nonEmpty && !trie.existsSuperSet(s)) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
   def prepare_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
                  ): List[ProjectionMetaData] = {
     val qL = query.toList
@@ -346,7 +389,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 
     var projs = List[ProjectionMetaData]()
 
-    println("NEWNEW SIZE" + hm.size)
     hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
       if(p.nonEmpty) {
         val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
@@ -357,7 +399,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     projs.sortBy(-_.accessible_bits.size)
   }
 
-  def prepare_new_new2(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+  def prepare_batch_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
                       ): List[ProjectionMetaData] = {
     val qL = query.toList
     val qIS = query.toIndexedSeq
