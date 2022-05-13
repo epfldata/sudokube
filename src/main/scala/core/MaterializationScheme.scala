@@ -279,7 +279,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
     import Util.intersect
 
-    val trie = new SetTrie()
+    val trie = new SetTrie2()
 
     projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
@@ -291,10 +291,10 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           if (s < res.get._1)
             hm(ab0) = (s, id, p)
         } else {
-          if(trie.existsSuperSet(ab0)){
+          if(trie.existsCheaperOrCheapSuperSet(ab0, p.length, cheap_size)){
             hm(ab0) = (0, -1, List())
           } else {
-            trie.insert(ab0)
+            trie.insert(ab0, p.length)
             hm(ab0) = (s, id, p)
           }
         }
