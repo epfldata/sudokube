@@ -116,7 +116,7 @@ class SetTrie2() {
   }
 
   def existsCheaperOrCheapSuperSet(s: List[Int], s_cost: Int, cheap_size: Int, n: Node = root): Boolean = s match {
-    case Nil => if(n.children.nonEmpty) true else false
+    case Nil => n.cheapest_term <= s_cost || n.cheapest_term <= cheap_size
     case h :: t =>
       var found = false
       val child = n.children.iterator
@@ -184,6 +184,7 @@ object SetTrie2{
     trie2.insert(List(2, 3, 5), 3)
     trie2.insert(List(2, 4), 4)
 
-    println(trie2.existsCheaperOrCheapSuperSet(List(2, 4), 5, 2))
+
+    println(trie2.existsCheaperOrCheapSuperSet(List(2, 4), 4, 2))
   }
 }
