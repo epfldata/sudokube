@@ -24,13 +24,13 @@ class PrepareSpec extends FlatSpec with Matchers {
       //print("NewNew len : " + batch_newp.length)
       //print(", New len : " + newp.length + "\n")
       println("Oldp : " + oldp.length + ", Onlinep : " + onlinep.length)
-      //assert(onlinep.sameElements(oldp))
+      assert(oldp.sameElements(onlinep))
     }
     println("Time for RMS")
     Profiler.print()
   }
 
-  "Old and New Prepare " should " match " in RMS(400, 15, 17, 100, 10, 40, 40)
+  "Old and New Prepare " should " match " in RMS(400, 15, 17, 100, 10, 40, 50)
   //dmin can increase for testing 19/20
   //"Old and New Prepare " should " match " in RMS(10, 2, 3, 100, 5, 10, 10)
 

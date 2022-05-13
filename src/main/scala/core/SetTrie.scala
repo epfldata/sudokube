@@ -8,9 +8,6 @@ class SetTrie() {
   def insert(s: List[Int], n: Node = root, ab0: List[Int] = List()): Unit = s match {
     //s is assumed to have distinct elements
     case Nil => ()
-    case h :: Nil =>
-      val c = n.findOrElseInsert(h, ab0)
-      insert(Nil, c, ab0)
     case h :: t =>
       val c = n.findOrElseInsert(h)
       insert(t, c, ab0)
@@ -87,36 +84,13 @@ class SetTrie2() {
   def insert(s: List[Int], this_cost: Int, n: Node = root): Unit = s match {
     //s is assumed to have distinct elements
     case Nil => ()
-    case h :: Nil =>
-      val c = n.findOrElseInsert(h, this_cost)
-      insert(Nil, this_cost, c)
     case h :: t =>
       val c = n.findOrElseInsert(h, this_cost)
       insert(t, this_cost, c)
   }
 
-
-  def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
-    case Nil => if(n.children.nonEmpty) true else false
-    case h :: t =>
-      var found = false
-      val child = n.children.iterator
-      var ce = n.b
-      while (child.hasNext && !found && ce <= h) {
-        val cn = child.next()
-        ce = cn.b
-        if(ce < h) {
-          found = existsSuperSet(s, cn)
-        } else if(ce == h) {
-          found = existsSuperSet(t, cn)
-        } else
-          ()
-      }
-      found
-  }
-
   def existsCheaperOrCheapSuperSet(s: List[Int], s_cost: Int, cheap_size: Int, n: Node = root): Boolean = s match {
-    case Nil => n.cheapest_term <= s_cost || n.cheapest_term <= cheap_size
+    case Nil => n.children.nonEmpty && (n.cheapest_term <= s_cost || n.cheapest_term <= cheap_size)
     case h :: t =>
       var found = false
       val child = n.children.iterator
