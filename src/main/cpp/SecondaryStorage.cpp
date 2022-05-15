@@ -1,42 +1,16 @@
-#include <string>
-#include <filesystem>
-#include "Keys.h"
-
-using CuboidIDType = int64_t;
-using MaskOffsetType = int64_t;
-using IsDenseType = int8_t;
-size_t MetadataDize = sizeof(IsDenseType) + sizeof(size_t);
-unsigned int BufferSize = 1024;
-
-inline byte *getColumn(byte **Array, size_t Idx, size_t OldColumnSize) {
-    byte *Column = (byte *)Array + OldColumnSize * Idx;
-    return Column;
-}
-
-void print_column_bit(int pos, byte *column) {
-    int b = (column[pos / 8] >> (pos % 8)) % 2;
-    if(b) printf("1");
-    else  printf("0");
-}
-
-// returns True if the given bit is 1
-bool getBit(byte* Column, int Position) {
-    unsigned int BytePos = Position >> 3;  
-    unsigned int BitPos = Position & 0x7;
-
-    return Column[BytePos] & 1 << BitPos;
-}
+#include "SecondaryStorage.h"
 
 void writeBaseCuboid(std::string CubeID, std::pair<byte[], long> KeyValuePairs[]) {
     
 }
 
 // TODO: ADD A FLAG FOR TEMPORARY FOR QUERIES
-void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], unsigned int MaskSum) {
+// Assume resulting detination cuboid always fits in memory
+void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], const unsigned int MaskSum) {
     // add a cache
     // MAKE IT MODULAR FOR DIFFERENT LOADING POLICIES
 
-    // read metadata aout the source cuboid 
+    // read metadata about the source cuboid 
     std::string CubeDirPath = "../../../../../dataset/" + CubeID + std::filesystem::path::preferred_separator;
     std::string CuboidDirPath = CubeDirPath +"cuboid" + std::to_string(SourceCuboidID) + std::filesystem::path::preferred_separator;
 
@@ -50,54 +24,101 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     fclose(MetadataFile);
     
     const size_t OldRowsCount = *(size_t*)(Metadata + sizeof(IsDenseType));
-    // unsigned int OldColumnSize = bitsToBytes(OldRowsCount);
+    unsigned int OldColumnSize = bitsToBytes(OldRowsCount);
 
     printf("IsDense: %hhd\n", *(IsDenseType*)(Metadata));
     printf("OldRowsCount: %zu\n", OldRowsCount);
-    // printf("OldColumnSize: %d\n", OldColumnSize);
-
-
-
-    // unsigned int BufferSize = bitsToBytes(BufferRowsCount);
-    // for (int i = 0; i < OldRowsCount/BufferRowsCount) {}
+    printf("OldColumnSize: %d\n", OldColumnSize);
 
     const size_t BufferRowsCount = ((BufferSize / (bitsToBytes(MaskSum) + sizeof(value_t))) >> 3 ) << 3;
     unsigned int BufferColumnSize = bitsToBytes(BufferRowsCount);
 
+    //------------------------------------- BUFFER -------------------------------------//
 
     printf("BufferRowsCount: %zu\n", BufferRowsCount);
+    printf("BufferColumnSize: %d\n", BufferColumnSize);
 
+    // start rehashing the cuboid stored on disk
     unsigned int RehashIterations = (OldRowsCount + BufferRowsCount - 1) /BufferRowsCount;
+    byte **IntermediateKeyStore = (byte**)calloc(MaskSum, BufferColumnSize);
+    value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, sizeof(value_t));
 
-    for (int i = 0; i < 1; i++) {
+    // new store initialization 
+    size_t DestinationRowsCount = 1LL << MaskSum;
+    value_t *DestinationValStore = (value_t *) calloc(DestinationRowsCount, sizeof(value_t));
+    assert(DestinationValStore);
+
+    int DestinationKeySize = bitsToBytes(MaskSum);
+    size_t *DestinationKeys = (size_t *) calloc(OldRowsCount, sizeof(size_t));
+
+    for (int i = 0; i < RehashIterations; i++) {
         // read columns
-        byte **IntermediateColStore = (byte**)calloc(MaskSum, BufferColumnSize);
-        for(int i=0; i<MaskSum; i++){
-            std::string ColReadFileName = CuboidDirPath + "col" + std::to_string(Mask[i]);
-            FILE* ColReadFile = fopen (ColReadFileName.c_str(), "r");
-            assert(ColReadFile != NULL);
-            fseek(ColReadFile, i*BufferColumnSize, SEEK_SET);
-            fread(getColumn(IntermediateColStore, i, BufferColumnSize), sizeof(byte), BufferColumnSize, ColReadFile);
-            fclose (ColReadFile);
-        }
+        memset(IntermediateKeyStore, 0, MaskSum*BufferColumnSize);
+        readKeys(MaskSum, Mask, i, CuboidDirPath, BufferRowsCount, IntermediateKeyStore, BufferColumnSize);
 
+        // read values
+        memset(IntermediateValStore, 0, BufferRowsCount*sizeof(value_t));
+        readValues(CuboidDirPath, i, BufferRowsCount, IntermediateValStore);
+
+        #ifdef DEBUG
         for (size_t i = 0; i<BufferRowsCount; i++) { 
             printf("Col Key: ");
             for(int j = MaskSum-1; j >= 0; j--)
-                print_column_bit(i, getColumn(IntermediateColStore, j, BufferColumnSize));
-            printf("\n");
+                print_column_bit(i, getColumn(IntermediateKeyStore, j, BufferColumnSize));
+            printf("\tValue: %lld\n", IntermediateValStore[i]);
+        }
+        printf("BREAK\n");
+        #endif
+
+        // rehash
+        for (size_t r = 0; r < BufferRowsCount; r++) {
+            size_t DestinationKey = 0;
+            for (int j = 0; j < MaskSum; j++){ 
+                DestinationKey += (1<<j) * getBit(getColumn(IntermediateKeyStore, j, BufferColumnSize), r);
+            }
+            DestinationValStore[DestinationKey] += IntermediateValStore[r];
         }
     }
 
+    // generate sparse keys
+    const unsigned int DestinationKeyBits = MaskSum;
+    unsigned int DestinationColumnSize = bitsToBytes(DestinationRowsCount);
+    byte **DestinationKeyStore = (byte**)calloc(DestinationKeyBits, DestinationColumnSize);
+
+    for (size_t r = 0; r<DestinationRowsCount; r++) { 
+        value_t IntKey = r;  // CAUTION; KEYS BIGGER THAN 64 BITS WILL NOT WORK
+        std::bitset<sizeof(value_t)*8> bit_r = std::bitset<sizeof(value_t)*8>(IntKey);
+        for(int i = 0; i < DestinationKeyBits; i++) {
+            if (bit_r[i]) {
+                byte* Col = getColumn(DestinationKeyStore, i, DestinationColumnSize);
+                setBit(Col, r);
+            }
+        }
+    }
+
+    #ifdef DEBUG
+    printf("\nNew Key Value Pairs\n");
+    // const unsigned int DestinationKeyBits = sizeof(*Mask)/sizeof(Mask[0]);;
+    for(int i=0; i<DestinationRowsCount; i++) {
+        printf("Int Key: %d", i);
+        // printf("\tKey: ");
+        // for(int j = DestinationKeyBits-1; j >= 0; j--)
+        //     print_column_bit(i, getColumn(DestinationKeyStore, j, DestinationColumnSize));
+        printf("\tValue: %lld \n",  DestinationValStore[i]);
+    }
+    #endif
+
+    //------------------------------------- BUFFER -------------------------------------//
 
 
-    // // read columns
-    // byte **IntermediateColStore = (byte**)calloc(MaskSum, OldColumnSize);
+    //------------------------------------- NO BUFFER -------------------------------------//
+    // read columns
+    // byte **IntermediateKeyStore = (byte**)calloc(MaskSum, OldColumnSize);
     // for(int i=0; i<MaskSum; i++){
     //     std::string FileName = CuboidDirPath + "col" + std::to_string(Mask[i]);
     //     FILE* ColReadFile = fopen (FileName.c_str(), "r");
     //     assert(ColReadFile != NULL);
-    //     fread(getColumn(IntermediateColStore, i, OldColumnSize), sizeof(byte), OldColumnSize, ColReadFile);
+    //     fread(getColumn(IntermediateKeyStore, i, OldColumnSize), sizeof(byte), OldColumnSize, ColReadFile);
     //     fclose (ColReadFile);
     // }
 
@@ -109,24 +130,49 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     // fread(ColValStore, sizeof(value_t), OldRowsCount, ReadValueFile);
     // fclose(ReadValueFile);
 
+    // #ifdef DEBUG
+    // for (size_t i = 0; i<OldRowsCount; i++) { 
+    //     printf("Col Key: ");
+    //     for(int j = MaskSum-1; j >= 0; j--)
+    //         print_column_bit(i, getColumn(IntermediateKeyStore, j, OldColumnSize));
+    //     printf("\tValue: %lld\n", ColValStore[i]);
+    //     if ((i+1)%BufferRowsCount == 0) printf("BREAK\n");
+    // }
+    // #endif
+
+
     // // new store initialization 
-    // size_t NewSize = 1LL << MaskSum;
-    // value_t *NewColStore = (value_t *) calloc(NewSize, sizeof(value_t));
+    // size_t DestinationRowsCount = 1LL << MaskSum;
+    // value_t *NewColStore = (value_t *) calloc(DestinationRowsCount, sizeof(value_t));
     // assert(NewColStore);
 
-    // memset(NewColStore, 0, sizeof(value_t) * NewSize);
+    // memset(NewColStore, 0, sizeof(value_t) * DestinationRowsCount);
 
-    // int NewKeySize = bitsToBytes(MaskSum);
-    // size_t *NewKeys = (size_t *) calloc(OldRowsCount, sizeof(size_t));
+    // int DestinationKeySize = bitsToBytes(MaskSum);
+    // size_t *DestinationKeys = (size_t *) calloc(OldRowsCount, sizeof(size_t));
 
     // // rehash
     // for (size_t r = 0; r < OldRowsCount; r++) {
-    //     size_t NewKey = 0;
+    //     size_t DestinationKey = 0;
     //     for (int j = 0; j < MaskSum; j++){ 
-    //         NewKey += (1<<j) * getBit(getColumn(IntermediateColStore, j, OldColumnSize), r);
+    //         DestinationKey += (1<<j) * getBit(getColumn(IntermediateKeyStore, j, OldColumnSize), r);
     //     }
-    //     NewColStore[NewKey] += ColValStore[r];
+    //     NewColStore[DestinationKey] += ColValStore[r];
     // }
+
+    // #ifdef DEBUG
+    // printf("\nNew Key Value Pairs\n");
+    // const unsigned int DestinationKeyBits = sizeof(*Mask)/sizeof(Mask[0]);;
+    // for(int i=0; i<DestinationRowsCount; i++) {
+    //     printf("Int Key: %d", i);
+    //     // printf("\tKey: ");
+    //     // for(int j = DestinationKeyBits-1; j >= 0; j--)
+    //     //     print_column_bit(i, getColumn(DestinationKeyStore, j, DestinationColumnSize));
+    //     printf("\tValue: %lld \n",  NewColStore[i]);
+    // }
+    // #endif
+
+    //------------------------------------- NO BUFFER -------------------------------------//
 
     
 
@@ -139,7 +185,6 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
 
     // mask offset + sum
     // actual mask
-    
 }
 
 void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], unsigned int MaskSum) {
