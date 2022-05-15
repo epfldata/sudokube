@@ -298,11 +298,12 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     val trie = new SetTrie2()
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
-    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
-      if (!trie.existsCheaperOrCheapSuperSet(s, p.length, cheap_size)) {
-        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+    hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
         val mask = Bits.mk_list_mask(p, qBS)
-        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
       }
     }
     projs.sortBy(-_.accessible_bits.size)
