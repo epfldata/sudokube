@@ -78,7 +78,7 @@ class SetTrie() {
   }
 }
 
-class SetTrie2() {
+class SetTrieOnline() {
   val root =  Node(-1)
 
   def insert(s: List[Int], this_cost: Int, n: Node = root): Unit = s match {
@@ -131,6 +131,64 @@ class SetTrie2() {
   }
 }
 
+class SetTrieIntersect(){
+  val root =  Node(-1)
+  val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+
+  def insert(s: List[Int], size: Int, id: Int, full_p: List[Int], n: Node = root): Unit = s match {
+    //s is assumed to have distinct elements
+    case Nil => ()
+    case h :: t =>
+      if(t.isEmpty){
+        n.findOrElseInsert(h, size, t.isEmpty, id, full_p)
+        ()
+      } else {
+        val c = n.findOrElseInsert(h, size, false)
+        insert(t, size, id, full_p, c)
+      }
+
+  }
+
+
+  def existsSuperSet(s: List[Int], n: Node = root): Boolean= s match {
+    case Nil => true
+    case h :: t =>
+      var found = false
+      val child = n.children.iterator
+      var ce = n.b
+      while (child.hasNext && !found && ce <= h) {
+        val cn = child.next()
+        ce = cn.b
+        if(ce < h) {
+          found = existsSuperSet(s, cn)
+        } else if(ce == h) {
+          found = existsSuperSet(t, cn)
+        } else
+          ()
+      }
+      found
+  }
+
+  class Node(val b: Int, val children: SortedSet[Node], val size: Int, val isTerm: Boolean = false, val id: Int = -1, val full_p: List[Int] = List()) {
+    def findOrElseInsert(v: Int, newsize: Int, newIsTerm: Boolean = false, newId: Int = -1, newfull_p: List[Int] = List()) = {
+      val c = children.find(_.b == v)
+      if (c.isDefined)
+        c.get
+      else {
+        val nc = new Node(v, SortedSet(), newsize, newIsTerm, newId, newfull_p)
+        children += nc
+        nc
+      }
+    }
+  }
+
+  object Node {
+    implicit def order: Ordering[Node] = Ordering.by(_.b)
+    def apply(i: Int) = new Node(i, SortedSet(), 0)
+  }
+}
+
+
 object SetTrie {
   def main(args: Array[String]): Unit = {
     val trie = new SetTrie
@@ -149,9 +207,9 @@ object SetTrie {
   }
 }
 
-object SetTrie2{
+object SetTrieOnline{
   def main(args: Array[String]): Unit = {
-    val trie2 = new SetTrie2
+    val trie2 = new SetTrieOnline
     trie2.insert(List(1, 2, 4), 5)
     trie2.insert(List(1, 3, 5), 4)
     trie2.insert(List(1, 4), 8)

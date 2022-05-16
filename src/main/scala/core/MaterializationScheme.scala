@@ -295,7 +295,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     }
 
 
-    val trie = new SetTrie2()
+    val trie = new SetTrieOnline()
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
     hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
