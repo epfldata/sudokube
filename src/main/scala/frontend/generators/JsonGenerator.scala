@@ -11,6 +11,21 @@ import java.time.Year
 object JsonGenerator {
     def main(args: Array[String]): Unit = {
         //JsonWriter.gen("random.json", 100, List(SimpleField("date", DateGenerator()),SimpleField("email", EmailGenerator()), SimpleFieldInt("id", IntGenerator()), NestedJson("nested", List(SimpleField("name", NameGenerator())))))
+        
+        // The 10 most used email host names
+        val emailHostnames : Seq[String] = Seq(
+            "gmail.com",
+            "yahoo.com", 
+            "hotmail.com", 
+            "aol.com", 
+            "hotmail.co.uk", 
+            "hotmail.fr", 
+            "msn.com", 
+            "yahoo.fr", 
+            "wanadoo.fr", 
+            "orange.fr"
+        );
+
         val jsonWriter = new JsonWriter(List(SimpleField("date", DateGenerator(format = Format.YEAR))), 6)
         jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.YEAR_MONTH))), 1)
         jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.DATE))), 2)
@@ -96,11 +111,11 @@ abstract class MyGenerator[T]() {
     def generate() : T
 }
 
-case class EmailGenerator(hostName : String = "gmail.com", localEmailLength: Int = 6) extends MyGenerator[String] {
+case class EmailGenerator(hostNames : Seq[String] = Seq("gmail.com"), localEmailLength: Int = 6) extends MyGenerator[String] {
     private val ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
 
     def generate() : String = {
-        return RandomStringUtils.random(localEmailLength, ALLOWED_CHARS) + "@" + hostName;
+        return RandomStringUtils.random(localEmailLength, ALLOWED_CHARS) + "@" + hostNames(Random.nextInt(hostNames.length));
     }
 }
 
