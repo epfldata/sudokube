@@ -15,7 +15,11 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   /** the metadata describing each projection in this scheme. */
   val projections: IndexedSeq[List[Int]]
 
-
+  val proj_trie = {
+    val trie = new SetTrieIntersect()
+    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
+    trie
+  }
 
   object info {
     def wc_estimate(s: Int) = {
@@ -293,6 +297,10 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         }
       }
     }
+
+    proj_trie.intersect(qL, max_fetch_dim = max_fetch_dim)
+    println("Old hm : " + hm.size)
+    println("New hm : " + proj_trie.hm.size)
 
 
     val trie = new SetTrieOnline()

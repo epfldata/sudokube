@@ -160,7 +160,7 @@ class SetTrieIntersect() {
       }
   }
 
-  def intersect(s: List[Int], current_intersect: List[Int], max_fetch_dim: Int, n: Node = root): Unit = {
+  def intersect(s: List[Int], current_intersect: List[Int] = List(), max_fetch_dim: Int, n: Node = root): Unit = {
     if (n.isTerm) {
       val res = hm.get(current_intersect)
       if(res.isDefined){
