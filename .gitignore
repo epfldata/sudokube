@@ -8,3 +8,6 @@ cubedata/*
 tabledata/*
 data/*
 figs/*
+.bsp
+frontend library tasks
+frontend_features
