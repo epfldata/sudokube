@@ -1,0 +1,8 @@
+#!/bin/bash
+
+dest="${1:-datadell}"
+name=${2:-*}
+echo $dest
+
+
+rsync -avz  --progress --include='*.uniq' --include='*/' --exclude='*' --relative /var/data/sudokube/sudokube/tabledata/./$2 $dest:/var/data/sudokube/sudokube/tabledata/
