@@ -71,6 +71,30 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   }
 
   /**
+   * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts)
+   * @param q the base dimension (X)
+   * @param aggregateDim the dimension we want to aggregate (Y), has to be an number cell
+   * @param method the method of the query, naive or by moment
+   * @return
+   */
+  def queryDimension(q: (String, Int), aggregateDim: String, method: Method): Any = {
+    val queryBits = List(accCorrespondingBits(q._1, q._2, 0, Nil))
+    val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, 0, Nil))
+    val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
+    var resultArray: Array[Any] = Array.empty
+    method match {
+      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b)
+      case MOMENT => resultArray = momentMethod(q_sorted)
+    }
+    val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
+      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
+    resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1)).map(x =>
+      (q._1 +"="+ x._1, x._2.foldLeft(0)((acc, x) =>
+        acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim).toInt
+      ))
+    )
+  }
+  /**
    * util method to solve query with moment method
    *
    * @param q_sorted bits of query, sorted

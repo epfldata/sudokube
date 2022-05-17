@@ -74,7 +74,9 @@ object ArrayFunctions {
     }
 
     //return the result in decomposed format
-    (top.indices.collect { case i if !linesExcludedH.contains((i)) => top(i) }.toArray.map(i => if(i == null) "" else i), left.indices.collect { case i if !linesExcludedV.contains((i)) => left(i) }.toArray.map(i => if(i == null) "" else i), deleteRowsCols(linesExcludedV, linesExcludedH, rows, cols, resultArray))
+    (top.indices.collect { case i if !linesExcludedH.contains((i)) => top(i) }.toArray.map(i => if (i == null) "" else i),
+      left.indices.collect { case i if !linesExcludedV.contains((i)) => left(i) }.toArray.map(i => if (i == null) "" else i),
+      deleteRowsCols(linesExcludedV, linesExcludedH, rows, cols, resultArray))
   }
 
   /**
@@ -184,7 +186,7 @@ object ArrayFunctions {
     }
   }
 
-  private def findValueOfPrefix(src: String, prefix: String): String = {
+  def findValueOfPrefix(src: String, prefix: String): String = {
     //retrieve value of prefix parameter
     val values = src.split(";").filter(s => s.contains(prefix))(0).split("=")(1)
     //if multiple values for a row, take the first one
@@ -211,7 +213,6 @@ object ArrayFunctions {
     if (source.length == n) {
       false
     } else {
-      println(findValueOfPrefix(source(n)._1, prefixes._1) + " ; " +  findValueOfPrefix(source(n)._1, prefixes._2))
       if (function(findValueOfPrefix(source(n)._1, prefixes._1), findValueOfPrefix(source(n)._1, prefixes._2))) {
         method match {
           case FORALL => applyBinary(source, function, prefixes, method, n+1)

@@ -203,12 +203,15 @@ object DemoTxt {
     //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
     //println(array._3.mkString("Array(", ", ", ")"))
 
-    val array = userCube.query(List(("Region", 2, List("Europe", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]]
+    /*val array = userCube.query(List(("Region", 2, List("Europe", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]]
     println(array.mkString("(", "\n ", ")"))
-    println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))
+    println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))*/
+
     def binaryFunction(str1: Any, str2: Any): Boolean = {
       str1.toString.equals("India") && str2.toString.toInt == 1
     }
+
+    println(userCube.queryDimension(("Region", 3), "difficulty", MOMENT))
   }
 
   def shoppen() = {

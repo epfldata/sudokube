@@ -3,7 +3,8 @@
       "Type": "Dish",
       "Region": "India",
       "rating": 4,
-        "spicy": 4
+        "spicy": 1,
+        "difficulty": 7
     },
   
     { "Type": "Dish",
@@ -11,26 +12,30 @@
         "name": "Healthy Chicken Korma",
         "rating": 5,
         "Vegetarian": "0",
-        "spicy": 2
+        "spicy": 1,
+        "difficulty": 10
     },
 
     {"Type": "Dish",
         "Region": "Italy",
         "name": "Tagliatelles à la citrouille",
         "rating": 8,
-        "spicy": 1
+        "spicy": 0,
+        "difficulty": 3
     },
 
     {"Type": "Dessert",
         "Region": "Italy",
         "name": "Panna Cotta",
         "rating": 7,
-        "Vegetarian": "1"
+        "Vegetarian": "1",
+        "difficulty": 15
     },
     {"Type": "Dessert",
         "name": "Mousse au chocolat",
         "rating": 4,
-        "spicy": 1
+        "spicy": 0,
+        "difficulty": 3
     },
     {"Type": "Dessert",
         "Region": "Europe",
