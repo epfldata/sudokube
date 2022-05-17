@@ -4,7 +4,7 @@ tuple output CHECK
 
 2. slightly more SQL where with arbitrary boolean condition in where ("slice"), having , conditions involving > and < on where "dicing" CHECK
 
-3. window based aggregates
+3. window based aggregates CHECK
    input: timelike-dimension and window definition
    window can be defined either by gap of "number of rows" or "values of rows"
 

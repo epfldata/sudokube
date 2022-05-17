@@ -149,28 +149,51 @@ object ArrayFunctions {
   }
 
   private def accumulateRowsValues(source: Array[(String, Any)], prefix: String, n: Int, max: Int, acc: (String, Any)): (String, Any) = {
-    if (findValueOfPrefix(source(n)._1, prefix) > max || n == source.length) {
+    if (n == source.length) {
       acc
     } else {
-      val add = (acc._1, acc._2.toString.toDouble + source(n)._2.toString.toDouble)
-      accumulateRowsValues(source,prefix, n+1, max, add)
+      if (findValueOfPrefix(source(n)._1, prefix).toInt > max) {
+        acc
+      } else {
+        val add = (acc._1, acc._2.toString.toDouble + source(n)._2.toString.toDouble)
+        accumulateRowsValues(source, prefix, n + 1, max, add)
+      }
     }
   }
 
+
+  /**
+   * this function helps to build a window aggregate, by calling the appropriate function for each line recursively
+   * @param window_type either select a certain number of rows, or a certain window of values starting from the value at n
+   * @param prefix the prefix we want to observe for the window aggregate
+   * @param source the source matrix, in a tuplePrefix form ((prefix1=x;prefix2=y...), value)
+   * @param gap if NUM_ROWS, the number of rows we want to select ; if VALUES_ROWS, the maximal difference for a row to be selected
+   * @param n the index we currently aggregate from
+   * @param acc the return values, recurively accumulated
+   * @return the acc function when we have iterated over the whole source
+   */
   private def build_aggregate_row(window_type: WINDOW, prefix: String, source: Array[(String, Any)], gap: Int, n: Int, acc: Array[(String, Any)]): Array[(String, Any)]= {
     if (n == source.length) {
       acc
     } else {
       window_type match {
         case NUM_ROWS => build_aggregate_row(window_type, prefix, source, gap, n+1, acc :+ accumulateRows(source, n, Math.min(source.length-1, n+gap), (source(n)._1, 0.0)))
-        case VALUES_ROWS => build_aggregate_row(window_type, prefix, source, gap, n+1, acc :+ accumulateRowsValues(source, prefix, n, gap-findValueOfPrefix(source(n)._1, prefix), (source(n)._1, 0.0)))
+        case VALUES_ROWS => build_aggregate_row(window_type, prefix, source, gap, n+1, acc :+ accumulateRowsValues(source, prefix, n, gap+findValueOfPrefix(source(n)._1, prefix).toInt, (source(n)._1, 0.0)))
         case _ => null
       }
     }
   }
 
-  private def findValueOfPrefix(src: String, prefix: String): Int = {
-    src.split(";").filter(x => x.contains(prefix))(0).split("=")(1).toInt
+  private def findValueOfPrefix(src: String, prefix: String): String = {
+    //retrieve value of prefix parameter
+    val values = src.split(";").filter(s => s.contains(prefix))(0).split("=")(1)
+    //if multiple values for a row, take the first one
+    if (values.contains("(")) {
+      //drop the first parenthesis
+      values.split(",")(0).drop(1)
+    } else {
+      values
+    }
   }
 
   /**
@@ -182,6 +205,25 @@ object ArrayFunctions {
       return null
     }
     build_aggregate_row(window_type, dim_prefix, source.map(x => x.asInstanceOf[(String, Any)]), gap, 0, Array.empty)
+  }
+
+  def applyBinary(source: Array[(String, Any)], function: (Any, Any) => Boolean, prefixes: (String, String), method: BooleanMethod, n: Int): Boolean = {
+    if (source.length == n) {
+      false
+    } else {
+      println(findValueOfPrefix(source(n)._1, prefixes._1) + " ; " +  findValueOfPrefix(source(n)._1, prefixes._2))
+      if (function(findValueOfPrefix(source(n)._1, prefixes._1), findValueOfPrefix(source(n)._1, prefixes._2))) {
+        method match {
+          case FORALL => applyBinary(source, function, prefixes, method, n+1)
+          case EXIST => true
+        }
+      } else {
+        method match {
+          case FORALL => false
+          case EXIST => applyBinary(source, function, prefixes, method, n+1)
+        }
+      }
+    }
   }
 
 
