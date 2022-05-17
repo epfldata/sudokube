@@ -2,7 +2,7 @@ package frontend.schema
 
 import breeze.io.CSVReader
 import frontend.experiments.Tools
-import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticColEncoder}
+import frontend.schema.encoders._
 import util._
 import util.BigBinaryTools._
 
@@ -31,7 +31,7 @@ case class LD2[T](override val name: String, encoder: ColEncoder[T]) extends Dim
 
   override def queriesUpto(qsize: Int): Set[Seq[Int]] = encoder.queriesUpto(qsize)
 
-  override def samplePrefix(size: Int): Seq[Int] = encoder.samplePrefix(size)
+  override def samplePrefix(size: Int): Seq[Int] = if (size > 0) encoder.samplePrefix(size) else Nil
 
   override def numPrefixUpto(size: Int): Array[BigInt] = {
     val sizes = encoder.prefixUpto(size).groupBy(_.size).mapValues(x => BigInt(x.size)).withDefaultValue(BigInt(0))
@@ -39,7 +39,10 @@ case class LD2[T](override val name: String, encoder: ColEncoder[T]) extends Dim
     result
   }
 
-  lazy val maxSize = encoder.bits.size
+  lazy val maxSize = encoder match {
+    case d: StaticDateCol => d.myqueries.keys.max //special handling due to all bits never appearing together (eg, due to quarter)
+    case _ => encoder.bits.size
+  }
 }
 
 @SerialVersionUID(-3406868252153216970L)
@@ -81,33 +84,38 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
   override def samplePrefix(size: Int): Seq[Int] = if (size <= 0) Nil else {
     assert(size <= maxSize)
     if (cross) {
-      val n = children.size
-      val maxes = children.map(_.maxSize).toArray
-      val rvs = (1 until n).map(i => Random.nextInt(size)).sorted
-      val splits = Array.fill(n)(0)
-      splits(0) = rvs(0)
-      splits(n - 1) = size - rvs(n - 2)
-      (1 until n - 1).foreach { i => splits(i) = rvs(i) - rvs(i - 1) }
-      var exceedMax = splits.indices.filter(i => splits(i) > maxes(i)).toList
-      var belowMax = splits.indices.filter(i => splits(i) < maxes(i))
-      while (!exceedMax.isEmpty) {
-        val curi = exceedMax.head
-        var diff = splits(curi) - maxes(curi)
-        while (diff > 0) {
-          val idx = Random.nextInt(belowMax.size)
-          diff -= 1
-          val idx2 = belowMax(idx)
-          splits(idx2) += 1
-          splits(curi) -= 1
-          if (splits(idx2) == maxes(idx2))
-            belowMax = splits.indices.filter(i => splits(i) < maxes(i))
+      val childrenToConsider = collection.mutable.ArrayBuffer[Int]()
+      childrenToConsider ++= children.indices
+      var bitsLeft = size
+      var totalBits = maxSize
+      var result = List[Int]()
+      while (bitsLeft != 0) {
+        assert(bitsLeft > 0)
+        if (totalBits > bitsLeft) {
+          val idx0 = Random.nextInt(childrenToConsider.size) //pick one of the remaining children
+          val idx = childrenToConsider(idx0)
+          val child = children(idx)
+          childrenToConsider -= idx //remove child from being considered again
+          val maxBits = Math.min(bitsLeft, child.maxSize)
+          var bits = if (maxBits > 0) Random.nextInt(maxBits + 1) else 0
+          if (totalBits - child.maxSize < bitsLeft - bits) {
+            bits = bitsLeft + child.maxSize - totalBits //so that both sides are equal
+          }
+          bitsLeft -= bits
+          totalBits -= child.maxSize
+          result = result ++ child.samplePrefix(bits)
+        } else { //must pick all bits from all remaining children
+          assert(totalBits == bitsLeft)
+          result = result ++ childrenToConsider.map { idx =>
+            val child = children(idx)
+            child.samplePrefix(child.maxSize)
+          }.reduce(_ ++ _)
+          bitsLeft = 0
         }
-        exceedMax = exceedMax.tail
       }
-      assert(splits.size == n)
-      assert(splits.sum == size)
-      children.indices.map(i => children(i).samplePrefix(splits(i))).reduce(_ ++ _)
-    } else {
+      result
+    }
+    else {
       var idx = Random.nextInt(children.size)
       while (children(idx).maxSize < size) {
         idx = Random.nextInt(children.size)

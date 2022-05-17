@@ -32,12 +32,17 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
   override def queries(): Set[Seq[Int]] = {
     val ybits = yCol.bits
     val ymbits = mCol.bits ++ ybits
+    val ymdbits = dCol.bits ++ ymbits
+    val hrbits = hrCol.bits ++ ymdbits
+    val hrminBits = minCol.bits ++ hrbits
 
     val yQ = yCol.queries
     val mQ = mCol.queries.flatMap(q => Set(q, q ++ ybits))
     val dQ = dCol.queries.flatMap(q => Set(q, q ++ ymbits))
-    val hrQ = hrCol.queries
-    yQ union mQ union dQ union hrQ
+    val hrQ = hrCol.queries.flatMap(q => Set(q, q ++ ymdbits))
+    val minQ = minCol.queries.flatMap(q => Set(q, q ++ hrbits))
+    val secQ = secCol.queries.flatMap(q => Set(q, q ++ hrminBits))
+    yQ union mQ union dQ union hrQ union minQ union secQ
   }
 
   override def encode(v: Date): BigBinary = {
@@ -81,7 +86,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
     //case s: String if Try(f1.parse(s)).isSuccess => encode(f1.parse(s))
   }
 }
-
+@SerialVersionUID(2557280452500488239L)
 class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  allocateMonth: Boolean = false, allocateDay: Boolean = false, allocateHr: Boolean = false, allocateMin: Boolean = false, allocateSec: Boolean = false) extends StaticColEncoder[Date] {
   val yearCol = new StaticNatCol(minYear, maxYear, _.asInstanceOf[Option[Date]].map(_.getYear))
   val quarterCol = new StaticNatCol(0, 3, _.asInstanceOf[Option[Date]].map(_.getMonth/4))
@@ -158,19 +163,25 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   def queries(): Set[Seq[Int]] = {
     val ybits = yearCol.bits
     val ymbits = monthCol.bits ++ ybits
+    val ymdbits = dayCol.bits ++ ymbits
+    val hrbits = hourCol.bits ++ ymdbits
+    val hrminBits = minuteCol.bits ++ hrbits
 
     val yQ = yearCol.queries
     val qQ = quarterCol.queries.flatMap(q => Set(q, q ++ ybits))
     val mQ = monthCol.queries.flatMap(q => Set(q, q ++ ybits))
     val dQ = dayCol.queries.flatMap(q => Set(q, q ++ ymbits))
-    val hrQ = hourCol.queries
-    yQ union qQ union mQ union dQ union hrQ
+    val hrQ = hourCol.queries.flatMap(q => Set(q, q ++ ymdbits))
+    val minQ = minuteCol.queries.flatMap(q => Set(q, q ++ hrbits))
+    val secQ = secondsCol.queries.flatMap(q => Set(q, q ++ hrminBits))
+    yQ union qQ union mQ union dQ union hrQ union minQ union secQ
   }
   lazy val myqueries = queries().groupBy(_.size).withDefaultValue(Set())
   override def samplePrefix(size: Int): Seq[Int] = {
-    val qs = myqueries(size).toVector
+    val size1 = myqueries.keys.filter(_ >= size).min
+    val qs = myqueries(size1).toVector
     val idx = Random.nextInt(qs.size)
-    qs(idx)
+    qs(idx).takeRight(size)
   }
 }
 

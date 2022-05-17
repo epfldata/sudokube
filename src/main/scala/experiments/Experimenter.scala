@@ -7,6 +7,7 @@ import core.solver.Strategy._
 import core.solver._
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
+import frontend.schema.encoders._
 import util.Profiler
 
 import java.io.PrintStream
@@ -565,6 +566,71 @@ object Experimenter {
     }
   }
 
+  def manualSSB(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+    val cg = SSB(100)
+    val sch = cg.schema()
+    val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
+
+    val date = encMap("order_date").asInstanceOf[StaticDateCol]
+    val year = date.yearCol.bits
+    val month = date.monthCol.bits
+    val discount = encMap("discount").asInstanceOf[StaticNatCol].bits
+    val qty = encMap("quantity").asInstanceOf[StaticNatCol].bits
+    val category = encMap("category").asInstanceOf[LazyMemCol].bits
+    val brand = encMap("brand").asInstanceOf[LazyMemCol].bits
+    val sregion = encMap("supp_region").asInstanceOf[LazyMemCol].bits
+    val snation = encMap("supp_nation").asInstanceOf[LazyMemCol].bits
+    val scity = encMap("supp_city").asInstanceOf[LazyMemCol].bits
+    val cregion = encMap("cust_region").asInstanceOf[LazyMemCol].bits
+    val cnation = encMap("cust_nation").asInstanceOf[LazyMemCol].bits
+    val ccity = encMap("cust_city").asInstanceOf[LazyMemCol].bits
+    val mfgr = encMap("mfgr").asInstanceOf[LazyMemCol].bits
+
+    val param = "15_14"
+    val ms = (if (isSMS) "sms" else "sms2")
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+
+    val expname2 = s"manual-ssb-$ms"
+    val exptfull = new OldMomentSolverBatchExpt[Double](expname2)
+    if (shouldRecord) exptfull.warmup()
+
+    val queries = collection.mutable.ArrayBuffer[List[Seq[Int]]]()
+    queries += List(year, discount, qty)
+    queries += List(year, month, discount, qty)
+    queries += List(year, brand)
+    queries += List(year, brand, sregion)
+    queries += List(year, brand, category, sregion)
+    queries += List(year, snation, cnation)
+    queries += List(year, ccity, scity)
+    queries += List(year, month, ccity, scity)
+    queries += List(year, cnation)
+    queries += List(year, snation, category)
+    queries += List(year, scity, brand)
+
+    queries.zipWithIndex.foreach { case (cs, i) =>
+      val q = cs.reduce(_ ++ _)
+      println(s"Query $i :: length = ${q.length}   ${q.mkString("{", " ", "}")}")
+      if(q.length <= 17) exptfull.run(dc, fullname, q)
+    }
+  }
+
+  def manualNYC(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+    val cg = NYC
+    val sch = cg.schema()
+    val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
+
+    val year = encMap("Issue Date").asInstanceOf[StaticDateCol].yearCol.bits
+    val state = encMap("Registration State").asInstanceOf[LazyMemCol].bits
+    val code = encMap("Violation Code").asInstanceOf[LazyMemCol].bits
+    val ptype = encMap("Plate Type").asInstanceOf[LazyMemCol].bits
+
+    val queries = collection.mutable.ArrayBuffer[List[Seq[Int]]]()
+    queries += List(year, state)
+    queries += List(state, code)
+    queries += List(code, ptype)
+  }
 
   def debug(): Unit = {
     implicit val shouldRecord = false

@@ -181,20 +181,20 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
-    val (sch, dc) = cg.saveBase
-    //val sch = cg.schema()
+    //val (sch, dc) = cg.saveBase
+    val sch = cg.schema()
 
     List(
       (15, 14)
     ).map { case (maxN, minD) =>
       val maxD = maxN + minD - 1
       val logsf = 0
-      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
-      dc2.build()
-      dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
+      //val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
+      //dc2.build()
+      //dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
       val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
       dc3.build()
-      dc3.save2(s"${cg.inputname}_sms_${maxN}_${minD}")
+      dc3.save2(s"${cg.inputname}_sms2_${maxN}_${minD}")
     }
 
   }
