@@ -111,11 +111,11 @@ abstract class MyGenerator[T]() {
     def generate() : T
 }
 
-case class EmailGenerator(hostNames : Seq[String] = Seq("gmail.com"), localEmailLength: Int = 6) extends MyGenerator[String] {
+case class EmailGenerator(hostNames : Seq[String] = Seq("gmail.com", "yahoo.com", "hotmail.com"), localEmailLength: Int = 6) extends MyGenerator[String] {
     private val ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
 
     def generate() : String = {
-        return RandomStringUtils.random(localEmailLength, ALLOWED_CHARS) + "@" + hostNames(Random.nextInt(hostNames.length));
+        return RandomStringUtils.random(localEmailLength, ALLOWED_CHARS) + "@" + hostNames(Random.nextInt(hostNames.length))
     }
 }
 
@@ -248,6 +248,13 @@ case class IntGenerator(start : Int = 1, end : Int = 10) extends MyGenerator[Int
      def generate() : Int = {
         return start + Random.nextInt( (end - start) + 1 ) 
     }
+}
+
+case class phoneNumberGenerator() {
+      def generate() : String = {
+        return RandomStringUtils.random(10, "1234567890")
+    }
+    
 }
 
 
