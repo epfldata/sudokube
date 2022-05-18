@@ -9,5 +9,6 @@ tabledata/*
 data/*
 figs/*
 .bsp
+build.sbt
 frontend library tasks.txt
 frontend_features.txt

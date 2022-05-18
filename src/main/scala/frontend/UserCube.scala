@@ -48,7 +48,8 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * simple query aggregation, without slicing
    *
    * @param qV     query to display vertically, in the form (field to consider, on n bits)
-   * @param qH     query to display horizontally, in the form (field to consider, on n bits)
+   * @param qH     query to display horizontally, in the form (field to consider, on n bits) (as to be Nil for the
+   *               tuples resultForms
    * @param method method of query, naive or moment
    * @param resultForm Allows to choose to return a matrix, an array, a tuple with bits displayed or a tuple with the prefixes displayed
    * @return reconstructed matrix, with headers
@@ -65,15 +66,19 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     resultForm match {
       case MATRIX => createResultMatrix(qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
       case ARRAY => ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
-      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)), queryBitsV, operator, resultArray)
-      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), queryBitsV, operator, resultArray)
+      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)),
+        queryBitsV,
+        operator,
+        resultArray)
+      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), queryBitsV ++ queryBitsH,
+        operator, resultArray)
     }
   }
 
   /**
    * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts)
    * @param q the base dimension (X)
-   * @param aggregateDim the dimension we want to aggregate (Y), has to be an number cell
+   * @param aggregateDim the dimension we want to aggregate (Y), has to be a number cell
    * @param method the method of the query, naive or by moment
    * @return
    */
@@ -88,11 +93,32 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
     val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
       .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
-    resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1)).map(x =>
-      (q._1 +"="+ x._1, x._2.foldLeft(0)((acc, x) =>
-        acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim).toInt
-      ))
-    )
+    if (aggregateDim == null) { //in this case simply take the fact
+      resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+        (q._1 + "=" + x._1, x._2.foldLeft(0.0)((acc, x) =>
+          acc + x._2.toString.toDouble
+        ))
+      )
+    } else {
+      resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+        (q._1 + "=" + x._1, x._2.foldLeft(0.0)((acc, x) =>
+          acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false).toDouble
+        ))
+      )
+    }
+  }
+
+  /**
+   * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts) and then check if the facts are increasing
+   * or decreasing monotonically
+   * @param src source facts, the values of the queryDimension map
+   * @param tolerance threshold after which the map is not montonic anymore
+   * @return
+   */
+  def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
+    val values = queryDimension(q, aggregateDim, method).asInstanceOf[Map[String, Any]].values.map(x => x.toString.toDouble)
+    print(values)
+    true
   }
   /**
    * util method to solve query with moment method
@@ -195,6 +221,14 @@ class UserCube(val cube: DataCube, val sch: Schema) {
 
   }
 
+  /**
+   * method created to aggregate and slice on different values
+   * @param aggregateColumns columns to aggregate
+   * @param sliceColumns columns to slice
+   * @param op operator for slice, AND or OR (for testLine method)
+   * @param method method for query, moment or naive
+   * @return
+   */
   def aggregateAndSlice(aggregateColumns: List[(String, Int)], sliceColumns: List[(String, List[String])], op: Operator, method: Method): Array[Any] = {
     val queryBits = aggregateColumns.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val sliceBits = sliceColumns.map(x => accCorrespondingBits(x._1, sch.n_bits, 0, Nil))
@@ -205,7 +239,6 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       case MOMENT => resultArray = momentMethod(q_unsorted.sorted)
     }
     val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, queryBits ++ sliceBits, op, resultArray)
-    println(res.mkString("(", ";\n ", ")"))
     res
   }
 

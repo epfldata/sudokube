@@ -81,7 +81,7 @@ case object TestLine {
   def testLineOr(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
     if (n != splitString.length) {
       if (q_sorted(n)._2.isEmpty) {
-        return testLineOr(splitString, q_sorted, n + 1)
+        return false
       }
       for (i <- q_sorted(n)._2.indices) {
         q_sorted(n)._2(i) match {
@@ -113,7 +113,6 @@ case object TestLine {
           case _ =>
             if (splitString(n).contains(q_sorted(n)._2(i))) {
               return false
-            } else {
             }
         }
       }

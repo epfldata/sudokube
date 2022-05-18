@@ -211,7 +211,8 @@ object DemoTxt {
       str1.toString.equals("India") && str2.toString.toInt == 1
     }
 
-    println(userCube.queryDimension(("Region", 3), "difficulty", MOMENT))
+    println(userCube.queryDimensionMonotonic(("name", 2), "difficulty", MOMENT, 1))
+
   }
 
   def shoppen() = {
