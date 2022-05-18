@@ -211,7 +211,7 @@ object DemoTxt {
       str1.toString.equals("India") && str2.toString.toInt == 1
     }
 
-    println(userCube.queryDimensionMonotonic(("name", 2), "difficulty", MOMENT, 1))
+    println(userCube.queryDimensionMonotonic(Array(18, 15, 10, 11), 1))
 
   }
 

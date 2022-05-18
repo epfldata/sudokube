@@ -109,16 +109,21 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   }
 
   /**
-   * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts) and then check if the facts are increasing
+   * function used to check if the facts obtained with query_dimension are increasing
    * or decreasing monotonically
-   * @param src source facts, the values of the queryDimension map
    * @param tolerance threshold after which the map is not montonic anymore
    * @return
    */
   def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
-    val values = queryDimension(q, aggregateDim, method).asInstanceOf[Map[String, Any]].values.map(x => x.toString.toDouble)
-    print(values)
-    true
+    isMonotonic(queryDimension(q, aggregateDim, method).asInstanceOf[Map[String, Any]].values.map(x => x.toString.toDouble), tolerance)
+  }
+
+  def isMonotonic(arr: Iterable[Double], tolerance: Double): Boolean = {
+    if (arr.isEmpty) {
+      true
+    } else {
+      (arr, arr.tail).zipped.forall { case (a, b) => a <= b + tolerance } || (arr, arr.tail).zipped.forall { case (a, b) => a + tolerance >= b }
+    }
   }
   /**
    * util method to solve query with moment method
