@@ -1,6 +1,7 @@
 import core.RandomizedMaterializationScheme2
 import core.DAGMaterializationScheme
 import core.testMaterializationScheme
+import core.EfficientMaterializationScheme
 import frontend.experiments.Tools
 import org.scalatest.{FlatSpec, Matchers}
 import planning.ProjectionMetaData
@@ -10,6 +11,7 @@ class PrepareSpec extends FlatSpec with Matchers {
 
   def RMS(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin + logncubs - 1, 0)
+    val mtest = EfficientMaterializationScheme(m)
     //val m_DAG = DAGMaterializationScheme(m)
     //val m_new = testMaterializationScheme(m)
 
@@ -20,6 +22,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       val onlinep = Profiler("OnlineNewPrepare"){m.prepare_online_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      val testp = Profiler("EffPrep"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val batch_newp = Profiler("NewNewPrepare"){m.prepare_batch_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //print("NewNew len : " + batch_newp.length)
       //print(", New len : " + newp.length + "\n")

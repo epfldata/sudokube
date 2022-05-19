@@ -276,6 +276,13 @@ object SetTrieOnline {
 object SetTrieIntersect {
   def main(args: Array[String]): Unit = {
     val trieIntersect = new SetTrieIntersect
+    trieIntersect.insert(List(1, 2, 4), 3, 1, List(1, 2, 4))
+    trieIntersect.insert(List(1, 3, 5), 3, 2, List(1, 3, 5))
+    trieIntersect.insert(List(1, 4), 2, 3, List(1, 4))
+    trieIntersect.insert(List(2, 3, 5), 3, 4, List(2, 3, 5))
+    trieIntersect.insert(List(2, 4), 2, 5, List(2, 4))
 
+    trieIntersect.intersect(List(2), max_fetch_dim = 3)
+    print(trieIntersect.hm)
   }
 }

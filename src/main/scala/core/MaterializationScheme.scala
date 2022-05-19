@@ -15,12 +15,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   /** the metadata describing each projection in this scheme. */
   val projections: IndexedSeq[List[Int]]
 
-  val proj_trie = {
-    val trie = new SetTrieIntersect()
-    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
-    trie
-  }
-
   object info {
     def wc_estimate(s: Int) = {
       projections.map(x => {
@@ -297,11 +291,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
         }
       }
     }
-
-    proj_trie.intersect(qL, max_fetch_dim = max_fetch_dim)
-    println("Old hm : " + hm.size)
-    println("New hm : " + proj_trie.hm.size)
-
 
     val trie = new SetTrieOnline()
     var projs = List[ProjectionMetaData]()
@@ -703,71 +692,50 @@ case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: 
 }
 
 //Wrapper for materialization scheme to try other MS
-class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+case class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
   val pset = projections.map(_.toSet)
   val pbset = projections.map(p => BitSet(p: _*))
 
+  val proj_trie = {
+    val trie = new SetTrieIntersect()
+    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
+    trie
+  }
+
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
     val qL = query.toList
-    val hm = collection.mutable.HashMap[List[Int], (Int, Int)]()
+
     import Util.intersect
 
-    val res1 = Profiler("Intersect") {
-      projections.zipWithIndex.map { case (p, id) =>
-        if (p.size <= max_fetch_dim) {
-          val ab0 = intersect(qL, p)
-          val res = hm.get(ab0)
-          val s = p.size
+    proj_trie.intersect(qL, List(), max_fetch_dim)
+    val restest = proj_trie.hm
 
-          if (res.isDefined) {
-            if (s < res.get._1)
-              hm(ab0) = (s, id)
-          } else {
-            hm(ab0) = (s, id)
-          }
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          hm(ab0) = (s, id, p)
         }
       }
     }
-    val newids = Profiler("dominate") {
-      val trie = new SetTrie()
-      var newids = List[Int]()
-      //decreasing order of projection size
-      hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id)) =>
-        if (!trie.existsSuperSet(s)) {
-          newids = id :: newids
-          trie.insert(s)
-        }
-      }
-      newids.sorted
-    }
-    //val qmap = query.zipWithIndex.toMap
-    //def inter(a: Int, q: List[Int], p: List[Int]):Int = {
-    //  if(p == Nil || q == Nil) a
-    //  else {
-    //    if(p.head < q.head)
-    //      inter(a, p, q.tail)
-    //    else if(p.head > q.head)
-    //      inter(a, p.tail, q)
-    //    else {
-    //      val b = 1 << qmap(p.head)
-    //      inter(a+b, p.tail, q.tail)
-    //    }
-    //  }
-    //}
-    //projections.zipWithIndex.map{case (p, i) =>
-    //    val ab0 = Profiler("i0"){inter(0, query.toList, p)}
-    //}
+
     val res0 = super.prepare(query, cheap_size, max_fetch_dim)
 
-    val oldids = res0.map(_.id).sorted
     println("Query =  " + query)
-    println("Old = " + oldids.map(id => id -> projections(id)))
-    println("New = " + newids.map(id => id -> projections(id)))
-    println(oldids.sameElements(newids))
-    Profiler.resetAll()
+    println("Old = " + hm.size)
+    println("New = " + proj_trie.hm.size)
+    print(proj_trie.root.children)
     println()
     res0
   }
