@@ -96,7 +96,7 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
     }
   }
 
-  //only used in batchmode to denote end of fetch phase.
+  //extrapolate missing moments
   def fillMissing()
 
   def solve() = {

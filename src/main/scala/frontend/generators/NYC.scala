@@ -109,7 +109,7 @@ object NYC extends CubeGenerator("NYC") {
 
     List(
       (17, 10),(13, 10),
-      (15, 4), (15, 9), (15, 14)
+      (15, 6), (15, 10), (15, 14)
     ).map { case (logN, minD) =>
       val maxD = 26
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")

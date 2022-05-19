@@ -10,13 +10,15 @@ import java.io.{File, FileReader, PrintStream}
 object OnlinePlotter {
 
   object KEY extends Enumeration {
-    val TIME,DOF,ERROR,MAXDIM,ENTROPY = Value
+    val CUBENAME, SOLVERNAME, QUERYID, QSIZE, CUBOIDCOUNTER, TIME, DOF, ERROR, MAXDIM, QUERYSTR, ENTROPY = Value
   }
+
   import KEY._
-  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey:Int, Ykey: Int) = {
+
+  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey: Int, Ykey: Int) = {
 
     val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
-    val iterKey = 1
+    val iterKey = QUERYID.id
 
 
     val seriesData = data.
@@ -25,7 +27,7 @@ object OnlinePlotter {
       mapValues {
         _.groupBy(_ (iterKey)).values.map(_.map(r => r(Xkey).toDouble -> r(Ykey).toDouble).toList).toVector
       }
-  seriesData
+    seriesData
   }
 
   def getSeries(data: Vector[List[(Double, Double)]], agg: Seq[Double] => Double, initValue: Double, ykey: KEY.Value) = {
@@ -52,40 +54,41 @@ object OnlinePlotter {
         data2(minIdx) = data2(minIdx).tail
       }
     }
-    val res1 = result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1*100)/100.0).mapValues(x => x.map(_._2).sum/x.length).toVector.sortBy(_._1)
+    val res1 = result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1 * 100) / 100.0).mapValues(x => x.map(_._2).sum / x.length).toVector.sortBy(_._1)
     val maxt = res1.last._1
-      ykey match {
-        case ERROR => res1 :+ (maxt + 0.01 -> 0.0)
-        case _ => res1
-      }
+    ykey match {
+      case ERROR => res1 :+ (maxt + 0.01 -> 0.0)
+      case _ => res1
+    }
   }
 
-  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, isQuerySize: Boolean) = {
-    def filterCube(r: IndexedSeq[String]) = true //r(0).contains("15_25_3") Assume file contains only relevant data
-    def filterQuerySize(r: IndexedSeq[String]) = true // r(2) == "10" Assume file contains only relevant data
-    val isLPP = name.startsWith("LP")
-    def groupCube(r: IndexedSeq[String]) = r(0)
-    def groupQuerySize(r: IndexedSeq[String]) = r(2)
 
-    def filterf(r: IndexedSeq[String]) = if(isQuerySize) filterCube(r) else filterQuerySize(r)
-    def groupf(r:IndexedSeq[String]) = if(isQuerySize) groupQuerySize(r) else groupCube(r)
+  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, isQuerySize: Boolean) = {
+    def filterCube(r: IndexedSeq[String]) = true //Assume file contains only relevant data
+
+    def filterQuerySize(r: IndexedSeq[String]) = true //  Assume file contains only relevant data
+
+    val isLPP = name.startsWith("LP")
+
+    def groupCube(r: IndexedSeq[String]) = r(CUBENAME.id)
+
+    def groupQuerySize(r: IndexedSeq[String]) = r(QSIZE.id)
+
+    def filterf(r: IndexedSeq[String]) = if (isQuerySize) filterCube(r) else filterQuerySize(r)
+
+    def groupf(r: IndexedSeq[String]) = if (isQuerySize) groupQuerySize(r) else groupCube(r)
     import KEY._
 
-    def toKeyCol(key: KEY.Value) = key match {
-      case TIME => 4
-      case DOF => 5
-      case ERROR => 6
-      case MAXDIM => 7
-      case ENTROPY => 9
-    }
 
-    val data = getData(name, filterf, groupf, toKeyCol(xkey), toKeyCol(ykey))
+    val data = getData(name, filterf, groupf, xkey.id, ykey.id)
 
-    def avgf(vs :Seq[Double]) = vs.sum/vs.size
+    def avgf(vs: Seq[Double]) = vs.sum / vs.size
+
     def minf(vs: Seq[Double]) = vs.min
+
     def maxf(vs: Seq[Double]) = vs.max
 
-    val initValue = if(isLPP) Double.PositiveInfinity else 1.0
+    val initValue = if (isLPP) Double.PositiveInfinity else 1.0
 
     //val fig = Figure()
     //fig.refresh()
@@ -112,19 +115,19 @@ object OnlinePlotter {
       //d2.foreach(println)
       val xavg = avg.map(_._1)
       val yavg = avg.map(_._2)
-      csvout.println("Time(s),"+xavg.mkString(","))
-      csvout.println(s"$n," +yavg.mkString(","))
-     /*
-      plt += plot(xavg, yavg, name=n)
+      csvout.println("Time(s)," + xavg.mkString(","))
+      csvout.println(s"$n," + yavg.mkString(","))
+      /*
+       plt += plot(xavg, yavg, name=n)
 
-      //val xmin = min.map(_._1)
-      //val ymin = min.map(_._2)
-      //plt += plot(xmin, ymin, name=n+"min" )
-      //
-      //val xmax = max.map(_._1)
-      //val ymax = max.map(_._2)
-      //plt += plot(xmax, ymax, name=n+"max" )
- */
+       //val xmin = min.map(_._1)
+       //val ymin = min.map(_._2)
+       //plt += plot(xmin, ymin, name=n+"min" )
+       //
+       //val xmax = max.map(_._1)
+       //val ymax = max.map(_._2)
+       //plt += plot(xmax, ymax, name=n+"max" )
+  */
     }
     //fig.refresh()
     csvout.close()
@@ -144,10 +147,11 @@ object OnlinePlotter {
 
     def argsMap(s: String) = s match {
       case "time" => TIME
-      case "dof" =>  DOF
+      case "dof" => DOF
       case "error" => ERROR
       case "entropy" => ENTROPY
     }
+
     val name = args(0)
     val isQuerySize = args(1) == "qsize"
     val xkey = args.lift(2).map(argsMap).getOrElse(TIME)
