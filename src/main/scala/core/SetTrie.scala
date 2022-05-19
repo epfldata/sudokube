@@ -135,7 +135,7 @@ class SetTrieOnline() {
 
 class SetTrieIntersect() {
   val root = Node(-1)
-  val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+  var hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
 
   /**
    * Inserts a projection into the SetTrieIntersect
@@ -155,15 +155,19 @@ class SetTrieIntersect() {
         n.findOrElseInsert(h, size, true, id, full_p)
         ()
       } else {
-        val c = n.findOrElseInsert(h, size)
+        val c = n.findOrElseInsert(h, size, newId = id, newfull_p = full_p)
         insert(t, size, id, full_p, c)
       }
   }
 
   def intersect(s: List[Int], current_intersect: List[Int] = List(), max_fetch_dim: Int, n: Node = root): Unit = {
-    if (n.isTerm) {
+    if (n.isTerm && current_intersect.nonEmpty) {
       val res = hm.get(current_intersect)
+      //println("A p " + n.full_p)
       if(res.isDefined){
+        if(hm(current_intersect)._2 == n.id){
+          println("A ERROR ERROR ERROR")
+        }
         if(n.cheapest_term < res.get._1){
           hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
         }
@@ -172,50 +176,61 @@ class SetTrieIntersect() {
       }
     }
     s match {
-      case Nil => ()
+      case Nil => val res = hm.get(current_intersect)
+        //println("B p " + n.full_p)
+        if(res.isDefined){
+          if(hm(current_intersect)._2 == n.id){
+            println("B ERROR ERROR ERROR")
+          }
+          if(n.cheapest_term < res.get._1){
+            hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
+          }
+        } else {
+          hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
+        }
       case h :: t =>
         val child = n.children.iterator
         var ce = n.b
         while (child.hasNext && n.cheapest_term <= max_fetch_dim) {
+
+
           val cn = child.next()
           ce = cn.b
           var new_h = h
           var new_t = t
+
+
           while (ce > new_h && new_t.nonEmpty) {
             new_h = new_t.head
             new_t = new_t.tail
           }
-          if (ce < h) {
-            intersect(s, current_intersect, max_fetch_dim, cn)
-          } else if (ce == h) {
-            intersect(new_t, current_intersect :+ h, max_fetch_dim, cn)
+
+
+          if (ce < new_h) {
+            intersect(new_h :: new_t, current_intersect, max_fetch_dim, cn)
+          } else if (ce == new_h) {
+            intersect(new_t, current_intersect :+ new_h, max_fetch_dim, cn)
           } else {
-            ()
+            val res = hm.get(current_intersect)
+            //println("C p " + cn.full_p)
+            if(res.isDefined){
+              if(hm(current_intersect)._2 == cn.id){
+                println("C ERROR ERROR ERROR")
+              }
+              if(cn.cheapest_term < res.get._1){
+                hm(current_intersect) = (cn.cheapest_term, cn.id, cn.full_p)
+              }
+            } else {
+              hm(current_intersect) = (cn.cheapest_term, cn.id, cn.full_p)
+            }
           }
+
+
         }
     }
   }
 
-  def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
-    case Nil => true
-    case h :: t =>
-      var found = false
-      val child = n.children.iterator
-      var ce = n.b
-      while (child.hasNext && !found && ce <= h) {
-        val cn = child.next()
-        ce = cn.b
-        if (ce < h) {
-          found = existsSuperSet(s, cn)
-        } else if (ce == h) {
-          found = existsSuperSet(t, cn)
-        } else
-          ()
-      }
-      found
-  }
-
-  class Node(val b: Int, val children: SortedSet[Node], var cheapest_term: Int, val isTerm: Boolean = false, val id: Int = -1, val full_p: List[Int] = List()) {
+  class Node(val b: Int, val children: SortedSet[Node], var cheapest_term: Int, val isTerm: Boolean = false, var id: Int = -1, var full_p: List[Int] = List()) {
     def findOrElseInsert(v: Int, this_cost: Int, newIsTerm: Boolean = false, newId: Int = -1, newfull_p: List[Int] = List()): Node = {
       val c = children.find(_.b == v)
       c match {
@@ -224,8 +239,11 @@ class SetTrieIntersect() {
           children += nc
           nc
         case Some(child) =>
-          if (child.cheapest_term > this_cost)
+          if (child.cheapest_term > this_cost) {
             child.cheapest_term = this_cost
+            child.id = this_cost
+            child.full_p = newfull_p
+          }
           if (newIsTerm)
             println("Error while inserting proj id : " + newId + "terminator node already exists.")
           child
@@ -276,13 +294,13 @@ object SetTrieOnline {
 object SetTrieIntersect {
   def main(args: Array[String]): Unit = {
     val trieIntersect = new SetTrieIntersect
-    trieIntersect.insert(List(1, 2, 4), 3, 1, List(1, 2, 4))
-    trieIntersect.insert(List(1, 3, 5), 3, 2, List(1, 3, 5))
-    trieIntersect.insert(List(1, 4), 2, 3, List(1, 4))
-    trieIntersect.insert(List(2, 3, 5), 3, 4, List(2, 3, 5))
-    trieIntersect.insert(List(2, 4), 2, 5, List(2, 4))
+    trieIntersect.insert(List(1, 2, 5), 3, 1, List(1, 2, 5))
+    trieIntersect.insert(List(4, 8, 20), 3, 2, List(4, 8, 20))
+    trieIntersect.insert(List(2, 3, 4), 3, 4, List(2, 3, 4))
+    trieIntersect.insert(List(4, 5, 10), 3, 5, List(4, 5))
+    trieIntersect.insert(List(4, 10), 3, 5, List(4, 10))
 
-    trieIntersect.intersect(List(2), max_fetch_dim = 3)
+    trieIntersect.intersect(List(4, 8), max_fetch_dim = 4)
     print(trieIntersect.hm)
   }
 }

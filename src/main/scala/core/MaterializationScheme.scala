@@ -707,37 +707,26 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
     val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
 
     import Util.intersect
 
     proj_trie.intersect(qL, List(), max_fetch_dim)
     val restest = proj_trie.hm
 
-    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
-
-    projections.zipWithIndex.foreach { case (p, id) =>
-      if (p.size <= max_fetch_dim) {
-        val ab0 = intersect(qL, p)
-        val res = hm.get(ab0)
-        val s = p.size
-
-        if (res.isDefined) {
-          if (s < res.get._1)
-            hm(ab0) = (s, id, p)
-        } else {
-          hm(ab0) = (s, id, p)
-        }
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    restest.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
       }
     }
-
-    val res0 = super.prepare(query, cheap_size, max_fetch_dim)
-
-    println("Query =  " + query)
-    println("Old = " + hm.size)
-    println("New = " + proj_trie.hm.size)
-    print(proj_trie.root.children)
-    println()
-    res0
+    projs.sortBy(-_.accessible_bits.size)
   }
 }
 

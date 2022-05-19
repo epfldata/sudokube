@@ -23,10 +23,11 @@ class PrepareSpec extends FlatSpec with Matchers {
       //val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val testp = Profiler("EffPrep"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      mtest.proj_trie.hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
       //val batch_newp = Profiler("NewNewPrepare"){m.prepare_batch_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //print("NewNew len : " + batch_newp.length)
       //print(", New len : " + newp.length + "\n")
-      println("Oldp : " + oldp.length + ", Onlinep : " + onlinep.length)
+      println("Testp : " + testp.length + ", Onlinep : " + onlinep.length)
       assert(oldp.sameElements(onlinep))
     }
     println("Time for RMS")
