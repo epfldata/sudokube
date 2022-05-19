@@ -429,31 +429,29 @@ case class RandomizedMaterializationScheme(
   println("Total = " + projections.length)
 } // end MaterializationScheme
 
-
 /**
- * Materialization scheme that picks only meaningful prefixes from the schema
+ * Materialization scheme that picks cuboids between minD and maxD for a total of approximately 2^{logN} cuboids
+ * Starts with logN-1 cuboids at minD
  *
- * @param sch      Schema
- * @param logmaxND log_2 of total number of cuboids
- * @param maxD     maximum dimension upto which we materilizae cuboids
- * @param logsf    log_2 of the number of cuboids of dimensionality maxD
+ *
+ * @param logND log_2 of total number of cuboids
+ * @param maxD  maximum dimension upto which we materialize cuboids
+ * @param minD  minimum dimensions upto which we materialize cuboids
  */
-@SerialVersionUID(1L)
-case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(sch.n_bits) {
-  /** the metadata describing each projection in this scheme. */
+abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD: Int) extends MaterializationScheme(nb) {
+  //get number of materialized cuboids with d dims
+  def n_proj_d(d: Int) = if (d >= minD && d <= maxD) {
+    val n = math.pow(2, logN - 1 + minD - d)
+    val c = Combinatorics.comb(n_bits, d).toDouble
+    if (n < c) n.toInt else c.toInt
+  } else 0
+
+  def getCuboidsForD(d: Int): Vector[List[Int]]
+
   override val projections: IndexedSeq[List[Int]] = {
-    assert(sch.n_bits > maxD * 2)
-    val logmaxN = (logmaxND - logsf).toInt
-    val mod = (logmaxND - logsf) - logmaxN
-    val maxPrefix = sch.root.numPrefixUpto(maxD)
-    //maxPrefix.zipWithIndex.foreach{case (n, i) => println(s"$i : $n")}
-
-    val cubD = (0 until n_bits).map { d =>
-      if (d <= maxD && d > maxD - logmaxN) {
-        val logn = maxD - d
-        val n = math.pow(2, logn + mod + logsf).toInt
-
-        val res = (0 until n).map { i => sch.root.samplePrefix(d).toList.sorted }.distinct.toVector
+    val cubD = (0 until n_bits).flatMap { d =>
+      if (d >= minD && d <= maxD) {
+        val res = getCuboidsForD(d)
         print(res.length + "/")
         res
       } else {
@@ -461,52 +459,32 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logmaxND: Double, maxD
         Vector()
       }
     }
-    println("1")
-    val maxSize = maxD + math.log(logmaxND) / math.log(2) + mod + logsf
-    println("Max total size = 2^" + maxSize)
-    cubD.reduce(_ ++ _) ++ Vector((0 until n_bits).toList)
+    println("1") //for base cuboid
+    cubD ++ Vector((0 until n_bits).toList)
   }
   println("Total =" + projections.length)
+}
 
+
+@SerialVersionUID(4L)
+case class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
+  override def getCuboidsForD(d: Int): Vector[List[Int]] = {
+    val n_proj = n_proj_d(d)
+    (0 until n_proj).map { i => sch.root.samplePrefix(d).toList.sorted }.distinct.toVector
+  }
 }
 
 /**
  * Same idea as Randomized Materialization Scheme, but parameters are different
- *
- * @param n_bits   Number of bits of full cuboid
- * @param logmaxND Log_2 of total number of cuboids
- * @param maxD     maximum dimension upto which we materialize cuboids
- * @param logsf    log_2 of number of cuboids of dimension maxD
  */
-@SerialVersionUID(-8479738895927514999L)
-case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: Double, maxD: Int, logsf: Double = 0) extends MaterializationScheme(n_bits) {
-  val logmaxN = (logmaxND - logsf).toInt
-  val mod = (logmaxND - logsf) - logmaxN
-
-  def n_proj_d(d: Int) =
-    if (d <= maxD && d > maxD - logmaxN) {
-      val logn = maxD - d
-      val n = math.pow(2, logn + mod + logsf).toInt
-      val c: BigInt = Combinatorics.comb(n_bits, d)
-      if (n < c) n else c.toInt
-    } else 0
-
-  val projections: IndexedSeq[List[Int]] = {
-    val r = (for (d <- 0 to n_bits - 1) yield {
-
-      val n_proj = n_proj_d(d)
-
-      print(n_proj + "/")
-
-      Util.collect_n[List[Int]](n_proj, () =>
-        Util.collect_n[Int](d, () =>
-          scala.util.Random.nextInt(n_bits)).sorted)
-    }
-      ).flatten ++ Vector((0 to n_bits - 1).toList)
-    println("1")
-    r
+@SerialVersionUID(5L)
+case class RandomizedMaterializationScheme2(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {
+  override def getCuboidsForD(d: Int): Vector[List[Int]] = {
+    val n_proj = n_proj_d(d)
+    Util.collect_n[List[Int]](n_proj, () =>
+      Util.collect_n[Int](d, () =>
+        scala.util.Random.nextInt(n_bits)).sorted).toVector
   }
-  println("Total = " + projections.length)
 }
 
 //Wrapper for materialization scheme to try other MS

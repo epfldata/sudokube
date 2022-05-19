@@ -31,7 +31,7 @@ ssh datadell "scp ~/.ssh/id* $nickname:/root/.ssh"
 
 ssh $nickname 'chmod +x ./init.sh && ./init.sh'
 scripts/sync.sh $nickname
-ssh $nickname 'cd /var/data/sudokube && make'
+ssh $nickname 'cd /var/data/sudokube/sudokube && make'
 
 ssh datadell "~/sudokube/sudokube/scripts/uniqsyncto $nickname SSB/sf100"
 ssh datadell "~/sudokube/sudokube/scripts/uniqsyncto $nickname nyc"

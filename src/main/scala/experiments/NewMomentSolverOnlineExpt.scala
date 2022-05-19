@@ -2,15 +2,19 @@ package experiments
 
 import core.{DataCube, SolverTools}
 import core.SolverTools._
-import core.solver.{CoMoment4Solver, Moment1Transformer, MomentSolver}
+import core.solver._
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
+import Strategy._
 
+class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 
-abstract class NewMomentSolverOnlineExpt(ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
+  fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,Entropy")
 
-  fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,Entropy")
+  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
+    case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer, pm)
+    case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer, pm)
+  }
 
-  def solver(qsize: Int, pm: Seq[(Int, Double)]) : MomentSolver
   override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
     //Cannot use default warmup because of "containsAllCuboid" set to true
     val dcwarm = DataCube.load2("warmupall")
@@ -40,7 +44,7 @@ abstract class NewMomentSolverOnlineExpt(ename2: String = "", containsAllCuboids
     val totalsize = l.size
     //println("Prepare over. #Cuboids to fetch = " + totalsize)
     //Profiler.print()
-    val pi = new ProgressIndicator(l.size, "Online aggregation", output)
+    val pi = new ProgressIndicator(l.size, "Online aggregation", false)
     //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
     while (!(l.isEmpty)) {
       val fetched = Profiler.noprofile("Fetch") {
@@ -73,14 +77,10 @@ abstract class NewMomentSolverOnlineExpt(ename2: String = "", containsAllCuboids
         val entr = entropy(sol)
         //if(count % step == 0 || dof < 100 || count < 100)
         //  println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
-        fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$entr")
+        fileout.println(s"$dcname,${s.name},$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$entr")
       }
       queryCounter += 1
     }
   }
 
-}
-
-class CoMoment4OnlineExpt(ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends NewMomentSolverOnlineExpt(ename2, containsAllCuboids) {
-  override def solver(qsize: Int, pm: Seq[(Int, Double)]): MomentSolver = new CoMoment4Solver(qsize, false, Moment1Transformer, pm)
 }

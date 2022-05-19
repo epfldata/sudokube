@@ -1,6 +1,6 @@
 package frontend.generators
 
-import core.{PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
+import core.{PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
 import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
@@ -99,22 +99,25 @@ object NYC extends CubeGenerator("NYC") {
   }
 
   def main(args: Array[String]): Unit = {
-    saveBase()
     val sch = schema()
     val cg = this
 
+    //val dcbase = saveBase()._2
+    //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
+    //dcbase.savePrimaryMoments(cg.inputname + "_base")
+
+
     List(
-      (16, 10),(14, 10),
-      (15, 6), (15, 10), (15, 14)
-    ).map { case (maxN, minD) =>
-      val logsf = 0
-      val maxD = maxN + minD - 1
-      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
+      (17, 10),(13, 10),
+      (15, 4), (15, 9), (15, 14)
+    ).map { case (logN, minD) =>
+      val maxD = 26
+      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")
       dc2.build()
-      dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
-      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+      dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
+      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, logN, minD, maxD), cg.inputname + "_base")
       dc3.build()
-      dc3.save2(s"${cg.inputname}_sms_${maxN}_${minD}")
+      dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
     }
 
   }

@@ -4,13 +4,16 @@ import core.SolverTools._
 import core._
 import core.solver._
 import util._
+import Strategy._
 
+ class NewMomentSolverBatchExpt(strategy: Strategy, ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"newmoment-batch", ename2) {
 
-abstract class NewMomentSolverBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"newmoment-batch", ename2) {
+  fileout.println("CubeName, SolverName, Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr")
 
-  fileout.println("Name,Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr")
-
-  def solver(qsize: Int, pm: Seq[(Int, Double)]): MomentSolver
+  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
+    case CoMoment3 => new CoMoment3Solver(qsize, true, Moment1Transformer, pm)
+    case CoMoment4 => new CoMoment4Solver(qsize, true, Moment1Transformer, pm)
+  }
 
   def moment_solve(dc: DataCube, q: Seq[Int]) = {
 
@@ -45,7 +48,7 @@ abstract class NewMomentSolverBatchExpt(ename2: String = "")(implicit shouldReco
   def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true) = {
     import frontend.experiments.Tools.round
     val q = qu.sorted
-    println(s"\nQuery size = ${q.size} \nQuery = " + qu)
+    //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Total") {
       val l = Profiler("Naive Prepare") {
@@ -89,13 +92,9 @@ abstract class NewMomentSolverBatchExpt(ename2: String = "")(implicit shouldReco
     val mtot = Profiler.durations("Moment Total")._2 / 1000
     val msolve = Profiler.durations(s"Moment Solve")._2 / 1000
     if (output) {
-      val resultrow = s"${dcname},${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $mtot,$mprep,$mfetch,$solverMaxDim,$msolve,$error"
+      val resultrow = s"${dcname}, ${momentRes.name}, ${qu.mkString(":")},${q.size},$dof,  $nprepare,$nfetch,$ntotal,$naiveMaxDim,  $mtot,$mprep,$mfetch,$solverMaxDim,$msolve,$error"
       fileout.println(resultrow)
     }
 
   }
-}
-
-class CoMoment4BatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends NewMomentSolverBatchExpt(ename2) {
-  override def solver(qsize: Int, pm: Seq[(Int, Double)]): MomentSolver = new CoMoment4Solver(qsize, true, Moment1Transformer, pm)
 }
