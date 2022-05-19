@@ -7,6 +7,11 @@ import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import java.io._
 import org.apache.commons.lang3.RandomStringUtils;
 import java.time.Year
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 object JsonGenerator {
     def main(args: Array[String]): Unit = {
@@ -26,12 +31,11 @@ object JsonGenerator {
             "orange.fr"
         );
 
-        val jsonWriter = new JsonWriter(List(SimpleField("date", DateGenerator(format = Format.YEAR))), 6)
-        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.YEAR_MONTH))), 1)
-        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.DATE))), 2)
-        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.HOUR))), 3)
-        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.MINUTE))), 4)
-        jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.SECONDS))), 5)
+        val jsonWriter = new JsonWriter(List(SimpleField("name", NameGenerator()), SimpleField("email", EmailGenerator())), 4)
+       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.DATE))), 2)
+       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.HOUR))), 3)
+      //  jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.MINUTE))), 4)
+       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.SECONDS))), 5)
         jsonWriter.gen("random.json")
   }
 }
@@ -46,7 +50,7 @@ class JsonWriter(var currentSchema : List[Field], val numberOfLign : Int) {
         val mapper = new ObjectMapper() with ScalaObjectMapper
         mapper.registerModule(DefaultScalaModule)
         val file = new File(filename)
-        val fileWriter = new FileWriter(file, true)
+        val fileWriter = new FileWriter(filename)
         val sequenceWriter = mapper.writerWithDefaultPrettyPrinter().writeValuesAsArray(fileWriter)
 
         for(i <- 0 to numberOfLign - 1) {
@@ -109,22 +113,107 @@ case class NestedJson(key : String, value : List[Field]) extends Field
 
 abstract class MyGenerator[T]() {
     def generate() : T
+
 }
 
 case class EmailGenerator(hostNames : Seq[String] = Seq("gmail.com", "yahoo.com", "hotmail.com"), localEmailLength: Int = 6) extends MyGenerator[String] {
     private val ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
 
     def generate() : String = {
-        return RandomStringUtils.random(localEmailLength, ALLOWED_CHARS) + "@" + hostNames(Random.nextInt(hostNames.length))
+        val co = new URL("https://random-data-api.com/api/users/random_user").openConnection
+        val connection = co.asInstanceOf[HttpURLConnection]
+        val response = new StringBuilder()
+        var res = "hugo.hof@gmail.com"
+        try {
+
+            connection.setRequestMethod("GET");
+
+            val responseCode = connection.getResponseCode()
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                var line : String = ""
+                val bufferedReader = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream())
+                );
+
+                line = bufferedReader.readLine()
+                while (line != null) {
+                    response.append(line);
+                    line = bufferedReader.readLine()
+                }
+                for(str <- response.toString().split(',')) {
+                    if(str.startsWith("\"email\":")) {
+                       val name = str.replace("\"email\":","").replace("\"","").replace("@email.com","")
+                        res = name + "@" + hostNames(Random.nextInt(hostNames.length))
+
+                    }
+                }
+                bufferedReader.close()
+                connection.disconnect();
+                return res
+
+            }
+            else {
+                connection.disconnect()
+                return res 
+            }
+           
+        } catch  {
+            case _: Throwable => { connection.disconnect()
+                                   return res }
+        }
+
     }
 }
 
-case class NameGenerator(length : Int = 4, private var ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz") extends MyGenerator[String] {
+case class NameGenerator() extends MyGenerator[String] {
 
      def generate() : String = {
-       return RandomStringUtils.random(length, ALLOWED_CHARS)
+       val co = new URL("https://random-data-api.com/api/name/random_name").openConnection
+        val connection = co.asInstanceOf[HttpURLConnection]
+        val response = new StringBuilder()
+        var res = "Hugo Hof"
+        try {
+
+            connection.setRequestMethod("GET");
+
+            val responseCode = connection.getResponseCode()
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                var line : String = ""
+                val bufferedReader = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream())
+                );
+
+                line = bufferedReader.readLine()
+                while (line != null) {
+                    response.append(line);
+                    line = bufferedReader.readLine()
+                }
+                for(str <- response.toString().split(',')) {
+                    if(str.startsWith("\"first_name\":")) {
+                       val name = str.replace("\"first_name\":","").replace("\"","")
+                        res = name
+
+                    }
+                }
+                bufferedReader.close()
+                connection.disconnect();
+                return res
+
+            }
+            else {
+                connection.disconnect()
+                return res 
+            }
+           
+        } catch  {
+            case _: Throwable => { connection.disconnect()
+                                   return res }
+        }
+
     }
 }
+
+
 
 object Format {
         val DATE = 0
@@ -141,6 +230,13 @@ object Format {
         val RANDOM = 2
     }
 
+case class StringGenerator(length : Int = 4, private var ALLOWED_CHARS : String = "abcdefghijklmnopqrstuvwxyz") extends MyGenerator[String] {
+
+     def generate() : String = {
+       return RandomStringUtils.random(length, ALLOWED_CHARS)
+    }
+}
+
 case class DateGenerator(separetor : Char = '/', yearBegin : Int = 1903, order : Int =  Order.RANDOM, format : Int = Format.DATE) extends MyGenerator[String] {
     private val months = Map((1,31), (2,28), (3,31), (4, 30),(5,31), (6,30), (7,31), (8,31), (9,30), (10,31), (11, 31), (12,31))
 
@@ -150,7 +246,7 @@ case class DateGenerator(separetor : Char = '/', yearBegin : Int = 1903, order :
 
     def generateYM() : String = {
         val year = generateYear()
-        val separator = NameGenerator(1, "/-").generate()
+        val separator = StringGenerator(1, "/-").generate()
         val month = formatValue(IntGenerator(1, 12).generate())
         formatDate(year, separator, month)
     }
@@ -238,7 +334,7 @@ case class DateGenerator(separetor : Char = '/', yearBegin : Int = 1903, order :
         val dayStr = formatValue(day)
         val monthStr = formatValue(month)
         val yearStr = year.toString()
-        val separator = NameGenerator(1, "/-").generate()
+        val separator = StringGenerator(1, "/-").generate()
         formatDate(yearStr, separator, monthStr, dayStr)
     }
 
@@ -256,6 +352,8 @@ case class phoneNumberGenerator() {
     }
     
 }
+
+
 
 
 

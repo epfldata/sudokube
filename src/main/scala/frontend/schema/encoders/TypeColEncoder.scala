@@ -10,7 +10,6 @@ import java.text.ParseException
 import java.util.regex.Pattern
 
 
-
 class TypeColEncoder[T](init_size: Int = 1
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 
@@ -45,6 +44,8 @@ class TypeColEncoder[T](init_size: Int = 1
                 "URL"
             else if(isValidPath(x))
                 "file"
+            else if(isValidPhoneNumber(x)) 
+                "phone number"
             else
                 "String"
           }
@@ -52,7 +53,7 @@ class TypeColEncoder[T](init_size: Int = 1
 
         } 
 
-    def validate(date: String, dateFormat : String) : Boolean = try {
+    def validateDate(date: String, dateFormat : String) : Boolean = try {
         val df = new SimpleDateFormat(dateFormat)
         //df.setLenient(false)
         df.parse(date)
@@ -62,7 +63,15 @@ class TypeColEncoder[T](init_size: Int = 1
     }
 
     private def isDate(date : String) : Boolean = {
-        if(validate(date, "dd/MM/yyyy") || validate(date, "yyyy/MM/dd") || validate(date, "dd-MM-yyyy") || validate(date, "yyyy-MM-dd"))
+        if(validateDate(date, "dd/MM/yyyy") ||
+           validateDate(date, "yyyy/MM/dd") || 
+           validateDate(date, "dd-MM-yyyy") || 
+           validateDate(date, "yyyy-MM-dd") || 
+           validateDate(date, "yyyy-MM-dd'T'HH:mm:ss.SSS") ||
+           validateDate(date, "yyyy/MM/dd'T'HH:mm:ss.SSS") ||
+           validateDate(date, "dd-MM-yyyy'T'HH:mm:ss.SSS") ||
+           validateDate(date, "dd/MM/yyyy'T'HH:mm:ss.SSS")
+           )
             true
         else 
             false
@@ -103,14 +112,10 @@ class TypeColEncoder[T](init_size: Int = 1
                "\\(\\d{4}\\)-\\d{3}-\\d{3}".r.unapplySeq(numberString).isDefined 
     }  
 
-    def isValidEmail(str : String): Boolean = {
+   def isValidEmail(str : String): Boolean = {
 
-        val allowedChars  = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
-        val isAllowed = str.forall(c => allowedChars.contains(c))
-
-        if(isAllowed) {
-            // The 10 most used email host names
-            val emailHostnames : Seq[String] = Seq(
+        // The 10 most used email host names
+        val emailHostnames : Seq[String] = Seq(
                 "gmail.com",
                 "yahoo.com", 
                 "hotmail.com", 
@@ -123,13 +128,20 @@ class TypeColEncoder[T](init_size: Int = 1
                 "orange.fr"
             );
 
-            for(hostName <- emailHostnames) {
-                if(str.endsWith("@" + hostName)) {
-                    return true
+        for(hostName <- emailHostnames) {
+            if(str.endsWith("@" + hostName)) {
+                val allowedChars = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
+                for (c <- str.replace("@" + hostName, "")) {
+                    if(!allowedChars.contains(c)) {
+                        return false
+                    }
                 }
+                return true
             }
         }
-          return false
+
+        return false
+       
     }
       
 }
