@@ -1,7 +1,7 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.{DataCube, PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
+import core.{DataCube, PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
 import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
@@ -181,20 +181,23 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
-    //val (sch, dc) = cg.saveBase
     val sch = cg.schema()
+
+    //val dcbase = cg.saveBase._2
+    //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
+    //dcbase.savePrimaryMoments(cg.inputname + "_base")
+
 
     List(
       (15, 14)
-    ).map { case (maxN, minD) =>
-      val maxD = maxN + minD - 1
-      val logsf = 0
-      //val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, maxN, maxD, logsf), cg.inputname + "_base")
-      //dc2.build()
-      //dc2.save2(s"${cg.inputname}_rms_${maxN}_${minD}")
-      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, maxN, maxD, logsf), cg.inputname + "_base")
+    ).map { case (logN, minD) =>
+      val maxD = 25
+      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")
+      dc2.build()
+      dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
+      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, logN, minD, maxD), cg.inputname + "_base")
       dc3.build()
-      dc3.save2(s"${cg.inputname}_sms2_${maxN}_${minD}")
+      dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
     }
 
   }
