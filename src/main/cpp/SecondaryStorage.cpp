@@ -11,6 +11,8 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     // MAKE IT MODULAR FOR DIFFERENT LOADING POLICIES
 
     // read metadata about the source cuboid 
+    const unsigned int ValueSize = sizeof(value_t);
+
     std::string CubeDirPath = "../../../../../dataset/" + CubeID + std::filesystem::path::preferred_separator;
     std::string CuboidDirPath = CubeDirPath +"cuboid" + std::to_string(SourceCuboidID) + std::filesystem::path::preferred_separator;
 
@@ -30,7 +32,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     printf("OldRowsCount: %zu\n", OldRowsCount);
     printf("OldColumnSize: %d\n", OldColumnSize);
 
-    const size_t BufferRowsCount = ((BufferSize / (bitsToBytes(MaskSum) + sizeof(value_t))) >> 3 ) << 3;
+    const size_t BufferRowsCount = ((BufferSize / (bitsToBytes(MaskSum) + ValueSize)) >> 3 ) << 3;
     unsigned int BufferColumnSize = bitsToBytes(BufferRowsCount);
 
     printf("BufferRowsCount: %zu\n", BufferRowsCount);
@@ -39,15 +41,17 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     // start rehashing the cuboid stored on disk
     unsigned int RehashIterations = (OldRowsCount + BufferRowsCount - 1) /BufferRowsCount;
     byte **IntermediateKeyStore = (byte**)calloc(MaskSum, BufferColumnSize);
-    value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, sizeof(value_t));
+    value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, ValueSize);
 
     // new store initialization 
     size_t DestinationRowsCount = 1LL << MaskSum;
-    value_t *DestinationValStore = (value_t *) calloc(DestinationRowsCount, sizeof(value_t));
+    value_t *DestinationValStore = (value_t *) calloc(DestinationRowsCount, ValueSize);
     assert(DestinationValStore);
 
     int DestinationKeySize = bitsToBytes(MaskSum);
     size_t *DestinationKeys = (size_t *) calloc(OldRowsCount, sizeof(size_t));
+
+    
 
     for (int i = 0; i < RehashIterations; i++) {
         // read columns
@@ -55,7 +59,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
         readKeys(MaskSum, Mask, i, CuboidDirPath, BufferRowsCount, IntermediateKeyStore, BufferColumnSize);
 
         // read values
-        memset(IntermediateValStore, 0, BufferRowsCount*sizeof(value_t));
+        memset(IntermediateValStore, 0, BufferRowsCount*ValueSize);
         readValues(CuboidDirPath, i, BufferRowsCount, IntermediateValStore);
 
         #ifdef DEBUG
@@ -85,7 +89,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
 
     for (size_t r = 0; r<DestinationRowsCount; r++) { 
         value_t IntKey = r;  // CAUTION; KEYS BIGGER THAN 64 BITS WILL NOT WORK
-        std::bitset<sizeof(value_t)*8> bit_r = std::bitset<sizeof(value_t)*8>(IntKey);
+        std::bitset<ValueSize*8> bit_r = std::bitset<ValueSize*8>(IntKey);
         for(int i = 0; i < DestinationKeyBits; i++) {
             if (bit_r[i]) {
                 byte* Col = getColumn(DestinationKeyStore, i, DestinationColumnSize);
@@ -111,40 +115,55 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
 
 void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], unsigned int MaskSum) {
     std::string CubeDirPath = "../../../../../dataset/" + CubeID + std::filesystem::path::preferred_separator;
-    std::string CuboidDirPath = CubeDirPath + "cuboid" + std::to_string(SourceCuboidID) + std::filesystem::path::preferred_separator;
+    std::string SourceCuboidDirPath = CubeDirPath + "cuboid" + std::to_string(SourceCuboidID) + std::filesystem::path::preferred_separator;
 
     Metadata Metadata = getMetadata(CubeDirPath, MaskSum);
     
-    const size_t OldRowsCount = Metadata.OldRowsCount;
-    unsigned int OldColumnSize = Metadata.OldColumnSize;
-    const size_t BufferRowsCount = Metadata.BufferRowsCount;
-    unsigned int BufferColumnSize = Metadata.BufferColumnSize;
-    unsigned int KeySize = Metadata.KeySize;
+    const size_t OldRowsCount = Metadata.RowsCount;
+    unsigned int OldColumnSize = Metadata.ColumnSize; // size of a column in the bit column tore 
+    
+    const size_t PageRowsCount = Metadata.PageRowsCount;
+    const size_t BufferRowsCount = PageRowsCount * BufferPages / 2; // half the buffer pages will be left for the output, as well as column to row key conversion
+    unsigned int BufferColumnSize = bitsToBytes(BufferRowsCount);
+    
+    unsigned int DestinationKeySize = Metadata.DestinationKeySize;
+    const unsigned int ValueSize = Metadata.ValueSize;
 
     // start rehashing the cuboid stored on disk
-    unsigned int RehashIterations = (OldRowsCount + BufferRowsCount - 1) /BufferRowsCount;
-    byte **IntermediateKeyStore = (byte**)calloc(MaskSum, BufferColumnSize);
-    value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, sizeof(value_t));
+    unsigned int RehashIterations = (OldRowsCount + BufferRowsCount - 1) / BufferRowsCount; // ceil(OldRowsCount /BufferRowsCount)
 
-    byte *KeysArray = (byte*)calloc(BufferRowsCount, KeySize);
+    #ifdef DEBUG
+        printf("\nRehash Iterations : %d\n", RehashIterations);
+    #endif
+    // TODO: Add a hybrid algorithm
+
+    // create the destination cuboid
+    std::string DestCuboidDirPath = CubeDirPath + "cuboid" + std::to_string(DestinationCuboidID) + std::filesystem::path::preferred_separator;
+    std::filesystem::create_directories(DestCuboidDirPath);
+
+    std::string TempRunFileNamePrefix = DestCuboidDirPath + "run";
+    std::string TempRunFileNameSuffix = ".temp";
 
     for (int i = 0; i < RehashIterations; i++) {
         // read columns
-        memset(IntermediateKeyStore, 0, MaskSum*BufferColumnSize);
-        readKeys(MaskSum, Mask, i, CuboidDirPath, BufferRowsCount, IntermediateKeyStore, BufferColumnSize);
-
+        // memset(IntermediateKeyStore, 0, MaskSum*BufferColumnSize);
+        byte **IntermediateKeyStore = (byte**)calloc(MaskSum, BufferColumnSize);
+        readKeys(MaskSum, Mask, i, SourceCuboidDirPath, BufferRowsCount, IntermediateKeyStore, BufferColumnSize);
+        
         // read values
-        memset(IntermediateValStore, 0, BufferRowsCount*sizeof(value_t));
-        readValues(CuboidDirPath, i, BufferRowsCount, IntermediateValStore);
-
+        // memset(IntermediateValStore, 0, BufferRowsCount*ValueSize);
+        value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, ValueSize);
+        readValues(SourceCuboidDirPath, i, BufferRowsCount, IntermediateValStore);
+       
         // convert to row format for sorting
-        // TO DO: CAN THIS BE IMPROVED?
-        memset(KeysArray, 0, BufferRowsCount*KeySize);
+        byte *KeysArray = (byte*)calloc(BufferRowsCount, DestinationKeySize);
+        // TO DO: IS THERE A BETTER WAY TO ZIP?
+        // memset(KeysArray, 0, BufferRowsCount*DestinationKeySize);
 
         for(int c = 0; c < MaskSum; c++) {
             for (size_t r = 0; r < BufferRowsCount; r++) {         
                 if (getBit(getColumn(IntermediateKeyStore, c, BufferColumnSize), r)) {
-                    byte* Key = KeysArray + r*KeySize;
+                    byte* Key = KeysArray + r*DestinationKeySize;
                     setBit(Key, c);
                 }
             }
@@ -153,29 +172,63 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
         // sorting
         #ifdef DEBUG
         printf("\nUnsorted Keys\n");
-        printKeyValuePairs(BufferRowsCount, MaskSum, KeySize, KeysArray, IntermediateValStore);
+        printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
         #endif
 
         // sort the Key and Value Arrays
-        quickSort(KeysArray, IntermediateValStore, 0, BufferRowsCount - 1, KeySize);
+        quickSort(KeysArray, IntermediateValStore, 0, BufferRowsCount - 1, DestinationKeySize);
 
         // reset the col store to make it unusable
-        memset(IntermediateKeyStore, 0, MaskSum*BufferColumnSize);
+        // memset(IntermediateKeyStore, 0, MaskSum*BufferColumnSize);
+
+        // free the col store keys
+        free(IntermediateKeyStore);
 
         #ifdef DEBUG
         printf("\nSorted Keys\n");
-        printKeyValuePairs(BufferRowsCount, MaskSum, KeySize, KeysArray, IntermediateValStore);
+        printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
         #endif
 
-        // merge the keys currently in the buffer
-        size_t NewArrayLength = MergeKeysInPlace(BufferRowsCount, KeySize, KeysArray, IntermediateValStore);
+        // merge the keys currently in the buffer and write them to a new Key Value Array that has key value pairs together
+        byte *KeyValueArray = (byte*)calloc(BufferRowsCount, DestinationKeySize + ValueSize);
+        size_t NewArrayLength = MergeKeysInPlace(BufferRowsCount, DestinationKeySize, ValueSize, KeysArray, IntermediateValStore, KeyValueArray);
+
+        // free key array and value array
+        free(KeysArray); free(IntermediateValStore);
 
         #ifdef DEBUG
         printf("\nMerged Keys\n");
-        printKeyValuePairs(NewArrayLength, MaskSum, KeySize, KeysArray, IntermediateValStore);
+        printKeyValuePairsFromKeyValArray(NewArrayLength, MaskSum, DestinationKeySize, ValueSize, KeyValueArray);
+        #endif
+
+        // write temporary runs to disk
+        std::string TempRunFileName = TempRunFileNamePrefix + std::to_string(i) + TempRunFileNameSuffix;
+
+        FILE* TempRunFle;
+        TempRunFle = fopen (TempRunFileName.c_str(), "wb");
+        fwrite(&NewArrayLength, sizeof(size_t), 1, TempRunFle);
+        fwrite(KeyValueArray, DestinationKeySize + ValueSize, NewArrayLength, TempRunFle);
+        fclose(TempRunFle);
+
+        #ifdef DEBUG
+        printf("\nRead Merged Keys\n");
+        FILE *ReadTempRunFile = fopen(TempRunFileName.c_str(), "r");
+        assert(ReadTempRunFile != NULL);
+
+        size_t ReadNewArrayLength;
+        fread(&ReadNewArrayLength, sizeof(size_t), 1, ReadTempRunFile);
+        printf("Array Length: %zu\n", ReadNewArrayLength);
+
+        byte *ReadKeyValueArray = (byte*)calloc(ReadNewArrayLength, DestinationKeySize + ValueSize);
+        fread(ReadKeyValueArray, DestinationKeySize + ValueSize, ReadNewArrayLength, ReadTempRunFile);
+        fclose(ReadTempRunFile);
+
+        printKeyValuePairsFromKeyValArray(ReadNewArrayLength, MaskSum, DestinationKeySize, ValueSize, ReadKeyValueArray);
+        free(ReadKeyValueArray); 
         #endif
     }
     
+    ExternalMerge(RehashIterations, TempRunFileNamePrefix, TempRunFileNameSuffix, PageRowsCount, DestinationKeySize, ValueSize, MaskSum);
     // merge
     // flush old col stores, and retreive the other part from the disk
 
@@ -185,7 +238,6 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
 
     // mask offset + sum
     // actual mask
-   
 }
 
 void fetch(std::string CubeID, unsigned int CuboidID);
