@@ -22,8 +22,10 @@ class PrepareSpec extends FlatSpec with Matchers {
       val onlinep = Profiler("OnlineNewPrepare"){m.prepare_online_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
-      val testp = Profiler("EffPrep"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      val testp = Profiler("Online new w/ SetTrieIntersect"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       mtest.proj_trie.hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+      mtest.proj_trie.hm_accesses_0 = 0
+      mtest.proj_trie.hm_accesses_1 = 0
       //val batch_newp = Profiler("NewNewPrepare"){m.prepare_batch_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //print("NewNew len : " + batch_newp.length)
       //print(", New len : " + newp.length + "\n")

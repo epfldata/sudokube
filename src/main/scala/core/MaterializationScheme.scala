@@ -695,8 +695,6 @@ case class RandomizedMaterializationScheme2(override val n_bits: Int, logmaxND: 
 case class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-  val pset = projections.map(_.toSet)
-  val pbset = projections.map(p => BitSet(p: _*))
 
   val proj_trie = {
     val trie = new SetTrieIntersect()
@@ -712,7 +710,9 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
 
     import Util.intersect
 
-    proj_trie.intersect(qL, List(), max_fetch_dim)
+    proj_trie.intersect2(qL, List(), max_fetch_dim)
+    //println("TrieIntersect HM accesses0 : " + proj_trie.hm_accesses_0)
+    //println("TrieIntersect HM accesses1 : " + proj_trie.hm_accesses_1)
     val restest = proj_trie.hm
 
     val trie = new SetTrieOnline()

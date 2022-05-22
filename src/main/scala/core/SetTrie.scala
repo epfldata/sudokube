@@ -136,6 +136,8 @@ class SetTrieOnline() {
 class SetTrieIntersect() {
   val root = Node(-1)
   var hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+  var hm_accesses_0 = 0
+  var hm_accesses_1 = 0
 
   /**
    * Inserts a projection into the SetTrieIntersect
@@ -165,9 +167,6 @@ class SetTrieIntersect() {
       val res = hm.get(current_intersect)
       //println("A p " + n.full_p)
       if(res.isDefined){
-        if(hm(current_intersect)._2 == n.id){
-          println("A ERROR ERROR ERROR")
-        }
         if(n.cheapest_term < res.get._1){
           hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
         }
@@ -180,7 +179,6 @@ class SetTrieIntersect() {
         //println("B p " + n.full_p)
         if(res.isDefined){
           if(hm(current_intersect)._2 == n.id){
-            println("B ERROR ERROR ERROR")
           }
           if(n.cheapest_term < res.get._1){
             hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
@@ -215,7 +213,6 @@ class SetTrieIntersect() {
             //println("C p " + cn.full_p)
             if(res.isDefined){
               if(hm(current_intersect)._2 == cn.id){
-                println("C ERROR ERROR ERROR")
               }
               if(cn.cheapest_term < res.get._1){
                 hm(current_intersect) = (cn.cheapest_term, cn.id, cn.full_p)
@@ -228,6 +225,55 @@ class SetTrieIntersect() {
 
         }
     }
+  }
+
+  def save_if_cheap(ab0: List[Int], cost: Int, id: Int, p: List[Int]): Unit = {
+    val res = hm.get(ab0)
+    if(res.isDefined){
+      if(cost < res.get._1){
+        hm(ab0) = (cost, id, p)
+      }
+    } else {
+      hm(ab0) = (cost, id, p)
+    }
+  }
+
+  def intersect2(s: List[Int], current_intersect: List[Int] = List(), max_fetch_dim: Int, n: Node = root): Unit = s match {
+    case Nil => save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
+    case h :: t =>
+      var found = false
+      if(n.cheapest_term <= max_fetch_dim) {
+        if (n.isTerm && current_intersect.nonEmpty) {
+          //hm_accesses_0 += 1
+          save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
+          found = true
+        }
+        val child = n.children.iterator
+        var ce = n.b
+        var continue = true
+        while (child.hasNext && continue) {
+          val cn = child.next()
+          ce = cn.b
+          var new_h = h
+          var new_t = t
+          while (ce > new_h && new_t.nonEmpty) {
+            new_h = new_t.head
+            new_t = new_t.tail
+          }
+          if (ce < new_h) {
+            found = true
+            intersect2(new_h :: new_t, current_intersect, max_fetch_dim, cn)
+          } else if (ce == new_h) {
+            found = true
+            intersect2(new_t, current_intersect :+ new_h, max_fetch_dim, cn)
+          } else
+            continue = false
+        }
+        if(!found){
+          //hm_accesses_1 += 1
+          save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
+        }
+      }
   }
 
   class Node(val b: Int, val children: SortedSet[Node], var cheapest_term: Int, val isTerm: Boolean = false, var id: Int = -1, var full_p: List[Int] = List()) {
