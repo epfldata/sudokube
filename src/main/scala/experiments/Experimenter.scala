@@ -51,10 +51,10 @@ object Experimenter {
     }
     val sch = cg.schema()
     val total = if (isSMS) {
-      sch.root.numPrefixUpto(maxD + 1).map(_.toDouble).toList
+      sch.root.numPrefixUpto(maxD).map(_.toDouble).toList
     }
     else {
-      (0 to maxD + 1).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
+      (0 to maxD).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
     }
     fileout.println(s"Total," + total.mkString(","))
   }

@@ -1,6 +1,8 @@
 //package ch.epfl.data.sudokube
 package util
 
+import core.PartialDataCube
+
 
 class ProgressIndicator(num_steps: Int, name: String = "", showProgress: Boolean = true) {
   private val one_percent = num_steps.toDouble / 100
@@ -46,6 +48,16 @@ object SloppyFractionalInt {
 
 object Util {
 
+  //Displays storage statistics per cuboid size
+  def stats(dcname: String, basename: String) = {
+    val dc = PartialDataCube.load2(dcname, basename)
+    dc.cuboids.map { c => (c.n_bits, c.numBytes) }.groupBy(_._1).mapValues { cs =>
+      val count = cs.length
+      val sum = cs.map(_._2).sum * math.pow(10, -9) //in GB
+      val avg = sum * 1000 / count //in MB
+      (count, sum, avg)
+    }
+  }
   /** makes a sz-element ArrayBuffer and initializes each i-th field with
       init_v(i).
   */
