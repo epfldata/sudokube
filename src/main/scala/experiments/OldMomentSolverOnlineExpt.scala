@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
 
 class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("moment-online", ename2) {
 
-  fileout.println("Name,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query")
+  fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,QueryName")
   //println("Moment Solver of type " + implicitly[ClassTag[T]])
 
 
@@ -26,16 +26,16 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
+    val stg = new ManualStatsGatherer[(Int, (Int, Array[Double]))]()
+    stg.start()
     val s = new MomentSolverAll(q.size, CoMoment3)
     var maxDimFetched = 0
-    val stg = new ManualStatsGatherer((maxDimFetched, s.getStats))
-    stg.start()
-
+    stg.task = () => (maxDimFetched, s.getStats)
     var l = Profiler("Prepare") {
       if (containsAllCuboids)
         dc.m.prepare_online_full(q, 1)
@@ -82,7 +82,7 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
         val err = error(naiveRes, sol)
         //if(count % step == 0 || dof < 100 || count < 100)
         //  println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
-        fileout.println(s"$dcname,$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr")
+        fileout.println(s"$dcname,${s.strategy},$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$qname")
       }
       queryCounter += 1
     }

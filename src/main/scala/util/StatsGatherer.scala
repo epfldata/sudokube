@@ -61,16 +61,16 @@ class AutoStatsGatherer[T](task: => T) extends StatsGatherer[T] {
   }
 }
 
-class ManualStatsGatherer[T](task: => T) extends StatsGatherer[T] {
+class ManualStatsGatherer[T]() extends StatsGatherer[T] {
   override def start(): Unit = {
     startTime = System.nanoTime()
   }
-
+  var task:  Function0[T] = null
   override def record() {
     count += 1
     val cur = System.nanoTime()
     val stat = task
-    stats += (((cur - startTime)/billion, count, stat))
+    stats += (((cur - startTime)/billion, count, stat()))
   }
 
   override def finish() = {

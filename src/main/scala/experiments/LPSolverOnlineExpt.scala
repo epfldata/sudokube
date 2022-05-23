@@ -7,11 +7,11 @@ import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 import scala.reflect.ClassTag
 
 class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("lp-online", ename2) {
-  fileout.println("Name,Query,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim")
+  fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,QueryName")
   //println("LP Solver of type " + implicitly[ClassTag[T]])
 
-
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true) = {
+  var queryCounter = 0
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname:String = "") = {
     val q = qu.sorted
     val qstr = qu.mkString(":")
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -21,11 +21,12 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
       dc.naive_eval(q)
     }
 
+    val stg = new ManualStatsGatherer[(Int, (Int, Int, Double))]()
+    stg.start()
     val b1 = SolverTools.mk_all_non_neg(1 << q.size)
     val solver = new SliceSparseSolver[T](q.length, b1, Nil, Nil)
     var maxDimFetched = 0
-    val stg = new ManualStatsGatherer((maxDimFetched, solver.getStats))
-    stg.start()
+    stg.task = () => (maxDimFetched, solver.getStats)
     var l = Profiler("Prepare") {
       dc.m.prepare_online_agg(q, 30)
     }
@@ -58,8 +59,9 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
         val err = span / total
         //if (count % step == 0 || dof < 100 || count < 100)
         //  println(s"$count @ $time : dof=$dof err=$err maxDim=$maxDim")
-        fileout.println(s"$dcname,$qstr,${q.size},$count,${time},$dof,$err,$maxDim")
+        fileout.println(s"$dcname,LPSolver,$queryCounter,${q.size},$count,${time},$dof,$err,$maxDim")
       }
+      queryCounter += 1
     }
   }
 }

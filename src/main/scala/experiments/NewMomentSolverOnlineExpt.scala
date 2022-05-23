@@ -8,7 +8,7 @@ import Strategy._
 
 class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 
-  fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,Entropy")
+  fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,QueryName,Entropy")
 
   def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
     case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer, pm)
@@ -25,16 +25,16 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
+    val stg = new ManualStatsGatherer[(Int, (Int, Array[Double]))]()
+    stg.start()
     val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments))
     var maxDimFetched = 0
-    val stg = new ManualStatsGatherer((maxDimFetched, s.getStats))
-    stg.start()
-
+    stg.task = () => ((maxDimFetched, s.getStats))
     var l = Profiler("Prepare") {
       if (containsAllCuboids)
         dc.m.prepare_online_full(q, 2)
@@ -77,7 +77,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
         val entr = entropy(sol)
         //if(count % step == 0 || dof < 100 || count < 100)
         //  println(s"$count @ $time : dof=$dof err=$err maxdim=$maxdim")
-        fileout.println(s"$dcname,${s.name},$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$entr")
+        fileout.println(s"$dcname,${s.name},$queryCounter,${q.size},$count,${time},$dof,$err,$maxdim,$qstr,$qname,$entr")
       }
       queryCounter += 1
     }

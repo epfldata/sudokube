@@ -10,20 +10,19 @@ import java.io.{File, FileReader, PrintStream}
 object OnlinePlotter {
 
   object KEY extends Enumeration {
-    val CUBENAME, SOLVERNAME, QUERYID, QSIZE, CUBOIDCOUNTER, TIME, DOF, ERROR, MAXDIM, QUERYSTR, ENTROPY = Value
+    val CUBENAME, SOLVERNAME, QUERYID, QSIZE, CUBOIDCOUNTER, TIME, DOF, ERROR, MAXDIM, QUERYSTR, QUERYSTR2, ENTROPY  = Value
   }
 
   import KEY._
 
-  def getData(name: String, filterf: IndexedSeq[String] => Boolean, groupf: IndexedSeq[String] => String, Xkey: Int, Ykey: Int) = {
+  def getData(name: String, seriesKey: Int, Xkey: Int, Ykey: Int) = {
 
     val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
     val iterKey = QUERYID.id
 
 
     val seriesData = data.
-      filter(filterf).
-      groupBy(groupf).
+      groupBy(r => r(seriesKey)).
       mapValues {
         _.groupBy(_ (iterKey)).values.map(_.map(r => r(Xkey).toDouble -> r(Ykey).toDouble).toList).toVector
       }
@@ -36,8 +35,8 @@ object OnlinePlotter {
     //println(s"N = $N")
     val currentValues = Array.fill(N)(initValue)
     val result = collection.mutable.ArrayBuffer[(Double, Double)]()
-
-    result += ((0.0) -> initValue)
+    var curTime = 0.0
+    result += (curTime -> initValue)
     var finished = false
     while (!finished) {
       val (minIdx, minTime, value) = data2.indices.foldLeft((-1, Double.PositiveInfinity, Double.PositiveInfinity)) { case (acc@(_, time, _), idx) =>
@@ -49,9 +48,13 @@ object OnlinePlotter {
       if (minIdx == -1)
         finished = true
       else {
+        if(minTime - curTime >  0.01) {  //we have to sample at this granularity even if the next event takes place much later.
+          result += ((minTime-0.011) -> agg(currentValues))
+        }
         currentValues(minIdx) = value
         result += (minTime -> agg(currentValues))
         data2(minIdx) = data2(minIdx).tail
+        curTime = minTime
       }
     }
     val res1 = result.filter(_._2 < Double.PositiveInfinity).groupBy(x => math.round(x._1 * 100) / 100.0).mapValues(x => x.map(_._2).sum / x.length).toVector.sortBy(_._1)
@@ -63,24 +66,13 @@ object OnlinePlotter {
   }
 
 
-  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, isQuerySize: Boolean) = {
-    def filterCube(r: IndexedSeq[String]) = true //Assume file contains only relevant data
-
-    def filterQuerySize(r: IndexedSeq[String]) = true //  Assume file contains only relevant data
+  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, seriesKey: KEY.Value) = {
 
     val isLPP = name.startsWith("LP")
 
-    def groupCube(r: IndexedSeq[String]) = r(CUBENAME.id)
-
-    def groupQuerySize(r: IndexedSeq[String]) = r(QSIZE.id)
-
-    def filterf(r: IndexedSeq[String]) = if (isQuerySize) filterCube(r) else filterQuerySize(r)
-
-    def groupf(r: IndexedSeq[String]) = if (isQuerySize) groupQuerySize(r) else groupCube(r)
     import KEY._
 
-
-    val data = getData(name, filterf, groupf, xkey.id, ykey.id)
+    val data = getData(name, seriesKey.id, xkey.id, ykey.id)
 
     def avgf(vs: Seq[Double]) = vs.sum / vs.size
 
@@ -146,6 +138,9 @@ object OnlinePlotter {
     //myplot(name2, true, false)
 
     def argsMap(s: String) = s match {
+      case "params" => CUBENAME
+      case "qsize" => QSIZE
+      case "query" => QUERYSTR2
       case "time" => TIME
       case "dof" => DOF
       case "error" => ERROR
@@ -153,13 +148,13 @@ object OnlinePlotter {
     }
 
     val name = args(0)
-    val isQuerySize = args(1) == "qsize"
+    val seriesKey = args.lift(1).map(argsMap).getOrElse(QSIZE)
     val xkey = args.lift(2).map(argsMap).getOrElse(TIME)
     val ykey = args.lift(3).map(argsMap).getOrElse(ERROR)
 
     //myplot(name3, DOF, true)
     //myplot(name3, MAXDIM, true)
-    myplot(name, xkey, ykey, isQuerySize)
+    myplot(name, xkey, ykey, seriesKey)
 
   }
 }

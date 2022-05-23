@@ -36,7 +36,7 @@ object Experimenter {
     )
 
     val fileout = new PrintStream(s"expdata/Cuboids_${cg.inputname}_${ms}.csv")
-    fileout.println("Name," + (0 to (maxD+1)).mkString(","))
+    fileout.println("Name," + (0 to (maxD + 1)).mkString(","))
     cubes.foreach { n =>
       val names = n.split("_")
       println(s"Getting cuboid distribution for $n")
@@ -50,10 +50,10 @@ object Experimenter {
     }
     val sch = cg.schema()
     val total = if (isSMS) {
-      sch.root.numPrefixUpto(maxD+1).map(_.toDouble).toList
+      sch.root.numPrefixUpto(maxD + 1).map(_.toDouble).toList
     }
     else {
-      (0 to maxD+1).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
+      (0 to maxD + 1).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
     }
     fileout.println(s"Total," + total.mkString(","))
   }
@@ -250,7 +250,7 @@ object Experimenter {
 
 
   def mb_total()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new NewMomentSolverOnlineExpt(CoMoment3,"mb-total", true)
+    val expt = new NewMomentSolverOnlineExpt(CoMoment3, "mb-total", true)
     if (shouldRecord) expt.warmup()
     List(2, 3, 4, 5).foreach { tot =>
       println("Microbenchmark Total = 10^" + tot)
@@ -295,7 +295,7 @@ object Experimenter {
   }
 
   def mb_prob()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val expt = new  NewMomentSolverOnlineExpt(CoMoment3,"mb-prob", true)
+    val expt = new NewMomentSolverOnlineExpt(CoMoment3, "mb-prob", true)
     if (shouldRecord) expt.warmup()
     List(0.1, 0.2, 0.3, 0.4).foreach { prob =>
       println("Microbenchmark for prob = " + prob)
@@ -497,7 +497,7 @@ object Experimenter {
     }
   }
 
-  def manualSSB(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def manualSSB(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg = SSB(100)
     val sch = cg.schema()
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
@@ -517,6 +517,13 @@ object Experimenter {
     val ccity = encMap("cust_city").asInstanceOf[LazyMemCol].bits
     val mfgr = encMap("mfgr").asInstanceOf[LazyMemCol].bits
 
+    val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
+    queries += List(year, discount, qty) -> "d_year;lo_discount;lo_quantity"
+    queries += List(year, brand) -> "d_year;p_brand1"
+    queries += List(year, snation, cnation) -> "d_year;s_nation;c_nation"
+    queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year//2;c_city//4;s_city//4"
+    queries += List(year, snation, category) -> "d_year;s_nation;p_category"
+
     val param = "15_14_25"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
@@ -525,43 +532,56 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"manual-ssb-$ms"
-    val exptfull = new NewMomentSolverOnlineExpt(CoMoment3, expname2)
-    if (shouldRecord) exptfull.warmup()
+    val expt = new NewMomentSolverOnlineExpt(strategy, expname2)
+    if (shouldRecord) expt.warmup()
 
-    val queries = collection.mutable.ArrayBuffer[List[Seq[Int]]]()
-    queries += List(year, discount, qty)
-    queries += List(year, month, discount, qty)
-    queries += List(year, brand)
-    queries += List(year, brand, sregion)
-    queries += List(year, brand, category, sregion)
-    queries += List(year, snation, cnation)
-    queries += List(year, ccity, scity)
-    queries += List(year, month, ccity, scity)
-    queries += List(year, cnation)
-    queries += List(year, snation, category)
-    queries += List(year, scity, brand)
 
-    queries.zipWithIndex.foreach { case (cs, i) =>
-      val q = cs.reduce(_ ++ _)
-      println(s"Query $i :: length = ${q.length}   ${q.mkString("{", " ", "}")}")
-      if (q.length <= 17) exptfull.run(dc, fullname, q)
+    (1 to numIters).foreach { iter =>
+      queries.zipWithIndex.foreach { case ((cs,qname), i) =>
+        val q = cs.reduce(_ ++ _)
+        println(s"Query $i :: $qname   length = ${q.length}   ${q.mkString("{", " ", "}")}")
+        expt.run(dc, fullname, q, true, qname)
+      }
     }
   }
 
-  def manualNYC(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def manualNYC(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg = NYC
     val sch = cg.schema()
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
 
     val year = encMap("Issue Date").asInstanceOf[StaticDateCol].yearCol.bits
+    val month = encMap("Issue Date").asInstanceOf[StaticDateCol].monthCol.bits
     val state = encMap("Registration State").asInstanceOf[LazyMemCol].bits
     val code = encMap("Violation Code").asInstanceOf[LazyMemCol].bits
     val ptype = encMap("Plate Type").asInstanceOf[LazyMemCol].bits
+    val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
 
-    val queries = collection.mutable.ArrayBuffer[List[Seq[Int]]]()
-    queries += List(year, state)
-    queries += List(state, code)
-    queries += List(code, ptype)
+    val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
+    queries += List(year, month) -> "issue_date_year;issue_date_month"
+    queries += List(year, state) -> "issue_date_year;registration_state"
+    queries += List(state, code) -> "registration_state;violation_code"
+    queries += List(code, ptype) -> "violation_code;plate_type"
+    queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year//4;violation_precinct//8"
+
+    val param = "15_14_26"
+    val ms = (if (isSMS) "sms3" else "rms3")
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+
+    val expname2 = s"manual-nyc-$ms"
+    val expt = new NewMomentSolverOnlineExpt(strategy, expname2)
+    if (shouldRecord) expt.warmup()
+
+    (1 to numIters).foreach { iter =>
+      queries.zipWithIndex.foreach { case ((cs, qname), i) =>
+        val q = cs.reduce(_ ++ _)
+        println(s"Query $i :: $qname   length = ${q.length}   ${q.mkString("{", " ", "}")}")
+        expt.run(dc, fullname, q, true, qname)
+      }
+    }
   }
 
   def debug(): Unit = {
@@ -634,6 +654,7 @@ object Experimenter {
   def main(args: Array[String]) {
     implicit val shouldRecord = true
     implicit val numIters = 100
+    val strategy = CoMoment3
     args.lift(0).getOrElse("debug") match {
       case "Fig7" =>
         cuboid_distribution(false)
@@ -643,11 +664,11 @@ object Experimenter {
         lpp_query_dimensionality(false)
         lpp_query_dimensionality(true)
       case "Fig9" =>
-        moment_query_dimensionality(CoMoment3, false)
-        moment_query_dimensionality(CoMoment3, true)
+        moment_query_dimensionality(strategy, false)
+        moment_query_dimensionality(strategy, true)
       case "Fig10" =>
-        moment_mat_params(CoMoment3, false)
-        moment_mat_params(CoMoment3, true)
+        moment_mat_params(strategy, false)
+        moment_mat_params(strategy, true)
       case "Fig11" =>
         mb_dims()
         mb_stddev()
@@ -655,6 +676,12 @@ object Experimenter {
       case "schema" =>
         schemas()
       case "moment01" => moment01()
+      case "manualSSB" =>
+        //manualSSB(strategy, false)
+        manualSSB(strategy, true)
+      case "manualNYC" =>
+        //manualNYC(strategy, false)
+        manualNYC(strategy, true)
       case "scaling" => solverScaling(false)
       case _ => debug()
     }

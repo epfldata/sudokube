@@ -10,7 +10,7 @@ import scala.util.Random
 
 abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRecord: Boolean) {
   val fileout = {
-    val isFinal = false
+    val isFinal = true
     val (timestamp, folder) = {
       if (isFinal) ("final", ".")
       else if (shouldRecord) {
@@ -24,7 +24,7 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
     new PrintStream(file)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean): Unit
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean, qname: String = ""): Unit
 
   def warmup(nw: Int = 10) = {
     val dcwarm = DataCube.load2("warmup")
