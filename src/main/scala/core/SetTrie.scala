@@ -304,6 +304,75 @@ class SetTrieIntersect() {
   }
 }
 
+class SetTrieBuildPlan() {
+  val root = Node(-1)
+  var cheapest_id = 0
+  var cheapest_cost = Int.MaxValue
+
+  def insert(s: List[Int], this_cost: Int, this_id: Int, n: Node = root): Unit = s match {
+    //s is assumed to have distinct elements
+    case Nil => ()
+    case h :: t =>
+      val c = n.findOrElseInsert(h, this_cost, this_id)
+      insert(t, this_cost, this_id, c)
+  }
+
+  def extractCheapestSuperset(s: List[Int], n: Node = root): Unit = s match {
+    case Nil =>
+      if(n.cheapest_term < cheapest_cost){
+        cheapest_id = n.ct_id
+        cheapest_cost = n.cheapest_term
+      }
+    case h :: t =>
+      val child = n.children.iterator
+      var ce = n.b
+      while (child.hasNext && ce <= h && n.cheapest_term < cheapest_cost) {
+        val cn = child.next()
+        ce = cn.b
+        if (ce < h) {
+          extractCheapestSuperset(s, cn)
+        } else if (ce == h) {
+          extractCheapestSuperset(t, cn)
+        } else
+          ()
+      }
+  }
+
+  def getCheapestSuperset(s: List[Int]): Int = {
+    extractCheapestSuperset(s)
+    val ret = cheapest_id
+    cheapest_id = 0
+    cheapest_cost = Int.MaxValue
+    ret
+  }
+
+
+  class Node(val b: Int, val children: SortedSet[Node], var cheapest_term: Int = 0, var ct_id: Int) {
+    def findOrElseInsert(v: Int, this_cost: Int, this_id: Int): Node = {
+      val c = children.find(_.b == v)
+      c match {
+        case None =>
+          val nc = new Node(v, SortedSet(), this_cost, this_id)
+          children += nc
+          nc
+        case Some(child) =>
+          if (child.cheapest_term > this_cost) {
+            child.cheapest_term = this_cost
+            child.ct_id = this_id
+          }
+          child
+      }
+    }
+
+  }
+
+  object Node {
+    implicit def order: Ordering[Node] = Ordering.by(_.b)
+
+    def apply(i: Int) = new Node(i, SortedSet(), -100, -100)
+  }
+}
+
 
 object SetTrie {
   def main(args: Array[String]): Unit = {

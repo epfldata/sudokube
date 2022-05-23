@@ -84,7 +84,7 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     var build_plan: List[(Set[Int], Int, Int)] =
       List((ps.head._1.toSet, ps.head._2, -1))
 
-    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", false)
+    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", true)
 
     ps.tail.foreach {
       case ((l: List[Int]), (i: Int)) => {
@@ -96,6 +96,32 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           case Some((_, j, _)) => build_plan = (s, i, j) :: build_plan
           case None => assert(false)
         }
+        pi.step
+      }
+    }
+    println
+    build_plan.reverse
+  }
+
+  def create_build_plan_trie(): List[(Set[Int], Int, Int)] = {
+    // aren't they sorted by length by construction?
+    val ps = projections.zipWithIndex.sortBy(_._1.length).reverse.toList
+    assert(ps.head._1.length == n_bits)
+
+    // the edges (_2, _3) form a tree rooted at the full cube
+    var build_plan: List[(Set[Int], Int, Int)] =
+      List((ps.head._1.toSet, ps.head._2, -1))
+    val trie = new SetTrieBuildPlan()
+    trie.insert(ps.head._1, ps.head._1.length, ps.head._2)
+
+    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", true)
+
+    ps.tail.foreach {
+      case ((l: List[Int]), (i: Int)) => {
+        val s = l.toSet
+        val j = trie.getCheapestSuperset(l)
+        build_plan = (s, i, j) :: build_plan
+        trie.insert(l, l.length, i)
         pi.step
       }
     }
