@@ -17,7 +17,7 @@ class BigBinarySpec extends FlatSpec with Matchers {
   }
 
   "UnPup " should "work for ranges " in {
-    val tests = List((15, 2 to 5, 60), (5, 4 to 6, 80), (12, 5 to 7, 4 * 32), (12, 5 to 6, 0), (3, 2 to 7, 12), (0, 5 to 9, 0))
+    val tests = List((15, 2 to 5, 60), (5, 4 to 6, 80), (4, 5 to 7, 4 * 32), (0, 5 to 6, 0), (3, 2 to 7, 12), (0, 5 to 9, 0))
     tests.foreach{ case (i1, r, i2) => assert(BigBinary(i2).unpup(r) === BigBinary(i1))}
   }
 
