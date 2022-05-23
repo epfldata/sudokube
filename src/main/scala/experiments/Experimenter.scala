@@ -26,17 +26,18 @@ object Experimenter {
   def cuboid_distribution(isSMS: Boolean) = {
     val ms = if (isSMS) "sms3" else "rms3"
     val cg = NYC
-    val maxD = 26
+    val maxD = 30
+    val nycmaxD = 26
     val cubes = List(
-      s"NYC_${ms}_13_10_$maxD ",
-      s"NYC_${ms}_15_6_$maxD",
-      s"NYC_${ms}_15_10_$maxD",
-      s"NYC_${ms}_15_14_$maxD",
-      s"NYC_${ms}_17_10_$maxD"
+      s"NYC_${ms}_13_10_$nycmaxD",
+      s"NYC_${ms}_15_6_$nycmaxD",
+      s"NYC_${ms}_15_10_$nycmaxD",
+      s"NYC_${ms}_15_14_$nycmaxD",
+      s"NYC_${ms}_17_10_$nycmaxD"
     )
 
     val fileout = new PrintStream(s"expdata/Cuboids_${cg.inputname}_${ms}.csv")
-    fileout.println("Name," + (0 to (maxD + 1)).mkString(","))
+    fileout.println("Name," + (0 to maxD).mkString(","))
     cubes.foreach { n =>
       val names = n.split("_")
       println(s"Getting cuboid distribution for $n")
@@ -45,7 +46,7 @@ object Experimenter {
       val dc = PartialDataCube.load2(n, cg.inputname + "_base")
       val projMap = dc.m.projections.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
-      fileout.println(s"${logN}_${minD}_$maxD," + projs)
+      fileout.println(s"${logN}_${minD}," + projs)
       dc.cuboids.head.backend.reset
     }
     val sch = cg.schema()
@@ -101,7 +102,7 @@ object Experimenter {
       dcsms.cuboids.head.backend.reset
 
       val (ds, bs) = if (cgname.startsWith("NYC")) {
-        if (cubename.startsWith("14"))
+        if (cubename.startsWith("13"))
           ("\\multirow{5}{*}{NYC}", s"\\multirow{5}{*}{$baseGB GB}")
         else ("", "")
       }
@@ -521,7 +522,7 @@ object Experimenter {
     queries += List(year, discount, qty) -> "d_year;lo_discount;lo_quantity"
     queries += List(year, brand) -> "d_year;p_brand1"
     queries += List(year, snation, cnation) -> "d_year;s_nation;c_nation"
-    queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year//2;c_city//4;s_city//4"
+    queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year/2;c_city/4;s_city/4"
     queries += List(year, snation, category) -> "d_year;s_nation;p_category"
 
     val param = "15_14_25"
@@ -537,10 +538,12 @@ object Experimenter {
 
 
     (1 to numIters).foreach { iter =>
+      println(s"Manual SSB Iteration $iter/$numIters")
       queries.zipWithIndex.foreach { case ((cs,qname), i) =>
         val q = cs.reduce(_ ++ _)
-        println(s"Query $i :: $qname   length = ${q.length}   ${q.mkString("{", " ", "}")}")
-        expt.run(dc, fullname, q, true, qname)
+        val qsize = q.length
+        println(s"  Query $i :: $qname   length = $qsize")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
       }
     }
   }
@@ -562,7 +565,7 @@ object Experimenter {
     queries += List(year, state) -> "issue_date_year;registration_state"
     queries += List(state, code) -> "registration_state;violation_code"
     queries += List(code, ptype) -> "violation_code;plate_type"
-    queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year//4;violation_precinct//8"
+    queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
 
     val param = "15_14_26"
     val ms = (if (isSMS) "sms3" else "rms3")
@@ -576,10 +579,12 @@ object Experimenter {
     if (shouldRecord) expt.warmup()
 
     (1 to numIters).foreach { iter =>
+      println(s"Manual NYC Iteration $iter/$numIters")
       queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
-        println(s"Query $i :: $qname   length = ${q.length}   ${q.mkString("{", " ", "}")}")
-        expt.run(dc, fullname, q, true, qname)
+        val qsize = q.length
+        println(s"  Query $i :: $qname   length = $qsize ")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
       }
     }
   }
