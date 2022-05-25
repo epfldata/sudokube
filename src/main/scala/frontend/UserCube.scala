@@ -78,11 +78,11 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   /**
    * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts)
    * @param q the base dimension (X)
-   * @param aggregateDim the dimension we want to aggregate (Y), has to be a number cell
+   * @param aggregateDim the dimension we want to aggregate (Y), has to be a number dimension
    * @param method the method of the query, naive or by moment
    * @return
    */
-  def queryDimension(q: (String, Int), aggregateDim: String, method: Method): Any = {
+  def queryDimension(q: (String, Int), aggregateDim: String, method: Method): Seq[(String, Double)] = {
     val queryBits = List(accCorrespondingBits(q._1, q._2, 0, Nil))
     val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, 0, Nil))
     val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
@@ -93,18 +93,24 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
     val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
       .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
+    var res: Map[String, Double] = null
     if (aggregateDim == null) { //in this case simply take the fact
-      resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
-        (q._1 + "=" + x._1, x._2.foldLeft(0.0)((acc, x) =>
+      res = resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+        (x._1, x._2.foldLeft(0.0)((acc, x) =>
           acc + x._2.toString.toDouble
         ))
       )
     } else {
-      resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
-        (q._1 + "=" + x._1, x._2.foldLeft(0.0)((acc, x) =>
+      res = resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+        (x._1, x._2.foldLeft(0.0)((acc, x) =>
           acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false).toDouble
         ))
       )
+    }
+    try {
+      res.toSeq.sortBy(_._1.toDouble)
+    } catch {
+      case e: NumberFormatException => res.toSeq
     }
   }
 

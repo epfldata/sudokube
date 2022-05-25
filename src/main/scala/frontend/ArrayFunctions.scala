@@ -299,5 +299,18 @@ object ArrayFunctions {
     }
   }
 
+  /**
+   * compute the slope and the offset (intercept) of an (x,y) array
+   * @param source an (x, y) array, consisting of doubles
+   * @return (average slope, offset) of the curve
+   */
+  def LinearRegression(source: Seq[(Double, Double)]): (Double, Double) = {
+    val xbar = source.map(x => x._1).sum/source.length //compute average of x
+    val ybar = source.map(x => x._2).sum/source.length //compute average of y
+    val xybar = source.map(x => (x._1 - xbar)*(x._2 - ybar)).sum //covar of x,y
+    val xxbar = source.map(x => (x._1 - xbar)*(x._1 - xbar)).sum //var of x
+    (xybar/xxbar, ybar - (xybar/xxbar)*xbar) //compute slope and intercept
+  }
+
 
 }
