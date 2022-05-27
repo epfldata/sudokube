@@ -10,6 +10,12 @@ case "$nickname" in
 "kube2")
   line=15
   ;;
+"kube3")
+  line=22
+  ;;
+"kube4")
+  line=29
+  ;;
 *)
   echo "First argument must be kube1 or kube2"
   exit
@@ -31,8 +37,8 @@ ssh datadell "scp ~/.ssh/id* $nickname:/root/.ssh"
 
 ssh $nickname 'chmod +x ./init.sh && ./init.sh'
 scripts/sync.sh $nickname
-ssh $nickname 'cd /var/data/sudokube/sudokube && make'
+ssh $nickname 'PATH=/opt/sbt/bin:$PATH;cd /var/data/sudokube/sudokube && make'
 
-ssh datadell "~/sudokube/sudokube/scripts/uniqsyncto $nickname SSB/sf100"
-ssh datadell "~/sudokube/sudokube/scripts/uniqsyncto $nickname nyc"
+ssh datadell "/home/sachin/sudokube/sudokube/scripts/uniqsyncto $nickname SSB/sf100"
+ssh datadell "/home/sachin/sudokube/sudokube/scripts/uniqsyncto $nickname nyc"
 

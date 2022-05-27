@@ -24,7 +24,7 @@ echo "export PATH=/var/data/sudokube/sudokube/scripts:/opt/sbt/bin:$PATH" >> /ro
 mkdir -p /var/data/sudokube/sudokube
 cd /var/data/sudokube/sudokube
 mkdir tabledata expdata
-rclone copy skRW:12327-755e92f906ff1f273f45a3a76785476f cubedata -P
+rclone copy skRW:12327-755e92f906ff1f273f45a3a76785476f cubedata -P --multi-thread-streams 20 --transfers=4
 
 #sync
 #sbt compile

@@ -27,7 +27,7 @@ object Experimenter {
     val ms = if (isSMS) "sms3" else "rms3"
     val cg = NYC
     val maxD = 30
-    val nycmaxD = 26
+    val nycmaxD = 30
     val cubes = List(
       s"NYC_${ms}_13_10_$nycmaxD",
       s"NYC_${ms}_15_6_$nycmaxD",
@@ -73,8 +73,8 @@ object Experimenter {
         |\hline
         |""".stripMargin +
         "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Ovrhd.") + "&" + split("SMS \\\\ Ovrhd.") + " \\\\ \n \\hline \n")
-    val maxDNYC = 26
-    val maxDSSB = 25
+    val maxDNYC = 30
+    val maxDSSB = 30
     val params = List(
       "NYC" -> s"13_10_$maxDNYC",
       "NYC" -> s"15_6_$maxDNYC",
@@ -122,7 +122,7 @@ object Experimenter {
   def lpp_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
     val cg = SSB(100)
 
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -154,7 +154,7 @@ object Experimenter {
   def moment_query_dimensionality(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
 
     val cg = SSB(100)
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -195,7 +195,7 @@ object Experimenter {
       (17, 10)
     )
     val sch = cg.schema()
-    val maxD = 26
+    val maxD = 30
     val qs = 10
     val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
     val ms = (if (isSMS) "sms3" else "rms3")
@@ -335,7 +335,7 @@ object Experimenter {
     //println("Error = " + error(actual, result))
 
     val cg = SSB(100)
-    val param = "15_14_25"
+    val param = "15_14_30"
     val sch = cg.schema()
 
     List(true, false).map { isSMS =>
@@ -525,7 +525,7 @@ object Experimenter {
     queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year/2;c_city/4;s_city/4"
     queries += List(year, snation, category) -> "d_year;s_nation;p_category"
 
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -567,7 +567,7 @@ object Experimenter {
     queries += List(code, ptype) -> "violation_code;plate_type"
     queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
 
-    val param = "15_14_26"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
