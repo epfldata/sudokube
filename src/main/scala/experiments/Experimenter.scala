@@ -556,15 +556,17 @@ object Experimenter {
     val year = encMap("Issue Date").asInstanceOf[StaticDateCol].yearCol.bits
     val month = encMap("Issue Date").asInstanceOf[StaticDateCol].monthCol.bits
     val state = encMap("Registration State").asInstanceOf[LazyMemCol].bits
-    val code = encMap("Violation Code").asInstanceOf[LazyMemCol].bits
+    val make = encMap("Vehicle Make").asInstanceOf[LazyMemCol].bits
+    val color = encMap("Vehicle Color").asInstanceOf[LazyMemCol].bits
     val ptype = encMap("Plate Type").asInstanceOf[LazyMemCol].bits
     val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
+    val lawsect = encMap("Law Section").asInstanceOf[LazyMemCol].bits
 
     val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
     queries += List(year, month) -> "issue_date_year;issue_date_month"
-    queries += List(year, state) -> "issue_date_year;registration_state"
-    queries += List(state, code) -> "registration_state;violation_code"
-    queries += List(code, ptype) -> "violation_code;plate_type"
+    queries += List(year.drop(1), state) -> "issue_date_year/2;registration_state"
+    queries += List(ptype.drop(2), color.drop(5)) -> "plate_type/4;vehicle_color/32"
+    queries += List(make.drop(6), lawsect) -> "vehicle_make/64;law_section"
     queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
 
     val param = "15_14_30"
@@ -665,27 +667,24 @@ object Experimenter {
         cuboid_distribution(false)
         cuboid_distribution(true)
       case "Tab1" => storage_overhead()
-      case "Fig8" =>
+      case "Fig8" | "lpp" =>
         lpp_query_dimensionality(false)
         lpp_query_dimensionality(true)
-      case "Fig9" =>
+      case "Fig9" | "qdims" =>
         moment_query_dimensionality(strategy, false)
         moment_query_dimensionality(strategy, true)
-      case "Fig10" =>
+      case "Fig10" | "matparams" =>
         moment_mat_params(strategy, false)
         moment_mat_params(strategy, true)
-      case "Fig11" =>
+      case "Fig11" | "microbench" =>
         mb_dims()
         mb_stddev()
         mb_prob()
       case "schema" =>
         schemas()
       case "moment01" => moment01()
-      case "manualSSB" =>
-        //manualSSB(strategy, false)
+      case "Fig12" | "manual" =>
         manualSSB(strategy, true)
-      case "manualNYC" =>
-        //manualNYC(strategy, false)
         manualNYC(strategy, true)
       case "scaling" => solverScaling(false)
       case _ => debug()
