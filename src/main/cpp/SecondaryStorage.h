@@ -1,15 +1,8 @@
 #include <string>
 #include <filesystem>
-#include "Keys.h"
-
-using CuboidIDType = int64_t;
-using MaskOffsetType = int64_t;
-using IsDenseType = int8_t;
-size_t MetadataSizeOnDisk = sizeof(IsDenseType) + sizeof(size_t);
-
-unsigned int PageSize = 128;//4*1024;
-unsigned int BufferPages = 16;
-unsigned int BufferSize = BufferPages*PageSize;
+#include <queue>
+#include "Utility.h"
+#include "ByteMinHeap.h"
 
 struct Metadata {
     const size_t RowsCount;
@@ -19,18 +12,19 @@ struct Metadata {
     const unsigned int ValueSize;
 };
 
+// return a pointer the specified column from the on memory column store 
 inline byte *getColumn(byte **Array, size_t Idx, size_t OldColumnSize) {
     byte *Column = (byte *)Array + OldColumnSize * Idx;
     return Column;
 }
 
-inline void print_column_bit(int pos, byte *column) {
+inline void printColumnBit(int pos, byte *column) {
     int b = (column[pos / 8] >> (pos % 8)) % 2;
     if(b) printf("1");
     else  printf("0");
 }
 
-// returns True if the given bit is 1
+// return True if the given bit is 1
 inline bool getBit(byte* Array, int Position) {
     unsigned int BytePos = Position >> 3;  
     unsigned int BitPos = Position & 0x7;
@@ -38,7 +32,7 @@ inline bool getBit(byte* Array, int Position) {
     return Array[BytePos] & 1 << BitPos;
 }
 
-// sets the bit to 1
+// set the bit to 1
 inline void setBit(byte*& Array, int Position) {
     unsigned int BytePos = Position >> 3;  
     unsigned int BitPos = Position & 0x7;
@@ -46,7 +40,7 @@ inline void setBit(byte*& Array, int Position) {
     Array[BytePos] |= 1 << BitPos;
 }
 
-// reads keys from column store
+// read keys from column store
 inline void readKeys(unsigned int MaskSum, unsigned int Mask[], int Iteration, std::string CuboidDirPath, const size_t BufferRowsCount, byte **IntermediateKeyStore, unsigned int BufferColumnSize) {
     for(int j=0; j<MaskSum; j++){
         std::string ColReadFileName = CuboidDirPath + "col" + std::to_string(Mask[j]);
@@ -58,6 +52,7 @@ inline void readKeys(unsigned int MaskSum, unsigned int Mask[], int Iteration, s
     }
 }
 
+// reads values from column store
 inline void readValues(std::string CuboidDirPath, int Iteration, const size_t BufferRowsCount, value_t *IntermediateValStore) {
     std::string ValueFileName = CuboidDirPath + "values";
     FILE *ReadValueFile = fopen(ValueFileName.c_str(), "r");
@@ -99,71 +94,8 @@ inline Metadata getMetadata(std::string CubeDirPath, const unsigned int MaskSum)
     return Metadata;
 }
 
-// Quick Sort 
-byte *getKeyFromKeysArray(byte *array, size_t idx, size_t keySize) {
-    byte *key = array + keySize * idx;
-    // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
-    return key;
-}
 
-value_t *getValueFromValueArray(value_t *array, size_t idx) {
-    value_t *value = array + idx;
-    // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
-    return value;
-}
 
-// A utility function to swap two elements
-void swapKeys(byte *KeysArray, value_t *ValuesArray, int i, int j, unsigned int KeySize) {
-	byte *TempKey = (byte *)calloc(1, KeySize);
-    value_t *TempVal = (value_t *)calloc(1, sizeof(value_t));
-    
-    memcpy(TempKey, getKeyFromKeysArray(KeysArray, i, KeySize), KeySize);
-    memcpy(TempVal, getValueFromValueArray(ValuesArray, i), sizeof(value_t));
-    
-    memcpy(getKeyFromKeysArray(KeysArray, i, KeySize), getKeyFromKeysArray(KeysArray,j, KeySize), KeySize);
-    memcpy(getValueFromValueArray(ValuesArray, i), getValueFromValueArray(ValuesArray, j), sizeof(value_t));
-    
-    memcpy(getKeyFromKeysArray(KeysArray, j, KeySize), TempKey, KeySize);
-    memcpy(getValueFromValueArray(ValuesArray, j), TempVal, sizeof(value_t));
-	
-    free(TempKey);
-    free(TempVal);
-}
-
-/* This function takes last element as pivot, places
-the pivot element at its correct position in sorted
-array, and places all smaller (smaller than pivot)
-to left of pivot and all greater elements to right
-of pivot */
-int partition(byte *KeysArray, value_t *ValuesArray, int Start, int End, unsigned int KeySize) {
-    
-    byte *pivot = getKeyFromKeysArray(KeysArray, End, KeySize);
-	int i =  Start - 1; // Index of smaller element and indicates the right position of pivot found so far
-
-	for (int j = Start; j <= End - 1; j++) {
-		// If current element is smaller than the pivot
-        if (memcmp(getKeyFromKeysArray(KeysArray, j, KeySize), pivot, KeySize) < 0) {
-            i++;
-            swapKeys(KeysArray, ValuesArray, i, j, KeySize);
-        }
-	}
-    swapKeys(KeysArray, ValuesArray, i+1, End, KeySize);
-	return (i + 1);
-}
-
-/* The main function that implements QuickSort
-Array --> array to be sorted, Start --> starting index,
-End --> ending index */
-void quickSort(byte *KeysArray, value_t *ValuesArray, int Start, int End, unsigned int KeySize) {
-	if  (Start < End) {
-		// KeysArray[PartitionIndex] is now at right place
-		int PartitionIndex = partition(KeysArray, ValuesArray, Start, End, KeySize);
-
-		// Separately sort elements before partition and after partition
-		quickSort(KeysArray, ValuesArray, Start, PartitionIndex  - 1, KeySize);
-		quickSort(KeysArray, ValuesArray, PartitionIndex  + 1, End, KeySize);
-	}
-}
 
 inline void printKeyValuePairs(const size_t RowsCount, unsigned int MaskSum, unsigned int KeySize, byte *KeysArray, value_t *ValuesArray) {
     for (size_t i = 0; i<RowsCount; i++) { 
@@ -179,8 +111,8 @@ byte *getKeyFromKeyValArray(byte *array, size_t idx, size_t keySize, size_t valS
     return key;
 }
 
-byte *getValueFromKeyValArray(byte *array, size_t idx, size_t keySize, size_t valSize) {
-    byte *val = array + (keySize+valSize) * idx + keySize;
+value_t *getValueFromKeyValArray(byte *array, size_t idx, size_t keySize, size_t valSize) {
+    value_t *val = (value_t*)(array + (keySize+valSize) * idx + keySize);
     // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
     return val;
 }
@@ -212,43 +144,216 @@ inline size_t MergeKeysInPlace(const size_t BufferRowsCount, unsigned int KeySiz
 inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePrefix, std::string RunFileNameSuffix, const size_t PageRowsCount, unsigned int KeySize, unsigned int ValueSize, unsigned int MaskSum) {
     // K = (BufferPages-1) - Way Merge
     unsigned int K = BufferPages - 1;
-    printf("\nPage Rows Count: %zu\n", PageRowsCount);
+    #ifdef DEBUG
+    printf("\nExternal Merge\n");
+    printf("%d - Way\n", K);
+    printf("Page Rows Count: %zu\n", PageRowsCount);
+    printf("NumberOfRuns: %d\n", NumberOfRuns);
+    #endif
 
-    while (NumberOfRuns > 1) {
-        for (int runs = 0; runs < NumberOfRuns; runs += K) {
-            int RunsUpperBound = std::min(runs+K, NumberOfRuns);
-            int NumberOfRuns = RunsUpperBound-runs;
-            size_t *RemainingRowsInRun = (size_t *)calloc(NumberOfRuns, sizeof(size_t));
-            byte *KeyValuePages = (byte*)calloc(NumberOfRuns, PageSize);
+    // start with pass = 0
+    unsigned int CurrentPass = 0;
+    unsigned int NumberOfInputRuns = NumberOfRuns;
+    while (NumberOfInputRuns > 1) { // passes
+        #ifdef DEBUG
+        printf("\n\n\nPass %d\n", CurrentPass);
+        #endif
+
+        // number of the next pass
+        unsigned int NextPass = CurrentPass + 1;
+
+        // current output run being processed for the next pass (start with run 0)
+        unsigned int CurrentOutputRun = 0;
+
+        for (int runs = 0; runs < NumberOfInputRuns; runs += K) { // one iteration produce signle run
+            printf("\n\nOutput Run %d\n", CurrentOutputRun);
+            int RunsUpperBound = std::min(runs+K, NumberOfInputRuns);
+
+            // number of runs to merge
+            int NumberOfRunsToMerge = RunsUpperBound-runs;
             
-            for (int run = 0; run < NumberOfRuns; run++) {
-                std::string RunFileName = RunFileNamePrefix + std::to_string(runs+run) + RunFileNameSuffix;
-                FILE *RunFile = fopen(RunFileName.c_str(), "r");
+            // elements left to be merged in each run
+            size_t *RemainingRowsInInputRuns = (size_t *)calloc(NumberOfRunsToMerge, sizeof(size_t)); // update at the end of a block
+            
+            // buffer pages
+            byte *InputKeyValueBufferPages = (byte*)calloc(NumberOfRunsToMerge, PageSize);
+
+            // elements left to be processed in the buffer page
+            size_t *TotalRowsInInputBuffer = (size_t *)calloc(NumberOfRunsToMerge, sizeof(size_t));
+
+            // current element being processed in the buffer page
+            size_t *CurrentRowInInputBuffer = (size_t *)calloc(NumberOfRunsToMerge, sizeof(size_t)); // update after processing each row
+
+            // stores file pointers of each file to merge
+            //FILE* FilePointers = (FILE*)calloc(NumberOfRunsToMerge, sizeof(FILE));;
+            std::vector<FILE*> FilePointers;
+            
+            // min heap based priority queue to get the minimum from all sorted pages in memory
+            MinHeap PriorityQueue(NumberOfRunsToMerge, KeySize);
+
+            // opens the file for each input run, loads their first pages into the buffer, and pushes the first element into the priority queue
+            for (int run = 0; run < NumberOfRunsToMerge; run++) {
+                // open the file corresponding to the run and add it to the file pointers array
+                std::string RunFileName = RunFileNamePrefix + std::to_string(CurrentPass) + "_" + std::to_string(runs+run) + RunFileNameSuffix;
+                FILE *RunFile = fopen(RunFileName.c_str(), "rb");
                 assert(RunFile != NULL);
+                // memcpy(FilePointers + run, RunFile, sizeof(FILE));
+                FilePointers.push_back(RunFile);
 
-                size_t RunRowsCount;
-                fread(RemainingRowsInRun + (run), sizeof(size_t), 1, RunFile);
+                // read the number of rows (key value pairs) in the run
+                fread(RemainingRowsInInputRuns + (run), sizeof(size_t), 1, FilePointers[run]);
+                size_t RunRowsCount = *(RemainingRowsInInputRuns + run);
 
+                // determine the number of rows to read into the buffer from the run
                 size_t RowsToRead = std::min(RunRowsCount, PageRowsCount);
-                fread(KeyValuePages+run*PageSize, KeySize + ValueSize, RowsToRead, RunFile);
+                memcpy(TotalRowsInInputBuffer + run, &RowsToRead, sizeof(size_t));
+
+                // read in the key value pairs into the buffer pages
+                fread(InputKeyValueBufferPages + run * PageSize, KeySize + ValueSize, RowsToRead, FilePointers[run]);
+                PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + run * PageSize, *(CurrentRowInInputBuffer + run), KeySize, ValueSize), run);
 
                 #ifdef DEBUG
-                printf("\nRunRowsCount: %zu\n", RemainingRowsInRun[run]);
-                printKeyValuePairsFromKeyValArray(RowsToRead, MaskSum, KeySize, ValueSize, KeyValuePages+run*PageSize);
+                // printf("\nRunRowsCount: %zu\n", RunRowsCount);
+                // printf("RowsToRead: %zu\n", RowsToRead);
+                // printf("TotalRowsInInputBuffer[run]: %zu\n", RemainingRowsInInputRuns[run]);
+                
+                // printKeyValuePairsFromKeyValArray(RowsToRead, MaskSum, KeySize, ValueSize, InputKeyValueBufferPages + run * PageSize);
+                // printf("\n");
                 #endif
             }
 
-            free(RemainingRowsInRun);
-            free(KeyValuePages);
-        }
-        NumberOfRuns = 0;
+            // open the output run file
+            std::string OutputRunFileName = RunFileNamePrefix + std::to_string(NextPass) + "_" + std::to_string(CurrentOutputRun) + RunFileNameSuffix;
+            FILE *OutputRunFile = fopen(OutputRunFileName.c_str(), "wb");
+            assert(OutputRunFile != NULL);
+
+            // write place holder value for output run length
+            size_t OutputRunLength = 0;
+            fwrite(&OutputRunLength, sizeof(size_t), 1, OutputRunFile);
+
+            // output: allocate one buffer page: stores ( [Key, Value] * PageRowsCount ) key value pairs
+            byte *OutputKeyValueBufferPage = (byte*)calloc(1, PageSize);
+            // index to write the output to in the buffer page
+            size_t CurrentOuputBufferRow = 0;
+            // bool ZeroFound = false;
+            // number of records accumulated in the buffer
+            size_t TotalAccumulatedRowsInCurrentOuputBuffer = 0; 
+
+
+            // int TotalRows = 0;
+            while (PriorityQueue.getSize() != 0) {
+                // get the last key and value in output buffer 
+                byte* CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                value_t *CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                
+                // page/run number of minimum value
+                pagenumbertype MinRun = PriorityQueue.pop();
+
+                // get the key from run
+                byte* MinRunKey = getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize);
+                value_t* MinRunValue = getValueFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize);
+
+                #ifdef DEBUG
+                // printf("MinRun : %d\n", MinRun);
+                // printf("Key : ");
+                // print_key(MaskSum, MinRunKey);
+                // printf("\n");
+                // printf("MinRunValue : %lld\n", *MinRunValue);
+                #endif
+
+                // // special condition to check if key '0' has been found so far in the buffer page
+                // if (memoryIsAllZeroes(MinRunKey, KeySize)) { ZeroFound = true; } 
+
+                // compare keys
+                if (memcmp(CurrentOuputKey, MinRunKey, KeySize) == 0) {
+                    // don't increment, add the values
+                    *CurrentOutputValue += *MinRunValue;
+                } else {
+                    // if output buffer is full write it to the file
+                    if (CurrentOuputBufferRow + 1 == PageRowsCount) {
+                        #ifdef DEBUG
+                        printf("\nOutput Block\n");
+                        printKeyValuePairsFromKeyValArray(PageRowsCount, MaskSum, KeySize, ValueSize, OutputKeyValueBufferPage);
+                        #endif
+                        fwrite(OutputKeyValueBufferPage, KeySize + ValueSize, PageRowsCount, OutputRunFile);
+                        OutputRunLength += PageRowsCount;
+                        memset(OutputKeyValueBufferPage, 0, PageSize);
+                        
+                        CurrentOuputBufferRow = 0;
+                        TotalAccumulatedRowsInCurrentOuputBuffer = 0;
+
+                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                    }
+                    // don't incement if it's the first value being written to the buffer
+                    else if (TotalAccumulatedRowsInCurrentOuputBuffer != 0) {
+                        CurrentOuputBufferRow++;
+                        
+                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                    }  
+                    *CurrentOutputValue = *MinRunValue;
+                    memcpy(CurrentOuputKey, MinRunKey, KeySize);
+                }
+
+                // update the data structures after writing the input to the output buffer
+                TotalAccumulatedRowsInCurrentOuputBuffer++;
+                *(CurrentRowInInputBuffer + MinRun) += 1;
+
+                // fetch next block for the input run if all rows in the buffer are processed
+                if (*(CurrentRowInInputBuffer + MinRun) == *(TotalRowsInInputBuffer + MinRun)) {
+                    // update remaining rows to read in the run
+                    *(RemainingRowsInInputRuns + MinRun) -= *(TotalRowsInInputBuffer + MinRun);
+
+                    // determine the number of rows to read into the buffer from the run
+                    size_t RowsToRead = std::min(*(RemainingRowsInInputRuns + MinRun), PageRowsCount);
+                    memcpy(TotalRowsInInputBuffer + MinRun, &RowsToRead, sizeof(size_t));
+
+                    if (RowsToRead > 0) {
+                        // read the page 
+                        fread(InputKeyValueBufferPages + MinRun * PageSize, KeySize + ValueSize, RowsToRead, FilePointers[MinRun]);
+
+                        // update the current row to read
+                        *(CurrentRowInInputBuffer + MinRun) = 0;
+
+                        // push the next element to the priority queue
+                        PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize), MinRun);
+                    }
+                } else { // implies  -->  *(CurrentRowInInputBuffer + MinRun) < *(TotalRowsInInputBuffer + MinRun)
+                    // printf("priority Queue Push\n");
+                    // push the next element to the priority queue
+                    PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize), MinRun);
+                }
+            }
+
+            // remiander of the output is written to the file
+            fwrite(OutputKeyValueBufferPage, KeySize + ValueSize, CurrentOuputBufferRow + 1, OutputRunFile);
+            OutputRunLength += CurrentOuputBufferRow + 1;
+            #ifdef DEBUG
+            printf("\nOutput Block\n");
+            printKeyValuePairsFromKeyValArray(CurrentOuputBufferRow + 1, MaskSum, KeySize, ValueSize, OutputKeyValueBufferPage);
+            #endif
+        
+            // closing files and deallocating memory
+            for (int run = 0; run < NumberOfInputRuns; run++) {
+                fclose(FilePointers[run]);
+            }
+
+            rewind(OutputRunFile);
+            fwrite(&OutputRunLength, sizeof(size_t), 1, OutputRunFile);
+            fclose(OutputRunFile);
+
+            //free(FilePointers);
+            free(RemainingRowsInInputRuns);
+            free(InputKeyValueBufferPages);
+
+            // increment the output run number
+            CurrentOutputRun++;
+        } // new run should be produced before this
+        
+
+        NumberOfInputRuns = CurrentOutputRun; 
+        // update current pass
+        CurrentPass = NextPass;
     }
-
-        // while (number of runs in the previous pass > 1):
-        //     while there are runs to be merged from the previous pass:
-        //         Choose next B - 1 runs.
-        //         Read each run into an input buffer; page at a time with double buffering.
-        //         Merge the runs and write to the output buffer;
-        //         write output buffer to disk one page at a time.
-
 }

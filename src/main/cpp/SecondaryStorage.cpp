@@ -1,4 +1,5 @@
 #include "SecondaryStorage.h"
+#include "ByteQuickSort.h"
 
 void writeBaseCuboid(std::string CubeID, std::pair<byte[], long> KeyValuePairs[]) {
     
@@ -66,7 +67,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
         for (size_t i = 0; i<BufferRowsCount; i++) { 
             printf("Col Key: ");
             for(int j = MaskSum-1; j >= 0; j--)
-                print_column_bit(i, getColumn(IntermediateKeyStore, j, BufferColumnSize));
+                printColumnBit(i, getColumn(IntermediateKeyStore, j, BufferColumnSize));
             printf("\tValue: %lld\n", IntermediateValStore[i]);
         }
         printf("BREAK\n");
@@ -105,7 +106,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
         printf("Int Key: %d", i);
         // printf("\tKey: ");
         // for(int j = DestinationKeyBits-1; j >= 0; j--)
-        //     print_column_bit(i, getColumn(DestinationKeyStore, j, DestinationColumnSize));
+        //     printColumnBit(i, getColumn(DestinationKeyStore, j, DestinationColumnSize));
         printf("\tValue: %lld \n",  DestinationValStore[i]);
     }
     #endif
@@ -171,8 +172,8 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
 
         // sorting
         #ifdef DEBUG
-        printf("\nUnsorted Keys\n");
-        printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
+        // printf("\nUnsorted Keys\n");
+        // printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
         #endif
 
         // sort the Key and Value Arrays
@@ -185,8 +186,8 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
         free(IntermediateKeyStore);
 
         #ifdef DEBUG
-        printf("\nSorted Keys\n");
-        printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
+        // printf("\nSorted Keys\n");
+        // printKeyValuePairs(BufferRowsCount, MaskSum, DestinationKeySize, KeysArray, IntermediateValStore);
         #endif
 
         // merge the keys currently in the buffer and write them to a new Key Value Array that has key value pairs together
@@ -197,12 +198,20 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
         free(KeysArray); free(IntermediateValStore);
 
         #ifdef DEBUG
-        printf("\nMerged Keys\n");
-        printKeyValuePairsFromKeyValArray(NewArrayLength, MaskSum, DestinationKeySize, ValueSize, KeyValueArray);
+        // printf("\nMerged Keys\n");
+        // printKeyValuePairsFromKeyValArray(NewArrayLength, MaskSum, DestinationKeySize, ValueSize, KeyValueArray);
         #endif
 
-        // write temporary runs to disk
-        std::string TempRunFileName = TempRunFileNamePrefix + std::to_string(i) + TempRunFileNameSuffix;
+        // write the runs to the disk
+        /* 
+        ArrayLength
+        Key Value
+        Key Value
+        Key Value
+        ...
+        */
+        // '0_' for the 0 th pass
+        std::string TempRunFileName = TempRunFileNamePrefix + "0_" + std::to_string(i) + TempRunFileNameSuffix;
 
         FILE* TempRunFle;
         TempRunFle = fopen (TempRunFileName.c_str(), "wb");
