@@ -72,7 +72,7 @@ object Experimenter {
         |\begin{tabular}{|c|c|c|c|c|c|}
         |\hline
         |""".stripMargin +
-        "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Ovrhd.") + "&" + split("SMS \\\\ Ovrhd.") + " \\\\ \n \\hline \n")
+        "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Overhead.") + "&" + split("SMS \\\\ Overhead.") + " \\\\ \n \\hline \n")
     val maxDNYC = 30
     val maxDSSB = 30
     val params = List(
