@@ -543,7 +543,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
       }
     }
   }
@@ -586,7 +586,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize ")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
       }
     }
   }
