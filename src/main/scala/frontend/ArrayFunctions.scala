@@ -312,7 +312,14 @@ object ArrayFunctions {
     (xybar/xxbar, ybar - (xybar/xxbar)*xbar) //compute slope and intercept
   }
 
-  def ~=(x: Double, y: Double, precision: Double) = {
+  /**
+   * util function to evaluate the slope between two points
+   * @param x point at time x
+   * @param y point at index x+1
+   * @param precision value up to which the slope between 2 points is considered flat
+   * @return 0 if the slope is flat, -1 if it is decreasing and 1 if it is increasing
+   */
+  private def ~=(x: Double, y: Double, precision: Double) = {
     if ((x - y).abs < precision) { //not increasing nor decreasing (or not much
       0
     } else if ((x - y) > 0) { //decreasing greatly
@@ -322,15 +329,18 @@ object ArrayFunctions {
     }
   }
 
+  /**
+   * counts the number of monoticity breaks in a Seq of values
+   * @param items the seq considered
+   * @param tolerance value up to which it is not considered a monotonicity break (sort of smoothing)
+   * @return number of monotonicity breaks
+   */
   def findMonotonicityBreaks(items: Seq[Double], tolerance: Double): Int = {
     items.sliding(2). // two items at a time // remove any equalities
       map{p => ~=(p(0), p(1), tolerance)}. // get -1 and 1 values; must have 2 values; add 'smoothing' tolerance
       sliding(2). // take *these* two at a time
-      count{p =>
-        println(p)
-        p.size == 2 && (p(0) != p(1) && p(0) != 0 && p(1) != 0)}
-
-  } // count when the differ
+      count{p => p.size == 2 && (p(0) != p(1) && p(0) != 0 && p(1) != 0)}
+  }
 
 
 }

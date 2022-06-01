@@ -4,7 +4,6 @@ import combinatorics.Combinatorics.comb
 import core.SolverTools._
 import core.solver.MomentSolverAll
 import core.solver.Strategy._
-import frontend.TUPLES_PREFIX
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
@@ -212,11 +211,18 @@ object DemoTxt {
       str1.toString.equals("India") && str2.toString.toInt == 1
     }
 
-    println(userCube.queryDimensionMonotonic(("Region", 4), null, MOMENT, 1.0))
-    println(userCube.queryDimensionMonotonic(("difficulty", 4), null, MOMENT, 1.0))
+    def transformForGroupBy(src : String): String = {
+      src match {
+        case "Europe" | "Italy" => "Occidental"
+        case _ => "Non-Occidental"
+      }
+    }
+    println(userCube.queryDimension(("Region", 4), null, MOMENT, transformForGroupBy))
+    println(userCube.queryDimension(("difficulty", 4), null, MOMENT))
 
     val mockSeq = Seq((1572004656619D, 51), (1572004677789D, 51), (1572004686013D, 52), (1572004693209D, 53), (1572004698606D, 54), (1572004707601D,  55),
       (1572004726618D, 55))
+
     println(ArrayFunctions.LinearRegression(mockSeq.map(x => (x._1, x._2.toDouble))))
   }
 

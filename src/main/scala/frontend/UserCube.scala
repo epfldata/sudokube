@@ -82,7 +82,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param method the method of the query, naive or by moment
    * @return
    */
-  def queryDimension(q: (String, Int), aggregateDim: String, method: Method): Seq[(String, Double)] = {
+  def queryDimension(q: (String, Int), aggregateDim: String, method: Method, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
     val queryBits = List(accCorrespondingBits(q._1, q._2, 0, Nil))
     val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, 0, Nil))
     val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
@@ -92,16 +92,18 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       case MOMENT => resultArray = momentMethod(q_sorted)
     }
     val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
-      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
+      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0").map(x =>
+      (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2))
+
     var res: Map[String, Double] = null
     if (aggregateDim == null) { //in this case simply take the fact
-      res = resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+      res = resultArrayTuple.groupBy(x => x._1).map(x =>
         (x._1, x._2.foldLeft(0.0)((acc, x) =>
           acc + x._2.toString.toDouble
         ))
       )
     } else {
-      res = resultArrayTuple.groupBy(x => ArrayFunctions.findValueOfPrefix(x._1, q._1, true)).map(x =>
+      res = resultArrayTuple.groupBy(x => x._1).map(x =>
         (x._1, x._2.foldLeft(0.0)((acc, x) =>
           acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false).toDouble
         ))
@@ -121,10 +123,19 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @return
    */
   def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
-    println(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble))
-    println(ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance))
     ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) == 0
   }
+
+  /**
+   * function used to check if the facts obtained with query_dimension has a double peak (i.e. has at least 3 monotonicity breaks)
+   * @param tolerance threshold after which the map is not montonic anymore
+   * @return
+   */
+  def queryDimensionDoublePeak(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
+    ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) >= 3
+  }
+
+
   /**
    * util method to solve query with moment method
    *
