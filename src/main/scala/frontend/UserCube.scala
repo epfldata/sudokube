@@ -121,15 +121,9 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @return
    */
   def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
-    isMonotonic(queryDimension(q, aggregateDim, method).asInstanceOf[Map[String, Any]].values.map(x => x.toString.toDouble), tolerance)
-  }
-
-  def isMonotonic(arr: Iterable[Double], tolerance: Double): Boolean = {
-    if (arr.isEmpty) {
-      true
-    } else {
-      (arr, arr.tail).zipped.forall { case (a, b) => a <= b + tolerance } || (arr, arr.tail).zipped.forall { case (a, b) => a + tolerance >= b }
-    }
+    println(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble))
+    println(ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance))
+    ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) == 0
   }
   /**
    * util method to solve query with moment method

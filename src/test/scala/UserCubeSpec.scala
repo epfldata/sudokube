@@ -94,14 +94,14 @@ class UserCubeSpec extends FlatSpec with Matchers{
 
   it should "work for querying a dimension" in {
     val userCube = fixture.userCube
-    var result = userCube.queryDimension(("name", 2), "difficulty", MOMENT).asInstanceOf[Map[String, Any]]
-    assert(result.values sameElements  List(10.0, 15.0, 10.0, 3.0))
-    assert(result.keys sameElements Set("name=(Healthy Chicken Korma, Truffes au chocolat)", "name=(NULL, Panna Cotta)", "name=(Black Chana Masala, Mousse " +
-      "au chocolat)", "name=(Biscuits de Noel aux amandes, Tagliatelles à la citrouille)"))
-    result = userCube.queryDimension(("name", 2), null, MOMENT).asInstanceOf[Map[String, Any]]
-    assert(result.values sameElements  List(8.0, 7.0, 8.0, 17.0))
-    assert(result.keys sameElements Set("name=(Healthy Chicken Korma, Truffes au chocolat)", "name=(NULL, Panna Cotta)", "name=(Black Chana Masala, Mousse " +
-      "au chocolat)", "name=(Biscuits de Noel aux amandes, Tagliatelles à la citrouille)"))
+    var result = userCube.queryDimension(("name", 2), "difficulty", MOMENT).asInstanceOf[Vector[(String, Any)]]
+    assert(result.map(x => x._2) sameElements  List(10.0, 15.0, 10.0, 3.0))
+    assert(result.map(x => x._1) sameElements Set("(Healthy Chicken Korma, Truffes au chocolat)", "(NULL, Panna Cotta)", "(Black Chana Masala, Mousse " +
+      "au chocolat)", "(Biscuits de Noel aux amandes, Tagliatelles à la citrouille)"))
+    result = userCube.queryDimension(("name", 2), null, MOMENT).asInstanceOf[Vector[(String, Any)]]
+    assert(result.map(x => x._2) sameElements  List(8.0, 7.0, 8.0, 17.0))
+    assert(result.map(x => x._1) sameElements Set("(Healthy Chicken Korma, Truffes au chocolat)", "(NULL, Panna Cotta)", "(Black Chana Masala, Mousse " +
+      "au chocolat)", "(Biscuits de Noel aux amandes, Tagliatelles à la citrouille)"))
   }
 
   it should "work for aggregating and slicing on different values" in {

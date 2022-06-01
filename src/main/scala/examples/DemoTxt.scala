@@ -203,17 +203,23 @@ object DemoTxt {
     //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
     //println(array._3.mkString("Array(", ", ", ")"))
 
-    /*val array = userCube.query(List(("Region", 2, List("Europe", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]]
+    val array = userCube.query(List(("Region", 2, List("Europe", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")"))
-    println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))*/
+    //println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))
 
     def binaryFunction(str1: Any, str2: Any): Boolean = {
       str1.toString.equals("India") && str2.toString.toInt == 1
     }
 
-    println(userCube.queryDimensionMonotonic(Array(18, 15, 10, 11), 1))
+    println(userCube.queryDimensionMonotonic(("Region", 4), null, MOMENT, 1.0))
+    println(userCube.queryDimensionMonotonic(("difficulty", 4), null, MOMENT, 1.0))
 
+    val mockSeq = Seq((1572004656619D, 51), (1572004677789D, 51), (1572004686013D, 52), (1572004693209D, 53), (1572004698606D, 54), (1572004707601D,  55),
+      (1572004726618D, 55))
+    println(ArrayFunctions.LinearRegression(mockSeq.map(x => (x._1, x._2.toDouble))))
   }
+
 
   def shoppen() = {
     // exploration example -- unknown file
