@@ -185,7 +185,7 @@ object DemoTxt {
   def cooking(): Unit = {
 
 
-    val userCube = UserCube.createFromJson("recipes.json", "rating")
+    val userCube = UserCube.createFromJson("testing_database.json", "rating")
 
     //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
     /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)

@@ -1,0 +1,51 @@
+[
+  { "name": "leek and bacon quiche",
+    "Type": "Dish",
+    "Region": "Europe",
+    "rating": 4.8,
+    "price": "cheap",
+    "difficulty": 1,
+    "time": 60,
+    "last_comment": "07.05.2022"
+  },
+
+  { "name": "pan-fried aubergines",
+    "Type": "Side",
+    "Region": "France",
+    "rating": 4.6,
+    "price": "middle",
+    "difficulty": 3,
+    "time": 40,
+    "last_comment": "29.06.2020"
+  },
+
+  { "name": "chestnut mousse",
+    "Type": "Dessert",
+    "Region": "France",
+    "rating": 4.9,
+    "price": "cheap",
+    "difficulty": 2,
+    "time": 60,
+    "last_comment": "29.09.2019"
+  },
+
+  { "name": "pork ribs",
+    "Type": "Dish",
+    "Region": "France",
+    "rating": 4.7,
+    "price": "cheap",
+    "difficulty": 1,
+    "time": 75,
+    "last_comment": "27.01.2022"
+  },
+
+  { "name": "custard",
+    "Type": "Dessert",
+    "Region": "France",
+    "rating": 4.6,
+    "price": "cheap",
+    "difficulty": 3,
+    "time": 40,
+    "last_comment": "01.06.2022"
+  }
+]

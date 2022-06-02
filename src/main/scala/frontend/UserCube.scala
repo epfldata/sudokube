@@ -284,8 +284,8 @@ object UserCube {
    */
   def createFromJson(filename: String, fieldToConsider: String): UserCube = {
     val sch = new schema.DynamicSchema
-    val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Int].toLong)
-    val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+    val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Double].toLong)
+    val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4) //8, 4, 4 numbers can be optimized
     val dc = new DataCube(matScheme)
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
     new UserCube(dc, sch)
