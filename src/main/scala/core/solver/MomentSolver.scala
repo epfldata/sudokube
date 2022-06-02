@@ -39,7 +39,7 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   }
   val momentsToAdd = new ListBuffer[(Int, Double)]()
 
-  var solution = Array.fill(N)(0.0)
+  var solution = transformer.getValues(moments)
 
   def dof = N - knownSet.size
 

@@ -191,7 +191,7 @@ object SSBGen {
     List(
       (15, 14)
     ).map { case (logN, minD) =>
-      val maxD = 25
+      val maxD = 30 // >15+14, so never passes threshold
       val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")
       dc2.build()
       dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")

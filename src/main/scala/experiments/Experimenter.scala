@@ -27,7 +27,7 @@ object Experimenter {
     val ms = if (isSMS) "sms3" else "rms3"
     val cg = NYC
     val maxD = 30
-    val nycmaxD = 26
+    val nycmaxD = 30
     val cubes = List(
       s"NYC_${ms}_13_10_$nycmaxD",
       s"NYC_${ms}_15_6_$nycmaxD",
@@ -51,10 +51,10 @@ object Experimenter {
     }
     val sch = cg.schema()
     val total = if (isSMS) {
-      sch.root.numPrefixUpto(maxD + 1).map(_.toDouble).toList
+      sch.root.numPrefixUpto(maxD).map(_.toDouble).toList
     }
     else {
-      (0 to maxD + 1).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
+      (0 to maxD).map { i => Combinatorics.comb(sch.n_bits, i).toDouble }.toList
     }
     fileout.println(s"Total," + total.mkString(","))
   }
@@ -72,9 +72,9 @@ object Experimenter {
         |\begin{tabular}{|c|c|c|c|c|c|}
         |\hline
         |""".stripMargin +
-        "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Ovrhd.") + "&" + split("SMS \\\\ Ovrhd.") + " \\\\ \n \\hline \n")
-    val maxDNYC = 26
-    val maxDSSB = 25
+        "Dataset & " + split("Base \\\\ Size") + "& $n$ & " + "$d_{\\min}$ & " + split("RMS \\\\ Overhead.") + "&" + split("SMS \\\\ Overhead.") + " \\\\ \n \\hline \n")
+    val maxDNYC = 30
+    val maxDSSB = 30
     val params = List(
       "NYC" -> s"13_10_$maxDNYC",
       "NYC" -> s"15_6_$maxDNYC",
@@ -122,7 +122,7 @@ object Experimenter {
   def lpp_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
     val cg = SSB(100)
 
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -154,7 +154,7 @@ object Experimenter {
   def moment_query_dimensionality(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
 
     val cg = SSB(100)
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -195,7 +195,7 @@ object Experimenter {
       (17, 10)
     )
     val sch = cg.schema()
-    val maxD = 26
+    val maxD = 30
     val qs = 10
     val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
     val ms = (if (isSMS) "sms3" else "rms3")
@@ -335,7 +335,7 @@ object Experimenter {
     //println("Error = " + error(actual, result))
 
     val cg = SSB(100)
-    val param = "15_14_25"
+    val param = "15_14_30"
     val sch = cg.schema()
 
     List(true, false).map { isSMS =>
@@ -525,7 +525,7 @@ object Experimenter {
     queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year/2;c_city/4;s_city/4"
     queries += List(year, snation, category) -> "d_year;s_nation;p_category"
 
-    val param = "15_14_25"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -543,7 +543,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
       }
     }
   }
@@ -556,18 +556,20 @@ object Experimenter {
     val year = encMap("Issue Date").asInstanceOf[StaticDateCol].yearCol.bits
     val month = encMap("Issue Date").asInstanceOf[StaticDateCol].monthCol.bits
     val state = encMap("Registration State").asInstanceOf[LazyMemCol].bits
-    val code = encMap("Violation Code").asInstanceOf[LazyMemCol].bits
+    val make = encMap("Vehicle Make").asInstanceOf[LazyMemCol].bits
+    val color = encMap("Vehicle Color").asInstanceOf[LazyMemCol].bits
     val ptype = encMap("Plate Type").asInstanceOf[LazyMemCol].bits
     val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
+    val lawsect = encMap("Law Section").asInstanceOf[LazyMemCol].bits
 
     val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
     queries += List(year, month) -> "issue_date_year;issue_date_month"
-    queries += List(year, state) -> "issue_date_year;registration_state"
-    queries += List(state, code) -> "registration_state;violation_code"
-    queries += List(code, ptype) -> "violation_code;plate_type"
+    queries += List(year.drop(1), state) -> "issue_date_year/2;registration_state"
+    queries += List(ptype.drop(2), color.drop(5)) -> "plate_type/4;vehicle_color/32"
+    queries += List(make.drop(6), lawsect) -> "vehicle_make/64;law_section"
     queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
 
-    val param = "15_14_26"
+    val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -584,7 +586,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize ")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize bits)")
+        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
       }
     }
   }
@@ -665,27 +667,24 @@ object Experimenter {
         cuboid_distribution(false)
         cuboid_distribution(true)
       case "Tab1" => storage_overhead()
-      case "Fig8" =>
+      case "Fig8" | "lpp" =>
         lpp_query_dimensionality(false)
         lpp_query_dimensionality(true)
-      case "Fig9" =>
+      case "Fig9" | "qdims" =>
         moment_query_dimensionality(strategy, false)
         moment_query_dimensionality(strategy, true)
-      case "Fig10" =>
+      case "Fig10" | "matparams" =>
         moment_mat_params(strategy, false)
         moment_mat_params(strategy, true)
-      case "Fig11" =>
+      case "Fig11" | "microbench" =>
         mb_dims()
         mb_stddev()
         mb_prob()
       case "schema" =>
         schemas()
       case "moment01" => moment01()
-      case "manualSSB" =>
-        //manualSSB(strategy, false)
+      case "Fig12" | "manual" =>
         manualSSB(strategy, true)
-      case "manualNYC" =>
-        //manualNYC(strategy, false)
         manualNYC(strategy, true)
       case "scaling" => solverScaling(false)
       case _ => debug()
