@@ -1,13 +1,11 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import breeze.numerics.log
 import core.SolverTools.error
 import core.solver.MomentSolverAll
 import core.solver.Strategy._
 import org.junit.Test
 import util.{Bits, Profiler}
 
-import java.lang
 import scala.util.Random
 
 /**
@@ -16,7 +14,7 @@ import scala.util.Random
  * @author Zhekai Jiang
  */
 class VanillaIPFTest {
-  private val eps = 1e-5
+  private val eps = 1e-3
 
   @Test
   def testAdd(): Unit = {
@@ -227,14 +225,13 @@ class VanillaIPFTest {
 //          yield (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs / distribution(i)
 //      ).max
 //    )
-    println("Max difference = " +
-      (
-        for (i <- 0 until 1 << numDimensions)
-          yield (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs
-        ).max
+
+    println("Max difference out of total sum = " +
+      (0 until 1 << numDimensions).map(i => (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs).max
     )
-    println("Moment Entropy = " + - ( for (p <- momentSolver.solution) yield if (p != 0) p * log(p) else 0 ).sum )
-    println("IPF Entropy = " + - ( for (p <- vanillaIPFSolver.totalDistribution) yield p * log(p) ).sum )
+
+    println("Moment Entropy = " + momentSolver.solution.map(p => if (p != 0) -p * math.log(p) else 0).sum )
+    println("Vanilla IPF Entropy = " + vanillaIPFSolver.totalDistribution.map(p => if (p != 0) - p * math.log(p) else 0).sum )
 
     Profiler.print()
   }

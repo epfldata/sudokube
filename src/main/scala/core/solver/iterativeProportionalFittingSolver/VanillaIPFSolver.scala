@@ -4,6 +4,7 @@ import util.Bits
 
 /**
  * Vanilla version of linear proportional fitting.
+ * TODO: Confirm about normalization
  * @author Zhekai Jiang
  * @param numDimensionsQueried Total number of dimensions queried.
  */
@@ -11,7 +12,7 @@ class VanillaIPFSolver(val numDimensionsQueried: Int) {
   /* private */ val N: Int = 1 << numDimensionsQueried
   /* private */ var clusters: List[Cluster] = List[Cluster]()
   var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
-  /* private */ val convergenceThreshold: Double = 1e-5
+  /* private */ val convergenceThreshold: Double = 1e-3
 
   /**
    * Add a new known marginal distribution as a cluster.
@@ -30,9 +31,12 @@ class VanillaIPFSolver(val numDimensionsQueried: Int) {
   def solve(): Array[Double] = {
     // TODO: confirm about delta calculation and termination condition
     var totalDelta: Double = 0.0
+    var numIterations = 0
     do {
       totalDelta = updateDistribution()
-    } while (totalDelta >= convergenceThreshold)
+      numIterations += 1
+    } while (totalDelta >= convergenceThreshold * N * clusters.length * totalDistribution.sum)
+    println(s"\t\tnumber of iterations: $numIterations, log N: $numDimensionsQueried")
     totalDistribution
   }
 
