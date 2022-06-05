@@ -736,15 +736,13 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
 
     import Util.intersect
 
-    proj_trie.intersect2(qL, List(), max_fetch_dim)
+    proj_trie.intersect(qL, List(), max_fetch_dim)
     //println("TrieIntersect HM accesses0 : " + proj_trie.hm_accesses_0)
     //println("TrieIntersect HM accesses1 : " + proj_trie.hm_accesses_1)
-    val restest = proj_trie.hm
-
     val trie = new SetTrieOnline()
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
-    restest.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
+    proj_trie.hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
       if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
         val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
         val mask = Bits.mk_list_mask(p, qBS)

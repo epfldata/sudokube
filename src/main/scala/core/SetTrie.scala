@@ -136,8 +136,7 @@ class SetTrieOnline() {
 class SetTrieIntersect() {
   val root = Node(-1)
   var hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
-  var hm_accesses_0 = 0
-  var hm_accesses_1 = 0
+  var hm_accesses = 0
 
   /**
    * Inserts a projection into the SetTrieIntersect
@@ -164,70 +163,35 @@ class SetTrieIntersect() {
 
   def intersect(s: List[Int], current_intersect: List[Int] = List(), max_fetch_dim: Int, n: Node = root): Unit = {
     if (n.isTerm && current_intersect.nonEmpty) {
-      val res = hm.get(current_intersect)
-      //println("A p " + n.full_p)
-      if(res.isDefined){
-        if(n.cheapest_term < res.get._1){
-          hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
-        }
-      } else {
-        hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
-      }
+      save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
     }
     s match {
-      case Nil => val res = hm.get(current_intersect)
-        //println("B p " + n.full_p)
-        if(res.isDefined){
-          if(hm(current_intersect)._2 == n.id){
-          }
-          if(n.cheapest_term < res.get._1){
-            hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
-          }
-        } else {
-          hm(current_intersect) = (n.cheapest_term, n.id, n.full_p)
-        }
+      case Nil => save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
       case h :: t =>
         val child = n.children.iterator
         var ce = n.b
         while (child.hasNext && n.cheapest_term <= max_fetch_dim) {
-
-
           val cn = child.next()
           ce = cn.b
           var new_h = h
           var new_t = t
-
-
           while (ce > new_h && new_t.nonEmpty) {
             new_h = new_t.head
             new_t = new_t.tail
           }
-
-
           if (ce < new_h) {
             intersect(new_h :: new_t, current_intersect, max_fetch_dim, cn)
           } else if (ce == new_h) {
             intersect(new_t, current_intersect :+ new_h, max_fetch_dim, cn)
           } else {
-            val res = hm.get(current_intersect)
-            //println("C p " + cn.full_p)
-            if(res.isDefined){
-              if(hm(current_intersect)._2 == cn.id){
-              }
-              if(cn.cheapest_term < res.get._1){
-                hm(current_intersect) = (cn.cheapest_term, cn.id, cn.full_p)
-              }
-            } else {
-              hm(current_intersect) = (cn.cheapest_term, cn.id, cn.full_p)
-            }
+            save_if_cheap(current_intersect, cn.cheapest_term, cn.id, cn.full_p)
           }
-
-
         }
     }
   }
 
   def save_if_cheap(ab0: List[Int], cost: Int, id: Int, p: List[Int]): Unit = {
+    hm_accesses += 1
     val res = hm.get(ab0)
     if(res.isDefined){
       if(cost < res.get._1){
@@ -244,7 +208,6 @@ class SetTrieIntersect() {
       var found = false
       if(n.cheapest_term <= max_fetch_dim) {
         if (n.isTerm && current_intersect.nonEmpty) {
-          //hm_accesses_0 += 1
           save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
           found = true
         }
@@ -270,7 +233,6 @@ class SetTrieIntersect() {
             continue = false
         }
         if(!found){
-          //hm_accesses_1 += 1
           save_if_cheap(current_intersect, n.cheapest_term, n.id, n.full_p)
         }
       }
