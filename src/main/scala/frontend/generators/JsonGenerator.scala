@@ -30,46 +30,157 @@ object JsonGenerator {
             "wanadoo.fr", 
             "orange.fr"
         );
-
-        val jsonWriter = new JsonWriter(List(SimpleField("name", NameGenerator()), SimpleField("email", EmailGenerator())), 4)
-       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.DATE))), 2)
-       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.HOUR))), 3)
-      //  jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.MINUTE))), 4)
-       // jsonWriter.modifySchema(List(SimpleField("dateY", DateGenerator(format = Format.SECONDS))), 5)
-        jsonWriter.gen("random.json")
+        new JsonWriter().gen(10, "random.json", 5)
   }
 }
 
-class JsonWriter(var currentSchema : List[Field], val numberOfLign : Int) {
-
-    var mapSchema = scala.collection.mutable.Map[Int,List[Field]]()
-    mapSchema.put(0, currentSchema)
+class JsonWriter() {
     
-    def gen(filename : String) : Unit = {
+    def gen(numberOfLign : Int, filename : String, initSizeOfSchema : Int) : Unit = {
 
         val mapper = new ObjectMapper() with ScalaObjectMapper
         mapper.registerModule(DefaultScalaModule)
         val file = new File(filename)
         val fileWriter = new FileWriter(filename)
         val sequenceWriter = mapper.writerWithDefaultPrettyPrinter().writeValuesAsArray(fileWriter)
+        var currentSchema : List[Field] = initSchema(initSizeOfSchema)
+        sequenceWriter.write(convert(currentSchema))
 
-        for(i <- 0 to numberOfLign - 1) {
-            if(mapSchema.keySet.contains(i)){
-                currentSchema = mapSchema.getOrElse(i, currentSchema);
-            }
-            val map = convert()
+        for(i <- 1 to numberOfLign - 1) {
+            val schema : List[Field] = modifySchema(currentSchema)
+            val map = convert(schema)
+            currentSchema = schema
             sequenceWriter.write(map)
         }
         sequenceWriter.close()
     }
 
-    def modifySchema(newSchema : List[Field], lignOfModification : Int) : Unit = {
-        if(lignOfModification >= 0 && lignOfModification < numberOfLign){
-            mapSchema.put(lignOfModification, newSchema)
+    def initSchema(initSizeOfSchema : Int) : List[Field] = {
+        var list : List[Field] = List()
+        var i = 1
+        while(i <= initSizeOfSchema){
+            val random : Int = new IntGenerator(0, 10).generate()
+            val key : String = generateKey(list)
+            if(random <= 1 && initSizeOfSchema-i > 1) {
+                val j : Int = new IntGenerator(1, initSizeOfSchema-i).generate()
+                list = list ++ List(new NestedJson(key, initSchema(j)))
+                i = i + j
+            }else {
+                val field : Field = initField(key)
+                list = list ++ List(field)
+                i = i + 1
+            }
+        }
+        list
+    }
+
+    def initField(key : String) : Field = {
+        val randomType = new IntGenerator(0,1).generate()
+                
+        if(randomType == 0){
+            new SimpleFieldInt(key, new IntGenerator(0, 2022))
+        }else {
+            val randomString = new IntGenerator(0, 6).generate()
+            randomString match {
+                case 0 => new SimpleField(key, new EmailGenerator())
+                case 1 => new SimpleField(key, new NameGenerator())
+                case 2 => new SimpleField(key, new DateGenerator())
+                case 3 => new SimpleField(key, new phoneNumberGenerator())
+                case 4 => new SimpleField(key, new filePathGenerator())
+                case 5 => new SimpleField(key, new filePathGenerator(lineNumber = new IntGenerator(1, 500).generate()))
+                case _ => new SimpleField(key, new StringGenerator())
+            }
+        }
+                
+    }
+
+    def containsKey(l : List[Field], k : String) : Boolean = {
+        if(l.isEmpty) {
+            false
+        } else if(l.head.getKey().equals(k)) {
+            true
+        } else {
+            containsKey(l.tail, k)
         }
     }
 
-    private def convert() = {
+    def modifySchema(currentSchema : List[Field]) : List[Field] = {
+        val randomChanging = new IntGenerator(0, 4).generate()
+        if(randomChanging <= 1){
+            val random = new IntGenerator(0, 2).generate()
+            if(currentSchema.isEmpty || currentSchema.length == 1){
+                addField(currentSchema)
+            }else {
+                random match {
+                    case 0 => addField(currentSchema)
+                    case 1 => removeField(currentSchema)
+                    case 2 => renameField(currentSchema)
+                }
+            }
+        }else {
+            currentSchema
+        }
+    }
+
+    def renameField(currentSchema : List[Field]) : List[Field] = {
+        val random = new IntGenerator(0, currentSchema.length-1).generate()
+        var list : (List[Field], List[Field]) = currentSchema.splitAt(random)
+        list._2.head match {
+            case NestedJson(key, value) => {
+                val newField = new NestedJson(key, renameField(value))
+                list._1 ++ List(newField) ++ list._2.tail
+            }
+            case SimpleField(key, value) => {
+                val k : String = generateKey(currentSchema)
+                list._1 ++ List(new SimpleField(k, value)) ++ list._2.tail
+            }
+            case SimpleFieldDouble(key, value) => {
+                val k : String = generateKey(currentSchema)
+                list._1 ++ List(new SimpleFieldDouble(k, value)) ++ list._2.tail
+            }
+            case SimpleFieldFloat(key, value) => {
+                val k : String = generateKey(currentSchema)
+                list._1 ++ List(new SimpleFieldFloat(k, value)) ++ list._2.tail
+            }
+            case SimpleFieldInt(key, value) => {
+                val k : String = generateKey(currentSchema)
+                list._1 ++ List(new SimpleFieldInt(k, value)) ++ list._2.tail
+            }
+        }
+    }
+
+    def generateKey(currentSchema : List[Field]) : String = {
+        val gkey : StringGenerator = new StringGenerator(10)
+        var k : String = ""
+        do {
+            k = gkey.generate()
+        }while(containsKey(currentSchema, k))
+        k
+    }
+
+    def addField(currentSchema : List[Field]) : List[Field] = {
+        val key : String = generateKey(currentSchema)
+        currentSchema ++ List(initField(key))
+    }
+
+    def removeField(currentSchema : List[Field]) : List[Field] = {
+        val random = new IntGenerator(0, currentSchema.length-1).generate()
+        var list : (List[Field], List[Field]) = currentSchema.splitAt(random)
+        list._2.head match {
+            case NestedJson(key, value) => {
+                val newList = removeField(value)
+                if(newList.isEmpty){
+                    list._1 ++ list._2.tail
+                }else{
+                    val newField = new NestedJson(key, newList)
+                    list._1 ++ List(newField) ++ list._2.tail
+                }
+            }
+            case _ => list._1 ++ list._2.tail
+        }
+    }
+
+    private def convert(currentSchema : List[Field]) = {
         val map = scala.collection.mutable.Map[String,Any]()
             for (f <- currentSchema) {
                 f match {
@@ -102,13 +213,15 @@ class JsonWriter(var currentSchema : List[Field], val numberOfLign : Int) {
 }
 
 
-abstract class Field
+abstract class Field(key : String) {
+    def getKey() : String = key
+}
 
-case class SimpleField(key : String, value : MyGenerator[String]) extends Field
-case class SimpleFieldInt(key : String, value : MyGenerator[Int]) extends Field
-case class SimpleFieldDouble(key : String, value : MyGenerator[Double]) extends Field
-case class SimpleFieldFloat(key : String, value : MyGenerator[Float]) extends Field
-case class NestedJson(key : String, value : List[Field]) extends Field
+case class SimpleField(key : String, value : MyGenerator[String]) extends Field(key : String)
+case class SimpleFieldInt(key : String, value : MyGenerator[Int]) extends Field(key : String)
+case class SimpleFieldDouble(key : String, value : MyGenerator[Double]) extends Field(key : String)
+case class SimpleFieldFloat(key : String, value : MyGenerator[Float]) extends Field(key : String)
+case class NestedJson(key : String, value : List[Field]) extends Field(key : String)
 
 
 abstract class MyGenerator[T]() {
@@ -346,17 +459,23 @@ case class IntGenerator(start : Int = 1, end : Int = 10) extends MyGenerator[Int
     }
 }
 
-case class phoneNumberGenerator() {
+case class phoneNumberGenerator() extends MyGenerator[String]{
       def generate() : String = {
         return RandomStringUtils.random(10, "1234567890")
     }
     
 }
-
-
-
-
-
-
-
-
+case class filePathGenerator(numberParent : Int = 2, extensionName : Seq[String] = Seq(".json", ".scala", ".txt", ".java"), lineNumber : Int = -1)  extends MyGenerator[String]{
+    def generate() : String = {
+        var filePath : String = "/"
+        for(i <- 1 until numberParent){
+            val generateName = NameGenerator()
+            filePath += generateName.generate() + "/"
+        }
+        filePath += NameGenerator().generate() + extensionName(Random.nextInt(extensionName.length))
+        if(lineNumber > 0){
+            filePath += ":" + lineNumber.toString()
+        }
+        filePath
+    }
+}
