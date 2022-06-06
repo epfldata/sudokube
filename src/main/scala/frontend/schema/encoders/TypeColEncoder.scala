@@ -42,8 +42,10 @@ class TypeColEncoder[T](init_size: Int = 1
                 "Date"
             else if(isValidURL(x)) 
                 "URL"
+            else if(isValidPathLineNumber(x))
+                "File Path:Line Number"
             else if(isValidPath(x))
-                "file"
+                "File Path"
             else if(isValidPhoneNumber(x)) 
                 "phone number"
             else
@@ -89,6 +91,22 @@ class TypeColEncoder[T](init_size: Int = 1
     def isValidPath(pathString : String): Boolean = {
         val r = "(.+(?=\\/))(\\/)(.+(?=\\.))(.*)".r
         return  r.unapplySeq(pathString).isDefined
+    }
+
+    def isValidPathLineNumber(file : String) : Boolean = {
+        val r = "(.+(?=\\/))(\\/)(.+(?=\\.))(.*)".r
+        if(r.unapplySeq(file).isDefined){
+            val index : Int = file.lastIndexOf(':')
+            if(index >= 0){
+                try{
+                    val subString : Int = file.substring(index+1).toInt
+                    return subString >= 0
+                } catch {
+                    case _ : Throwable => return false
+                }
+            }
+        }
+        false
     }
 
     def isValidPhoneNumber(numberString : String): Boolean = {
