@@ -2,14 +2,14 @@ package frontend
 
 
 case object TestLine {
-  def testLineOp(op: OPERATOR, splitString: Array[String], q_sorted: List[(String, List[String])]): Boolean = {
-    val newString = splitString.filter(x => q_sorted.map(y => y._1).contains(x.split("=")(0)))
-    if (q_sorted.isEmpty) {
+  def testLineOp(op: OPERATOR, splitString: Array[String], q_unsorted: List[(String, List[String])]): Boolean = {
+    val newString = splitString.filter(x => q_unsorted.map(y => y._1).contains(x.split("=")(0)))
+    if (q_unsorted.isEmpty) {
       return false
     }
     op match {
-      case AND => testLineAnd(newString.sortBy(string => string.toLowerCase), q_sorted, 0)
-      case OR => testLineOr(newString.sortBy(string => string.toLowerCase), q_sorted, 0)
+      case AND => testLineAnd(newString.sortBy(_.toLowerCase), q_unsorted.sortBy(_._1.toLowerCase), 0)
+      case OR => testLineOr(newString.sortBy(_.toLowerCase), q_unsorted.sortBy(_._1.toLowerCase), 0)
       case _ => false
     }
   }

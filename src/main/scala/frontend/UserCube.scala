@@ -116,19 +116,18 @@ class UserCube(val cube: DataCube, val sch: Schema) {
       case MOMENT => resultArray = momentMethod(q_sorted)
     }
     val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
-      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0").map(x =>
-      (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2))
+      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
 
     var res: Map[String, Double] = null
     if (aggregateDim == null) { //in this case simply take the fact
       res = resultArrayTuple.groupBy(x => x._1).map(x =>
-        (x._1, x._2.foldLeft(0.0)((acc, x) =>
+        (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2.foldLeft(0.0)((acc, x) =>
           acc + x._2.toString.toDouble
         ))
       )
     } else {
       res = resultArrayTuple.groupBy(x => x._1).map(x =>
-        (x._1, x._2.foldLeft(0.0)((acc, x) =>
+        (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2.foldLeft(0.0)((acc, x) =>
           acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false).toDouble
         ))
       )
@@ -136,7 +135,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     try {
       res.toSeq.sortBy(_._1.toDouble)
     } catch {
-      case e: NumberFormatException => res.toSeq
+      case e: NumberFormatException => res.toSeq.sortBy(_._1)
     }
   }
 

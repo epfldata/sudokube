@@ -136,7 +136,7 @@ object ArrayFunctions {
       sch.decode_dim(qV.flatten.sorted)
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
-        if (testLineOp(op, newValue.split(";").sorted, sliceV)) {
+        if (testLineOp(op, newValue.split(";"), sliceV)) {
           linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
         } else {
           left(permfBackqV(pair._2)) = newValue
