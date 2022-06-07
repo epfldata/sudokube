@@ -34,11 +34,11 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    */
   @tailrec
   final def accCorrespondingBits(field: String, thresh: Int, n: Int, acc: List[Int]): List[Int] = {
-    if (n < sch.n_bits && acc.size < thresh) {
+    if (n >= 0  && acc.size < thresh) {
       if (sch.decode_dim(List(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
-        accCorrespondingBits(field, thresh, n + 1, acc ::: List(n))
+        accCorrespondingBits(field, thresh, n - 1, acc ::: List(n))
       } else {
-        accCorrespondingBits(field, thresh, n + 1, acc)
+        accCorrespondingBits(field, thresh, n - 1, acc)
       }
     } else {
       acc
@@ -55,8 +55,8 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @return reconstructed matrix, with headers
    */
   def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: Operator, method: Method, resultForm: ResultForm): Any = {
-    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
-    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
+    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, sch.n_bits-1, Nil))
+    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, sch.n_bits-1, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
     var resultArray: Array[Any] = Array.empty
     method match {
@@ -83,7 +83,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @return
    */
   def queryDimension(q: (String, Int), aggregateDim: String, method: Method, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
-    val queryBits = List(accCorrespondingBits(q._1, q._2, 0, Nil))
+    val queryBits = List(accCorrespondingBits(q._1, q._2, sch.n_bits-1, Nil))
     val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, 0, Nil))
     val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
     var resultArray: Array[Any] = Array.empty
@@ -284,7 +284,7 @@ object UserCube {
    */
   def createFromJson(filename: String, fieldToConsider: String): UserCube = {
     val sch = new schema.DynamicSchema
-    val R = sch.read(filename, Some(fieldToConsider), _.asInstanceOf[Double].toLong)
+    val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
     val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4) //8, 4, 4 numbers can be optimized
     val dc = new DataCube(matScheme)
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))

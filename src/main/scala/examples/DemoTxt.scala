@@ -185,7 +185,7 @@ object DemoTxt {
   def cooking(): Unit = {
 
 
-    val userCube = UserCube.createFromJson("testing_database.json", "rating")
+    val userCube = UserCube.createFromJson("demo_recipes.json", "rating")
 
     //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
     /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
@@ -202,9 +202,9 @@ object DemoTxt {
     //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
     //println(array._3.mkString("Array(", ", ", ")"))
 
-    val array = userCube.query(List(("Region", 2, List("Europe", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    val array = userCube.query(List(("Region", 2, Nil), ("difficulty", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
-    println(array.mkString("(", "\n ", ")"))
+    println(array.mkString("(", "\n ", ")\n \n"))
     //println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))
 
     def binaryFunction(str1: Any, str2: Any): Boolean = {
@@ -213,8 +213,8 @@ object DemoTxt {
 
     def transformForGroupBy(src : String): String = {
       src match {
-        case "Europe" | "Italy" => "Occidental"
-        case _ => "Non-Occidental"
+        case "Europe" | "Italy" | "France" => "European"
+        case _ => "Non-European"
       }
     }
     println(userCube.queryDimension(("Region", 4), null, MOMENT, transformForGroupBy))
