@@ -22,10 +22,10 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
   it should "perform window_aggregates" in {
     val res = fixture.userCube.query(List(("Region", 2, Nil), ("difficulty", 6, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX)
       .asInstanceOf[Array[Any]]
-    var result = ArrayFunctions.window_aggregate(res, "difficulty", 3, NUM_ROWS)
+    var result = ArrayFunctions.windowAggregate(res, "difficulty", 3, NUM_ROWS)
     assert(result(1)._2 == result(2)._2 && result(2)._2 == result(3)._2)
     info("window based on number of rows works")
-    result = ArrayFunctions.window_aggregate(res, "difficulty", 3, VALUES_ROWS)
+    result = ArrayFunctions.windowAggregate(res, "difficulty", 3, VALUES_ROWS)
     assert(result(8)._2 == 12.0 && result(0)._2 == 24.0)
     info("window based on value of rows works")
   }

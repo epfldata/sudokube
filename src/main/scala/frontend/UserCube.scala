@@ -1,14 +1,37 @@
 package frontend
 
 import backend.CBackend
-import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
 import core.{DataCube, RandomizedMaterializationScheme2}
 import TestLine.testLineOp
 import frontend.schema.Schema
 import util.Bits
-
 import scala.annotation.tailrec
+import breeze.linalg.{DenseMatrix, Axis}
+
+sealed class METHOD
+case object MOMENT extends METHOD
+case object NAIVE extends METHOD
+
+sealed class BOOL_METHOD
+case object EXIST extends BOOL_METHOD
+case object FORALL extends BOOL_METHOD
+
+sealed class OPERATOR
+case object AND extends OPERATOR
+case object OR extends OPERATOR
+
+sealed class RESULT_FORM
+case object MATRIX extends RESULT_FORM
+case object ARRAY extends RESULT_FORM
+case object TUPLES_BIT extends RESULT_FORM
+case object TUPLES_PREFIX extends RESULT_FORM
+
+sealed class WINDOW
+case object NUM_ROWS extends WINDOW
+case object VALUES_ROWS extends WINDOW
+
+
 
 class UserCube(val cube: DataCube, val sch: Schema) {
 
@@ -29,16 +52,16 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param field  : the field to consider
    * @param thresh : maximum number of bits to collect
    * @param n      : the index of the current bit
-   * @param acc    : accumlator of the bits numbers
+   * @param acc    : accumulator of the bits numbers
    * @return the first thresh bits of a specific field, or a Nil
    */
   @tailrec
-  final def accCorrespondingBits(field: String, thresh: Int, n: Int, acc: List[Int]): List[Int] = {
+  final def accCorrespondingBits(field: String, thresh: Int, acc: List[Int], n: Int = sch.n_bits-1): List[Int] = {
     if (n >= 0  && acc.size < thresh) {
       if (sch.decode_dim(List(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
-        accCorrespondingBits(field, thresh, n - 1, acc ::: List(n))
+        accCorrespondingBits(field, thresh, n :: acc, n-1)
       } else {
-        accCorrespondingBits(field, thresh, n - 1, acc)
+        accCorrespondingBits(field, thresh, acc, n-1)
       }
     } else {
       acc
@@ -47,16 +70,16 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   /**
    * simple query aggregation, without slicing
    *
-   * @param qV     query to display vertically, in the form (field to consider, on n bits)
-   * @param qH     query to display horizontally, in the form (field to consider, on n bits) (as to be Nil for the
+   * @param qV     query to display vertically, in the form (field to consider, on n bits, values to slice (if Nil, all values are accepted))
+   * @param qH     query to display horizontally, in the form (field to consider, on n bits, values to slice (if Nil, all values are accepted)) (as to be Nil for the
    *               tuples resultForms
    * @param method method of query, naive or moment
    * @param resultForm Allows to choose to return a matrix, an array, a tuple with bits displayed or a tuple with the prefixes displayed
    * @return reconstructed matrix, with headers
    */
-  def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: Operator, method: Method, resultForm: ResultForm): Any = {
-    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, sch.n_bits-1, Nil))
-    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, sch.n_bits-1, Nil))
+  def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM): Any = {
+    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, Nil))
+    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, Nil))
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
     var resultArray: Array[Any] = Array.empty
     method match {
@@ -80,11 +103,12 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param q the base dimension (X)
    * @param aggregateDim the dimension we want to aggregate (Y), has to be a number dimension
    * @param method the method of the query, naive or by moment
+   * @param groupByMethod function to map the dimension values to facilitate group by (e.g. dates to month of the year)
    * @return
    */
-  def queryDimension(q: (String, Int), aggregateDim: String, method: Method, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
-    val queryBits = List(accCorrespondingBits(q._1, q._2, sch.n_bits-1, Nil))
-    val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, 0, Nil))
+  def queryDimension(q: (String, Int), aggregateDim: String, method: METHOD, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
+    val queryBits = List(accCorrespondingBits(q._1, q._2, Nil))
+    val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, Nil))
     val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
     var resultArray: Array[Any] = Array.empty
     method match {
@@ -122,7 +146,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param tolerance threshold after which the map is not montonic anymore
    * @return
    */
-  def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
+  def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
     ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) == 0
   }
 
@@ -131,7 +155,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param tolerance threshold after which the map is not montonic anymore
    * @return
    */
-  def queryDimensionDoublePeak(q: (String, Int), aggregateDim: String, method: Method, tolerance: Double): Boolean = {
+  def queryDimensionDoublePeak(q: (String, Int), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
     ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) >= 3
   }
 
@@ -161,7 +185,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param src source array, to transform in matrix
    * @return DenseMatrix concatenated with top and left headers
    */
-  def createResultMatrix(sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: Operator, src: Array[Any]): DenseMatrix[String] = {
+  def createResultMatrix(sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: OPERATOR, src: Array[Any]): DenseMatrix[String] = {
     val bH = qH.flatten.size
     val bV = qV.flatten.size
 
@@ -244,8 +268,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param op operator for slice, AND or OR (for testLine method)
    * @param method method for query, moment or naive
    * @return
-   */
-  def aggregateAndSlice(aggregateColumns: List[(String, Int)], sliceColumns: List[(String, List[String])], op: Operator, method: Method): Array[Any] = {
+  def aggregateAndSlice(aggregateColumns: List[(String, Int)], sliceColumns: List[(String, List[String])], op: OPERATOR, method: METHOD): Array[Any] = {
     val queryBits = aggregateColumns.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
     val sliceBits = sliceColumns.map(x => accCorrespondingBits(x._1, sch.n_bits, 0, Nil))
     val q_unsorted = (queryBits.flatten ++ sliceBits.flatten)
@@ -256,7 +279,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
     val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, queryBits ++ sliceBits, op, resultArray)
     res
-  }
+  }*/
 
 
 }

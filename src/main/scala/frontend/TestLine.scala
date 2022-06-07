@@ -2,7 +2,7 @@ package frontend
 
 
 case object TestLine {
-  def testLineOp(op: Operator, splitString: Array[String], q_sorted: List[(String, List[String])]): Boolean = {
+  def testLineOp(op: OPERATOR, splitString: Array[String], q_sorted: List[(String, List[String])]): Boolean = {
     val newString = splitString.filter(x => q_sorted.map(y => y._1).contains(x.split("=")(0)))
     if (q_sorted.isEmpty) {
       return false

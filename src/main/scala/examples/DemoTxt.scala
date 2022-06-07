@@ -10,15 +10,13 @@ import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
-
+import backend._
+import core.RationalTools._
+import core._
+import frontend._
 import scala.util.Random
 
 object DemoTxt {
-
-  import backend._
-  import core.RationalTools._
-  import core._
-  import frontend._
 
   def momentSolver(): Unit = {
     val solver = new MomentSolverAll[Rational](3, Avg2)
@@ -223,7 +221,7 @@ object DemoTxt {
     val mockSeq = Seq((1572004656619D, 51), (1572004677789D, 51), (1572004686013D, 52), (1572004693209D, 53), (1572004698606D, 54), (1572004707601D,  55),
       (1572004726618D, 55))
 
-    println(ArrayFunctions.LinearRegression(mockSeq.map(x => (x._1, x._2.toDouble))))
+    println(ArrayFunctions.slopeAndIntercept(mockSeq.map(x => (x._1, x._2.toDouble))))
   }
 
 

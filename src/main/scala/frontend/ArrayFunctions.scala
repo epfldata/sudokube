@@ -45,7 +45,7 @@ object ArrayFunctions {
    * @return array in form of (b1=0;b2=1;b7=0,fact) (String, Any)
    */
   def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])],
-                      qV: List[List[Int]],op: Operator,
+                      qV: List[List[Int]], op: OPERATOR,
                       src: Array[Any]): Array[Any] = {
     val rows = 1 << qV.flatten.size
     //functions to reorder the values, with the order provided by the query
@@ -70,7 +70,7 @@ object ArrayFunctions {
    * @param src source data from query
    * @return array in form (prefix1=x1;prefix2=x2;prefix7=(x1, x2),fact) (STring, Any)
    */
-  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], qV: List[List[Int]], op: Operator, src: Array[Any]): Array[Any] = {
+  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], qV: List[List[Int]], op: OPERATOR, src: Array[Any]): Array[Any] = {
     val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, src)
     val cols = res._1.length
     val rows = res._2.length
@@ -91,7 +91,7 @@ object ArrayFunctions {
    * @param src source array, to transform in matrix
    * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
-  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: Operator, src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
+  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: OPERATOR, src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 
@@ -199,7 +199,7 @@ object ArrayFunctions {
    * performs window based aggregates on tuplePrefix
    * We assume that the array is sorted by the dim_prefix column
    */
-  def window_aggregate(source: Array[Any], dim_prefix: String, gap: Int, window_type: WINDOW): Array[(String, Any)] = {
+  def windowAggregate(source: Array[Any], dim_prefix: String, gap: Int, window_type: WINDOW): Array[(String, Any)] = {
     if (!source(0).asInstanceOf[(String, Any)]._1.contains(dim_prefix)) {
       return null
     }
@@ -278,7 +278,7 @@ object ArrayFunctions {
    * @param n        as this method is tail-recursive, n is index of the tuple currently treated
    * @return one boolean result
    */
-  def applyBinary(source: Array[(String, Any)], function: (Any, Any) => Boolean, prefixes: (String, String), method: BooleanMethod, n: Int = 0): Boolean = {
+  def applyBinary(source: Array[(String, Any)], function: (Any, Any) => Boolean, prefixes: (String, String), method: BOOL_METHOD, n: Int = 0): Boolean = {
     if (source.length == n) {
       method match {
         case FORALL => true
@@ -304,7 +304,7 @@ object ArrayFunctions {
    * @param source an (x, y) array, consisting of doubles
    * @return (average slope, offset) of the curve
    */
-  def LinearRegression(source: Seq[(Double, Double)]): (Double, Double) = {
+  def slopeAndIntercept(source: Seq[(Double, Double)]): (Double, Double) = {
     val xbar = source.map(x => x._1).sum/source.length //compute average of x
     val ybar = source.map(x => x._2).sum/source.length //compute average of y
     val xybar = source.map(x => (x._1 - xbar)*(x._2 - ybar)).sum //covar of x,y

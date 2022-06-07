@@ -9,22 +9,23 @@ class UserCubeSpec extends FlatSpec with Matchers{
 
   it should "return right bits for cosmetic dimensions" in {
     val userCube = fixture.userCube
-    assert(List(6) == userCube.accCorrespondingBits("Type", 1, 0, Nil))
+    assert(List(13) == userCube.accCorrespondingBits("Type", 1, Nil))
     assert(List(6, 13) == userCube.accCorrespondingBits("Type", userCube.sch
-      .n_bits, 0, Nil))
-    assert(List() == userCube.accCorrespondingBits("not a field", userCube.sch.n_bits, 0, Nil))
+      .n_bits, Nil))
+    assert(List() == userCube.accCorrespondingBits("not a field", userCube.sch.n_bits, Nil))
   }
 
   it should "return good matrix(not sliced)" in {
     val userCube = fixture.userCube
     val matrix = userCube.query(List(("Region", 2, Nil), ("spicy", 1, Nil)),List(("Vegetarian", 1, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
-    assert("15.0" == matrix(3, 1))
-    assert("12.0" == matrix(4, 1))
-    assert("5.0" == matrix(6, 2))
+    assert("8.0" == matrix(3, 1))
+    assert("9.0" == matrix(4, 1))
+    assert("7.0" == matrix(4, 2))
   }
 
   it should "sort result matrix by order of parameters" in {
     val userCube = fixture.userCube
+    println(userCube.query(List(("spicy", 1, Nil), ("Region", 2, Nil)),List(("Vegetarian", 1, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]])
     var matrix = userCube.query(List(("spicy", 1, Nil), ("Region", 2, Nil)),List(("Vegetarian", 1, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     assert("15.0" == matrix(5, 1))
     assert("12.0" == matrix(7, 1))
@@ -106,7 +107,7 @@ class UserCubeSpec extends FlatSpec with Matchers{
 
   it should "work for aggregating and slicing on different values" in {
     val userCube = fixture.userCube
-    val result = userCube.aggregateAndSlice(List(("spicy", 1), ("Type", 2)), List(("Region", List("India")), ("Vegetarian", List(">=0"))), AND, MOMENT).map(x => x.asInstanceOf[(String, Any)])
+    val result = userCube.query(List(("spicy", 1, Nil), ("Type", 2, Nil), ("Region", userCube.sch.n_bits, List("India")), ("Vegetarian", userCube.sch.n_bits, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]].map(x => x.asInstanceOf[(String, Any)])
     assert(result.apply(0)._1 ==  "spicy=0;Region=India;Type=NULL;Vegetarian=0" && result.apply(0)._2 == "0.0")
     assert(result.apply(3)._1 == "spicy=1;Region=India;Type=Dish;Vegetarian=0" &&  result.apply(3)._2 == "5.0")
   }
