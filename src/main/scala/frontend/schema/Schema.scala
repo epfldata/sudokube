@@ -120,7 +120,6 @@ trait Schema extends Serializable {
               val pathTemp : String = pathWrite
               pathWrite = pathRead
               pathRead = pathTemp
-              println("pathWrite = " + pathWrite + "  pathRead = " + pathRead)
             }
             def deleteFile(path : String): Unit = {
               var fileTemp = new File(path)
@@ -171,21 +170,8 @@ trait Schema extends Serializable {
             def getThreadCube(): Thread = {
                 new Thread {
                     override def run {
-                        val items = JsonReader.read(pathRead)
-                        val r : Seq[(BigBinary, Long)] = 
-                            if(measure_key == None) {
-                                items.map(l => (encode_tuple(l.toList), 1L))
-                            }
-                            else {
-                                items.map(l => {
-                                    val x = l.toMap
-                                    val measure = x.get(measure_key.get).map(map_value).getOrElse(0L)
-                                    (encode_tuple((x - measure_key.get).toList), measure)
-                                })
-                            }
-                
-                        sc = ScalaBackend.mkPartial(n_bits, r.toIterator, sc)
-                        
+                        var r = read(pathRead)
+                        sc = ScalaBackend.mkPartial(n_bits, r.toIterator, sc)           
                     }
                 }
             }
