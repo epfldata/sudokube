@@ -16,6 +16,7 @@ extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
 extern void     add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
 extern void     freeze(unsigned int s_id);
 extern value_t *fetch(unsigned int d_id, size_t& size);
+extern void cuboid_GC(unsigned int id);
 extern size_t      sz(unsigned int id);
 extern size_t   sNumBytes(unsigned int id);
 
@@ -236,3 +237,8 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
   return result;
 }
 
+JNIEXPORT void JNICALL Java_backend_CBackend_cuboidGC0
+        (JNIEnv *env, jobject obj, int id) {
+    unsigned cuboid_id = id < 0 ? -id : id;
+    cuboid_GC(cuboid_id);
+}

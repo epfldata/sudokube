@@ -2,6 +2,90 @@ package core
 
 import collection.mutable.SortedSet
 
+import util.Bits
+//we assume every node has moment stored
+@SerialVersionUID(1L)
+class SetTrieForMoments() extends  Serializable {
+  var root: Node = null
+  var count = 0
+  //insert all moments of cuboid
+  def insertAll(cuboid: List[Int], moments: Array[Double]) = {
+    val cArray = cuboid.sorted.toArray
+    moments.indices.foreach { i =>
+      val ls = Bits.fromInt(i).map(x => cArray(x)).sorted
+      //println(s"Insert $i@$ls = ${moments(i)} ")
+      insert(ls, moments(i))
+    }
+  }
+
+  def getNormalizedSubsetMoments(q: List[Int]): List[(Int, Double)] = {
+    val qarray = q.toArray
+
+    def rec(n: Node, qidx: Int, branch: Int): List[(Int, Double)] = {
+      var result = List[(Int, Double)](branch -> n.moment)
+
+      var child = n.firstChild
+      var i = qidx
+
+
+      while (child != null && i < qarray.length) {
+        val qb = qarray(i)
+        if (child.b == qb) {
+          result = result ++ rec(child, i + 1, branch + (1 << i))
+          child = child.nextSibling
+        } else if (child.b < qb) {
+          child = child.nextSibling
+        } else {
+          i = i + 1
+        }
+      }
+      result
+    }
+
+    rec(root, 0, 0)
+  }
+
+  def insert(s: List[Int], moment: Double, n: Node = root): Unit = s match {
+    //s is assumed to have distinct elements
+    //all subsets assumed to be inserted before some set
+    case Nil if root == null =>
+      root = new Node(-1, moment, null, null)
+      count = 1
+    case Nil => ()
+    case h :: t =>
+      if(t.isEmpty || n.moment != 0.0) {  //do not insert child 0 moments
+        val (inserted, c) = n.findOrElseInsert(h, moment)
+        //will always find node except for last
+        if (inserted) count = count + 1
+        if (t.isEmpty) assert(c.moment == moment) else
+          insert(t, moment, c)
+      }
+  }
+
+  @SerialVersionUID(2L)
+  class Node(val b: Int, val moment: Double, var firstChild: Node, var nextSibling: Node) extends Serializable {
+    def findOrElseInsert(v: Int, moment: Double) = {
+     var child = firstChild
+      var prev: Node = null
+
+      while(child != null && child.b < v) {
+        prev = child
+        child = child.nextSibling
+      }
+      if(child != null && child.b == v) {
+        (false, child)
+      } else {
+        val nc = new Node(v, moment, null, child)
+        if(prev == null)
+          firstChild = nc
+        else
+          prev.nextSibling = nc
+        (true, nc)
+      }
+    }
+  }
+}
+
 class SetTrie() {
   val root =  Node(-1)
 

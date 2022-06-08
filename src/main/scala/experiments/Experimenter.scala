@@ -151,6 +151,77 @@ object Experimenter {
   }
 
 
+  def trieExpt()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+
+    val cg = SSB(100)
+    val param = "15_14_30"
+    val ms =  "sms3"
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val trie = dc.loadTrie(fullname)
+    val sch = cg.schema()
+
+    val expname2 = s"query-dim-$ms"
+
+    val qss = List(12, 15)
+    qss.foreach { qs =>
+      Profiler.resetAll()
+      val queries = (0 until 10).map(_ => sch.root.samplePrefix(qs).toList.sorted).distinct
+      println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+
+        val (l, pm) = Profiler("Moment Prepare") {
+          dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+        }
+        val maxDimFetch = l.last.mask.length
+        //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
+        val fetched = Profiler("Moment Fetch") {
+          l.map { pm =>
+            (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
+          }
+        }
+        val result = Profiler(s"Moment Solve") {
+          val s = Profiler(s"Moment Constructor") {
+            new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+          }
+          Profiler(s"Moment Add") {
+            fetched.foreach { case (bits, array) => s.add(bits, array) }
+          }
+          Profiler(s"Moment FillMissing") {
+            s.fillMissing()
+          }
+          Profiler(s"Moment ReverseTransform") {
+            s.solve()
+          }
+          s
+        }
+        val moments = Profiler("Trie Moments") {
+          trie.getNormalizedSubsetMoments(q)
+        }
+        val result2 = Profiler(s"Trie Solve") {
+          val s = Profiler(s"TrieMoment Constructor") {
+            new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+          }
+          Profiler("Trie Moments Add") {
+            s.momentsToAdd ++= moments
+          }
+          Profiler(s"TrieMoment FillMissing") {
+            s.fillMissing()
+          }
+          Profiler(s"TrieMoment ReverseTransform") {
+            s.solve()
+          }
+        }
+      }
+      Profiler.print()
+    }
+    dc.cuboids.head.backend.reset
+
+  }
+
   def moment_query_dimensionality(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
 
     val cg = SSB(100)
@@ -539,7 +610,7 @@ object Experimenter {
 
     (1 to numIters).foreach { iter =>
       println(s"Manual SSB Iteration $iter/$numIters")
-      queries.zipWithIndex.foreach { case ((cs,qname), i) =>
+      queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize")

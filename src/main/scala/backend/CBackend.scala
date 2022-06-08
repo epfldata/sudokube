@@ -32,6 +32,7 @@ class CBackend extends Backend[Payload] {
   @native protected def sSize0(id: Int): Int
   @native protected def sNumBytes0(id: Int): Long
   @native protected def dFetch0(d_id: Int): Array[Long]
+  @native protected def cuboidGC0(id: Int): Unit
 
   @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
@@ -170,6 +171,8 @@ class CBackend extends Backend[Payload] {
 
   protected def dFetch(data: DENSE_T) : Array[Payload] =
     Payload.decode_fetched(dFetch0(data))
+
+  protected def cuboidGC(id: HYBRID_T) = cuboidGC0(id)
 
   /** size of spare cuboid, in rows. */
   protected def sSize(data: SPARSE_T) : BigInt = sSize0(data)

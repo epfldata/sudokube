@@ -21,6 +21,33 @@ object DemoTxt {
   import core._
   import frontend._
 
+  def trieCube(): Unit = {
+    val dc = PartialDataCube.load2("SSB-sf100_sms3_15_14_30", "SSB-sf100_base")
+    val cids = dc.m.projections.zipWithIndex.groupBy(_._1.length).mapValues(_.head).values.toList.sortBy(_._1.length)
+    import CBackend.b.{DenseCuboid => DC}
+    import core.solver.Moment1Transformer
+    val trie = new SetTrieForMoments()
+
+    def process(cidcol: (List[Int], Int)) = {
+      val cols = cidcol._1
+      val cid = cidcol._2
+      val n = cols.length
+      val cuboid =  dc.cuboids(cid)
+      assert(cuboid.n_bits == n)
+      val dcub = Profiler(s"Rehash $n") {cuboid.rehash_to_dense(Array.fill(n)(1))}
+      val fetched = Profiler(s"Fetch $n") { dcub.asInstanceOf[DC].fetch.map(_.sm)}
+      val moments = Profiler(s"Moments $n") { Moment1Transformer.getMoments(fetched)}
+      Profiler(s"TrieInsert $n") {trie.insertAll(cols, moments)}
+      Profiler.print()
+    }
+    cids.foreach{ process(_) }
+  }
+  def toTrie() = {
+    val name = "SSB-sf100_sms3_15_14_30"
+    val dc = PartialDataCube.load2(name, "SSB-sf100_base")
+    dc.saveAsTrie(name)
+  }
+
   def momentSolver(): Unit = {
     val solver = new MomentSolverAll[Rational](3, Avg2)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
@@ -330,6 +357,9 @@ object DemoTxt {
     //backend_naive()
     //loadtest()
     //ssb_demo()
-    cooking()
+    //cooking()
+    //trieCube()
+    toTrie()
   }
+
 }
