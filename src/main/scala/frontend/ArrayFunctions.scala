@@ -26,9 +26,9 @@ object ArrayFunctions {
 
   /**
    * decompose an int in binary form, with number of digits equal to digits param
-   * @param source
-   * @param digits
-   * @return
+   * @param source the integer we want to transform into a binary string
+   * @param digits the number of digits of this binary string (may need to add leading zeros)
+   * @return a string of the source integer converted into a binary string of length digits
    */
   private def asNdigitBinary(source: Int, digits: Int): String = {
     val l: java.lang.Long = source.toBinaryString.toLong
@@ -48,13 +48,11 @@ object ArrayFunctions {
                       qV: List[List[Int]], op: OPERATOR,
                       src: Array[Any]): Array[Any] = {
     val rows = 1 << qV.flatten.size
-    //functions to reorder the values, with the order provided by the query
-    val q_unsorted = (qV.flatten)
-    val q_sorted = q_unsorted.sorted
+    val q_sorted = (qV.flatten).sorted
 
     val srcWithIndexes = new Array[Any](rows)
-    for (i <- src.indices) {
-      val charArray = asNdigitBinary(i, (rows).toBinaryString.length - 1).toCharArray
+    src.indices.par.foreach{i =>
+      val charArray = asNdigitBinary(i, rows.toBinaryString.length - 1).toCharArray //assign to each elem of the src array a binary digit
       srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted), src(i))
     }
     val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, srcWithIndexes)
@@ -89,7 +87,7 @@ object ArrayFunctions {
    * @param qV  bits of query vertically
    * @param qH  bits of query horizontally
    * @param src source array, to transform in matrix
-   * @return densematrix decomposed, in form (array for the top header, array of the left header, values for cells)
+   * @return dense matrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
   def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: OPERATOR, src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
     val cols = 1 << qH.flatten.size
