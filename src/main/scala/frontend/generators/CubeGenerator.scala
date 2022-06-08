@@ -1,5 +1,4 @@
 package frontend.generators
-
 import backend.CBackend
 import core.{DataCube, MaterializationScheme, PartialDataCube, RandomizedMaterializationScheme}
 import frontend.schema.{Schema2, StructuredDynamicSchema}

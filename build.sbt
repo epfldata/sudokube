@@ -22,6 +22,7 @@ libraryDependencies  ++= Seq(
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8"
 )
 
+
 Test / parallelExecution := false
 
 enablePlugins(JavaAppPackaging)
@@ -31,5 +32,8 @@ resolvers ++= Seq(
   "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
 )
 
+
 scalaVersion := "2.12.7"
+
+
 
