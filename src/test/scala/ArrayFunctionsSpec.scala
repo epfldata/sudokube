@@ -16,7 +16,7 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
     assert(ArrayFunctions.findValueOfPrefix("India=x1;Computer=(y2, y3)", "Computer", true) == "(y2, y3)")
     info("works when multiple values, return multiple")
     assert(ArrayFunctions.findValueOfPrefix("India=x1;Computer=y2", "undefined_value", false) == " ")
-    info("returns empy when undefned prefix")
+    info("returns empty when undefined prefix")
   }
 
   it should "perform window_aggregates" in {

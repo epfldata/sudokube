@@ -215,8 +215,8 @@ object DemoTxt {
         case _ => "Non-European"
       }
     }
-    println(userCube.queryDimension(("Region", 4), null, MOMENT, transformForGroupBy))
-    println(userCube.queryDimension(("difficulty", 4), null, MOMENT))
+    println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
+    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
 
     val mockSeq = Seq((1572004656619D, 51), (1572004677789D, 51), (1572004686013D, 52), (1572004693209D, 53), (1572004698606D, 54), (1572004707601D,  55),
       (1572004726618D, 55))

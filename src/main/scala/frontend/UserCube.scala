@@ -6,8 +6,10 @@ import core.{DataCube, RandomizedMaterializationScheme2}
 import TestLine.testLineOp
 import frontend.schema.Schema
 import util.Bits
+
 import scala.annotation.tailrec
-import breeze.linalg.{DenseMatrix, Axis}
+import breeze.linalg.{Axis, DenseMatrix}
+
 
 sealed class METHOD
 case object MOMENT extends METHOD
@@ -89,11 +91,11 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     resultForm match {
       case MATRIX => createResultMatrix(qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
       case ARRAY => ArrayFunctions.createResultArray(sch, qV.map(x => (x._1, x._3)), qH.map(x => (x._1, x._3)), queryBitsV, queryBitsH, operator, resultArray)
-      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, qV.map(x => (x._1, x._3)),
-        queryBitsV,
+      case TUPLES_BIT => ArrayFunctions.createTuplesBit(sch, (qV ++ qH).map(x => (x._1, x._3)),
+        queryBitsV ++ queryBitsH,
         operator,
         resultArray)
-      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, qV.map(x => (x._1, x._3)), queryBitsV ++ queryBitsH,
+      case TUPLES_PREFIX => ArrayFunctions.createTuplesPrefix(sch, (qV ++ qH).map(x => (x._1, x._3)), queryBitsV ++ queryBitsH,
         operator, resultArray)
     }
   }
@@ -106,26 +108,19 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param groupByMethod function to map the dimension values to facilitate group by (e.g. dates to month of the year)
    * @return
    */
-  def queryDimension(q: (String, Int), aggregateDim: String, method: METHOD, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
-    val queryBits = List(accCorrespondingBits(q._1, q._2, Nil))
-    val queryBitsTarget = List(accCorrespondingBits(aggregateDim, Int.MaxValue, Nil))
-    val q_sorted = (queryBits.flatten ++ queryBitsTarget.flatten).sorted
-    var resultArray: Array[Any] = Array.empty
-    method match {
-      case NAIVE => resultArray = cube.naive_eval(q_sorted).map(b => b)
-      case MOMENT => resultArray = momentMethod(q_sorted)
-    }
-    val resultArrayTuple = ArrayFunctions.createTuplesPrefix(sch, Nil, (queryBitsTarget ++ queryBits), OR, resultArray)
-      .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
-
+  def queryDimension(q: (String, Int, List[String]), aggregateDim: String, method: METHOD, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
     var res: Map[String, Double] = null
     if (aggregateDim == null) { //in this case simply take the fact
+      val resultArrayTuple = query(List(q), Nil, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]]
+        .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
       res = resultArrayTuple.groupBy(x => x._1).map(x =>
         (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2.foldLeft(0.0)((acc, x) =>
           acc + x._2.toString.toDouble
         ))
       )
     } else {
+      val resultArrayTuple = query(q :: List((aggregateDim, sch.n_bits, Nil)), Nil, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]] //refactor the aggregateDim param to be able to use the query function
+        .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
       res = resultArrayTuple.groupBy(x => x._1).map(x =>
         (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2.foldLeft(0.0)((acc, x) =>
           acc + ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false).toDouble
@@ -145,7 +140,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param tolerance threshold after which the map is not montonic anymore
    * @return
    */
-  def queryDimensionMonotonic(q: (String, Int), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
+  def queryDimensionMonotonic(q: (String, Int, List[String]), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
     ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) == 0
   }
 
@@ -154,7 +149,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param tolerance threshold after which the map is not montonic anymore
    * @return
    */
-  def queryDimensionDoublePeak(q: (String, Int), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
+  def queryDimensionDoublePeak(q: (String, Int, List[String]), aggregateDim: String, method: METHOD, tolerance: Double): Boolean = {
     ArrayFunctions.findMonotonicityBreaks(queryDimension(q, aggregateDim, method).asInstanceOf[Vector[(String, Any)]].map(x => x._2.toString.toDouble), tolerance) >= 3
   }
 
@@ -259,27 +254,6 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
 
   }
-
-  /**
-   * method created to aggregate and slice on different values
-   * @param aggregateColumns columns to aggregate
-   * @param sliceColumns columns to slice
-   * @param op operator for slice, AND or OR (for testLine method)
-   * @param method method for query, moment or naive
-   * @return
-  def aggregateAndSlice(aggregateColumns: List[(String, Int)], sliceColumns: List[(String, List[String])], op: OPERATOR, method: METHOD): Array[Any] = {
-    val queryBits = aggregateColumns.map(x => accCorrespondingBits(x._1, x._2, 0, Nil))
-    val sliceBits = sliceColumns.map(x => accCorrespondingBits(x._1, sch.n_bits, 0, Nil))
-    val q_unsorted = (queryBits.flatten ++ sliceBits.flatten)
-    var resultArray: Array[Any] = Array.empty
-    method match {
-      case NAIVE => resultArray = cube.naive_eval(q_unsorted.sorted).map(b => b)
-      case MOMENT => resultArray = momentMethod(q_unsorted.sorted)
-    }
-    val res = ArrayFunctions.createTuplesPrefix(sch, sliceColumns, queryBits ++ sliceBits, op, resultArray)
-    res
-  }*/
-
 
 }
 
