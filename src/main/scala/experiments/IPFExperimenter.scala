@@ -6,7 +6,7 @@ import frontend.generators.{CubeGenerator, NYC, SSB}
 object IPFExperimenter {
   def vanillaIPF_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC else SSB(100)
-    val param = if (cubeGenerator == "NYC") "15_6_30" else "15_14_30"
+    val param = "15_14_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
@@ -17,7 +17,7 @@ object IPFExperimenter {
     val exptfull = new VanillaIPFMomentBatchExpt(expname2)
     if (shouldRecord) exptfull.warmup()
     val materializedQueries = new MaterializedQueryResult(cg)
-    val qss = List(12, 15)
+    val qss = List(6, 9, 12, 15, 18, 21)
     qss.foreach { qs =>
       val queries = materializedQueries.loadQueries(qs).take(numIters)
       println(s"Vanilla IPF vs Moment Solver Experiment for ${cg.inputname} dataset MS = $ms Query Dimensionality = $qs")

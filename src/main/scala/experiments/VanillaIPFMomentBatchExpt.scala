@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 
 class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"vanilla-ipf-moment-batch", ename2) {
   fileout.println(
-    "CubeName, MomentSolverName, Query, QSize, DOF, " +
+    "CubeName, MomentSolverName, Query, QSize, NCubesFetched, DOF, " +
       "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, MEntropy, " +
       "IPFTotalTime(us), IPFPrepareTime(us), IPFFetchTime(us), IPFMaxDimFetched, IPFSolveTime(us), IPFErr, IPFEntropy, " +
       "Difference,MaxDifference"
@@ -65,7 +65,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     (result, maxDimFetch)
   }
 
-  def ipf_solve(dc: DataCube, q: Seq[Int], naiveRes: Array[Double], dcname: String, qu: Seq[Int]): (VanillaIPFSolver, Int) = {
+  def ipf_solve(dc: DataCube, q: Seq[Int], naiveRes: Array[Double], dcname: String, qu: Seq[Int]): (VanillaIPFSolver, Int, Int) = {
     val (l, _) = Profiler("Vanilla IPF Prepare") { // Same as moment for the moment
       dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
     }
@@ -90,7 +90,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
       }
       solver
     }
-    (result, maxDimFetch)
+    (result, maxDimFetch, fetched.length)
   }
 
   def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
@@ -110,7 +110,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
             ", error: " + momentError)
 
 
-    val (vanillaIPFSolver, ipfMaxDim) = Profiler("Vanilla IPF Total") {
+    val (vanillaIPFSolver, ipfMaxDim, ipfNumCubesFetched) = Profiler("Vanilla IPF Total") {
       ipf_solve(dc, q, trueResult, dcname, qu)
     }
     val ipfError = Profiler("Vanilla IPF Error Checking") {
@@ -148,7 +148,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     val ipfTotal = Profiler.durations("Vanilla IPF Total")._2 / 1000
 
     if (output) {
-      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$dof,  " +
+      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$ipfNumCubesFetched,$dof,  " +
         s"$trueEntropy,  " +
         s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError,$momentEntropy, " +
         s"$ipfTotal,$ipfPrepare,$ipfFetch,$ipfMaxDim,$ipfSolve,$ipfError,$vanillaIPFEntropy, " +
