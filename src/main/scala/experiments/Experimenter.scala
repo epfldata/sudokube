@@ -142,7 +142,7 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query $i/$ql")
-        expt.run(dc, fullname, q, true)
+        expt.run(dc, fullname, q, null, true)
       }
     }
 
@@ -247,12 +247,12 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query ${i + 1}/$ql")
-        exptfull.run(dc, fullname, q)
+        exptfull.run(dc, fullname, q, null)
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Online Query ${i + 1}/$ql")
-        exptonline.run(dc, fullname, q)
+        exptonline.run(dc, fullname, q, null)
       }
     }
     dc.cuboids.head.backend.reset
@@ -285,12 +285,12 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query ${i + 1}/$ql")
-        exptfull.run(dc, fullname, q)
+        exptfull.run(dc, fullname, q, null)
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Online Query ${i + 1}/$ql")
-        exptonline.run(dc, fullname, q)
+        exptonline.run(dc, fullname, q, null)
       }
 
       dc.cuboids.head.backend.reset
@@ -314,7 +314,7 @@ object Experimenter {
         dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
+        expt.run(dc, fullname, q, null)
         dc.cuboids.head.backend.reset
       }
     }
@@ -337,7 +337,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
+        expt.run(dc, fullname, q, null)
         dc.cuboids.head.backend.reset
       }
     }
@@ -360,7 +360,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
+        expt.run(dc, fullname, q, null)
         dc.cuboids.head.backend.reset
       }
     }
@@ -382,7 +382,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q)
+        expt.run(dc, fullname, q, null)
         dc.cuboids.head.backend.reset
       }
     }
@@ -614,7 +614,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
+        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)")
       }
     }
   }
@@ -657,7 +657,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize ")
-        expt.run(dc, fullname, q, true, qname + s" ($qsize-D)")
+        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)")
       }
     }
   }
@@ -724,7 +724,7 @@ object Experimenter {
     //val m2 =new EfficientMaterializationScheme(dc.m)
     //val expt = new MomentSolverBatchExpt[Double](fullname)
     val expt = new NewMomentSolverBatchExpt(CoMoment3, fullname)
-    (0 until 10).foreach { x => expt.run(dc, fullname, q) }
+    (0 until 10).foreach { x => expt.run(dc, fullname, q, null) }
     //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
     //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }

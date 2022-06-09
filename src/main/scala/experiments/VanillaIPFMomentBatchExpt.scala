@@ -9,7 +9,6 @@ import util.Profiler
 class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"vanilla-ipf-moment-batch", ename2) {
   fileout.println(
     "CubeName, SolverName, Query, QSize, DOF, " +
-      "NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  " +
       "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, " +
       "IPFTotalTime(us), IPFPrepareTime(us), IPFFetchTime(us), IPFMaxDimFetched, IPFSolveTime(us), IPFErr"
   )
@@ -69,29 +68,16 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
 
     Profiler.resetAll()
-
-    val (naiveRes, naiveMaxDim) = Profiler("Naive Total") {
-      val l = Profiler("Naive Prepare") {
-        dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
-      }
-      val maxDim = l.head.mask.length
-      val res = Profiler("Naive Fetch") {
-        dc.fetch(l).map(_.sm)
-      }
-      (res, maxDim)
-    }
-    println("\t\tNaive total time: " + Profiler.durations("Naive Total")._2 / 1000)
-
 
     val (momentSolver, momentMaxDim) = Profiler("Moment Total") {
       moment_solve(dc, q)
     }
     val momentError = Profiler("Moment Error Checking") {
-      SolverTools.error(naiveRes, momentSolver.solution)
+      SolverTools.error(trueResult, momentSolver.solution)
     }
     val dof = momentSolver.dof
     println("\t\tMoment solve time: " + Profiler.durations("Moment Solve")._2 / 1000 +
@@ -103,7 +89,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
       ipf_solve(dc, q)
     }
     val ipfError = Profiler("Vanilla IPF Error Checking") {
-      SolverTools.error(naiveRes, vanillaIPFSolver.totalDistribution)
+      SolverTools.error(trueResult, vanillaIPFSolver.totalDistribution)
     }
     println("\t\tVanilla IPF solve time: " + Profiler.durations("Vanilla IPF Solve")._2 / 1000 +
             ", total time: " + Profiler.durations("Vanilla IPF Total")._2 / 1000 +
@@ -111,7 +97,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
     println("\t\tDifference (using error measure) = " + error(momentSolver.solution, vanillaIPFSolver.totalDistribution))
 
-    val grandTotal = naiveRes.sum
+    val grandTotal = trueResult.sum
     println("\t\tMax difference out of total sum = " +
       (0 until 1 << q.length).map(i => (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs).max / grandTotal
     )
@@ -120,10 +106,6 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     println("\t\tVanilla IPF Entropy = " + vanillaIPFSolver.totalDistribution.map(n => if (n != 0) - (n/grandTotal) * math.log(n/grandTotal) else 0).sum )
 
     Profiler.print()
-
-    val ntotal = Profiler.durations("Naive Total")._2 / 1000
-    val nprepare = Profiler.durations("Naive Prepare")._2 / 1000
-    val nfetch = Profiler.durations("Naive Fetch")._2 / 1000
 
     val mprep = Profiler.durations("Moment Prepare")._2 / 1000
     val mfetch = Profiler.durations("Moment Fetch")._2 / 1000
@@ -137,7 +119,6 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
     if (output) {
       val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$dof,  " +
-        s"$nprepare,$nfetch,$ntotal,$naiveMaxDim,  " +
         s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError, " +
         s"$ipfTotal,$ipfPrepare,$ipfFetch,$ipfMaxDim,$ipfSolve,$ipfError"
       fileout.println(resultrow)

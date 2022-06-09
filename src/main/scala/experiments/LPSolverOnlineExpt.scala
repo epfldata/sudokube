@@ -11,7 +11,7 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
   //println("LP Solver of type " + implicitly[ClassTag[T]])
 
   var queryCounter = 0
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname:String = "") = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
     val qstr = qu.mkString(":")
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
