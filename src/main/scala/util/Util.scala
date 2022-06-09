@@ -84,15 +84,18 @@ object Util {
     while(x != Nil && y != Nil) {
       if(x.head > y.head)
         y = y.tail
-      else if (x.head < y.head)
+      else if (x.head < y.head) {
+        index *= 2
         x = x.tail
+      }
       else {
         result = x.head :: result
         inter_int += index
         x = x.tail
+        index *= 2
         y = y.tail
       }
-      index *= 2
+
     }
     (result.reverse, inter_int)
   }

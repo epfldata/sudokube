@@ -332,6 +332,43 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     projs.sortBy(-_.accessible_bits.size)
   }
 
+  def prepare_online_new_int(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                        ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[Int, (Int, Int, Seq[Int], List[Int])]()
+    import Util.intersect_intval
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val (ab0, ab0_i) = intersect_intval(qL, p)
+        val res = hm.get(ab0_i)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0_i) = (s, id, p, ab0)
+        } else {
+          hm(ab0_i) = (s, id, p, ab0)
+        }
+      }
+    }
+
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._2._4.size).foreach { case (ab0_i, (c, id, p, ab0)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
   def prepare_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
                  ): List[ProjectionMetaData] = {
     val qL = query.toList
@@ -722,14 +759,9 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
 
-  /*val proj_w_int: Seq[(List[Int], Int, List[Int])] = m.projections.zipWithIndex.map(p_id => {
-    (p_id._1, p_id._2, )
-  })*/
-
-
   val proj_trie = {
     val trie = new SetTrieIntersect()
-    //projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
+    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
     trie
   }
 

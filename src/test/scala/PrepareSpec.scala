@@ -20,6 +20,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       //val testp = Profiler("DagPrepare"){m_DAG.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep = Profiler("OnlineNewPrepare"){m.prepare_online_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      val onlinep_int = Profiler("OnlineNewIntPrepare"){m.prepare_online_new_int(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val testp = Profiler("Online new w/ SetTrieIntersect"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
@@ -35,6 +36,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       //val bp_trie = Profiler("Create Build Plan Trie"){m.create_build_plan_trie()}
       //val bp_mu = Profiler("Create Build Plan Multi"){m.create_parallel_build_plan(8)(true)}
       println("Onlinep : " + onlinep.length)
+      println("Onlinep_int: " + onlinep_int.length)
       println("Oldp : " + oldp.length)
       assert(onlinep.sameElements(oldp))
 
