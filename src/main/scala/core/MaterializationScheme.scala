@@ -722,9 +722,14 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
 
+  /*val proj_w_int: Seq[(List[Int], Int, List[Int])] = m.projections.zipWithIndex.map(p_id => {
+    (p_id._1, p_id._2, )
+  })*/
+
+
   val proj_trie = {
     val trie = new SetTrieIntersect()
-    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
+    //projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
     trie
   }
 
@@ -814,6 +819,8 @@ case class testMaterializationScheme(m: MaterializationScheme) extends  Material
     }
     projs.sortBy(-_.accessible_bits.size)
   }
+
+
 }
 
 case class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
