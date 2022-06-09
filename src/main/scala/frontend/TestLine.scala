@@ -16,13 +16,13 @@ case object TestLine {
 
   /**
    * recursively checks if the provided string checks all the criteria of qV_sorted
-   *
+   * you can prefix >, <, >=, <= or ! (not equal) to compare more easily
    * @param splitString string to test
    * @param q_sorted    criteria, in form (field, list of acceptable values)
    * @param n           index of field considered
    * @return true <=> one of the condition is not fulfilled
    */
-  def testLineAnd(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
+  private def testLineAnd(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
     if (n != splitString.length) {
       if (q_sorted(n)._2.isEmpty) {
         return testLineAnd(splitString, q_sorted, n + 1)
@@ -31,7 +31,7 @@ case object TestLine {
         q_sorted(n)._2(i) match {
           case s if s.startsWith("!") =>
             //when specified that the string must NOT equal a value
-            if (!splitString(n).contains(q_sorted(n)._2(i))) {
+            if (!splitString(n).contains(s.replaceFirst("!", ""))) {
               return testLineAnd(splitString, q_sorted, n + 1)
             }
           case s if s.startsWith(">=") =>
@@ -72,22 +72,25 @@ case object TestLine {
 
   /**
    * recursively checks if the provided string checks one of the criteria of qV_sorted
-   *
+   * you can prefix >, <, >=, <= or ! (not equal) to compare more easily
    * @param splitString string to test
    * @param q_sorted    criteria, in form (field, list of acceptable values)
    * @param n           index of field considered
    * @return true <=> all the conditions are not fulfilled
    */
-  def testLineOr(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
+  private def testLineOr(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int): Boolean = {
+    if (q_sorted.flatMap(x => x._2).isEmpty) {
+      return false
+    }
     if (n != splitString.length) {
       if (q_sorted(n)._2.isEmpty) {
-        return false
+        return testLineOr(splitString, q_sorted, n + 1)
       }
       for (i <- q_sorted(n)._2.indices) {
         q_sorted(n)._2(i) match {
           case s if s.startsWith("!") =>
             //when specified that the string must NOT equal a value
-            if (!splitString(n).contains(q_sorted(n)._2(i))) {
+            if (!splitString(n).contains(s.replaceFirst("!", ""))) {
               return false
             }
           case s if s.startsWith(">=") =>

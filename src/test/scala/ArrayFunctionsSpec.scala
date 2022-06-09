@@ -1,4 +1,4 @@
-import frontend.{AND, ArrayFunctions, EXIST, FORALL, MOMENT, NUM_ROWS, OR, TUPLES_PREFIX, UserCube, VALUES_ROWS}
+import frontend.{AND, ArrayFunctions, EXIST, FORALL, MOMENT, NUM_ROWS, OR, TUPLES_PREFIX, TestLine, UserCube, VALUES_ROWS}
 import org.scalatest.{FlatSpec, Matchers}
 
 class ArrayFunctionsSpec extends FlatSpec with Matchers{
@@ -44,5 +44,115 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
     def binaryFunction(str1: Any, str2: Any): Boolean = {
       str1.toString.equals("India") && str2.toString == "1"
     }
+  }
+
+  "testLine" should "works for and" in {
+    var array = Array("spicy=45", "Region=(India, China)")
+    var query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("China")), ("spicy", Nil)) //select Region = China
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("China", "India")), ("spicy", List("45"))) //select (Region = China || Region = India) && spicy = 45
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) && spicy = 43
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", Nil), ("spicy", Nil)) //select All
+    assert(!TestLine.testLineOp(AND, array, query))
+    info("works for simple equality")
+
+    query = List(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) && spicy = 45
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("!India")), ("spicy", List("45"))) //select Region != India && spicy = 45
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India && spicy != 45
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) && spicy = 45
+    assert(TestLine.testLineOp(AND, array, query))
+    info("works for not equality")
+
+    array = Array("spicy=(42,45,67)", "Region=(India, China)")
+    query = List(("Region", List("India")), ("spicy", List("<45"))) //select Region = India && spicy < 45
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List("<42"))) //select Region = India && spicy < 42
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List(">42"))) //select Region = India && spicy > 42
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List(">67"))) //select Region = India && spicy > 67
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List(">=67"))) //select Region = India && spicy >= 67
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List(">=68"))) //select Region = India && spicy >= 68
+    assert(TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List("<=42"))) //select Region = India && spicy <= 42
+    assert(!TestLine.testLineOp(AND, array, query))
+    query = List(("Region", List("India")), ("spicy", List("<=41"))) //select Region = India && spicy <= 41
+    assert(TestLine.testLineOp(AND, array, query))
+    info("works for comparison")
+  }
+
+  "testLine" should "works for or" in {
+    var array = Array("spicy=45", "Region=(India, China)")
+    var query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("China")), ("spicy", Nil)) //select Region = China
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) || spicy = 45
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("Vietnam")), ("spicy", List("43"))) //select Region = Vietnam || spicy = 43
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("Vietnam")), ("spicy", List("45"))) //select Region = Vietnam || spicy = 43
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", Nil)) //select All
+    assert(!TestLine.testLineOp(OR, array, query))
+    info("works for simple equality")
+
+    query = List(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) || spicy = 45
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("!India")), ("spicy", List("45"))) //select Region != India || spicy = 45
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India || spicy != 45
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) || spicy = 45
+    assert(!TestLine.testLineOp(OR, array, query))
+    info("works for not equality")
+
+    array = Array("spicy=(42,45,67)", "Region=(India, China)")
+    query = List(("Region", Nil), ("spicy", List("<45"))) //select spicy < 45
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List("<42"))) //select spicy < 42
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List(">42"))) //select spicy > 42
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List(">67"))) //select spicy > 67
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List(">=67"))) //select spicy >= 67
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List(">=68"))) //select spicy >= 68
+    assert(TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List("<=42"))) //select spicy <= 42
+    assert(!TestLine.testLineOp(OR, array, query))
+    query = List(("Region", Nil), ("spicy", List("<=41"))) //select spicy <= 41
+    assert(TestLine.testLineOp(OR, array, query))
+    info("works for comparison")
+  }
+
+  "slope and intercept" should "find the correct slope and intercept" in {
+    val userCube = fixture.userCube
+    var res = userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT)
+    assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-0.4420289855072464, 11.094202898550725))
+    res = userCube.queryDimension(("spicy", 4, Nil), "difficulty", MOMENT)
+    assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-5.0, 15.0))
+  }
+
+  "ArrayFunctions" should "find the correct number of monotonicity breaks" in {
+
   }
 }

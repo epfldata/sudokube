@@ -11,16 +11,16 @@ object ArrayFunctions {
   /**
    * decompose a source bit into one bit for each of q_sorted
    * (transform [0, 0, 1, 0, 1] and [1, 3, 5, 6, 9] into List(b1=0,b3=0,b5=1,b6=0,b9=1)
-   * @param src
-   * @param acc
-   * @param q_sorted
-   * @return
+   * @param src array of the value for each bit of q_sorted
+   * @param q_sorted array of the bits queried, with length corresponding to src
+   * @param acc List to accumulate the results for each index of src
+   * @return a full decomposition of the bits for a single cell
    */
   @tailrec
-  private def decomposeBits(src: Array[Char], acc: List[String], q_sorted: List[Int]): List[String] = {
+  private def decomposeBits(src: Array[Char], q_sorted: List[Int], acc: List[String]): List[String] = {
     src match {
       case Array() => acc
-      case _ => decomposeBits(src.tail, acc ::: List("b%d=%s".format(q_sorted.head, src.head)), q_sorted.tail)
+      case _ => decomposeBits(src.tail, q_sorted.tail, acc ::: List("b%d=%s".format(q_sorted.head, src.head)))
     }
   }
 
@@ -53,7 +53,7 @@ object ArrayFunctions {
     val srcWithIndexes = new Array[Any](rows)
     src.indices.par.foreach{i =>
       val charArray = asNdigitBinary(i, rows.toBinaryString.length - 1).toCharArray //assign to each elem of the src array a binary digit
-      srcWithIndexes(i) = (decomposeBits(charArray, Nil, q_sorted), src(i))
+      srcWithIndexes(i) = (decomposeBits(charArray, q_sorted, Nil), src(i))
     }
     val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, srcWithIndexes)
     res._3
@@ -74,7 +74,7 @@ object ArrayFunctions {
     val rows = res._2.length
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
-        res._3(i * cols + j) = (res._1(j) + res._2(i), res._3(i * cols + j))
+        res._3(i * cols + j) = (res._1(j) + res._2(i), res._3(i * cols + j)) //for each cell, create a tuple of its horizontal and vertical header added
       }
     }
     res._3
@@ -120,7 +120,7 @@ object ArrayFunctions {
       sch.decode_dim(qH.flatten.sorted).zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
         if (testLineOp(op, newValue.split(";").sorted, sliceH)) {
-          linesExcludedH = permfBackqH(pair._2) :: linesExcludedH
+          linesExcludedH = permfBackqH(pair._2) :: linesExcludedH //accumulate the indexes of the excluded lines
         } else {
           top(permfBackqH(pair._2)) = newValue
         }
@@ -135,7 +135,7 @@ object ArrayFunctions {
         .zipWithIndex.foreach(pair => {
         val newValue = pair._1.mkString(";").replace(" in List", "=")
         if (testLineOp(op, newValue.split(";"), sliceV)) {
-          linesExcludedV = permfBackqV(pair._2) :: linesExcludedV
+          linesExcludedV = permfBackqV(pair._2) :: linesExcludedV //accumulate the indexes of the excluded lines
         } else {
           left(permfBackqV(pair._2)) = newValue
         }
@@ -163,7 +163,7 @@ object ArrayFunctions {
     for (i <- 0 until rows) {
       for (j <- 0 until cols) {
         if (!rowsExcluded.contains(i) && !colsExcluded.contains(j)) {
-          temp = temp ::: List(src(i * cols + j))
+          temp = temp ::: List(src(i * cols + j)) //only add the values of non-excluded rows and cols
         }
       }
     }
@@ -183,9 +183,10 @@ object ArrayFunctions {
       val values = src.split(";").filter(s => s.contains(prefix))(0).split("=")(1)
       //if multiple values for a row, take the first one
       if (values.contains("(") && !multipleValue) {
-        //drop the first parenthesis
+        //drop the first parenthesis and return only the first value
         values.split(",")(0).drop(1)
       } else {
+        //return the whole set of values
         values
       }
     } catch {
@@ -283,7 +284,7 @@ object ArrayFunctions {
         case EXIST => false
       }
     } else {
-      if (function(findValueOfPrefix(source(n)._1, prefixes._1, false), findValueOfPrefix(source(n)._1, prefixes._2, false))) {
+      if (function(findValueOfPrefix(source(n)._1, prefixes._1, false), findValueOfPrefix(source(n)._1, prefixes._2, false))) { //test the binary function
         method match {
           case FORALL => applyBinary(source, function, prefixes, method, n + 1)
           case EXIST => true
@@ -303,11 +304,11 @@ object ArrayFunctions {
    * @return (average slope, offset) of the curve
    */
   def slopeAndIntercept(source: Seq[(Double, Double)]): (Double, Double) = {
-    val xbar = source.map(x => x._1).sum/source.length //compute average of x
-    val ybar = source.map(x => x._2).sum/source.length //compute average of y
-    val xybar = source.map(x => (x._1 - xbar)*(x._2 - ybar)).sum //covar of x,y
-    val xxbar = source.map(x => (x._1 - xbar)*(x._1 - xbar)).sum //var of x
-    (xybar/xxbar, ybar - (xybar/xxbar)*xbar) //compute slope and intercept
+    val xavg = source.map(x => x._1).sum/source.length //compute average of x
+    val yavg = source.map(x => x._2).sum/source.length //compute average of y
+    val xycovar = source.map(x => (x._1 - xavg)*(x._2 - yavg)).sum //covar of x,y
+    val xxvar = source.map(x => (x._1 - xavg)*(x._1 - xavg)).sum //var of x
+    (xycovar/xxvar, yavg - (xycovar/xxvar)*xavg) //compute slope and intercept
   }
 
   /**
@@ -335,9 +336,9 @@ object ArrayFunctions {
    */
   def findMonotonicityBreaks(items: Seq[Double], tolerance: Double): Int = {
     items.sliding(2). // two items at a time // remove any equalities
-      map{p => ~=(p(0), p(1), tolerance)}. // get -1 and 1 values; must have 2 values; add 'smoothing' tolerance
+      map{p => ~=(p.head, p(1), tolerance)}. // get -1 and 1 values; must have 2 values; add 'smoothing' tolerance
       sliding(2). // take *these* two at a time
-      count{p => p.size == 2 && (p(0) != p(1) && p(0) != 0 && p(1) != 0)}
+      count{p => p.size == 2 && (p.head != p(1) && p.head != 0 && p(1) != 0)}
   }
 
 

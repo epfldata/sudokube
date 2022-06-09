@@ -105,7 +105,6 @@ class UserCubeSpec extends FlatSpec with Matchers{
   it should "work for aggregating and slicing on different values" in {
     val userCube = fixture.userCube
     val result = userCube.query(List(("spicy", 1, Nil), ("Type", 2, Nil), ("Region", userCube.sch.n_bits, List("India")), ("Vegetarian", userCube.sch.n_bits, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[Any]].map(_.asInstanceOf[(String, Any)])
-    println(result.mkString("(", "\n", ")"))
     assert(result.apply(0)._1 ==  "spicy=0;Region=India;Type=NULL;Vegetarian=0" && result.apply(0)._2 == "0.0")
     assert(result.apply(3)._1 == "spicy=1;Region=India;Type=Dish;Vegetarian=0" &&  result.apply(3)._2 == "5.0")
   }
