@@ -29,7 +29,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /* protected */
   var cuboids = Array[Cuboid]()
-  var primaryMoments : (Long, Array[Long]) = null
+  var primaryMoments: (Long, Array[Long]) = null
+
   def showProgress = m.n_bits > 25
 
   /** this is too slow. */
@@ -368,6 +369,47 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     Profiler("NaiveFetch") {
       fetch(l).map(p => p.sm.toDouble)
     }
+  }
+
+  def loadTrie(cubename: String) = {
+    val filename = s"cubedata/${cubename}_trie/${cubename}.trie"
+    val file = new File(filename)
+    val in = new ObjectInputStream(new FileInputStream(file))
+    in.readObject().asInstanceOf[SetTrieForMoments]
+  }
+  def saveAsTrie(cubename: String) = {
+    val filename = s"cubedata/${cubename}_trie/${cubename}.trie"
+    val file = new File(filename)
+    if (!file.exists())
+      file.getParentFile.mkdirs()
+    val out = new ObjectOutputStream(new FileOutputStream(file))
+    import CBackend.b.{DenseCuboid => DC}
+    import core.solver.Moment1Transformer
+    val trie = new SetTrieForMoments()
+    val dim = 25
+    cuboids.filter(_.n_bits > dim).foreach(_.gc)
+    var cuboidCount = 0
+    m.projections.zipWithIndex.filter(_._1.length <= dim).sortBy(_._1.length).foreach { case (cols, cid) =>
+      val n = cols.length
+
+      val cuboid = cuboids(cid)
+      assert(cuboid.n_bits == n)
+
+      if(trie.count < 100*1000*1000) {
+        print(s"$n:$cid   ")
+        val dcub = cuboid.rehash_to_dense(Array.fill(n)(1))
+        val fetched = dcub.asInstanceOf[DC].fetch.map(_.sm)
+        val moments = Moment1Transformer.getMoments(fetched)
+        trie.insertAll(cols, moments)
+        cuboidCount += 1
+        println(s" count=${trie.count}  cuboids=$cuboidCount")
+        dcub.gc
+      }
+      cuboid.gc
+    }
+
+    out.writeObject(trie)
+    out.close()
   }
 
   def savePrimaryMoments(cubename: String) = {

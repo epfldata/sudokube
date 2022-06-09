@@ -1,7 +1,10 @@
-import core.SetTrie
+import core.solver.Moment1Transformer
+import core.{SetTrie, SetTrieForMoments}
 import org.scalatest.{FlatSpec, Matchers}
-import util.Util
+import util.{BigBinary, Bits, Util}
 
+import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import scala.math.Numeric.Implicits.infixNumericOps
 import scala.util.Random
 
 class SetTrieSpec extends FlatSpec with Matchers {
@@ -56,4 +59,57 @@ class SetTrieSpec extends FlatSpec with Matchers {
   "Trie ExistSuperset" should s"be correct for random sets 2" in randomTest(100, 5, 1000, 100, 5)
   "Trie ExistSuperset" should s"be correct for random sets 3" in randomTest(1000, 10, 1000, 1000, 5)
   "Trie ExistSuperset" should s"be correct for random sets 4" in randomTest(1000, 100, 1000, 10000, 3)
+
+  "SetTrie" should "return subset moments for query " in {
+    val trie = new SetTrieForMoments()
+    val nbits = 10
+    val N = (1 << nbits)
+    (0 until N).foreach { i =>
+      val cs = Bits.fromInt(i).sorted
+      trie.insert(cs, i.toDouble)
+    }
+    assert(trie.count == N)
+    def query(q: List[Int]) = {
+      val moments = trie.getNormalizedSubsetMoments(q).toMap
+      val N = (1 << q.length)
+      assert(moments.size == N)
+      (0 until N).foreach { i =>
+        //println(s"i = $i  m = ${moments(i)}")
+        assert(moments(i).toInt == BigBinary(i).pup(q).toInt)
+      }
+    }
+
+    query(List())
+    query((0 until nbits).toList)
+    query(List(5, 7, 9))
+    query(List(2, 5, 6))
+    query(List(0, 5, 6, 7))
+    query(List(0, 2, 3, 4, 8))
+    query(List(1, 3, 4))
+  }
+
+  "SetTrie" should "return subset moments from cuboids for query " in {
+    val trie = new SetTrieForMoments()
+    def ms[T:Numeric](vs : Array[T]) = Moment1Transformer.getMoments(vs.map(_.toDouble))
+    trie.insertAll(List(0, 1), ms(Array(7, 3, 6, 1)))
+    trie.insertAll(List(1, 2), ms(Array(1, 4, 9, 3)))
+    trie.insertAll(List(0, 2), ms(Array(3, 2, 10, 2)))
+    assert(trie.count == 7)
+    val filename = "triemoment"
+    val file = new File("cubedata/" + filename + "/" + filename + ".trie")
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+    val oos = new ObjectOutputStream(new FileOutputStream(file))
+    oos.writeObject(trie)
+
+
+    val ois = new ObjectInputStream(new FileInputStream(file))
+    val trie2 = ois.readObject().asInstanceOf[SetTrieForMoments]
+    assert(trie2.count == 7)
+    val q = List(0, 1, 2)
+    val moments = trie2.getNormalizedSubsetMoments(q).sortBy(_._1)
+    val actual = List(17, 4, 7, 1, 12, 2, 3).zipWithIndex.map{case (m, i) => (i, m.toDouble)}
+    assert(moments.sameElements(actual))
+    file.delete()
+  }
 }

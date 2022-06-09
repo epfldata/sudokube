@@ -97,6 +97,14 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
 
 /*
  * Class:     backend_CBackend
+ * Method:    cuboidGC0
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_cuboidGC0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     backend_CBackend
  * Method:    add_i
  * Signature: (III[IJ)V
  */

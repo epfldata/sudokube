@@ -20,13 +20,13 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
   override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
     //Cannot use default warmup because of "containsAllCuboid" set to true
     val dcwarm = DataCube.load2("warmupall")
-    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, false))
+    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, null, false))
     println("Warmup Complete")
   }
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)

@@ -513,7 +513,19 @@ value_t *fetch(unsigned int d_id, size_t &size) {
     return (value_t *) ptr;
 }
 
-
+/**
+ *  Garbage collects storage used by  cuboid
+ *  Does not fully delete the cuboid !!
+ *  Should only be used on temporary cuboids created while querying
+ *  @param id ID of the cuboid
+ */
+void cuboid_GC(unsigned int id) {
+    size_t size;
+    unsigned short keySize;
+    void *ptr;
+    globalRegistry.read(id, ptr, size, keySize);
+    free(ptr);
+}
 /**
  * Aggregates a sparse cuboid to another sparse cuboid according to a specific mask
  * Uses sorting on tempRec typed records -- avoid this function if possible

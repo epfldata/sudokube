@@ -10,6 +10,7 @@ abstract class Cuboid {
   val n_bits : Int
   def size: BigInt
   def numBytes: Long
+  def gc: Unit
   def rehash_to_sparse(mask: MASK_T): Cuboid
   def rehash_to_dense( mask: MASK_T): Cuboid
 
@@ -44,7 +45,9 @@ abstract class Backend[MEASURES_T] {
     /** size in # rows */
     def size = sSize(data)
     def numBytes: Long = sNumBytes(data)
-
+    override def gc = {
+      cuboidGC(sparseToHybrid(data))
+    }
     override def rehash(mask: MASK_T): Cuboid = {
       val h = hybridRehash(data, mask)
       if(isDense(h))
@@ -91,7 +94,7 @@ abstract class Backend[MEASURES_T] {
 
     /** only in DenseCuboid */
     def fetch: Array[MEASURES_T] = dFetch(data)
-
+    override def gc: Unit = cuboidGC(denseToHybrid(data))
     def backend = be_this
   }
 
@@ -106,6 +109,7 @@ abstract class Backend[MEASURES_T] {
   def mkAll(n_bits: Int, it: Seq[(BigBinary, Long)]) : SparseCuboid
 
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
+  protected def cuboidGC(data: HYBRID_T): Unit
   protected def sSize(data: SPARSE_T) : BigInt
   protected def sNumBytes(data: SPARSE_T) : Long
 

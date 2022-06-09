@@ -55,7 +55,7 @@ class OldMomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(i
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname:String, qu: Seq[Int], output: Boolean = true, qname: String = "") = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
     val q = qu.sorted
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
