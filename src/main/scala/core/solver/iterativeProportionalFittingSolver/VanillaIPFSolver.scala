@@ -44,7 +44,8 @@ class VanillaIPFSolver(val numDimensionsQueried: Int,
     var totalDelta: Double = 0.0
     var numIterations = 0
 
-    printExperimentTimeErrorDataToFile()
+    if (isExperimenting)
+      printExperimentTimeErrorDataToFile()
 
     do {
       numIterations += 1
