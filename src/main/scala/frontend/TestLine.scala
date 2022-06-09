@@ -57,9 +57,17 @@ case object TestLine {
             if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat < s.replaceFirst("<", "").toFloat)) {
               return testLineAnd(splitString, q_sorted, n + 1)
             }
-          case _ =>
-            if (splitString(n).contains(q_sorted(n)._2(i))) {
-              return testLineAnd(splitString, q_sorted, n + 1)
+          case s =>
+            try {
+              val conv = s.toFloat
+              if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat == conv)) {
+                return testLineAnd(splitString, q_sorted, n + 1)
+              }
+            } catch {
+              case e : Exception =>
+                if (splitString(n).contains(s)) {
+                  return testLineAnd(splitString, q_sorted, n + 1)
+                }
             }
         }
       }
@@ -113,9 +121,17 @@ case object TestLine {
             if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat < s.replaceFirst("<", "").toFloat)) {
               return false
             }
-          case _ =>
-            if (splitString(n).contains(q_sorted(n)._2(i))) {
-              return false
+          case s =>
+            try {
+              val conv = s.toFloat
+              if (("""\d+""".r findAllIn splitString(n)).toList.exists(string => string.toFloat == conv)) {
+                return false
+              }
+            } catch {
+              case e : Exception =>
+                if (splitString(n).contains(q_sorted(n)._2(i))) {
+                  return false
+                }
             }
         }
       }
