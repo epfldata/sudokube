@@ -2,17 +2,39 @@ package experiments
 
 import core.SolverTools.error
 import core.{DataCube, SolverTools}
-import core.solver.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer}
+import core.solver.{CoMoment4Solver, Moment1Transformer}
 import core.solver.iterativeProportionalFittingSolver.VanillaIPFSolver
 import util.Profiler
 
+import java.io.{File, PrintStream}
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
 class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"vanilla-ipf-moment-batch", ename2) {
   fileout.println(
-    "CubeName, SolverName, Query, QSize, DOF, " +
-      "NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  " +
-      "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, " +
-      "IPFTotalTime(us), IPFPrepareTime(us), IPFFetchTime(us), IPFMaxDimFetched, IPFSolveTime(us), IPFErr"
+    "CubeName, MomentSolverName, Query, QSize, DOF, " +
+      "NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,NaiveEntropy,  " +
+      "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, MEntropy, " +
+      "IPFTotalTime(us), IPFPrepareTime(us), IPFFetchTime(us), IPFMaxDimFetched, IPFSolveTime(us), IPFErr, IPFEntropy, " +
+      "Difference,MaxDifference"
   )
+
+  val ipfTimeErrorFileout: PrintStream = {
+    val isFinal = true
+    val (timestamp, folder) = {
+      if (isFinal) ("final", ".")
+      else if (shouldRecord) {
+        val datetime = LocalDateTime.now
+        (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
+      } else ("dummy", "dummy")
+    }
+    val file = new File(s"expdata/$folder/${ename2}_vanilla-ipf-time-error_$timestamp.csv")
+    if (!file.exists())
+      file.getParentFile.mkdirs()
+    new PrintStream(file)
+  }
+
+  ipfTimeErrorFileout.println("CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr")
 
   def moment_solve(dc: DataCube, q: Seq[Int]): (CoMoment4Solver, Int) = {
     val (l, pm) = Profiler("Moment Prepare") {
@@ -40,10 +62,11 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
       }
       s
     }
+
     (result, maxDimFetch)
   }
 
-  def ipf_solve(dc: DataCube, q: Seq[Int]): (VanillaIPFSolver, Int) = {
+  def ipf_solve(dc: DataCube, q: Seq[Int], naiveRes: Array[Double], dcname: String, qu: Seq[Int]): (VanillaIPFSolver, Int) = {
     val (l, _) = Profiler("Vanilla IPF Prepare") { // Same as moment for the moment
       dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
     }
@@ -54,9 +77,11 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
       }
     }
 
+    println(s"\t\tNumber of cubes fetched: ${fetched.length}")
+
     val result = Profiler("Vanilla IPF Solve") {
       val solver = Profiler("Vanilla IPF Constructor") {
-        new VanillaIPFSolver(q.length)
+        new VanillaIPFSolver(q.length, true, naiveRes, ipfTimeErrorFileout, dcname, qu.mkString(":"))
       }
       Profiler("Vanilla IPF Add") {
         fetched.foreach { case (bits, array) => solver.add(bits, array) }
@@ -100,26 +125,30 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
 
     val (vanillaIPFSolver, ipfMaxDim) = Profiler("Vanilla IPF Total") {
-      ipf_solve(dc, q)
+      ipf_solve(dc, q, naiveRes, dcname, qu)
     }
     val ipfError = Profiler("Vanilla IPF Error Checking") {
-      SolverTools.error(naiveRes, vanillaIPFSolver.totalDistribution)
+      SolverTools.error(naiveRes, vanillaIPFSolver.getSolution)
     }
     println("\t\tVanilla IPF solve time: " + Profiler.durations("Vanilla IPF Solve")._2 / 1000 +
             ", total time: " + Profiler.durations("Vanilla IPF Total")._2 / 1000 +
             ", error: " + ipfError)
 
-    println("\t\tDifference (using error measure) = " + error(momentSolver.solution, vanillaIPFSolver.totalDistribution))
+
+    val difference = error(momentSolver.solution, vanillaIPFSolver.getSolution)
+    println(s"\t\tDifference (using error measure) = $difference")
 
     val grandTotal = naiveRes.sum
-    println("\t\tMax difference out of total sum = " +
-      (0 until 1 << q.length).map(i => (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs).max / grandTotal
-    )
+    val maxDifference = (0 until 1 << q.length).map(i => (momentSolver.solution(i) - vanillaIPFSolver.getSolution(i)).abs).max / grandTotal
+    println(s"\t\tMax difference out of total sum = $maxDifference")
 
-    println("\t\tMoment Entropy = " + momentSolver.solution.map(n => if (n != 0) - (n/grandTotal) * math.log(n/grandTotal) else 0).sum )
-    println("\t\tVanilla IPF Entropy = " + vanillaIPFSolver.totalDistribution.map(n => if (n != 0) - (n/grandTotal) * math.log(n/grandTotal) else 0).sum )
 
-    Profiler.print()
+    val naiveEntropy = entropy(naiveRes)
+    val momentEntropy = entropy(momentSolver.solution)
+    val vanillaIPFEntropy = entropy(vanillaIPFSolver.getSolution)
+    println(s"\t\tNaive (real) Entropy = $naiveEntropy")
+    println(s"\t\tMoment Entropy = $momentEntropy")
+    println(s"\t\tVanilla IPF Entropy = $vanillaIPFEntropy")
 
     val ntotal = Profiler.durations("Naive Total")._2 / 1000
     val nprepare = Profiler.durations("Naive Prepare")._2 / 1000
@@ -137,11 +166,17 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
     if (output) {
       val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$dof,  " +
-        s"$nprepare,$nfetch,$ntotal,$naiveMaxDim,  " +
-        s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError, " +
-        s"$ipfTotal,$ipfPrepare,$ipfFetch,$ipfMaxDim,$ipfSolve,$ipfError"
+        s"$nprepare,$nfetch,$ntotal,$naiveMaxDim,$naiveEntropy,  " +
+        s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError,$momentEntropy, " +
+        s"$ipfTotal,$ipfPrepare,$ipfFetch,$ipfMaxDim,$ipfSolve,$ipfError,$vanillaIPFEntropy, " +
+        s"$difference,$maxDifference"
       fileout.println(resultrow)
     }
 
+  }
+
+  def entropy(p: Array[Double]): Double = {
+    val grandTotal = p.sum
+    p.map(n => if (n != 0) - (n/grandTotal) * math.log(n/grandTotal) else 0).sum
   }
 }

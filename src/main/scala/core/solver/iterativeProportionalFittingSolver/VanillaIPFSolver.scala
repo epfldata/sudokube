@@ -1,18 +1,30 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.Bits
+import core.SolverTools.error
+import util.{Bits, Profiler}
+
+import java.io.PrintStream
 
 /**
  * Vanilla version of linear proportional fitting.
- * TODO: Confirm about normalization
  * @author Zhekai Jiang
  * @param numDimensionsQueried Total number of dimensions queried.
  */
-class VanillaIPFSolver(val numDimensionsQueried: Int) {
+class VanillaIPFSolver(val numDimensionsQueried: Int,
+                       val isExperimenting: Boolean = false,
+                       val trueDistribution: Array[Double] = null, /* for experimentation only */
+                       val timeErrorFileOut: PrintStream = null, /* for experimentation only */
+                       val cubeName: String = "", val query: String = "" /* for experimentation only */) {
   /* private */ val N: Int = 1 << numDimensionsQueried
   /* private */ var clusters: List[Cluster] = List[Cluster]()
-  var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
-  /* private */ val convergenceThreshold: Double = 1e-3
+  /* private */ var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
+  var solution: Array[Double] = Array[Double]()
+  def getSolution: Array[Double] = {
+    solution = totalDistribution.map(_ * normalizationFactor)
+    solution
+  }
+  /* private */ val convergenceThreshold: Double = 1e-5
+  /* private */ var normalizationFactor: Double = 1.0
 
   /**
    * Add a new known marginal distribution as a cluster.
@@ -20,24 +32,33 @@ class VanillaIPFSolver(val numDimensionsQueried: Int) {
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
-    clusters = Cluster(Bits.toInt(marginalVariables), marginalDistribution) :: clusters
+    normalizationFactor = marginalDistribution.sum
+    clusters = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor)) :: clusters
   }
 
   /**
-   * Obtain the total distribution
-   *
-   * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
+   * Obtain the solution, un-normalized
+   * @return solution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double] = {
-    // TODO: confirm about delta calculation and termination condition
     var totalDelta: Double = 0.0
     var numIterations = 0
+
+    printExperimentTimeErrorDataToFile()
+
     do {
-      totalDelta = updateDistribution()
       numIterations += 1
+      totalDelta = updateDistribution()
+
+      if (isExperimenting) {
+        printExperimentTimeErrorDataToFile()
+        //      println(s"\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
+        //      println(s"\t\tError: ${error(naiveRes, totalDistribution)}")
+      }
+
     } while (totalDelta >= convergenceThreshold * N * clusters.length * totalDistribution.sum)
     println(s"\t\tnumber of iterations: $numIterations, log N: $numDimensionsQueried")
-    totalDistribution
+    getSolution
   }
 
   /**
@@ -134,5 +155,15 @@ class VanillaIPFSolver(val numDimensionsQueried: Int) {
       tmp /= 2
     }
     numOnes
+  }
+
+  private def printExperimentTimeErrorDataToFile(): Unit = {
+    val currentTime = System.nanoTime()
+    val totalTime = (currentTime - Profiler.startTimers("Vanilla IPF Total")) / 1000
+    val solveTime = (currentTime - Profiler.startTimers("Vanilla IPF Solve")) / 1000
+    val currentError = error(trueDistribution, getSolution)
+    println(s"\t\tTotal Time: $totalTime, solveTime: $solveTime, Error: $currentError")
+    // CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr
+    timeErrorFileOut.println(s"$cubeName, $query, $numDimensionsQueried, $totalTime, $solveTime, $currentError")
   }
 }
