@@ -100,6 +100,32 @@ object Util {
     (result.reverse, inter_int)
   }
 
+  // Intersection for two sorted lists a and b, optimized for hashmap uses
+  def intersect_intval2(a: List[Int], a_2: List[Int], b: List[Int]): (List[Int], Int) = {
+    var x = a
+    var x_2 = a_2
+    var y = b
+    var inter_int = 0
+    var result = List[Int]()
+    while(x != Nil && y != Nil) {
+      if(x.head > y.head)
+        y = y.tail
+      else if (x.head < y.head) {
+        x = x.tail
+        x_2 = x_2.tail
+      }
+      else {
+        result = x.head :: result
+        inter_int += x_2.head
+        x = x.tail
+        x_2 = x_2.tail
+        y = y.tail
+      }
+
+    }
+    (result.reverse, inter_int)
+  }
+
   def complement[T](univ: Seq[T], s: Seq[T]) =
     univ.filter(x => ! s.contains(x))
 
