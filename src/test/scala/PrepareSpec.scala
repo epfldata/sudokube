@@ -22,6 +22,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       val onlinep = Profiler("OnlineNewPrepare"){m.prepare_online_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep_int = Profiler("OnlineNewIntPrepare"){m.prepare_online_new_int(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep_int2 = Profiler("OnlineNewIntPrepare2"){m.prepare_online_new_int2(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      val onlinep_int3 = Profiler("OnlineNewIntPrepare3"){m.prepare_online_new_int3(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val optp = Profiler("OptPrepare"){m.prepare_opt(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       //val testp = Profiler("Online new w/ SetTrieIntersect"){mtest.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
@@ -39,8 +40,9 @@ class PrepareSpec extends FlatSpec with Matchers {
       println("Onlinep : " + onlinep.length)
       println("Onlinep_int: " + onlinep_int.length)
       println("Onlinep_int2: " + onlinep_int2.length)
+      println("Onlinep_int3: " + onlinep_int3.length)
 
-      assert(onlinep.sameElements(oldp))
+      assert(onlinep.sameElements(onlinep_int))
 
     }
     println("Time for RMS")
