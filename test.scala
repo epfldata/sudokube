@@ -44,20 +44,64 @@ object  test {
        */
 
 
+    // this one need to run up to the full cube
+   // val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
+    //od.l_run(q, 2)*/
+    val sch = new schema.IsNullSchema
+    val R = sch.read("investments.json")
+    val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-        val sch = new schema.IsNullSchema
-        val dc = sch.readFromStream()
+    val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+    val dc = new DataCube(matscheme)
+    dc.build(basecuboid)
+    val cube = new UserCube(dc, sch)
+    val analyse = new Analysis(cube, sch)
+    //val r :  List[(Int, List[(String, String, String)])] = analyse.divideV2()
+    /*r.foreach(x => {
+        println("Line : " + x._1)
+        x._2.foreach(y => {
+            println("Change on column " + y._1 + " : " + y._2 + " ---> " + y._3)
+        })
+    })
 
-        val qV = sch.columns("coin_name").bits.toList
-        val qH = List()
-        
-        val q = (qV ++ qH).sorted
+    r.foreach(x => {
+        println("Line : " + x._1)
+        analyse.analyse(x)._2.foreach(y => {
+            println("Possibilities of")
+            y.foreach(z => {
+                println(z + "   ")
+            })
+        })
+    })*/
+    val r :  List[(Int, List[List[Possibility]])] = analyse.divideV2()
+    /*val r : List[Possibility] = List(Add("company"), Rename("date", "k_amount"), Remove("a"), Add("b"), Rename("c", "d"), Add("f"), Remove("g"))
+    val resultNull : List[List[Possibility]] = analyse.methodeN(Nil, r, "personal", Nil)
+    resultNull.foreach(w => {
+        println("Possibilities of Null")
+            w.foreach(q => {
+                println(q + "   ")
+            })
+            })
+        println()
+        val resultNotNull : List[List[Possibility]] = analyse.methodeNN(Nil, r, "personal", Nil)
+        resultNotNull.foreach(w => {
+        println("Possibilities of Not Null")
+            w.foreach(q => {
+                println(q + "   ")
+            })
+            })*/
+    /*val r = cube.query(List(("Time", sch.columns("Time").bits.toList.length, List("7"))) ++ List(("company", 1, Nil)), Nil, resultForm = TUPLES_PREFIX) match {
+                case x : Array[Any] => x
+                case _ => Array[Any]()
+            }
+    val s : Array[(String, AnyVal)] = r.map(y => {
+                y match {
+                    case y : (String, AnyVal) => y
+                    case _ => ("", 0L)
+                }
+            })
+            println("r =" + s.mkString(" "))*/
 
-        val r = dc.naive_eval(q)
-        println("r = " + r.mkString(" "))
-        val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
-        od.l_run(q, 2)
-    
 }
 
 
