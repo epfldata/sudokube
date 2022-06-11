@@ -15,6 +15,8 @@ import java.util.concurrent.TimeUnit
 import frontend._
 import backend._
 import core._
+import util.BigBinary
+
 
 
 object  test {
@@ -41,41 +43,20 @@ object  test {
         println("(722) 037-8347 : " + validateNumber("(722) 037-8347"));  
        */
 
-        //System.out.println(isValidURL("htps://www.inazumatv.fr/s2/100.html"))
-        //println(genJsonFromStream());
-       // println(readFromStream())
-    /* var sc = ScalaBackend.initPartial()
-     val sch = new schema.IsNullSchema
-     var R = sch.read("investments.json")
-      sc = ScalaBackend.mkPartial(sch.n_bits, R.toIterator,sc)
-     R = sch.read("investments.json")
-     sc = ScalaBackend.mkPartial(sch.n_bits, R.toIterator, sc)      
-     val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
-     val dc = new DataCube(matscheme)
-     dc.build(sc)
-     
-    */
-     val sch = new schema.IsNullSchema
-     val dc = sch.readFromStream()
-     println("test");
-    print(sch.columnList.map(_._2.bits)); //(x,y) -> y.bits
-    val qV = sch.columns("id").bits.toList //Company
-    val qH = List()//even or odd years
 
-    //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
-    val q = (qV ++ qH).sorted
 
-    // solves to df=2 using only 2-dim cuboids
-    //val s = dc.solver[Rational](q, 2)
-    //s.compute_bounds
+        val sch = new schema.IsNullSchema
+        val dc = sch.readFromStream()
 
-    // runs up to the full cube
-    val r = dc.naive_eval(q)
-    println("r =" + r.mkString(" "))
+        val qV = sch.columns("coin_name").bits.toList
+        val qH = List()
+        
+        val q = (qV ++ qH).sorted
 
-    // this one need to run up to the full cube
-   // val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
-    //od.l_run(q, 2)
+        val r = dc.naive_eval(q)
+        println("r = " + r.mkString(" "))
+        val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
+        od.l_run(q, 2)
     
 }
 

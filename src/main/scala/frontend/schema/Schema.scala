@@ -100,7 +100,7 @@ trait Schema extends Serializable {
       })
   }
 
-  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/name/random_name", chunckSize : Int = 7): DataCube = {
+  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/crypto_coin/random_crypto_coin", chunckSize : Int = 7): DataCube = {
      
      @volatile var sc = ScalaBackend.initPartial()
       val threadStream  = new Thread {
@@ -115,6 +115,7 @@ trait Schema extends Serializable {
             val pathTemp2 : String  = "temp2.json"
             var pathWrite : String = pathTemp1
             var pathRead : String = pathTemp2
+            val testFileWriter = new BufferedWriter(new FileWriter(new File("total.json")));
 
             def inversePaths(): Unit = {
               val pathTemp : String = pathWrite
@@ -146,8 +147,10 @@ trait Schema extends Serializable {
                         while(line != null) {
                           response.append(line);
                           fileWriter.write(line)
+                          testFileWriter.write(line)
                           line = bufferedReader.readLine()
                         }
+                         testFileWriter.write("\n")
                         if(i == chunckSize) {
                           fileWriter.write("]")
                         }
@@ -170,16 +173,14 @@ trait Schema extends Serializable {
             def getThreadCube(): Thread = {
                 new Thread {
                     override def run {
-                        var r = read(pathRead)
+                        var r = read(pathRead, measure_key, map_value)
                         sc = ScalaBackend.mkPartial(n_bits, r.toIterator, sc)           
                     }
                 }
             }
 
             var threadCube = getThreadCube()
-            //==================================
             getJsonArray()
-
             inversePaths()
 
             while(!end) {
@@ -189,6 +190,7 @@ trait Schema extends Serializable {
               inversePaths()
               threadCube = getThreadCube()
             }
+            testFileWriter.close()
             threadCube.start()
             deleteFile(pathWrite)
             threadCube.join()
