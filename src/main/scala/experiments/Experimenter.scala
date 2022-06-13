@@ -217,6 +217,7 @@ object Experimenter {
         }
       }
       Profiler.print()
+      println("\n\n\n")
     }
     dc.cuboids.head.backend.reset
 

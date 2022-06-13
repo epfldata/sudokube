@@ -66,7 +66,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
     val N = (1 << nbits)
     (0 until N).foreach { i =>
       val cs = Bits.fromInt(i).sorted
-      trie.insert(cs, i.toDouble)
+      trie.insert(cs, (i+1).toDouble)
     }
     assert(trie.count == N)
     def query(q: List[Int]) = {
@@ -75,7 +75,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
       assert(moments.size == N)
       (0 until N).foreach { i =>
         //println(s"i = $i  m = ${moments(i)}")
-        assert(moments(i).toInt == BigBinary(i).pup(q).toInt)
+        assert(moments(i).toInt-1 == BigBinary(i).pup(q).toInt)
       }
     }
 

@@ -3,18 +3,20 @@ package core
 import collection.mutable.SortedSet
 
 import util.Bits
+
 //we assume every node has moment stored
 @SerialVersionUID(1L)
-class SetTrieForMoments() extends  Serializable {
-  var root: Node = null
+class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
+  val nodes = Array.fill(maxSize)(new Node(-1, Double.NaN, -1, -1))
   var count = 0
+
   //insert all moments of cuboid
   def insertAll(cuboid: List[Int], moments: Array[Double]) = {
     val cArray = cuboid.sorted.toArray
     moments.indices.foreach { i =>
       val ls = Bits.fromInt(i).map(x => cArray(x)).sorted
       //println(s"Insert $i@$ls = ${moments(i)} ")
-      insert(ls, moments(i))
+      if(count < maxSize) insert(ls, moments(i), nodes(0))
     }
   }
 
@@ -24,70 +26,78 @@ class SetTrieForMoments() extends  Serializable {
     def rec(n: Node, qidx: Int, branch: Int): List[(Int, Double)] = {
       var result = List[(Int, Double)](branch -> n.moment)
 
-      var child = n.firstChild
+      var childId = n.firstChild
       var i = qidx
 
-
-      while (child != null && i < qarray.length) {
+      while (childId != -1 && i < qarray.length) {
         val qb = qarray(i)
+        val child = nodes(childId)
         if (child.b == qb) {
           result = result ++ rec(child, i + 1, branch + (1 << i))
-          child = child.nextSibling
+          childId = child.nextSibling
         } else if (child.b < qb) {
-          child = child.nextSibling
+          childId = child.nextSibling
         } else {
           i = i + 1
         }
       }
       result
     }
-
-    rec(root, 0, 0)
+    rec(nodes(0), 0, 0)
   }
 
-  def insert(s: List[Int], moment: Double, n: Node = root): Unit = s match {
+  def insert(s: List[Int], moment: Double, n: Node = nodes(0)): Unit = s match {
     //s is assumed to have distinct elements
     //all subsets assumed to be inserted before some set
-    case Nil if root == null =>
-      root = new Node(-1, moment, null, null)
+    case Nil if count == 0 =>
+      nodes(0).moment = moment
       count = 1
     case Nil => ()
     case h :: t =>
-      if(t.isEmpty || n.moment != 0.0) {  //do not insert child 0 moments
-        val (inserted, c) = n.findOrElseInsert(h, moment)
-        //will always find node except for last
-        if (inserted) count = count + 1
+      if (t.isEmpty || n.moment != 0.0) { //do not insert child 0 moments
+        val c = findOrElseInsert(n, h, moment)
         if (t.isEmpty) assert(c.moment == moment) else
           insert(t, moment, c)
       }
   }
 
-  @SerialVersionUID(2L)
-  class Node(val b: Int, val moment: Double, var firstChild: Node, var nextSibling: Node) extends Serializable {
-    def findOrElseInsert(v: Int, moment: Double) = {
-     var child = firstChild
-      var prev: Node = null
+  def findOrElseInsert(n: Node, v: Int, moment: Double) = {
+    var cur = n.firstChild
+    var child = if(cur != -1) nodes(cur) else null
+    var prev: Node = null
 
-      while(child != null && child.b < v) {
-        prev = child
-        child = child.nextSibling
-      }
-      if(child != null && child.b == v) {
-        (false, child)
-      } else {
-        val nc = new Node(v, moment, null, child)
-        if(prev == null)
-          firstChild = nc
-        else
-          prev.nextSibling = nc
-        (true, nc)
-      }
+    while (cur != -1 && child.b < v) {
+      prev = child
+      cur = child.nextSibling
+      child = if(cur != -1) nodes(cur) else null
+    }
+    if (child != null && child.b == v) {
+      child
+    } else {
+      val newnode = nodes(count)
+      newnode.set(v, moment, cur)
+      if (prev == null)
+        n.firstChild = count
+      else
+        prev.nextSibling = count
+      count += 1
+      newnode
     }
   }
 }
 
+@SerialVersionUID(2L)
+class Node(var b: Int, var moment: Double, var firstChild: Int, var nextSibling: Int) extends Serializable {
+  def set(bval: Int, mval: Double, sibVal: Int) = {
+    b = bval
+    moment = mval
+    nextSibling = sibVal
+  }
+
+}
+
 class SetTrie() {
-  val root =  Node(-1)
+  val root = Node(-1)
 
   def insert(s: List[Int], n: Node = root): Unit = s match {
     //s is assumed to have distinct elements
@@ -98,21 +108,21 @@ class SetTrie() {
   }
 
 
-  def existsSuperSet(s: List[Int], n: Node = root): Boolean= s match {
+  def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
     case Nil => true
     case h :: t =>
       var found = false
       val child = n.children.iterator
       var ce = n.b
       while (child.hasNext && !found && ce <= h) {
-       val cn = child.next()
+        val cn = child.next()
         ce = cn.b
-       if(ce < h) {
-         found = existsSuperSet(s, cn)
-       } else if(ce == h) {
-         found = existsSuperSet(t, cn)
-       } else
-         ()
+        if (ce < h) {
+          found = existsSuperSet(s, cn)
+        } else if (ce == h) {
+          found = existsSuperSet(t, cn)
+        } else
+          ()
       }
       found
   }
@@ -132,6 +142,7 @@ class SetTrie() {
 
   object Node {
     implicit def order: Ordering[Node] = Ordering.by(_.b)
+
     def apply(i: Int) = new Node(i, SortedSet())
   }
 }

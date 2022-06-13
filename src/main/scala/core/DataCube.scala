@@ -385,7 +385,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     val out = new ObjectOutputStream(new FileOutputStream(file))
     import CBackend.b.{DenseCuboid => DC}
     import core.solver.Moment1Transformer
-    val trie = new SetTrieForMoments()
+    val maxsize = 1 << 27
+    val trie = new SetTrieForMoments(maxsize)
     val dim = 25
     cuboids.filter(_.n_bits > dim).foreach(_.gc)
     var cuboidCount = 0
@@ -395,12 +396,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       val cuboid = cuboids(cid)
       assert(cuboid.n_bits == n)
 
-      if(trie.count < 100*1000*1000) {
+      if(trie.count < maxsize) {
         print(s"$n:$cid   ")
-        val dcub = cuboid.rehash_to_dense(Array.fill(n)(1))
-        val fetched = dcub.asInstanceOf[DC].fetch.map(_.sm)
-        val moments = Moment1Transformer.getMoments(fetched)
-        trie.insertAll(cols, moments)
+        val dcub = Profiler("Rehash"){cuboid.rehash_to_dense(Array.fill(n)(1))}
+        val fetched = Profiler("Fetch"){dcub.asInstanceOf[DC].fetch.map(_.sm)}
+        val moments = Profiler("Transform"){Moment1Transformer.getMoments(fetched)}
+        Profiler("Insert"){trie.insertAll(cols, moments)}
         cuboidCount += 1
         println(s" count=${trie.count}  cuboids=$cuboidCount")
         dcub.gc
@@ -408,8 +409,9 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       cuboid.gc
     }
 
-    out.writeObject(trie)
+    Profiler("Serialize"){out.writeObject(trie)}
     out.close()
+    Profiler.print()
   }
 
   def savePrimaryMoments(cubename: String) = {
