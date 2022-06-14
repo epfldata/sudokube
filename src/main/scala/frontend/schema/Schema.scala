@@ -100,7 +100,7 @@ trait Schema extends Serializable {
       })
   }
 
-  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/crypto_coin/random_crypto_coin", chunckSize : Int = 7): DataCube = {
+  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/crypto_coin/random_crypto_coin", bufferSize : Int = 7, delay : Int = 0): DataCube = {
      
      @volatile var sc = ScalaBackend.initPartial()
       val threadStream  = new Thread {
@@ -132,7 +132,7 @@ trait Schema extends Serializable {
             def getJsonArray(): Unit = {
               val fileWriter = new BufferedWriter(new FileWriter(new File(pathWrite)));
               fileWriter.write("[")
-              for(i <- 1 to chunckSize) {
+              for(i <- 1 to bufferSize) {
                 val co = new URL(url).openConnection;
                 val connection = co.asInstanceOf[HttpURLConnection]
                 val response = new StringBuilder();
@@ -141,8 +141,7 @@ trait Schema extends Serializable {
                     val responseCode = connection.getResponseCode();
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         var line : String = ""
-                        val bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                                
+                        val bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));       
                         line = bufferedReader.readLine()
                         while(line != null) {
                           response.append(line);
@@ -151,7 +150,7 @@ trait Schema extends Serializable {
                           line = bufferedReader.readLine()
                         }
                          testFileWriter.write("\n")
-                        if(i == chunckSize) {
+                        if(i == bufferSize) {
                           fileWriter.write("]")
                         }
                         else {
@@ -166,11 +165,20 @@ trait Schema extends Serializable {
                   } finally {
                       connection.disconnect();
                   }
+
+                  if(delay > 0) {
+                    try {
+                      Thread.sleep(delay)
+                    }
+                    catch {
+                       case _: Throwable => println("error while trynig to delay the http request")
+                    }
+                  }
               }
               fileWriter.close()
             }
 
-            def getThreadCube(): Thread = {
+            def getThreadUpdateCube(): Thread = {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
@@ -179,21 +187,21 @@ trait Schema extends Serializable {
                 }
             }
 
-            var threadCube = getThreadCube()
+            var threadUpdateCube = getThreadUpdateCube()
             getJsonArray()
             inversePaths()
 
             while(!end) {
-              threadCube.start()
+              threadUpdateCube.start()
               getJsonArray()
-              threadCube.join()
+              threadUpdateCube.join()
               inversePaths()
-              threadCube = getThreadCube()
+              threadUpdateCube = getThreadUpdateCube()
             }
             testFileWriter.close()
-            threadCube.start()
+            threadUpdateCube.start()
             deleteFile(pathWrite)
-            threadCube.join()
+            threadUpdateCube.join()
             deleteFile(pathRead)
           }
      }

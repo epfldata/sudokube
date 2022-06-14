@@ -168,7 +168,7 @@ object DemoTxt {
     println("test");
     print(sch.columnList.map(_._2.bits)); //(x,y) -> y.bits
     val qH = List()
-    val qV = sch.columns("company").bits.toList.toList
+    val qV = sch.columns("date").bits.toList
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
