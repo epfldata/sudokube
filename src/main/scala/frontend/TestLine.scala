@@ -18,11 +18,21 @@ case object TestLine {
     testLine(newString.sortBy(_.toLowerCase), q_unsorted.sortBy(_._1.toLowerCase), 0, op)
   }
 
-  private def checkCondition(offset: Int, value: String, condition: String, operator: (Float, Float) => Boolean, callback:  => Boolean, op: OPERATOR): Boolean = {
+  /**
+   * test if a condition is satisfied on a value
+   * @param offset the size of the comparison prefix to discard from the condition string
+   * @param value the value, in form prefix=... or prefix=(val1, val2, ...)
+   * @param condition the condition, with a prefix of size offset for comparison
+   * @param operation the operation to execute (equality, comparison...)
+   * @param callback the next function to execute if we need it, here the next condition check
+   * @param op the operator, AND or OR
+   * @return
+   */
+  private def checkCondition(offset: Int, value: String, condition: String, operation: (Float, Float) => Boolean, callback:  => Boolean, op: OPERATOR): Boolean = {
     try {
       //retrieve all the numbers in this string, and test if one of them matches the criterion
       val cond = condition.substring(offset).toFloat
-      if (("""\d+""".r findAllIn value).toList.exists(string => operator(string.toFloat, cond))) {
+      if (("""\d+""".r findAllIn value).toList.exists(string => operation(string.toFloat, cond))) {
         return op match {
           case AND => callback
           case OR => false
