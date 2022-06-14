@@ -170,7 +170,8 @@ class SetTrieIntersect() {
       case h :: t =>
         val child = n.children.iterator
         var ce = n.b
-        while (child.hasNext && n.cheapest_term <= max_fetch_dim) {
+        var continue = true
+        while (child.hasNext && n.cheapest_term <= max_fetch_dim && continue) {
           val cn = child.next()
           ce = cn.b
           var new_h = h
@@ -182,6 +183,9 @@ class SetTrieIntersect() {
           if (ce < new_h) {
             intersect(new_h :: new_t, current_intersect, max_fetch_dim, cn)
           } else if (ce == new_h) {
+            if(new_t.isEmpty){
+              continue = false
+            }
             intersect(new_t, current_intersect :+ new_h, max_fetch_dim, cn)
           } else {
             save_if_cheap(current_intersect, cn.cheapest_term, cn.id, cn.full_p)

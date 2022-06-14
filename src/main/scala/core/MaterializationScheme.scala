@@ -849,11 +849,7 @@ case class EfficientMaterializationScheme(m: MaterializationScheme) extends Mate
     val qIS = query.toIndexedSeq
     val qBS = query.toSet
 
-    import Util.intersect
-
     proj_trie.intersect(qL, List(), max_fetch_dim)
-    //println("TrieIntersect HM accesses0 : " + proj_trie.hm_accesses_0)
-    //println("TrieIntersect HM accesses1 : " + proj_trie.hm_accesses_1)
     val trie = new SetTrieOnline()
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
