@@ -5,7 +5,7 @@
     "rating": 48,
     "price": "cheap",
     "difficulty": 1,
-    "time": 60,
+    "time": 6,
     "last_comment": "07.05.2022"
   },
 
@@ -15,7 +15,7 @@
     "rating": 46,
     "price": "middle",
     "difficulty": 3,
-    "time": 40,
+    "time": 4,
     "last_comment": "29.06.2020"
   },
 
@@ -25,7 +25,7 @@
     "rating": 49,
     "price": "cheap",
     "difficulty": 2,
-    "time": 60,
+    "time": 6,
     "last_comment": "29.09.2019"
   },
 
@@ -35,7 +35,7 @@
     "rating": 47,
     "price": "cheap",
     "difficulty": 1,
-    "time": 75,
+    "time": 8,
     "last_comment": "27.01.2022"
   },
 
@@ -45,7 +45,7 @@
     "rating": 46,
     "price": "cheap",
     "difficulty": 3,
-    "time": 40,
+    "time": 4,
     "last_comment": "01.06.2022"
   },
 
@@ -55,7 +55,7 @@
     "rating": 45,
     "price": "cheap",
     "difficulty": 1,
-    "time": 90
+    "time": 9
   },
 
   { "name": "ice blue",
@@ -64,7 +64,7 @@
     "rating": 49,
     "price": "cheap",
     "difficulty": 1,
-    "time": 10,
+    "time": 1,
     "last_comment": "30.04.2020"
   },
 
@@ -74,7 +74,7 @@
     "rating": 43,
     "price": "cheap",
     "difficulty": 2,
-    "time": 45,
+    "time": 5,
     "last_comment": "07.11.2018"
   },
 
@@ -84,7 +84,7 @@
     "rating": 47,
     "price": "cheap",
     "difficulty": 1,
-    "time": 30,
+    "time": 3,
     "last_comment": "28.01.2022"
   },
 
@@ -94,7 +94,7 @@
     "rating": 47,
     "price": "middle",
     "difficulty": 6,
-    "time": 65,
+    "time": 7,
     "last_comment": "19.11.2021"
   },
 
@@ -104,7 +104,7 @@
     "rating": 50,
     "price": "expensive",
     "difficulty": 8,
-    "time": 100,
+    "time": 10,
     "last_comment": "05.05.2021"
   }
 ]

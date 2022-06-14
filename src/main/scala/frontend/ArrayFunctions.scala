@@ -171,6 +171,13 @@ object ArrayFunctions {
   }
 
   /**
+   * simple function that takes an array in the tuple form (either binary or prefix) and simply delete all the tuples that contain zero as second value
+   */
+  def deleteZeroColumns(source: Array[(String, Any)]): Array[(String, Any)] = {
+    source.filter(_._2.toString.toDouble != 0.0)
+  }
+
+  /**
    * given a source string, in the form (prefix1=x;prefix2=y...) or (prefix1=(x1, x2, x3);prefix2=y;prefix3=(z1, z2)...),
    * and given a prefix existing in the src string, returns the value of the src for this prefix
    *

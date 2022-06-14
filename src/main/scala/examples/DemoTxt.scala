@@ -11,9 +11,11 @@ import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
 import backend._
+import breeze.linalg.DenseMatrix
 import core.RationalTools._
 import core._
 import frontend._
+
 import scala.util.Random
 
 object DemoTxt {
@@ -183,30 +185,56 @@ object DemoTxt {
   def cooking(): Unit = {
 
 
-    val userCube = UserCube.createFromJson("testing_database.json", "rating")
+    val cube = UserCube.createFromJson("demo_recipes.json", "rating")
 
-    //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
-    /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n")*/
-    //val qH = userCube.query(List())
+    //save/load matrices
+    cube.save("demoCube")
+    val userCube = UserCube.load("demoCube")
 
-    //matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), OR, MOMENT)
-    /*matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)),List(), OR, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue))*/
+    //can query for a matrix
+    var matrix = userCube.query(List(("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
-    //println(userCube.query(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)), List(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[String]].mkString("Array(", ",\n", ")"))
-    //userCube.aggregateAndSlice(List(("spicy", 1), ("Type", 2)), List(("Region", List("India")), ("Vegetarian", List(">=0"))), AND, MOMENT)
-    //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
-    //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
-    //println(array._3.mkString("Array(", ", ", ")"))
+    // can add severa dimensions, internal sorting
+    matrix = userCube.query(List(("Region", 2, Nil), ("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
-    val array = userCube.query(List(("Region", 2, Nil), ("difficulty", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    //can query for an array, return top/left/values
+    val tuple = userCube.query(List(("Region", 2, Nil)), List(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
+      Array[Any], Array[Any])]
+    println(tuple._1.mkString("top header\n(", ", ", ")\n"))
+    println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
+    println(tuple._3.mkString("values\n(", ", ", ")\n \n"))
+
+  //can query for array of tuples with bit format
+    var array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
-    //println(ArrayFunctions.applyBinary(array.map(x => x.asInstanceOf[(String, Any)]), binaryFunction, ("Region", "spicy"), EXIST, 0))
+
+    //can query for array of tuples with prefix format
+    array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //can slice and dice: select (Type = Dish || Type = Side) && price = cheap
+    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //select (Type = Dish || Type = Side) || price = cheap
+    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+    //delete zero tuples
+    array = ArrayFunctions.deleteZeroColumns(array)
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //can apply some binary function
+    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), EXIST))
+    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), FORALL))
 
     def binaryFunction(str1: Any, str2: Any): Boolean = {
-      str1.toString.equals("India") && str2.toString.toInt == 1
+      str1.toString.equals("cheap") && !str2.toString.equals("Dish")
     }
 
     def transformForGroupBy(src : String): String = {
@@ -215,13 +243,9 @@ object DemoTxt {
         case _ => "Non-European"
       }
     }
-    println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
-    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
+    //println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
+    //println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
 
-    val mockSeq = Seq((1572004656619D, 51), (1572004677789D, 51), (1572004686013D, 52), (1572004693209D, 53), (1572004698606D, 54), (1572004707601D,  55),
-      (1572004726618D, 55))
-
-    println(ArrayFunctions.slopeAndIntercept(mockSeq.map(x => (x._1, x._2.toDouble))))
   }
 
 
