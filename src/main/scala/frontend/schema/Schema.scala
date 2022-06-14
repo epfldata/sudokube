@@ -207,7 +207,7 @@ trait Schema extends Serializable {
      }
        
     threadStream.start()
-    println("Enter anything to stop !")
+    println("Reading from a Stream... (Enter anything to stop)")
     scala.io.StdIn.readLine()
     threadStream.stopRunning()
     threadStream.join()
