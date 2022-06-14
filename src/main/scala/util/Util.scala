@@ -74,7 +74,13 @@ object Util {
     result.reverse
   }
 
-  // Intersection for two sorted lists a and b, optimized for hashmap uses
+  /**
+   * Intersection for two sorted lists a and b, optimized for hashmap uses of unique Int representation
+   * !! MAX LENGTH OF a = 32 !! Otherwise, might? cause overflow
+   * @param a First list
+   * @param b Second list
+   * @return (intersection as list, intersection as unique Int)
+   */
   def intersect_intval(a: List[Int], b: List[Int]): (List[Int], Int) = {
     var x = a
     var y = b
@@ -100,7 +106,14 @@ object Util {
     (result.reverse, inter_int)
   }
 
-  // Intersection for two sorted lists a and b, optimized for hashmap uses
+  /**
+   * Intersection for two sorted lists a and b, optimized for hashmap uses of unique Int representation
+   * !! MAX LENGTH OF a = 32 !! Otherwise, might? cause overflow
+   * @param a first sorted list (query if used in prepare)
+   * @param a_2 list of powers of 2
+   * @param b other list (projection if used in prepare)
+   * @return (intersection as list, intersection as unique Int)
+   */
   def intersect_intval2(a: List[Int], a_2: List[Int], b: List[Int]): (List[Int], Int) = {
     var x = a
     var x_2 = a_2
@@ -126,7 +139,13 @@ object Util {
     (result.reverse, inter_int)
   }
 
-  // Intersection for two sorted lists a and b, optimized for hashmap uses
+  /**
+   * Intersection for two sorted lists a and b, optimized for hashmap uses of unique Int representation
+   * !! MAX LENGTH OF a = 32 !! Otherwise, might? cause overflow
+   * @param a First list (query in case of use in Prepare)
+   * @param b Second list (projection "")
+   * @return (intersection as list, intersection as unique Int)
+   */
   def intersect_intval3(a: List[Int], b: List[Int]): (List[Int], Int) = {
     var x = a
     var y = b
@@ -147,7 +166,6 @@ object Util {
         index = index << 1
         y = y.tail
       }
-
     }
     (result.reverse, inter_int)
   }

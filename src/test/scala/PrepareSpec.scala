@@ -18,7 +18,7 @@ class PrepareSpec extends FlatSpec with Matchers {
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       //val testp = Profiler("DagPrepare"){m_DAG.prepare(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
-      val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
+      //val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep = Profiler("OnlineNewPrepare"){m.prepare_online_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep_int = Profiler("OnlineNewIntPrepare"){m.prepare_online_new_int(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
       val onlinep_int2 = Profiler("OnlineNewIntPrepare2"){m.prepare_online_new_int2(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
@@ -42,7 +42,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       println("Onlinep_int2: " + onlinep_int2.length)
       println("Onlinep_int3: " + onlinep_int3.length)
 
-      assert(onlinep.sameElements(onlinep_int))
+      assert(onlinep_int.sameElements(onlinep_int2))
 
     }
     println("Time for RMS")
