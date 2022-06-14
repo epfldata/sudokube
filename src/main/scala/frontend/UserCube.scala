@@ -103,7 +103,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   /**
    * function used to aggregate, instead of the fact, the values of another dimension (discarding the null facts)
    * @param q the base dimension (X)
-   * @param aggregateDim the dimension we want to aggregate (Y), has to be a number dimension
+   * @param aggregateDim the dimension we want to aggregate (Y), has to be a number dimension (if null, we simply take the normal values)
    * @param method the method of the query, naive or by moment
    * @param groupByMethod function to map the dimension values to facilitate group by (e.g. dates to month of the year)
    * @return

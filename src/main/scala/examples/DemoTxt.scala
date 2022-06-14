@@ -243,8 +243,8 @@ object DemoTxt {
         case _ => "Non-European"
       }
     }
-    //println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
-    //println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
+    println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
+    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
 
   }
 

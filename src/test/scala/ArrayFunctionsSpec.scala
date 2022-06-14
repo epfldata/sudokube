@@ -62,6 +62,9 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
     assert(TestLine.testLineOp(AND, array, query))
     query = List(("Region", Nil), ("spicy", Nil)) //select All
     assert(!TestLine.testLineOp(AND, array, query))
+    array = Array("spicy=45", "Region=(AmerIndia, China)")
+    query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    assert(TestLine.testLineOp(AND, array, query))
     info("works for simple equality")
 
     query = List(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) && spicy = 45
