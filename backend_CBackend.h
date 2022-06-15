@@ -57,6 +57,30 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
 /*
  * Class:     backend_CBackend
+ * Method:    saveAsTrie0
+ * Signature: ([Lscala/Tuple2;Ljava/lang/String;J)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
+  (JNIEnv *, jobject, jobjectArray, jstring, jlong);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    loadTrie0
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_loadTrie0
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    prepareFromTrie0
+ * Signature: ([I)[Lscala/Tuple2;
+ */
+JNIEXPORT jobjectArray JNICALL Java_backend_CBackend_prepareFromTrie0
+  (JNIEnv *, jobject, jintArray);
+
+/*
+ * Class:     backend_CBackend
  * Method:    mkAll0
  * Signature: (II)I
  */

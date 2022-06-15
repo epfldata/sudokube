@@ -155,72 +155,111 @@ object Experimenter {
 
     val cg = SSB(100)
     val param = "15_14_30"
-    val ms =  "sms3"
+    val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
-    val trie = dc.loadTrie(fullname)
+    //val trie = dc.loadTrie(fullname)
+    val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
+    CBackend.b.loadTrie(trie_filename)
     val sch = cg.schema()
 
-    val expname2 = s"query-dim-$ms"
-
-    val qss = List(12, 15)
-    qss.foreach { qs =>
-      Profiler.resetAll()
-      val queries = (0 until 10).map(_ => sch.root.samplePrefix(qs).toList.sorted).distinct
-      println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
-      val ql = queries.length
-      queries.zipWithIndex.foreach { case (q, i) =>
-
-        val (l, pm) = Profiler("Moment Prepare") {
-          dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
-        }
-        val maxDimFetch = l.last.mask.length
-        //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
-        val fetched = Profiler("Moment Fetch") {
-          l.map { pm =>
-            (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
-          }
-        }
-        val result = Profiler(s"Moment Solve") {
-          val s = Profiler(s"Moment Constructor") {
-            new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
-          }
-          Profiler(s"Moment Add") {
-            fetched.foreach { case (bits, array) => s.add(bits, array) }
-          }
-          Profiler(s"Moment FillMissing") {
-            s.fillMissing()
-          }
-          Profiler(s"Moment ReverseTransform") {
-            s.solve()
-          }
-          s
-        }
-        val moments = Profiler("Trie Moments") {
-          trie.getNormalizedSubsetMoments(q)
-        }
-        val result2 = Profiler(s"Trie Solve") {
-          val s = Profiler(s"TrieMoment Constructor") {
-            new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
-          }
-          Profiler("Trie Moments Add") {
-            s.momentsToAdd ++= moments
-          }
-          Profiler(s"TrieMoment FillMissing") {
-            s.fillMissing()
-          }
-          Profiler(s"TrieMoment ReverseTransform") {
-            s.solve()
-          }
+    def momentSolve(q: List[Int]) = {
+      val (l, pm) = Profiler("Moment Prepare") {
+        dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+      }
+      val maxDimFetch = l.last.mask.length
+      //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
+      val fetched = Profiler("Moment Fetch") {
+        l.map { pm =>
+          (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
         }
       }
-      Profiler.print()
-      println("\n\n\n")
+      val result = Profiler(s"Moment Solve") {
+        val s = Profiler(s"Moment Constructor") {
+          new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+        }
+        Profiler(s"Moment Add") {
+          fetched.foreach { case (bits, array) => s.add(bits, array) }
+        }
+        Profiler(s"Moment FillMissing") {
+          s.fillMissing()
+        }
+        Profiler(s"Moment ReverseTransform") {
+          s.solve()
+        }
+        s.moments
+      }
+      result
+    }
+
+    def trieSolve(q: List[Int]) = {
+      val pm = Profiler("Trie Prepare pm") {
+        SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+      }
+      val moments = Profiler("Trie Moments") {
+        CBackend.b.prepareFromTrie(q)
+      }
+      val result2 = Profiler(s"Trie Solve") {
+        val s = Profiler(s"TrieMoment Constructor") {
+          new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+        }
+        Profiler("Trie Moments Add") {
+          s.momentsToAdd ++= moments.map { case (i, l) => i -> l.toDouble }
+        }
+        Profiler(s"TrieMoment FillMissing") {
+          s.fillMissing()
+        }
+        Profiler(s"TrieMoment ReverseTransform") {
+          s.solve()
+        }
+        s.moments
+      }
+      result2
+    }
+
+    val expname2 = s"query-dim-$ms"
+    val mq = new MaterializedQueryResult(cg)
+    val qss = List(7)
+    qss.foreach { qs =>
+      Profiler.resetAll()
+      //val queries = mq.loadQueries(qs).take(1)
+      val queries = List(List(165,181,182,183,184,185,186))
+      println(s"Moment Solver  Trie Experiment for MS = $ms Query Dimensionality = $qs")
+      val ql = queries.length
+
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Query ${i+1}/$ql =  ${q.mkString(":")}")
+        val supersets = dc.m.projections.filter(c => c.size < dc.m.n_bits && q.toSet.subsetOf(c.toSet))
+        println("Supersets = " + supersets.mkString("\n"))
+        val newprepare = dc.m.prepare_new(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+        val oldprepare = dc.m.prepare_old(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+        println("NewPrepare " + newprepare.mkString("\n"))
+        println("OldPrepare " + oldprepare.mkString("\n"))
+        //val trueResult = mq.loadQueryResult(qs, i)
+        Profiler.resetAll()
+        val result1 = Profiler("MomentTotal") {
+          momentSolve(q)
+        }
+        import SolverTools.error
+        //val err1 = error(trueResult, result1)
+        Profiler.print()
+        //println("Error1 = " + err1)
+        println("\n")
+        Profiler.resetAll()
+        val result2 = Profiler("TrieTotal") {
+          trieSolve(q)
+        }
+        result1.zip(result2).zipWithIndex.foreach{ case ((r1, r2),i) => if(math.abs(r1-r2) > math.pow(10, -9)) println(s"R1[$i]=$r1 != $r2=R2[$i]")}
+        assert(result1.sameElements(result2))
+        //val err2 = error(trueResult, result2)
+        Profiler.print()
+        //println("Error2 = " + err2)
+        println("\n\n\n")
+      }
     }
     dc.cuboids.head.backend.reset
-
   }
 
   def moment_query_dimensionality(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
@@ -759,7 +798,7 @@ object Experimenter {
         manualSSB(strategy, true)
         manualNYC(strategy, true)
       case "scaling" => solverScaling(false)
-      case _ => debug()
+      case _ => trieExpt()
     }
   }
 }

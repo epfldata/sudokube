@@ -26,12 +26,20 @@ class CBackend extends Backend[Payload] {
   @native protected def   sRehash0(s_id: Int, pos: Array[Int]): Int
   @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
   @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
-  @native protected def   dRehash0(d_id: Int, pos: Array[Int]): Int
+  @native protected def dRehash0(d_id: Int, pos: Array[Int]): Int
+
+  @native protected def saveAsTrie0(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long)
+  @native protected def loadTrie0(filename: String)
+  @native protected def prepareFromTrie0(query: Array[Int]): Array[(Int, Long)]
+
   @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
   @native protected def mk0(n_bits: Int): Int
+
   @native protected def sSize0(id: Int): Int
   @native protected def sNumBytes0(id: Int): Long
+
   @native protected def dFetch0(d_id: Int): Array[Long]
+
   @native protected def cuboidGC0(id: Int): Unit
 
   @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Int], v: Long)
@@ -50,6 +58,10 @@ class CBackend extends Backend[Payload] {
 
   @native protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int])
 
+
+  override def saveAsTrie(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long): Unit = saveAsTrie0(cuboids, filename, maxSize)
+  override def loadTrie(filename: String): Unit = loadTrie0(filename)
+  override def prepareFromTrie(query: List[Int]): Seq[(Int, Long)] = prepareFromTrie0(query.sorted.toArray).toSeq
 
   override def reset: Unit = reset0()
 

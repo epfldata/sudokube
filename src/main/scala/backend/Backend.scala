@@ -104,6 +104,9 @@ abstract class Backend[MEASURES_T] {
   def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String): Unit
 
+  def saveAsTrie(cuboids: Array[(Array[Int], HYBRID_T)], filename: String, maxSize: Long): Unit
+  def loadTrie(filename: String): Unit
+  def prepareFromTrie(query: List[Int]) : Seq[(Int, Long)]
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid
   def mkAll(n_bits: Int, it: Seq[(BigBinary, Long)]) : SparseCuboid

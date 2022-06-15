@@ -110,6 +110,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
     val moments = trie2.getNormalizedSubsetMoments(q).sortBy(_._1)
     val actual = List(17, 4, 7, 1, 12, 2, 3).zipWithIndex.map{case (m, i) => (i, m.toDouble)}
     assert(moments.sameElements(actual))
-    file.delete()
+    file.delete
+    file.getParentFile.delete()
   }
 }

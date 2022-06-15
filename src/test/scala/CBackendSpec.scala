@@ -1,5 +1,9 @@
+import core.solver.Moment1Transformer
 import frontend.experiments.Tools
 import org.scalatest._
+
+import java.io.File
+import scala.util.Random
 
 
 class CBackendSpec extends FlatSpec with Matchers {
@@ -199,6 +203,44 @@ class CBackendSpec extends FlatSpec with Matchers {
     randomTest(15, 100000, 1, 100, 14)
   }
 */
+  "CBackend Trie results" should "be correct " in {
+    val cubename = "CBackendTrieTest"
+    val filename = "cubedata/" + cubename + "/" + cubename + ".ctrie"
+    val file = new File(filename)
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+
+    val nbits = 9
+    val N = 1 << nbits
+    val data = (0 to 100).map { i =>
+      val key = BigBinary(Random.nextInt(512))
+      val valueD = math.pow(Random.nextInt(1<<20) + 999999.0, 2)
+      val valueLog = math.log(valueD)/math.log(2)
+      assert(valueLog < 63)
+      val value = valueD.toLong
+      key -> value
+    }
+    val dataArray = Array.fill(N)(0L)
+
+    data.foreach{case (BigBinary(k), v) => dataArray(k.toInt) += v }
+
+    val base = CBackend.b.mk(nbits, data.toIterator)
+    val allOne = Array.fill(nbits)(1)
+    val densecub = base.rehash_to_dense(allOne)
+    val densearray = densecub.fetch.map(_.sm )
+    assert(densearray.sameElements(dataArray))
+
+    val denseMoments = Moment1Transformer.getMoments(densearray)
+
+    CBackend.b.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
+    val trieResult  = CBackend.b.prepareFromTrie((0 until nbits).toList)
+    val trieMomentArray = Array.fill(N)(0.0)
+    trieResult.foreach{case (k, v) => trieMomentArray(k) += v.toDouble }
+    val total = dataArray.sum
+    trieMomentArray.zip(denseMoments).zipWithIndex.foreach{case ((t,d), i) => if(t.toLong != d.toLong) println(s"$i :: trie ${t.toLong}  actual ${d.toLong}")}
+    assert(trieMomentArray.sameElements(denseMoments))
+
+  }
 }
 
 

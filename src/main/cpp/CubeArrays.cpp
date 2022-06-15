@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <mutex>
 #include "Keys.h"
+#include "SetTrie.h"
 #include "Payload.h"
 #include <cstring>
 #include <iostream>
@@ -23,6 +24,7 @@ struct tempRec {
     value_t val;
 };
 
+SetTrie globalSetTrie;
 
 /**
  We support only nbits <= 320 and nrows < 2^31 currently. We still use size_t for numrows because the numbytes obtained
@@ -59,7 +61,7 @@ struct {
      * Currently we support only number of rows < IntMax */
     std::vector<size_t> numrows_registry;
 
-     /** stores size of key in bytes for sparse cuboids. Not relevant for dense cuboids. May be possible to remove it. */
+    /** stores size of key in bytes for sparse cuboids. Not relevant for dense cuboids. May be possible to remove it. */
     std::vector<unsigned short> keysz_registry;
 
     /** for synchronization when multiple java threads try to update this registry simulataneously */
@@ -68,12 +70,13 @@ struct {
     //Do not call when unfrozen cuboids are present
     void clear() {
         std::unique_lock<std::mutex> lock(registryMutex);
-        for(auto ptr: ptr_registry)
+        for (auto ptr: ptr_registry)
             free(ptr);
         ptr_registry.clear();
         numrows_registry.clear();
         keysz_registry.clear();
     }
+
     /**
         Adds a dense or sparse cuboid to the registry
         @param p  Pointer to the array representing the dense or sparse cuboid
@@ -196,6 +199,7 @@ void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
     p->push_back(myrec); // makes a copy of myrec
     globalRegistry.numrows_registry[s_id]++;
 }
+
 /**
  * Adds record at specified position to a cuboid initialized by mkAll()
  * Thread-safe, as long as there are no conflicts on the parameter i
@@ -526,6 +530,7 @@ void cuboid_GC(unsigned int id) {
     globalRegistry.read(id, ptr, size, keySize);
     free(ptr);
 }
+
 /**
  * Aggregates a sparse cuboid to another sparse cuboid according to a specific mask
  * Uses sorting on tempRec typed records -- avoid this function if possible
@@ -851,7 +856,7 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
 
             for (size_t r = 0; r < dense_rows; r++) {
                 if (dense_store[r] != 0) {
-                    from_Long_to_Key(newKeySize,  r, getKey(sparse_store, w, newRecSize));
+                    from_Long_to_Key(newKeySize, r, getKey(sparse_store, w, newRecSize));
                     memcpy(getVal(sparse_store, w, newRecSize), dense_store + r, sizeof(value_t));
                     w++;
                 }
@@ -866,3 +871,52 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
         }
     }
 }
+
+bool addDenseCuboidToTrie(const vector<int> &cuboidDims, unsigned int d_id) {
+    cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
+    size_t len;
+    value_t *values = fetch(d_id, len);
+    vector<value_t> valueVec(values, values + len);
+    momentTransform(valueVec);
+    globalSetTrie.insertAll(cuboidDims, valueVec);
+    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    return globalSetTrie.count < globalSetTrie.maxSize;
+}
+
+bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
+    cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << cuboidDims.size();
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash2 calloc : %lu MB\n", numMB);
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        size_t i = from_Key_to_Long(keySize, getKey(store, r, recSize));
+        newstore[i] += *getVal(store, r, recSize);
+//    printf(" %lld %d\n", i, newstore[i]);
+    }
+
+    vector<value_t> valueVec(newstore, newstore + newsize);
+    momentTransform(valueVec);
+
+    globalSetTrie.insertAll(cuboidDims, valueVec);
+    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    free(newstore);
+    return globalSetTrie.count < globalSetTrie.maxSize;
+}
+
+void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
+void saveTrie(const char *filename) { globalSetTrie.saveToFile(filename); }
+void loadTrie(const char *filename) { globalSetTrie.loadFromFile(filename); }
+
+void prepareFromTrie(const vector<int>& query, map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}

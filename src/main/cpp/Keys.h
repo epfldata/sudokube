@@ -1,3 +1,5 @@
+#ifndef KEYS_H
+#define KEYS_H
 
 //#define KEY_BYTES 25
 //#define KEY_BYTES 100
@@ -5,6 +7,7 @@
 #include <cstdint>
 #include <inttypes.h>
 #include <cstring>
+
 typedef unsigned char byte;
 typedef int64_t value_t;  //we have Java Long as value
 
@@ -44,11 +47,11 @@ inline unsigned int bitsToBytes(unsigned int bits) {
 
 
 inline void print_key(int n_bits, byte *key) {
-    for(int pos = n_bits - 1; pos >= 0; pos--) {
+    for (int pos = n_bits - 1; pos >= 0; pos--) {
         int b = (key[pos / 8] >> (pos % 8)) % 2;
-        if(b) printf("1");
-        else  printf("0");
-        if(pos % 8 == 0)
+        if (b) printf("1");
+        else printf("0");
+        if (pos % 8 == 0)
             printf(" ");
     }
 }
@@ -58,11 +61,11 @@ inline void print_key(int n_bits, byte *key) {
  * @param numkeybytes Maximum number of bytes to be compared
  * @return true if k1 < k2 , else false
  */
-inline  bool compare_keys(const byte *k1, const byte *k2, int numkeybytes) {
+inline bool compare_keys(const byte *k1, const byte *k2, int numkeybytes) {
     //Warning : Do not use unsigned here. i>= 0 always true
-    for(int i = numkeybytes - 1; i >= 0; i--) {
-        if(k1[i] < k2[i]) return true;
-        if(k1[i] > k2[i]) return false;
+    for (int i = numkeybytes - 1; i >= 0; i--) {
+        if (k1[i] < k2[i]) return true;
+        if (k1[i] > k2[i]) return false;
     }
     return false;
 }
@@ -77,7 +80,7 @@ inline  bool compare_keys(const byte *k1, const byte *k2, int numkeybytes) {
 inline size_t project_Key_to_Long(unsigned int masksum, unsigned int *maskpos, byte *from_key) {
     size_t to = 0;
     //start from lsb of destination key
-    for(int wpos = 0; wpos < masksum; wpos++) {
+    for (int wpos = 0; wpos < masksum; wpos++) {
         //get index of source key from mask
         int rpos = maskpos[wpos];
 
@@ -91,23 +94,39 @@ inline size_t project_Key_to_Long(unsigned int masksum, unsigned int *maskpos, b
 }
 
 /**
+ * Projects a dynamically sized key  using the mask into a long value that represents index in a dense representation of cuboid.
+ * @param masksum Number of 1s in mask
+ * @param maskpos Indexes of mask where bit is 1
+ * @param from_key pointer to the source key which is to be projected
+ * @return the projected key, as a Long value
+ */
+inline size_t from_Key_to_Long(unsigned int numkeybytes, byte *from_key) {
+    size_t to = 0;
+    //copy byte by byte from source to destination
+    for (int i = 0; i < numkeybytes; i++) {
+        to |= (from_key[i] << (i<<3));
+    }
+    return to;
+}
+
+/**
  * Projects a long value repsenting index in dense cuboid to a sparse key
  * @param masksum Number of 1s in mask
  * @param maskpos Indexes of mask where bit is 1
  * @param from_key Long value storing source key
  * @param to Pointer to destination key
  */
-inline void project_Long_to_Key(unsigned int masksum, unsigned int *maskpos,  size_t from_key, byte *to) {
+inline void project_Long_to_Key(unsigned int masksum, unsigned int *maskpos, size_t from_key, byte *to) {
     unsigned int numkeybytes = bitsToBytes(masksum);
     //set all bits to 0
     memset(to, 0, numkeybytes);
     //Start at lsb of destination key
-    for(int wpos = 0; wpos < masksum; wpos++) {
+    for (int wpos = 0; wpos < masksum; wpos++) {
         //get index of source key from mask
         int rpos = maskpos[wpos];
         size_t bit = (1L << rpos);
         //if bit at rpos is set, then set the (wpos % 8)^th bit of the (wpos / 8)^th byte of destination
-        if(from_key & bit)
+        if (from_key & bit)
             to[wpos >> 3] |= 1 << (wpos & 0x7);
     }
 }
@@ -119,12 +138,12 @@ inline void project_Long_to_Key(unsigned int masksum, unsigned int *maskpos,  si
  * @param from Source key
  * @param to Pointer to destination key
  */
-inline void from_Long_to_Key(unsigned int numkeybytes, size_t from, byte* to) {
+inline void from_Long_to_Key(unsigned int numkeybytes, size_t from, byte *to) {
     //set all bits to 0
     memset(to, 0, numkeybytes);
     unsigned int pos = 0;
     //copy byte by byte from source to destination
-    while(from > 0) {
+    while (from > 0) {
         to[pos] = from & 0xff;
         from >>= 8;
         pos++;
@@ -139,17 +158,17 @@ inline void from_Long_to_Key(unsigned int numkeybytes, size_t from, byte* to) {
  * @param from Pointer to source key
  * @param to Pointer to destination key
  */
-inline void project_Key_to_Key(unsigned int masksum, unsigned int *maskpos,  byte *from, byte *to) {
+inline void project_Key_to_Key(unsigned int masksum, unsigned int *maskpos, byte *from, byte *to) {
     unsigned int numkeybytes = bitsToBytes(masksum);
     //set all bits to zero
     memset(to, 0, numkeybytes);
     //start at lsb of destination
-    for(int wpos = 0; wpos < masksum; wpos++) {
+    for (int wpos = 0; wpos < masksum; wpos++) {
         //get index of source from mask
         int rpos = maskpos[wpos];
         //read (rpos%8)^th bit of the (rpos/8)^th byte and if it is 1, set the (wpos % 8)^th bit of the (wpos / 8)^th byte
         unsigned int bit = 1 << (rpos & 0x7);
-        if(from[rpos >> 3] & bit)
+        if (from[rpos >> 3] & bit)
             to[wpos >> 3] |= 1 << (wpos & 0x7);
     }
 }
@@ -164,7 +183,7 @@ inline void project_Key_to_Key(unsigned int masksum, unsigned int *maskpos,  byt
 inline size_t project_Long_to_Long(unsigned int masksum, unsigned int *maskpos, size_t from) {
     size_t to = 0;
     //start at lsb of destination
-    for(int wpos = 0; wpos < masksum; wpos++) {
+    for (int wpos = 0; wpos < masksum; wpos++) {
         //get index of source from mask
         int rpos = maskpos[wpos];
         size_t bit = 1L << rpos;
@@ -176,5 +195,5 @@ inline size_t project_Long_to_Long(unsigned int masksum, unsigned int *maskpos, 
     return to;
 }
 
-
+#endif
 

@@ -377,41 +377,28 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     val in = new ObjectInputStream(new FileInputStream(file))
     in.readObject().asInstanceOf[SetTrieForMoments]
   }
+
   def saveAsTrie(cubename: String) = {
-    val filename = s"cubedata/${cubename}_trie/${cubename}.trie"
+    val filename = s"cubedata/${cubename}_trie/${cubename}.ctrie"
     val file = new File(filename)
     if (!file.exists())
       file.getParentFile.mkdirs()
-    val out = new ObjectOutputStream(new FileOutputStream(file))
-    import CBackend.b.{DenseCuboid => DC}
-    import core.solver.Moment1Transformer
-    val maxsize = 1 << 27
-    val trie = new SetTrieForMoments(maxsize)
-    val dim = 25
-    cuboids.filter(_.n_bits > dim).foreach(_.gc)
-    var cuboidCount = 0
-    m.projections.zipWithIndex.filter(_._1.length <= dim).sortBy(_._1.length).foreach { case (cols, cid) =>
-      val n = cols.length
 
+    val maxsize = 1L << 30
+    val dim = 25
+    val be = cuboids.head.backend
+    val cubs = m.projections.zipWithIndex.filter(_._1.length <= dim).map { case (cols, cid) =>
+      val n = cols.length
       val cuboid = cuboids(cid)
       assert(cuboid.n_bits == n)
 
-      if(trie.count < maxsize) {
-        print(s"$n:$cid   ")
-        val dcub = Profiler("Rehash"){cuboid.rehash_to_dense(Array.fill(n)(1))}
-        val fetched = Profiler("Fetch"){dcub.asInstanceOf[DC].fetch.map(_.sm)}
-        val moments = Profiler("Transform"){Moment1Transformer.getMoments(fetched)}
-        Profiler("Insert"){trie.insertAll(cols, moments)}
-        cuboidCount += 1
-        println(s" count=${trie.count}  cuboids=$cuboidCount")
-        dcub.gc
+      val be_cid = cuboid match {
+        case d: be.DenseCuboid => be.denseToHybrid(d.data)
+        case s: be.SparseCuboid => be.sparseToHybrid(s.data)
       }
-      cuboid.gc
-    }
-
-    Profiler("Serialize"){out.writeObject(trie)}
-    out.close()
-    Profiler.print()
+      cols.sorted.toArray -> be_cid
+    }.toArray
+    be.saveAsTrie(cubs, filename, maxsize)
   }
 
   def savePrimaryMoments(cubename: String) = {
