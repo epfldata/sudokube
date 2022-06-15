@@ -70,13 +70,17 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
   }
   /**
-   * simple query aggregation, without slicing
+   * List(("Region", List("China", "India")), ("spicy", List("45"))) //select (Region = China || Region = India) && spicy = 45
    *
    * @param qV     query to display vertically, in the form (field to consider, on n bits, values to slice (if Nil, all values are accepted))
    * @param qH     query to display horizontally, in the form (field to consider, on n bits, values to slice (if Nil, all values are accepted)) (as to be Nil for the
    *               tuples resultForms
    * @param method method of query, naive or moment
    * @param resultForm Allows to choose to return a matrix, an array, a tuple with bits displayed or a tuple with the prefixes displayed
+   * @param operator operator to apply, for query List(("Region", List("China", "India")), ("spicy", List("45"))) with operator op
+   *                 it will be translated to select (REGION = China || Region = India) op spicy = 45
+   *                 we can also apply negation (!India will be (REGION = China || Region != India) op spicy = 45)
+   *                 and comparison operators prepended at the beginning to numerical values (<, >, <= and >=)
    * @return reconstructed matrix, with headers
    */
   def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM): Any = {

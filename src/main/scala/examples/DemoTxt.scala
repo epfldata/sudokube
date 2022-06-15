@@ -182,7 +182,7 @@ object DemoTxt {
     od.l_run(q, 2)
   }
 
-  def cooking(): Unit = {
+  def cooking_demo(): Unit = {
 
 
     val cube = UserCube.createFromJson("demo_recipes.json", "rating")
@@ -195,7 +195,7 @@ object DemoTxt {
     var matrix = userCube.query(List(("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
-    // can add severa dimensions, internal sorting
+    // can add several dimensions, internal sorting
     matrix = userCube.query(List(("Region", 2, Nil), ("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
@@ -231,7 +231,7 @@ object DemoTxt {
 
     //can apply some binary function
     println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), EXIST))
-    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), FORALL))
+    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), FORALL) + "\n \n")
 
     def binaryFunction(str1: Any, str2: Any): Boolean = {
       str1.toString.equals("cheap") && !str2.toString.equals("Dish")
@@ -243,8 +243,14 @@ object DemoTxt {
         case _ => "Non-European"
       }
     }
-    println(userCube.queryDimension(("Region", 4, Nil), null, MOMENT, transformForGroupBy))
-    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT))
+
+    //can query another dimension, with TUPLES_PREFIX format
+    println(userCube.queryDimension(("time", 4, Nil), "difficulty", MOMENT))
+    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT) + "\n \n")
+
+    //can detect double peaks and monotonicity
+    println(userCube.queryDimensionDoublePeak(("time", 4, Nil), "difficulty", MOMENT, 0.0))
+    println(userCube.queryDimensionDoublePeak(("difficulty", 4, Nil), null, MOMENT, 0.0))
 
   }
 
@@ -373,6 +379,6 @@ object DemoTxt {
     //backend_naive()
     //loadtest()
     //ssb_demo()
-    cooking()
+    cooking_demo()
   }
 }

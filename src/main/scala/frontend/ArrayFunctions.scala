@@ -326,7 +326,7 @@ object ArrayFunctions {
    * @return 0 if the slope is flat, -1 if it is decreasing and 1 if it is increasing
    */
   private def ~=(x: Double, y: Double, precision: Double) = {
-    if ((x - y).abs < precision) { //not increasing nor decreasing (or not much
+    if ((x - y).abs < precision || x == y) { //not increasing nor decreasing (or not much
       0
     } else if ((x - y) > 0) { //decreasing greatly
       -1
@@ -343,9 +343,9 @@ object ArrayFunctions {
    */
   def findMonotonicityBreaks(items: Seq[Double], tolerance: Double): Int = {
     items.sliding(2). // two items at a time // remove any equalities
-      map{p => ~=(p.head, p(1), tolerance)}. // get -1 and 1 values; must have 2 values; add 'smoothing' tolerance
+      map{p => ~=(p.head, p(1), tolerance)}.filter(_ != 0). // get -1 and 1 values; must have 2 values; add 'smoothing' tolerance
       sliding(2). // take *these* two at a time
-      count{p => p.size == 2 && (p.head != p(1) && p.head != 0 && p(1) != 0)}
+      count{p => p.size == 2 && p.head != p(1)}
   }
 
 
