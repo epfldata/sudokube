@@ -105,7 +105,11 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   }
 
   def queryAlt(qV: List[(String, List[String])], qH: List[(String, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM = TUPLES_PREFIX): Any = {
-    query(qV.map(x => (x._1, sch.n_bits, x._2)), qH.map(x => (x._1, sch.n_bits, x._2)), operator, method, resultForm)
+    val result = query(qV.map(x => (x._1, sch.n_bits, x._2)), qH.map(x => (x._1, sch.n_bits, x._2)), operator, method, resultForm)
+    result match {
+      case array: Array[(String, Double)] => array.filter(_._2 != 0)
+      case _ => result
+    }
   }
 
 
