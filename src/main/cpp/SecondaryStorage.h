@@ -62,13 +62,16 @@ inline void readValues(std::string CuboidDirPath, int Iteration, const size_t Bu
     fclose(ReadValueFile);
 }
 
-inline Metadata getMetadata(std::string CubeDirPath, const unsigned int MaskSum) {
+inline Metadata getMetadata(std::string CubeDirPath, unsigned int CuboidID, const unsigned int MaskSum) {
     std::string MetadataFilePath = CubeDirPath + "/metadata";
 
     byte *MetadataOnDisk = (byte*)calloc(MetadataSizeOnDisk, sizeof(byte));
 
     FILE* MetadataFile = fopen (MetadataFilePath.c_str(), "r");
     assert(MetadataFile != NULL);
+
+    fseek(MetadataFile, MetadataSizeOnDisk * CuboidID, SEEK_SET);
+
     fread(MetadataOnDisk, sizeof(byte), MetadataSizeOnDisk, MetadataFile);
     fclose(MetadataFile);
 
@@ -84,8 +87,8 @@ inline Metadata getMetadata(std::string CubeDirPath, const unsigned int MaskSum)
     Metadata Metadata = {OldRowsCount, OldColumnSize, PageRowsCount, DestinationKeySize, ValueSize};
 
     printf("IsDense: %hhd\n", *(IsDenseType*)(MetadataOnDisk));
-    printf("OldRowsCount: %zu\n", OldRowsCount);
-    printf("OldColumnSize: %d\n", OldColumnSize);
+    printf("RowsCount: %zu\n", OldRowsCount);
+    printf("ColumnSize: %d\n", OldColumnSize);
 
     printf("PageRowsCount: %zu\n", PageRowsCount);
 
@@ -94,8 +97,22 @@ inline Metadata getMetadata(std::string CubeDirPath, const unsigned int MaskSum)
     return Metadata;
 }
 
+inline void writeMetadata(std::string CubeDirPath, unsigned int CuboidID,  IsDenseType IsDense, size_t RowsCount) {
+    std::string MetadataFilePath = CubeDirPath + "/metadata";
 
+    byte *MetadataOnDisk = (byte*)calloc(MetadataSizeOnDisk, sizeof(byte));
 
+    memcpy(MetadataOnDisk, &IsDense, sizeof(IsDenseType));
+    memcpy(MetadataOnDisk + sizeof(IsDenseType), &RowsCount, sizeof(size_t));
+    
+    FILE* MetadataFile = fopen (MetadataFilePath.c_str(), "ab");
+    assert(MetadataFile != NULL);
+    
+    fseek(MetadataFile, MetadataSizeOnDisk * CuboidID, SEEK_SET);
+    
+    fwrite(MetadataOnDisk, sizeof(byte), MetadataSizeOnDisk, MetadataFile);
+    fclose(MetadataFile);
+}
 
 inline void printKeyValuePairs(const size_t RowsCount, unsigned int MaskSum, unsigned int KeySize, byte *KeysArray, value_t *ValuesArray) {
     for (size_t i = 0; i<RowsCount; i++) { 
@@ -141,7 +158,7 @@ inline size_t MergeKeysInPlace(const size_t BufferRowsCount, unsigned int KeySiz
     return j + 1; // returns the new length of the array after merge
 }
 
-inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePrefix, std::string RunFileNameSuffix, const size_t PageRowsCount, unsigned int KeySize, unsigned int ValueSize, unsigned int MaskSum) {
+unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePrefix, std::string RunFileNameSuffix, const size_t PageRowsCount, unsigned int KeySize, unsigned int ValueSize, unsigned int MaskSum) {
     // K = (BufferPages-1) - Way Merge
     unsigned int K = BufferPages - 1;
     #ifdef DEBUG
@@ -184,8 +201,10 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
             // current element being processed in the buffer page
             size_t *CurrentRowInInputBuffer = (size_t *)calloc(NumberOfRunsToMerge, sizeof(size_t)); // update after processing each row
 
+            // stores filenames to each input file
+            std::vector<std::string> FileNames;
+
             // stores file pointers of each file to merge
-            //FILE* FilePointers = (FILE*)calloc(NumberOfRunsToMerge, sizeof(FILE));;
             std::vector<FILE*> FilePointers;
             
             // min heap based priority queue to get the minimum from all sorted pages in memory
@@ -198,6 +217,7 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
                 FILE *RunFile = fopen(RunFileName.c_str(), "rb");
                 assert(RunFile != NULL);
                 // memcpy(FilePointers + run, RunFile, sizeof(FILE));
+                FileNames.push_back(RunFileName);
                 FilePointers.push_back(RunFile);
 
                 // read the number of rows (key value pairs) in the run
@@ -227,9 +247,9 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
             FILE *OutputRunFile = fopen(OutputRunFileName.c_str(), "wb");
             assert(OutputRunFile != NULL);
 
-            // write place holder value for output run length
-            size_t OutputRunLength = 0;
-            fwrite(&OutputRunLength, sizeof(size_t), 1, OutputRunFile);
+            // write place holder value for number of output run rows
+            size_t OutputRunRows = 0;
+            fwrite(&OutputRunRows, sizeof(size_t), 1, OutputRunFile);
 
             // output: allocate one buffer page: stores ( [Key, Value] * PageRowsCount ) key value pairs
             byte *OutputKeyValueBufferPage = (byte*)calloc(1, PageSize);
@@ -276,7 +296,7 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
                         printKeyValuePairsFromKeyValArray(PageRowsCount, MaskSum, KeySize, ValueSize, OutputKeyValueBufferPage);
                         #endif
                         fwrite(OutputKeyValueBufferPage, KeySize + ValueSize, PageRowsCount, OutputRunFile);
-                        OutputRunLength += PageRowsCount;
+                        OutputRunRows += PageRowsCount;
                         memset(OutputKeyValueBufferPage, 0, PageSize);
                         
                         CurrentOuputBufferRow = 0;
@@ -328,20 +348,21 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
 
             // remiander of the output is written to the file
             fwrite(OutputKeyValueBufferPage, KeySize + ValueSize, CurrentOuputBufferRow + 1, OutputRunFile);
-            OutputRunLength += CurrentOuputBufferRow + 1;
+            OutputRunRows += CurrentOuputBufferRow + 1;
             #ifdef DEBUG
             printf("\nOutput Block\n");
             printKeyValuePairsFromKeyValArray(CurrentOuputBufferRow + 1, MaskSum, KeySize, ValueSize, OutputKeyValueBufferPage);
             #endif
-        
-            // closing files and deallocating memory
-            for (int run = 0; run < NumberOfInputRuns; run++) {
-                fclose(FilePointers[run]);
-            }
 
             rewind(OutputRunFile);
-            fwrite(&OutputRunLength, sizeof(size_t), 1, OutputRunFile);
+            fwrite(&OutputRunRows, sizeof(size_t), 1, OutputRunFile);
             fclose(OutputRunFile);
+
+            // closing input files and deallocating memory
+            for (int run = 0; run < NumberOfInputRuns; run++) {
+                fclose(FilePointers[run]);
+                std::filesystem::remove(FileNames[run]);
+            }
 
             //free(FilePointers);
             free(RemainingRowsInInputRuns);
@@ -356,4 +377,40 @@ inline void ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePref
         // update current pass
         CurrentPass = NextPass;
     }
+
+    // returns the number of passes to read the file
+    return CurrentPass;
+}
+
+// converts from row for to column form
+void convertKeyValArrayToColStore(size_t Rows, byte *KeyValueArray, byte **KeyStore, value_t *ValStore, unsigned int KeySize, unsigned int ValueSize, unsigned int MaskSum, unsigned int BufferColumnSize) {
+    for (int r = 0; r < Rows; r++) {
+        byte* Key = getKeyFromKeyValArray(KeyValueArray, r, KeySize, ValueSize);
+        value_t* Value = getValueFromKeyValArray(KeyValueArray, r, KeySize, ValueSize);
+
+        // set key
+        for(int c = 0; c < MaskSum; c++) {
+            if (getBit(Key, c)) {
+                byte* Column = getColumn(KeyStore, c, BufferColumnSize);
+                setBit(Column, r);
+            }
+        }
+
+        // set value
+        memcpy(getValueFromValueArray(ValStore, r), Value, ValueSize);
+    }
+}
+
+// write keys to column store
+inline void writeKeys(unsigned int MaskSum, byte **KeyStore, std::vector<FILE*> OutputFilePointers, unsigned int BufferColumnSize) {
+    for (int c=0; c<MaskSum; c++) {
+        FILE* ColWriteFile = OutputFilePointers[c];
+        assert(ColWriteFile != NULL);
+        fwrite(getColumn(KeyStore, c, BufferColumnSize), sizeof(byte), BufferColumnSize, ColWriteFile);
+    }
+}
+
+// write values to column store
+inline void writeValues(value_t *ValStore, FILE *OutputValueFile, size_t BufferRowsCount) {
+    fwrite(ValStore, sizeof(value_t), BufferRowsCount, OutputValueFile);
 }
