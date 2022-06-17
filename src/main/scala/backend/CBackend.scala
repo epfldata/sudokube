@@ -35,6 +35,7 @@ class CBackend extends Backend[Payload] {
 
   @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
+  @native protected def addPartial(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def freeze(s_id: Int)
 
   @native protected def  readSCuboid0(filename: String,
@@ -142,7 +143,7 @@ class CBackend extends Backend[Payload] {
       val data = sc.data
       def add_one(x: (BigBinary, Long)) = {
         val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
-        add(data, n_bits, ia_key, x._2)
+        addPartial(data, n_bits, ia_key, x._2)
       }
 
      it.foreach(add_one(_))
