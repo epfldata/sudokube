@@ -134,9 +134,30 @@ class CBackend extends Backend[Payload] {
     }
 
     it.foreach(add_one(_))
-
     freeze(data)
     SparseCuboid(n_bits, data)
+  }
+
+  def mkPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid = {
+      val data = sc.data
+      def add_one(x: (BigBinary, Long)) = {
+        val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
+        add(data, n_bits, ia_key, x._2)
+      }
+
+     it.foreach(add_one(_))
+     SparseCuboid(n_bits, data)
+     
+  }
+
+  def initPartial(): SparseCuboid = {
+      SparseCuboid(0, mk0(0))
+  }
+
+  def finalisePartial(sc :SparseCuboid): SparseCuboid = {
+    val data = sc.data
+    freeze(data)
+    SparseCuboid(sc.n_bits,data)
   }
 
 

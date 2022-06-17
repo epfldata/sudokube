@@ -147,6 +147,7 @@ object DemoTxt {
     //val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
     val basecuboid = ScalaBackend.mk(sch.n_bits, R.toIterator)
 
+
     val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
     val dc = new DataCube(matscheme)
     dc.build(basecuboid)

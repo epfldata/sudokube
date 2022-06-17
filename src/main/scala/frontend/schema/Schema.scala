@@ -100,9 +100,9 @@ trait Schema extends Serializable {
       })
   }
 
-  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/crypto_coin/random_crypto_coin", bufferSize : Int = 7, delay : Int = 0): DataCube = {
+  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String, bufferSize : Int = 7, delay : Int = 0): DataCube = {
      
-     @volatile var sc = ScalaBackend.initPartial()
+     @volatile var sc = CBackend.b.initPartial()
       val threadStream  = new Thread {
 
          @volatile private var end = false
@@ -182,7 +182,7 @@ trait Schema extends Serializable {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
-                        sc = ScalaBackend.mkPartial(n_bits, r.toIterator, sc)           
+                        sc = CBackend.b.mkPartial(n_bits, r.toIterator, sc)          
                     }
                 }
             }
@@ -213,6 +213,7 @@ trait Schema extends Serializable {
     threadStream.join()
     val matscheme = RandomizedMaterializationScheme2(n_bits, 8, 4, 4)
     val dc = new DataCube(matscheme)
+    sc = CBackend.b.finalisePartial(sc)
     dc.build(sc)
     dc
  }

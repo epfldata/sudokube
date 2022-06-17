@@ -78,6 +78,9 @@ object ScalaBackend extends Backend[Payload] {
   def initPartial(): SparseCuboid = {
     return new SparseCuboid(0, Seq[(BigBinary, Payload)]())
   }
+  def finalisePartial(sc :SparseCuboid): SparseCuboid = {
+    sc
+  }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] = data
 
