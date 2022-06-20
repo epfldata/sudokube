@@ -16,10 +16,18 @@ class TypeColEncoder[T](init_size: Int = 1
     var encode_map = new collection.mutable.OpenHashMap[String, Int](math.max(2, init_size))
     var decode_map = new collection.mutable.ArrayBuffer[String](init_size)
     register.registerIdx(init_size)
+
+    /**
+     * Decode to NULL or NOT_NULL
+     * @param i : int to decode
+     * @return int or long or double or Date or URL or File Path:Line Number or File Path or US phone number or String or Any
+     */
     
     def decode_locally(i: Int): T = decode_map(i).asInstanceOf[T]
     
     override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+
+    /** returns index in collection vals. */
     def encode_locally(v: T): Int = {
         val s : String = typeToString(v)
         if (encode_map.isDefinedAt(s))
@@ -47,7 +55,7 @@ class TypeColEncoder[T](init_size: Int = 1
             else if(isValidPath(x))
                 "File Path"
             else if(isValidPhoneNumber(x)) 
-                "phone number"
+                "US phone number"
             else
                 "String"
           }
@@ -55,6 +63,7 @@ class TypeColEncoder[T](init_size: Int = 1
 
         } 
 
+    //Check if the string is a date that with format dateFormat
     def validateDate(date: String, dateFormat : String) : Boolean = try {
         val df = new SimpleDateFormat(dateFormat)
         //df.setLenient(false)
@@ -79,6 +88,7 @@ class TypeColEncoder[T](init_size: Int = 1
             false
     }
 
+    //check if the string is a valid URL
     def isValidURL( urlString : String): Boolean = {
         try {
             var url = new URL(urlString)
@@ -88,6 +98,8 @@ class TypeColEncoder[T](init_size: Int = 1
             case _: Throwable => return false
         }
     }
+
+
     def isValidPath(pathString : String): Boolean = {
         val r = "(.+(?=\\/))(\\/)(.+(?=\\.))(.*)".r
         return  r.unapplySeq(pathString).isDefined
@@ -130,36 +142,5 @@ class TypeColEncoder[T](init_size: Int = 1
                "\\(\\d{4}\\)-\\d{3}-\\d{3}".r.unapplySeq(numberString).isDefined 
     }  
 
-   def isValidEmail(str : String): Boolean = {
-
-        // The 10 most used email host names
-        val emailHostnames : Seq[String] = Seq(
-                "gmail.com",
-                "yahoo.com", 
-                "hotmail.com", 
-                "aol.com", 
-                "hotmail.co.uk", 
-                "hotmail.fr", 
-                "msn.com", 
-                "yahoo.fr", 
-                "wanadoo.fr", 
-                "orange.fr"
-            );
-
-        for(hostName <- emailHostnames) {
-            if(str.endsWith("@" + hostName)) {
-                val allowedChars = "abcdefghijklmnopqrstuvwxyz" + "1234567890" + "_-."
-                for (c <- str.replace("@" + hostName, "")) {
-                    if(!allowedChars.contains(c)) {
-                        return false
-                    }
-                }
-                return true
-            }
-        }
-
-        return false
-       
-    }
-      
+   
 }

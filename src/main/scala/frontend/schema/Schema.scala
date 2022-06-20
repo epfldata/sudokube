@@ -100,10 +100,20 @@ trait Schema extends Serializable {
       })
   }
 
+
+  /**
+   * Reads potentially an infinite amount of data from a stream given by the url argument.
+   * Stopping the reading of the stream is possible by entering any character in the command line.
+   * While a thread reads the data from the stream and places them in one of the two buffers (temporary files),
+   * another thread will read the other buffer (in parallel) and update the cuboid. 
+   * The size of the buffers is defined by the bufferSize argument and it is possible to delay each reading of the stream, using the delay argument (in milliseconds).
+   */
   def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String, bufferSize : Int = 7, delay : Int = 0): DataCube = {
      
+     ///Initiates the partial cuboid
      @volatile var sc = CBackend.b.initPartial()
-      val threadStream  = new Thread {
+  
+      val threadWrite  = new Thread {
 
          @volatile private var end = false
   
@@ -113,15 +123,19 @@ trait Schema extends Serializable {
 
             val pathTemp1 : String = "temp1.json"
             val pathTemp2 : String  = "temp2.json"
+            //the file path where the data read from the stream will be placed.
             var pathWrite : String = pathTemp1
+            //the path of the file from which the data will be taken to update the cuboid.
             var pathRead : String = pathTemp2
             val testFileWriter = new BufferedWriter(new FileWriter(new File("total.json")));
 
-            def inversePaths(): Unit = {
+            //Swaps the two buffers
+            def swapPaths(): Unit = {
               val pathTemp : String = pathWrite
               pathWrite = pathRead
               pathRead = pathTemp
             }
+
             def deleteFile(path : String): Unit = {
               var fileTemp = new File(path)
               if(fileTemp.exists) {
@@ -129,6 +143,7 @@ trait Schema extends Serializable {
               }
             }
 
+            //This function is used by threadWrite and reads the bufferSize data from the stream given by url and puts it in the file path, pathWrite under the json array format.
             def getJsonArray(): Unit = {
               val fileWriter = new BufferedWriter(new FileWriter(new File(pathWrite)));
               fileWriter.write("[")
@@ -178,7 +193,8 @@ trait Schema extends Serializable {
               fileWriter.close()
             }
 
-            def getThreadUpdateCube(): Thread = {
+            // this thread reads from the file at pathRead and updates the partial cuboid using the mkPartial function
+            def getThreadRead(): Thread = {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
@@ -187,32 +203,36 @@ trait Schema extends Serializable {
                 }
             }
 
-            var threadUpdateCube = getThreadUpdateCube()
+            var threadRead = getThreadRead()
             getJsonArray()
-            inversePaths()
+            swapPaths()
 
+            //The main loop that reads from one buffer and writes to the other at the same time.
             while(!end) {
-              threadUpdateCube.start()
+              threadRead.start()
               getJsonArray()
-              threadUpdateCube.join()
-              inversePaths()
-              threadUpdateCube = getThreadUpdateCube()
+              threadRead.join()
+              swapPaths()
+              threadRead = getThreadRead()
             }
             testFileWriter.close()
-            threadUpdateCube.start()
+            threadRead.start()
             deleteFile(pathWrite)
-            threadUpdateCube.join()
+            threadRead.join()
             deleteFile(pathRead)
           }
      }
        
-    threadStream.start()
+    threadWrite.start()
+    //Demands the user to enter any character to stop reading the stream.
     println("Reading from a Stream... (Enter anything to stop)")
     scala.io.StdIn.readLine()
-    threadStream.stopRunning()
-    threadStream.join()
+    //Waits for the iteration of the main loop to end and stops threadWrite.
+    threadWrite.stopRunning()
+    threadWrite.join()
     val matscheme = RandomizedMaterializationScheme2(n_bits, 8, 4, 4)
     val dc = new DataCube(matscheme)
+    //converts the partial cuboid into a cuboid
     sc = CBackend.b.finalisePartial(sc)
     dc.build(sc)
     dc

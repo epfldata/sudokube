@@ -35,7 +35,7 @@ class CBackend extends Backend[Payload] {
 
   @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Int], v: Long)
   @native protected def add(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
-  @native protected def addPartial(s_id: Int, n_bits: Int, key: Array[Int], v: Long)
+  @native protected def freezePartial(s_id: Int, n_bits: Int)
   @native protected def freeze(s_id: Int)
 
   @native protected def  readSCuboid0(filename: String,
@@ -143,7 +143,7 @@ class CBackend extends Backend[Payload] {
       val data = sc.data
       def add_one(x: (BigBinary, Long)) = {
         val ia_key = x._1.toCharArray(n_bits).map(_.toInt)
-        addPartial(data, n_bits, ia_key, x._2)
+        add(data, n_bits, ia_key, x._2)
       }
 
      it.foreach(add_one(_))
@@ -157,7 +157,7 @@ class CBackend extends Backend[Payload] {
 
   def finalisePartial(sc :SparseCuboid): SparseCuboid = {
     val data = sc.data
-    freeze(data)
+    freezePartial(data, sc.n_bits)
     SparseCuboid(sc.n_bits,data)
   }
 

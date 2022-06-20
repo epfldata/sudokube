@@ -150,7 +150,7 @@ class JsonWriter() {
     }
 
     def generateKey(currentSchema : List[Field]) : String = {
-        val gkey : StringGenerator = new StringGenerator(10)
+        val gkey : NameGenerator = new NameGenerator()
         var k : String = ""
         do {
             k = gkey.generate()

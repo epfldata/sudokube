@@ -48,7 +48,7 @@ object  test {
    // val od = OnlineDisplay(sch, dc, PrettyPrinter.formatPivotTable(sch, qV, qH)) //FIXME: Fixed qV and qH. Make variable depending on query
     //od.l_run(q, 2)*/
     val sch = new schema.IsNullSchema
-    val R = sch.read("investments.json")
+    val R = sch.read("random.json")
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
     val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
