@@ -16,6 +16,12 @@ abstract class TimeSeriesSchema extends Schema {
     val columnTimeLabel : String = "Time"
     def columnList = columns.toList
 
+    /**
+     * Read the file (dataset) and encode it and we add the new column not in the file, the time column corresponding to the line number of the file (0 until size-1)
+     * @param filename : name of the file to read
+     * @param map_value : map function
+     * @return Seq of encoding the column to binary dimension and value corresponding to tthis encoding
+     */
     override  def read(filename: String, measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long]
           ): Seq[(BigBinary, Long)] = {
 

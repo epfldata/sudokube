@@ -11,6 +11,11 @@ class IsNullColEncoder[T](init_size: Int = 1
 
     register.registerIdx(init_size)
     
+    /**
+     * Decode to NULL or NOT_NULL
+     * @param i : int to decode
+     * @return NULL or NOT_NULL
+     */
     def decode_locally(i: Int): T = {
         if(i == 0) {
             None.asInstanceOf[T]
@@ -19,6 +24,11 @@ class IsNullColEncoder[T](init_size: Int = 1
     }
     
     override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+    /**
+     * Encode the value
+     * @param v : value to encode
+     * @return 0 if the value is null else 1
+     */
     def encode_locally(v: T): Int = 
         v match {
             case Some(None) => 0

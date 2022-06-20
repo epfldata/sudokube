@@ -18,7 +18,7 @@ object JsonGenerator {
         //JsonWriter.gen("random.json", 100, List(SimpleField("date", DateGenerator()),SimpleField("email", EmailGenerator()), SimpleFieldInt("id", IntGenerator()), NestedJson("nested", List(SimpleField("name", NameGenerator())))))
         
         // The 10 most used email host names
-        val emailHostnames : Seq[String] = Seq(
+        /*val emailHostnames : Seq[String] = Seq(
             "gmail.com",
             "yahoo.com", 
             "hotmail.com", 
@@ -30,7 +30,14 @@ object JsonGenerator {
             "wanadoo.fr", 
             "orange.fr"
         );
-        new JsonWriter().gen(10, "random.json", 5)
+        new JsonWriter().gen(10, "random.json", 5)*/
+        println("Enter the number of line : ")
+        val nbLine : Int = scala.io.StdIn.readLine().toInt
+        println("Enter the filename : ")
+        val filename : String = scala.io.StdIn.readLine()
+        println("Enter the number of column : ")
+        val nbCol : Int = scala.io.StdIn.readLine().toInt
+        new JsonWriter().gen(nbLine, filename, nbCol)
   }
 }
 
@@ -86,8 +93,8 @@ class JsonWriter() {
                 case 1 => new SimpleField(key, new NameGenerator())
                 case 2 => new SimpleField(key, new DateGenerator())
                 case 3 => new SimpleField(key, new phoneNumberGenerator())
-                case 4 => new SimpleField(key, new filePathGenerator())
-                case 5 => new SimpleField(key, new filePathGenerator(lineNumber = new IntGenerator(1, 500).generate()))
+                case 4 => new SimpleField(key, new filePathGenerator(lineNumber = new IntGenerator(0, 0)))
+                case 5 => new SimpleField(key, new filePathGenerator(lineNumber = new IntGenerator(1, 500)))
                 case _ => new SimpleField(key, new StringGenerator())
             }
         }
@@ -465,7 +472,7 @@ case class phoneNumberGenerator() extends MyGenerator[String]{
     }
     
 }
-case class filePathGenerator(numberParent : Int = 2, extensionName : Seq[String] = Seq(".json", ".scala", ".txt", ".java"), lineNumber : Int = -1)  extends MyGenerator[String]{
+case class filePathGenerator(numberParent : Int = 2, extensionName : Seq[String] = Seq(".json", ".scala", ".txt", ".java"), lineNumber : IntGenerator)  extends MyGenerator[String]{
     def generate() : String = {
         var filePath : String = "/"
         for(i <- 1 until numberParent){
@@ -473,8 +480,9 @@ case class filePathGenerator(numberParent : Int = 2, extensionName : Seq[String]
             filePath += generateName.generate() + "/"
         }
         filePath += NameGenerator().generate() + extensionName(Random.nextInt(extensionName.length))
-        if(lineNumber > 0){
-            filePath += ":" + lineNumber.toString()
+        val number : Int = lineNumber.generate()
+        if(number > 0){
+            filePath += ":" + number.toString()
         }
         filePath
     }
