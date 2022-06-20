@@ -1,79 +1,100 @@
 package frontend
 
 import frontend.schema.TimeSeriesSchema
+import backend.CBackend
+import core._
 
 class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
 
-    val list : List[String] = sch.columnList.filter(x => x._1 != "Time").map(x => x._1)
+    var list : List[String] = sch.columnList.filter(x => x._1 != "Time").map(x => x._1)
+    var initList : List[String] = Nil
 
-    def divideV2() : List[(Int, List[List[Possibility]])]  /*List[(Int, List[(String, String, String)])]*/= {
-        def divideSubV2(i : Int, l : List[String], qV : List[(String, Int, List[String])]) : List[(Int, List[List[Possibility]])] /*List[(Int, List[(String, String, String)])]*/ = {
+    /**
+     * analyse the dataset with the isNullSchema (TimeSeriesSchema)
+     * 
+     * @return a list of (Int, List[Possibility]), Int corresponds to the Time (Number of line) and the list corresponds of all possibilities of change can happens
+     */
+    def analyse() : List[(Int, List[List[Possibility]])] = {
+        /**
+         * Recursively function, its method divide (or zoom in the query) by 2 if only if in this part of query there is a change and this function analyse the change
+         * 
+         * @param i  : the number of bits of Time that we want consider
+         * @param l  : the only value of Time to consider
+         * @param qV : the other column we want consider
+         * @return a list of (Int, List[Possibility]), Int corresponds to the Time (Number of line) and the list corresponds of all possibilities of change can happens
+         */
+        def divideSub(i : Int, l : List[String], qV : List[(String, Int, List[String])]) : List[(Int, List[List[Possibility]])] = {
             if(sch.columns("Time").bits.toList.length == i){
                 return Nil
             }
-            val r : Array[Any] = uc.query(List(("Time", i, l)) ++ qV, Nil, resultForm = TUPLES_PREFIX) match {
+
+            val r : Array[Any] = uc.query(List(("Time", i, l)) ++ qV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case x : Array[Any] => x
                 case _ => Array[Any]()
             }
+
             val s : Array[(String, AnyVal)] = r.map(y => {
                 y match {
                     case y : (String, AnyVal) => y
                     case _ => ("", 0L)
                 }
             })
-            //println("r =" + s.mkString(" "))
-            /*val u : Array[String] = r.map(x => {
-                x match {
-                    case y : (String, Any) => y._1
-                    case _ => ""
-                }
-            })
-            val s = u.map(z => ArrayFunctions.findValueOfPrefix(z, "Time", true)).foldLeft(Array[String]()) {
-                case (acc, item) if acc.contains(item) => acc
-                case (acc, item) => acc ++ Array[String](item)
-            }*/
-            if(hasChange(s)){
-                val z : (List[String], List[String]) = splitArrayV2(l)
-                val prev : Int = z._1(z._1.length - 1).toInt
-                val next : Int = z._2(0).toInt
-                val x : List[(Int, List[(String, String, String)])] = detectedChange(uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(prev.toString))) ++ qV, Nil, resultForm = TUPLES_PREFIX) match {
+            val hasC = hasChange(s)
+            if(hasC.length > 1){
+                val split : (List[String], List[String]) = splitArray(l)
+                val prev : Int = split._1(split._1.length - 1).toInt
+                val next : Int = split._2(0).toInt
+                val newQV : List[(String, Int, List[String])] = ignoreColumn(hasC, qV)
+                list = newQV.map(x => x._1)
+                val change : List[(Int, List[List[Possibility]])] = detectedChange(uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(prev.toString))) ++ newQV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case p : Array[Any] => p
                 case _ => Array[Any]()
-            }, uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(next.toString))) ++ qV, Nil, resultForm = TUPLES_PREFIX) match {
+            }, uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(next.toString))) ++ newQV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case p : Array[Any] => p
                 case _ => Array[Any]()
             }, prev, next)
-            x.foreach(w => {
-            println("Line : " + w._1)
-            w._2.foreach(p => {
-                println("Change on column " + p._1 + " : " + p._2 + " ---> " + p._3)
-            })
-            })
-                val y : List[(Int, List[List[Possibility]])] = if(x != Nil && !x.isEmpty) {
-                    List(analyse(x(0)))
-                }else Nil
 
-                y.foreach(w => {
-            println("Line : " + w._1)
-            w._2.foreach(p => {
-            println("Possibilities of " + w._1)
-            p.foreach(q => {
-                println(q + "   ")
-            })
-            })
-            })
-                return y ++ divideSubV2(i+1, z._1, qV) ++ divideSubV2(i+1, z._2, qV)
+                
+                return change ++ divideSub(i+1, split._1, newQV) ++ divideSub(i+1, split._2, newQV)
             }else return Nil
         }
         val max : Int = (Math.pow(2, sch.columns("Time").bits.toList.length).toInt - 1)
-        val initList : List[String] = Range.inclusive(0, max).toList.map(_.toString)
-        //A mettre pour tester à la fin mais affichage debug pour l'instant incompréhensible
+        initList = Range.inclusive(0, max).toList.map(_.toString)
         val qV : List[(String, Int, List[String])] = list.map(x => (x, 1, Nil))
-        //val qV : List[(String, Int, List[String])] = List(("company", 1, Nil)) 
-        return divideSubV2(0, initList, qV)
+        return divideSub(0, Nil, qV).sortBy(_._1)
   }
 
-  private def splitArrayV2(array : List[String]) : (List[String], List[String]) = {
+  /**
+   * Show all the possibilities of change by line
+   * 
+   * @param y : List of all the possibilities of change by line
+   */
+  def show(y : List[(Int, List[List[Possibility]])]) : Unit = {
+    if(y == Nil || y.isEmpty){
+        println("There is no change")
+    }else {
+    y.foreach(w => {
+            println("Line : " + w._1)
+            w._2.foreach(p => {
+            println("Possibilities of ")
+            p.foreach(q => {
+                println(q + "   ")
+            })
+            println()
+            })
+            })
+    }
+  }
+
+  /**
+   * 
+   * Split the list of value into 2 lists
+   * @param array : list of the value
+   * @return (list, list) vector that contains 2 lists that represent the splitting of the original list
+   */
+  private def splitArray(array : List[String]) : (List[String], List[String]) = {
+      if(array == Nil || array.isEmpty)
+        return splitArray(initList)
       val limit = array.length/2 - 1
       val init : List[Int] = array.map(_.toInt).sorted
       var r1 : List[String] = Nil
@@ -85,14 +106,48 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
       return (r1, r2)
   }
 
-  private def hasChange(array : Array[(String, AnyVal)]) : Boolean = {
-      val inter : Array[String] = array.map(x => x._2.toString)
-      val inter2 : Array[Double] = inter.map(x=> x.toDouble).filter(_!=0)
-      return inter2.length > 1
+  /**
+   * Filter the result of the query to obtain only the schema that is present in the part of dataset (in the part of the query)
+   * 
+   * @param array : result of the query
+   * @return the filter result of the query
+   */
+  private def hasChange(array : Array[(String, AnyVal)]) : Array[String] = {
+      val inter : Array[(String,String)] = array.map(x => (x._1, x._2.toString))
+      val inter2 : Array[String] = inter.map(x=> (x._1, x._2.toDouble)).filter(y => y._2!=0).map(x=> x._1)
+      return inter2
   }
 
-  private def detectedChange(prev : Array[Any], next : Array[Any], numberPrev : Int, numberNext : Int) : List[(Int, List[(String, String, String)])] = {
-      val pr : Array[String] = prev.map(x => x match {
+  /**
+   * 
+   * Filter the list of column to consider
+   * 
+   * @param query : filter result query
+   * @param qV : list of the column to filter
+   * @return list of column to consider (in the list we have only the column changing in the filter query)
+   */
+  private def ignoreColumn(query : Array[String], qV : List[(String, Int, List[String])]) : List[(String, Int, List[String])] = {
+    if(qV.isEmpty){
+        return Nil
+    }
+    val inter : Array[String] = query.filter(_.contains(qV.head._1 + "=NULL"))
+    if(inter.length == query.length){
+        return ignoreColumn(query, qV.tail)
+    }
+    return List(qV.head) ++ ignoreColumn(query, qV.tail)
+  }
+
+  /**
+   * 
+   * Detected change between 2 lines
+   * @param prev : query on only one line
+   * @param next : query on only one line (line after prev)
+   * @param numberPrev : number of line prev
+   * @param numberNext : number of line next
+   * @return list of all possibilities of change for this lines
+   */
+  def detectedChange(prev : Array[Any], next : Array[Any], numberPrev : Int, numberNext : Int) : List[(Int, List[List[Possibility]])] = {
+    val pr : Array[String] = prev.map(x => x match {
             case y : (String, AnyVal) => y
             case _ => ("", 0L)
       }).filter(x => x._2.toString.toDouble!=0).map(x=> x._1)
@@ -100,21 +155,45 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
             case y : (String, AnyVal) => y
             case _ => ("", 0L)
       }).filter(x => x._2.toString.toDouble!=0).map(x=> x._1)
-      if(pr(0).split(";Time=" + numberPrev)(0) == ne(0).split(";Time=" + numberNext)(0)) {
+      if(pr.isEmpty || ne.isEmpty || pr(0).split(";Time=")(0) == ne(0).split(";Time=")(0)) {
           return Nil
       }
-      var l : List[(String, String, String)] = Nil
+      var listAna : List[List[Possibility]] = Nil
       for(c <- list) {
           val valuePrev : String = ArrayFunctions.findValueOfPrefix(pr(0), c, false)
           val valueNext : String = ArrayFunctions.findValueOfPrefix(ne(0), c, false)
           if(valuePrev != valueNext) {
-              l = l ++ List((c, valuePrev, valueNext))
+              var tempList : List[List[Possibility]] = Nil
+            if(listAna.isEmpty) {
+              if(valueNext == "NULL") {
+                  listAna = List(List(new Remove(c)))
+              }else {
+                    listAna = List(List(new Add(c)))
+              }
+          }else {
+          for(l <- listAna){
+              if(valueNext == "NULL") {
+                  tempList = tempList ++ analyseChangeToNull(Nil, l, c, Nil)
+              }else {
+                    tempList = tempList ++ analyseChangeToNotNull(Nil, l, c, Nil)
+              }
+          }
+          listAna = tempList
+          }
           }
       }
-      return List((numberNext, l))
+      return List((numberNext, listAna))
   }
 
-  def methodeN(tempList : List[List[Possibility]], l : List[Possibility], column : String, already : List[Possibility]) : List[List[Possibility]] = {
+  /**
+   * Recursively analyse when a column value switch NOT_NULL to NULL
+   * @param tempList : temporary list of all possibilities
+   * @param l : list of possiblities to compare when we add the information that the column value passed of NOT_NULL to NULL
+   * @param column : column to consider
+   * @param already : the part of list of possibilities that we have already compared
+   * @return list of all the possibilities when a column value switch NOT_NULL to NULL
+   */
+  private def analyseChangeToNull(tempList : List[List[Possibility]], l : List[Possibility], column : String, already : List[Possibility]) : List[List[Possibility]] = {
       if(l.isEmpty) {
           return tempList ++ List(already ++ List(new Remove(column)))
       }
@@ -128,10 +207,18 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
           }
           case _ => list = list
       }
-      return methodeN(list, l.tail, column, already ++ List(l.head))
+      return analyseChangeToNull(list, l.tail, column, already ++ List(l.head))
   }
 
-  def methodeNN(tempList : List[List[Possibility]], l : List[Possibility], column : String, already : List[Possibility]) : List[List[Possibility]] = {
+  /**
+   * Recursively analyse when a column value switch NULL to NOT_NULL
+   * @param tempList : temporary list of all possibilities
+   * @param l : list of possiblities to compare when we add the information that the column value passed of NULL to NOT_NULL
+   * @param column : column to consider
+   * @param already : the part of list of possibilities that we have already compared
+   * @return list of all the possibilities when a column value switch NULL to NOT_NULL
+   */
+  private def analyseChangeToNotNull(tempList : List[List[Possibility]], l : List[Possibility], column : String, already : List[Possibility]) : List[List[Possibility]] = {
       if(l.isEmpty) {
           return tempList ++ List(already ++ List(new Add(column)))
       }
@@ -145,31 +232,7 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
           }
           case _ => list = list
       }
-      return methodeNN(list, l.tail, column, already ++ List(l.head))
-  }
-
-  def analyse(listChange : (Int, List[(String, String, String)])) : (Int, List[List[Possibility]]) = {
-      var listAna : List[List[Possibility]] = Nil
-      for(c <- listChange._2) {
-          var tempList : List[List[Possibility]] = Nil
-          if(listAna.isEmpty) {
-              if(c._3 == "NULL") {
-                  listAna = List(List(new Remove(c._1)))
-              }else {
-                    listAna = List(List(new Add(c._1)))
-              }
-          }else {
-          for(l <- listAna){
-              if(c._3 == "NULL") {
-                  tempList = tempList ++ methodeN(Nil, l, c._1, Nil)
-              }else {
-                    tempList = tempList ++ methodeNN(Nil, l, c._1, Nil)
-              }
-          }
-          listAna = tempList
-          }
-      }
-      return (listChange._1, listAna)
+      return analyseChangeToNotNull(list, l.tail, column, already ++ List(l.head))
   }
 }
 
@@ -178,16 +241,29 @@ abstract class Possibility {
         return "Possibilities"
     }
 }
+/**
+ * Possibility to add a column
+ * @param x : column to add
+ */
 case class Add(x : String) extends Possibility {
     override def toString() : String = {
         return "Add the column " + x
     }
 }
+/**
+ * Possibility to rename a column
+ * @param x : name of the column to rename
+ * @param y : new name of this column
+ */
 case class Rename(x : String, y : String) extends Possibility{
     override def toString() : String = {
         return "Rename the column " + x + " to the column " + y
     }
 }
+/**
+ * Possibility to remove a column
+ * @param x : column to remove
+ */
 case class Remove(x : String) extends Possibility {
     override def toString() : String = {
         return "Remove the column " + x
@@ -195,5 +271,20 @@ case class Remove(x : String) extends Possibility {
 }
 
 object Analysis {
+    /**
+     * create a analyse object from a json
+     * @param json : name of the json file
+     * @return analyse object to launch analyse
+     */
+    def createFromJson(json : String) : Analysis = {
+        val sch = new schema.IsNullSchema
+        val R = sch.read(json)
+        val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
+        val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+        val dc = new DataCube(matscheme)
+        dc.build(basecuboid)
+        val cube = new UserCube(dc, sch)
+        new Analysis(cube, sch)
+    }
 }
