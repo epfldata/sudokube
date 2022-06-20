@@ -85,7 +85,8 @@ class SliceSparseSolver[T](
   override def add(eqs: Seq[Eq_T]): Seq[Int] = {
     val old_n_det_vars = n_det_vars
     var new_pivots = List[Int]()
-
+    println("Adding the following equations")
+    eqs.foreach(println)
     for ((vars, total) <- eqs) {
       val lv = vars.last
       assert(lv == vars.max)

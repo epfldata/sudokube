@@ -100,9 +100,9 @@ trait Schema extends Serializable {
       })
   }
 
-  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String = "https://random-data-api.com/api/name/random_name", chunckSize : Int = 7): DataCube = {
+  def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String, bufferSize : Int = 7, delay : Int = 0): DataCube = {
      
-     @volatile var sc = ScalaBackend.initPartial()
+     @volatile var sc = CBackend.b.initPartial()
       val threadStream  = new Thread {
 
          @volatile private var end = false
@@ -115,6 +115,7 @@ trait Schema extends Serializable {
             val pathTemp2 : String  = "temp2.json"
             var pathWrite : String = pathTemp1
             var pathRead : String = pathTemp2
+            val testFileWriter = new BufferedWriter(new FileWriter(new File("total.json")));
 
             def inversePaths(): Unit = {
               val pathTemp : String = pathWrite
@@ -131,7 +132,7 @@ trait Schema extends Serializable {
             def getJsonArray(): Unit = {
               val fileWriter = new BufferedWriter(new FileWriter(new File(pathWrite)));
               fileWriter.write("[")
-              for(i <- 1 to chunckSize) {
+              for(i <- 1 to bufferSize) {
                 val co = new URL(url).openConnection;
                 val connection = co.asInstanceOf[HttpURLConnection]
                 val response = new StringBuilder();
@@ -140,15 +141,16 @@ trait Schema extends Serializable {
                     val responseCode = connection.getResponseCode();
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         var line : String = ""
-                        val bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                                
+                        val bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));       
                         line = bufferedReader.readLine()
                         while(line != null) {
                           response.append(line);
                           fileWriter.write(line)
+                          testFileWriter.write(line)
                           line = bufferedReader.readLine()
                         }
-                        if(i == chunckSize) {
+                         testFileWriter.write("\n")
+                        if(i == bufferSize) {
                           fileWriter.write("]")
                         }
                         else {
@@ -163,46 +165,55 @@ trait Schema extends Serializable {
                   } finally {
                       connection.disconnect();
                   }
+
+                  if(delay > 0) {
+                    try {
+                      Thread.sleep(delay)
+                    }
+                    catch {
+                       case _: Throwable => println("error while trynig to delay the http request")
+                    }
+                  }
               }
               fileWriter.close()
             }
 
-            def getThreadCube(): Thread = {
+            def getThreadUpdateCube(): Thread = {
                 new Thread {
                     override def run {
-                        var r = read(pathRead)
-                        sc = ScalaBackend.mkPartial(n_bits, r.toIterator, sc)           
+                        var r = read(pathRead, measure_key, map_value)
+                        sc = CBackend.b.mkPartial(n_bits, r.toIterator, sc)          
                     }
                 }
             }
 
-            var threadCube = getThreadCube()
-            //==================================
+            var threadUpdateCube = getThreadUpdateCube()
             getJsonArray()
-
             inversePaths()
 
             while(!end) {
-              threadCube.start()
+              threadUpdateCube.start()
               getJsonArray()
-              threadCube.join()
+              threadUpdateCube.join()
               inversePaths()
-              threadCube = getThreadCube()
+              threadUpdateCube = getThreadUpdateCube()
             }
-            threadCube.start()
+            testFileWriter.close()
+            threadUpdateCube.start()
             deleteFile(pathWrite)
-            threadCube.join()
+            threadUpdateCube.join()
             deleteFile(pathRead)
           }
      }
        
     threadStream.start()
-    println("Enter anything to stop !")
+    println("Reading from a Stream... (Enter anything to stop)")
     scala.io.StdIn.readLine()
     threadStream.stopRunning()
     threadStream.join()
     val matscheme = RandomizedMaterializationScheme2(n_bits, 8, 4, 4)
     val dc = new DataCube(matscheme)
+    sc = CBackend.b.finalisePartial(sc)
     dc.build(sc)
     dc
  }
