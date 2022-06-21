@@ -73,7 +73,9 @@ object  test {
             })
         })
     })*/
-    //val r :  List[(Int, List[List[Possibility]])] = analyse.divideV2()
+
+    val r :  List[(Int, List[List[Possibility]])] = analyse.analyse()
+
     /*val r : List[Possibility] = List(Add("company"), Rename("date", "k_amount"), Remove("a"), Add("b"), Rename("c", "d"), Add("f"), Remove("g"))
     val resultNull : List[List[Possibility]] = analyse.methodeN(Nil, r, "personal", Nil)
     resultNull.foreach(w => {
