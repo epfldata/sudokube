@@ -43,6 +43,12 @@ object JsonGenerator {
 
 class JsonWriter() {
     
+    /**
+     * Generate the json file
+     * @param numberOfLign : number of line we want to generate
+     * @param filename : name of json file
+     * @param initSizeOfSchema : number of columns for the first line
+     */
     def gen(numberOfLign : Int, filename : String, initSizeOfSchema : Int) : Unit = {
 
         val mapper = new ObjectMapper() with ScalaObjectMapper
@@ -62,6 +68,11 @@ class JsonWriter() {
         sequenceWriter.close()
     }
 
+    /**
+     * Init the first line of the file, with random column
+     * @param initSizeOfSchema : number of columns for the first line
+     * @return list of the column
+     */
     def initSchema(initSizeOfSchema : Int) : List[Field] = {
         var list : List[Field] = List()
         var i = 1
@@ -81,6 +92,11 @@ class JsonWriter() {
         list
     }
 
+    /**
+     * Init a column of the file, with, like probabilities, 1/2 column Int, 1/2 * 1/7 for other type (string type)
+     * @param key : name of the column
+     * @return a column
+     */
     def initField(key : String) : Field = {
         val randomType = new IntGenerator(0,1).generate()
                 
@@ -101,6 +117,12 @@ class JsonWriter() {
                 
     }
 
+    /**
+     * Check if the name of column k exists already
+     * @param l : list of column
+     * @param k : name of the new column
+     * @return boolean true the name of the column is the name of one column which already exist
+     */
     def containsKey(l : List[Field], k : String) : Boolean = {
         if(l.isEmpty) {
             false
@@ -111,9 +133,14 @@ class JsonWriter() {
         }
     }
 
+    /**
+     * modify the schema in a line, 1/15 = proba of change, and if the schema of the line change, we have 1/3 for each change (add, remove, rename)
+     * @param currentSchema : current schema of the line before the possibility of change
+     * @return list of the new columns
+     */
     def modifySchema(currentSchema : List[Field]) : List[Field] = {
-        val randomChanging = new IntGenerator(0, 4).generate()
-        if(randomChanging <= 1){
+        val randomChanging = new IntGenerator(0, 14).generate()
+        if(randomChanging == 1){
             val random = new IntGenerator(0, 2).generate()
             if(currentSchema.isEmpty || currentSchema.length == 1){
                 addField(currentSchema)
@@ -128,7 +155,11 @@ class JsonWriter() {
             currentSchema
         }
     }
-
+    /**
+     * Rename random one column
+     * @param currentSchema : current schema of the line before the rename change
+     * @return new list of column
+     */
     def renameField(currentSchema : List[Field]) : List[Field] = {
         val random = new IntGenerator(0, currentSchema.length-1).generate()
         var list : (List[Field], List[Field]) = currentSchema.splitAt(random)
@@ -156,8 +187,13 @@ class JsonWriter() {
         }
     }
 
+    /**
+     * Random generate a name of the column
+     * @param currentSchema : current schema of the line
+     * @return a name of the new column 
+     */
     def generateKey(currentSchema : List[Field]) : String = {
-        val gkey : NameGenerator = new NameGenerator()
+        val gkey : StringGenerator = new StringGenerator(10)
         var k : String = ""
         do {
             k = gkey.generate()
@@ -165,11 +201,21 @@ class JsonWriter() {
         k
     }
 
+    /**
+     * Add one column
+     * @param currentSchema : current schema of the line before the add change
+     * @return new list of column
+     */
     def addField(currentSchema : List[Field]) : List[Field] = {
         val key : String = generateKey(currentSchema)
         currentSchema ++ List(initField(key))
     }
 
+    /**
+     * Remove random one column
+     * @param currentSchema : current schema of the line before the remove change
+     * @return new list of column
+     */
     def removeField(currentSchema : List[Field]) : List[Field] = {
         val random = new IntGenerator(0, currentSchema.length-1).generate()
         var list : (List[Field], List[Field]) = currentSchema.splitAt(random)
@@ -187,6 +233,10 @@ class JsonWriter() {
         }
     }
 
+    /**
+     * Convert the list[Field] (list of the column) in the format to write the json file
+     * @param currentSchema : list of the column to convert
+     */
     private def convert(currentSchema : List[Field]) = {
         val map = scala.collection.mutable.Map[String,Any]()
             for (f <- currentSchema) {
@@ -201,6 +251,10 @@ class JsonWriter() {
         map
     }
 
+    /**
+     * Convert the list[Field] (list of the column) in the format to write the json file (nestedJson)
+     * @param schema : list of the column, in the nested json, to convert
+     */
     private def mapNesterJson(schema : List[Field]) : scala.collection.mutable.Map[String,Any] = {
 
         val map = scala.collection.mutable.Map[String,Any]()
@@ -219,7 +273,10 @@ class JsonWriter() {
       
 }
 
-
+/**
+ * Column
+ * @param key : name of the column
+ */
 abstract class Field(key : String) {
     def getKey() : String = key
 }
