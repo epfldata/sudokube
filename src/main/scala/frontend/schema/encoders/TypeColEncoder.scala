@@ -46,9 +46,7 @@ class TypeColEncoder[T](init_size: Int = 1
           case  _ : Long => "Long"
           case  x : Double => "Double"
           case  x : String => {
-            if(isDate(x))
-                "Date"
-            else if(isValidURL(x)) 
+            if(isValidURL(x)) 
                 "URL"
             else if(isValidPathLineNumber(x))
                 "File Path:Line Number"
@@ -56,6 +54,8 @@ class TypeColEncoder[T](init_size: Int = 1
                 "File Path"
             else if(isValidPhoneNumber(x)) 
                 "US phone number"
+            else if(isDate(x))
+                "Date"
             else
                 "String"
           }

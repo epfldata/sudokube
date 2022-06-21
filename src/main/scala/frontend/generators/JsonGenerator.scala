@@ -243,7 +243,7 @@ case class EmailGenerator(hostNames : Seq[String] = Seq("gmail.com", "yahoo.com"
         val co = new URL("https://random-data-api.com/api/users/random_user").openConnection
         val connection = co.asInstanceOf[HttpURLConnection]
         val response = new StringBuilder()
-        var res = "hugo.hof@gmail.com"
+        var res = "a.b@gmail.com"
         try {
 
             connection.setRequestMethod("GET");
@@ -291,7 +291,7 @@ case class NameGenerator() extends MyGenerator[String] {
        val co = new URL("https://random-data-api.com/api/name/random_name").openConnection
         val connection = co.asInstanceOf[HttpURLConnection]
         val response = new StringBuilder()
-        var res = "Hugo Hof"
+        var res = "Hugo"
         try {
 
             connection.setRequestMethod("GET");
