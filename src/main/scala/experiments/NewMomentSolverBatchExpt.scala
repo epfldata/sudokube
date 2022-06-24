@@ -10,15 +10,15 @@ import Strategy._
 
   fileout.println("CubeName, SolverName, Query, QSize, DOF, NPrepareTime(us), NFetchTime(us), NaiveTotal(us),NaiveMaxDimFetched,  MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr")
 
-  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
-    case CoMoment3 => new CoMoment3Solver(qsize, true, Moment1Transformer, pm)
-    case CoMoment4 => new CoMoment4Solver(qsize, true, Moment1Transformer, pm)
+  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver[Double] = strategy match {
+    case CoMoment3 => new CoMoment3Solver(qsize, true, Moment1Transformer(), pm)
+    case CoMoment4 => new CoMoment4Solver(qsize, true, Moment1Transformer(), pm)
   }
 
   def moment_solve(dc: DataCube, q: Seq[Int]) = {
 
     val (l, pm) = Profiler("Moment Prepare") {
-      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.mask.length
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)

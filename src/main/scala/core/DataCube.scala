@@ -253,13 +253,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /** Gets rid of the Payload box. */
   def fetch2[T](pms: Seq[ProjectionMetaData]
                )(implicit num: Fractional[T]): Seq[T] = {
-
-    fetch(pms).map(p => {
-      val long = p.smLong
-      val upper = (long >> 31).toInt
-      val lower = (long & Int.MaxValue).toInt
-      num.plus(num.times(num.fromInt(upper), num.plus(num.fromInt(Int.MaxValue), num.one)), num.fromInt(lower))
-    })
+    fetch(pms).map(p =>Util.fromLong(p.smLong))
   }
 
   /** returns a solver for a given query. One needs to explicitly compute

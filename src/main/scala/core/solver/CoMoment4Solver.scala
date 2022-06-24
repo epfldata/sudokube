@@ -2,9 +2,11 @@ package core.solver
 
 import util.{BigBinary, Bits, Profiler}
 
-class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
+import scala.reflect.ClassTag
+
+class CoMoment4Solver[T:ClassTag:Fractional](qsize: Int, batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
   val qArray = Profiler.profile("qArray Construct") {
-    Array.fill(qsize)(Array.fill(N)(0.0))
+    Array.fill(qsize)(Array.fill(N)(num.zero))
   }
 
   override val solverName: String = "Comoment4"
@@ -25,7 +27,8 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
         Profiler("part1") {
           if (!knownSet(i)) {
             val qsum = Profiler.profile("qsum1") {
-              parents.map { k => qArray(w - 1)(k) * momentProducts(i - k) }.sum
+              parents.map { k =>
+                num.times(qArray(w - 1)(k), momentProducts(i - k)) }.sum
             }
             //println(s"m[$i] = $qsum")
             moments(i) = qsum
@@ -34,10 +37,10 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
         Profiler("part2") {
           (w + 1 to qsize).map { j =>
             val qsum = Profiler.profile("qsum2") {
-              parents.map { k => qArray(j - 1)(k) * momentProducts(i - k) }.sum
+              parents.map { k => num.times(qArray(j - 1)(k),momentProducts(i - k)) }.sum
             }
             //q[S][j-1] = m[S] - 1/(j+1-|S|) sum_s [ q[S-s][j-1] ]
-            val q = moments(i) - (qsum / (j - w + 1))
+            val q = num.minus(moments(i), num.div(qsum, num.fromInt(j - w + 1)))
             //println(s"q[$i][$j] = $q")
             qArray(j - 1)(i) = q
           }
@@ -71,18 +74,18 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
           //println(s"Process $i  ${Bits.fromInt(i).mkString("{", ",", "}")} with size $w")
           val (_, set0, set1) = Bits.hwZeroOne(i, qsize)
           val deltamom = if (knownSet(i)) {
-            newmoments(i) - moments(i)
+            num.minus(newmoments(i), moments(i))
           } else {
             qArray(w - 1)(i)
           }
-          moments(i) += deltamom
+          moments(i) = num.plus(moments(i), deltamom)
 
           Profiler("Child processing") {
             children(i, set0).foreach { c =>
               Profiler("Child q update") {
                 (w + 1 to qsize).foreach { j =>
-                  val deltaq = (deltamom - qArray(j - 1)(i))
-                  qArray(j - 1)(c) += deltaq * momentProducts(c - i) / (j - w)
+                  val deltaq = num.minus(deltamom, qArray(j - 1)(i))
+                  qArray(j - 1)(c) = num.plus(qArray(j - 1)(c), num.times(deltaq, num.div(momentProducts(c - i), num.fromInt(j - w))))
                 }
               }
               val n = ((w + 1) -> c)
@@ -96,7 +99,7 @@ class CoMoment4Solver(qsize: Int, batchmode: Boolean, transformer: MomentTransfo
                 //}
               }
             }
-            (w to qsize).foreach { j => qArray(j - 1)(i) = 0 }
+            (w to qsize).foreach { j => qArray(j - 1)(i) = num.zero }
           }
         }
       }

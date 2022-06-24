@@ -38,9 +38,9 @@ class PrimaryMomentsSpec extends FlatSpec with Matchers {
     assert(m1.sameElements(m3))
 
     val q = Tools.rand_q(nbits, qsize)
-    val m4 = SolverTools.preparePrimaryMomentsForQuery(q, (t1, m1))
+    val m4 = SolverTools.preparePrimaryMomentsForQuery[Double](q, (t1, m1))
 
-    val m5 = Moment1Transformer.getMoments(dc.naive_eval(q))
+    val m5 = Moment1Transformer[Double]().getMoments(dc.naive_eval(q))
     m4.foreach{
       case (0, t) => assert(t == t1)
       case (i , m) => assert(m5(i) == m)

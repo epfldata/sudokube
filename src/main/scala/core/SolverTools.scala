@@ -2,7 +2,7 @@
 package core
 
 import core.solver.MomentTransformer
-import util.ProgressIndicator
+import util.{ProgressIndicator, Util}
 
 
 object SolverTools {
@@ -24,9 +24,10 @@ object SolverTools {
   }
 
   //q is assumed to be sorted
-  def preparePrimaryMomentsForQuery(q: Seq[Int], primaryMoments:(Long, Array[Long])) : Seq[(Int, Double)] = {
-    val m1D = q.zipWithIndex.map{case (b,i) => (1 << i) -> primaryMoments._2(b).toDouble}
-    m1D :+ (0 -> primaryMoments._1.toDouble)
+  def preparePrimaryMomentsForQuery[T](q: Seq[Int], primaryMoments:(Long, Array[Long]))(implicit num: Fractional[T]) : Seq[(Int, T)] = {
+
+    val m1D = q.zipWithIndex.map{case (b,i) => (1 << i) -> Util.fromLong(primaryMoments._2(b))}
+    m1D :+ (0 -> Util.fromLong(primaryMoments._1))
   }
 
   def fastMoments(naive: Array[Double]): Array[Double] = {
@@ -46,11 +47,14 @@ object SolverTools {
   }
 
 
-  def error(naive: Array[Double], solver: Array[Double]) = {
+  def error[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
     val length = naive.length
-    val deviation = (0 until length).map(i => Math.abs(naive(i) - solver(i))).sum
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).sum
     val sum = naive.sum
-    deviation / sum
+    num.toDouble(deviation)/sum
   }
 
   def entropy(result: Array[Double]) = {

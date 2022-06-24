@@ -2,9 +2,8 @@ package examples
 
 import combinatorics.Combinatorics.comb
 import core.SolverTools._
-import core.solver.MomentSolverAll
+import core.solver._
 import core.solver.Strategy._
-import frontend.TUPLES_PREFIX
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
@@ -12,6 +11,7 @@ import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
 
+import scala.reflect.ClassTag
 import scala.util.Random
 
 object DemoTxt {
@@ -36,7 +36,7 @@ object DemoTxt {
       assert(cuboid.n_bits == n)
       val dcub = Profiler(s"Rehash $n") {cuboid.rehash_to_dense(Array.fill(n)(1))}
       val fetched = Profiler(s"Fetch $n") { dcub.asInstanceOf[DC].fetch.map(_.sm)}
-      val moments = Profiler(s"Moments $n") { Moment1Transformer.getMoments(fetched)}
+      val moments = Profiler(s"Moments $n") { Moment1Transformer[Double]().getMoments(fetched)}
       Profiler(s"TrieInsert $n") {trie.insertAll(cols, moments)}
       Profiler.print()
     }
@@ -75,20 +75,24 @@ object DemoTxt {
     //println(res.mkString(" "))
   }
 
-  def momentSolver2() = {
-    val solver = new MomentSolverAll[Rational](3, CoMoment4)
-    val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
-    solver.add(List(2), Array(5, 12).map(Rational(_, 1)))
-    solver.add(List(0, 1), Array(7, 3, 6, 1).map(Rational(_, 1)))
-    solver.add(List(1, 2), Array(1, 4, 9, 3))
-    solver.add(List(0, 2), Array(3, 2, 10, 2).map(Rational(_, 1)))
-    println("Moments before =" + solver.sumValues.mkString(" "))
+  def momentSolver2[T:ClassTag:Fractional]() = {
+    val num = implicitly[Fractional[T]]
+    val pm = List(0 -> 17, 1 -> 4, 2 -> 7, 4 -> 12).map(x => x._1 -> num.fromInt(x._2))
+    val total = 3
+    val slice = Vector(1, 1)
+    val agg = total - slice.length
+    val solver = new CoMoment5SliceSolver[T](total , slice,true, Moment1Transformer(), pm)
+    val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble).takeRight(1 << agg)
+    solver.add(List(0, 1), Array(7, 3, 6, 1).map(x => num.fromInt(x)))
+    solver.add(List(1, 2), Array(1, 4, 9, 3).map(x => num.fromInt(x)))
+    solver.add(List(0, 2), Array(3, 2, 10, 2).map(x => num.fromInt(x)))
+    println("Moments before =" + solver.moments.mkString(" "))
     solver.fillMissing()
-    println("Moments after =" + solver.sumValues.mkString(" "))
-    val result = solver.fastSolve().map(_.toDouble)
+    println("Moments after =" + solver.moments.mkString(" "))
+    val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result.toArray))
-    solver.verifySolution()
+
   }
 
   def test() = {
@@ -353,13 +357,13 @@ object DemoTxt {
   def main(args: Array[String]): Unit = {
     //investment()
     //momentSolver()
-    //momentSolver2()
+    momentSolver2()
     //backend_naive()
     //loadtest()
     //ssb_demo()
     //cooking()
     //trieCube()
-    toTrie()
+    //toTrie()
   }
 
 }

@@ -49,7 +49,7 @@ class MomentSolverAllSpec extends FlatSpec with Matchers {
   "CoMoment4 Solver batch mode" should "extrapolate correctly" in {
     import frontend.experiments.Tools.round
     val primaryMoments = List(0 -> 17.0, 1 -> 4.0, 2 -> 7.0, 4 -> 12.0)
-    val solver = new CoMoment4Solver(3, true, Moment1Transformer, primaryMoments)
+    val solver = new CoMoment4Solver[Double](3, true, Moment1Transformer(), primaryMoments)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(_.toDouble))
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(_.toDouble))
@@ -66,7 +66,7 @@ class MomentSolverAllSpec extends FlatSpec with Matchers {
   "CoMoment4 Solver online mode" should "extrapolate correctly" in {
     import frontend.experiments.Tools.round
     val primaryMoments = List(0 -> 17.0, 1 -> 4.0, 2 -> 7.0, 4 -> 12.0)
-    val solver = new CoMoment4Solver(3, false, Moment1Transformer, primaryMoments)
+    val solver = new CoMoment4Solver[Double](3, false, Moment1Transformer(), primaryMoments)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(_.toDouble))
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(_.toDouble))

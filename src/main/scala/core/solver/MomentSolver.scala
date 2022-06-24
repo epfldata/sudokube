@@ -3,41 +3,34 @@ package core.solver
 import util.{BigBinary, Bits, Profiler}
 
 import scala.collection.mutable.ListBuffer
+import scala.reflect.ClassTag
 
 //primary moments are calculated assuming transformer is Moment1
-abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentTransformer, primaryMoments: Seq[(Int, Double)]) {
+abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) (implicit val num: Fractional[T]) {
   val N = 1 << qsize
   val solverName: String
   lazy val name = solverName + transformer.name
 
-  val moments = Profiler.profile("Moments construct") {
-    Array.fill(N)(0.0)
+  var moments = Profiler.profile("Moments construct") {
+    Array.fill(N)(num.zero)
   }
   Profiler.profile("Moments init") {
-    if (transformer == Moment1Transformer)
       primaryMoments.foreach { case (i, m) => moments(i) = m }
-    else if (transformer == Moment0Transformer) {
-      val pmMap = primaryMoments.toMap
-      pmMap.foreach {
-        case (0, m) => moments(0) = m
-        case (i, m) => moments(i) = pmMap(0) - m
-      }
-    } else {
-      ???
-    }
+      moments = transformer.from1Moment(moments)
   }
+
   val knownSet = collection.mutable.BitSet()
   knownSet += 0
   (0 until qsize).foreach { b => knownSet += (1 << b) }
 
-  val momentProducts = new Array[Double](N)
+  val momentProducts = new Array[T](N)
   val knownMomentProducts = collection.mutable.BitSet()
 
   Profiler.profile("ExtraMoments init") {
     buildMomentProducts()
-    moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = momentProducts(i) * moments(0) }
+    moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = num.times(momentProducts(i), moments(0)) }
   }
-  val momentsToAdd = new ListBuffer[(Int, Double)]()
+  val momentsToAdd = new ListBuffer[(Int, T)]()
 
   var solution = transformer.getValues(moments)
 
@@ -46,12 +39,12 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
   def getStats = (dof, solution.clone())
 
   def buildMomentProducts() = {
-    momentProducts(0) = 1.0
+    momentProducts(0) = num.one
     knownMomentProducts.clear()
     //Set products corresponding to singleton sets
     (0 until qsize).foreach { i =>
       val j = (1 << i)
-      momentProducts(j) = if (knownSet(j)) moments(j) / moments(0) else 0.5
+      momentProducts(j) = if (knownSet(j)) num.div(moments(j) , moments(0)) else num.div(num.one, num.fromInt(2))
       knownMomentProducts += j
     }
     (0 until N).foreach { i =>
@@ -61,7 +54,7 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
           //find any element s subset of i
           if ((i & s) == s) {
             //products(I) = products(I \ {s}) * products({s})
-            momentProducts(i) = momentProducts(i - s) * momentProducts(s)
+            momentProducts(i) = num.times(momentProducts(i - s), momentProducts(s))
             s = i + 1 //break
           } else {
             s = s << 1
@@ -72,7 +65,7 @@ abstract class MomentSolver(qsize: Int, batchMode: Boolean, transformer: MomentT
     }
   }
 
-  def add(cols: Seq[Int], values: Array[Double]) = {
+  def add(cols: Seq[Int], values: Array[T]) = {
     val eqnColSet = Bits.toInt(cols)
     val n0 = 1 << cols.length
 

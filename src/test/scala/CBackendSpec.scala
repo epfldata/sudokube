@@ -230,7 +230,7 @@ class CBackendSpec extends FlatSpec with Matchers {
     val densearray = densecub.fetch.map(_.sm )
     assert(densearray.sameElements(dataArray))
 
-    val denseMoments = Moment1Transformer.getMoments(densearray)
+    val denseMoments = Moment1Transformer[Double]().getMoments(densearray)
 
     CBackend.b.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
     val trieResult  = CBackend.b.prepareFromTrie((0 until nbits).toList)

@@ -8,9 +8,10 @@ import core.solver._
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
 import frontend.schema.encoders._
-import util.Profiler
+import util.{Profiler, Util}
 
 import java.io.PrintStream
+import scala.reflect.ClassTag
 
 object Experimenter {
 
@@ -151,7 +152,102 @@ object Experimenter {
   }
 
 
-  def trieExpt()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def momentCompare[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+    val cg = SSB(100)
+    val param = "15_14_30"
+    val ms = "sms3"
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+
+
+    def solve(strategy: Strategy, q: Seq[Int], sliceValues: IndexedSeq[Int] = Vector()) = {
+      val (l, pm) = Profiler(strategy + "Moment Prepare") {
+        dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+      }
+      val maxDimFetch = l.last.mask.length
+      //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
+      val fetched = Profiler(strategy + "Moment Fetch") {
+        l.map { pm =>
+          (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
+        }
+      }
+      val result = Profiler(strategy + s"Moment Solve") {
+        val s = Profiler(strategy + s"Moment Constructor") {
+          strategy match {
+            case CoMoment4 => new CoMoment4Solver(q.length, true, Moment1Transformer(), pm)
+            case CoMoment5 => new CoMoment5Solver(q.length, true, Moment1Transformer(), pm)
+            case CoMoment5Slice => new CoMoment5SliceSolver(q.length, sliceValues, true, Moment1Transformer(), pm)
+          }
+        }
+        Profiler(strategy + s"Moment Add") {
+          fetched.foreach { case (bits, array) => s.add(bits, array) }
+        }
+        Profiler(strategy + s"Moment FillMissing") {
+          s.fillMissing()
+        }
+        Profiler(strategy + s"Moment ReverseTransform") {
+          s.solve()
+        }
+        s
+      }
+      result
+    }
+
+    val mq = new MaterializedQueryResult(cg)
+    val qss = List(9, 12, 15)
+    qss.foreach { qs =>
+      Profiler.resetAll()
+      val queries = mq.loadQueries(qs)
+      println(s"Moment Solver CM4 vs CM5  MS = $ms Query Dimensionality = $qs")
+      val ql = queries.length
+      val sliceValues = Vector(1, 1, 1, 1, 1, 1)
+      val aggN = 1 << (qs - sliceValues.length)
+      queries.zipWithIndex.foreach { case (q, i) =>
+
+        println(s"Query ${i + 1}/$ql =  ${q.mkString(":")}")
+        Profiler.resetAll()
+        val result1 = Profiler("CM4 MomentTotal") {
+          solve(CoMoment4, q, sliceValues)
+        }
+
+        Profiler.print()
+        println("\n")
+        Profiler.resetAll()
+        val result2 = Profiler("CM5 MomentTotal") {
+          solve(CoMoment5, q, sliceValues)
+        }
+
+        Profiler.print()
+        println("\n")
+        Profiler.resetAll()
+        val result3 = Profiler("CM5SS MomentTotal") {
+          solve(CoMoment5Slice, q, sliceValues)
+        }
+
+        Profiler.print()
+        println(s"Total = ${result1.N}  slice = ${1<<sliceValues.length}  agg = $aggN  result1=${result1.solution.length} result2=${result2.solution.length} result3=${result3.solution.length}")
+        assert(result3.solution.length == aggN)
+        result1.solution.slice()
+        val trueResult = mq.loadQueryResult(qs, i).takeRight(aggN)
+        val err1 = SolverTools.error(trueResult, result1.solution.takeRight(aggN))
+        val err2 = SolverTools.error(trueResult, result2.solution.takeRight(aggN))
+        val err3 = SolverTools.error(trueResult, result3.solution)
+
+        val grandTotal = trueResult.sum
+        println(s"Total= $grandTotal   Error1=$err1 Error2=$err2, Error3=$err3")
+        val num = implicitly[Fractional[T]]
+        val diffRes = result1.moments.zip(result2.moments).zip(result3.moments).zipWithIndex.filter { case (((m1, m2), m3), i) => i >= (result1.N - aggN) && !(num.equiv(m1, m2) && num.equiv(m2, m3)) }
+        diffRes.foreach { case (((m1, m2), m3), i) => println(s"$i :: ${num.toDouble(m1)} != ${num.toDouble(m2)} != ${num.toDouble(m3)}") }
+        assert(diffRes.isEmpty)
+        println("\n\n\n")
+
+      }
+    }
+  }
+
+  def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
 
     val cg = SSB(100)
     val param = "15_14_30"
@@ -167,18 +263,18 @@ object Experimenter {
 
     def momentSolve(q: List[Int]) = {
       val (l, pm) = Profiler("Moment Prepare") {
-        dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
+        dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
       }
       val maxDimFetch = l.last.mask.length
       //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
       val fetched = Profiler("Moment Fetch") {
         l.map { pm =>
-          (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
+          (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
         }
       }
       val result = Profiler(s"Moment Solve") {
         val s = Profiler(s"Moment Constructor") {
-          new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+          new CoMoment4Solver[T](q.length, true, Moment1Transformer(), pm)
         }
         Profiler(s"Moment Add") {
           fetched.foreach { case (bits, array) => s.add(bits, array) }
@@ -203,10 +299,10 @@ object Experimenter {
       }
       val result2 = Profiler(s"Trie Solve") {
         val s = Profiler(s"TrieMoment Constructor") {
-          new CoMoment4Solver(q.length, true, Moment1Transformer, pm)
+          new CoMoment4Solver(q.length, true, Moment1Transformer(), pm)
         }
         Profiler("Trie Moments Add") {
-          s.momentsToAdd ++= moments.map { case (i, l) => i -> l.toDouble }
+          s.momentsToAdd ++= moments.map { case (i, l) => i -> Util.fromLong(l) }
         }
         Profiler(s"TrieMoment FillMissing") {
           s.fillMissing()
@@ -225,12 +321,12 @@ object Experimenter {
     qss.foreach { qs =>
       Profiler.resetAll()
       //val queries = mq.loadQueries(qs).take(1)
-      val queries = List(List(165,181,182,183,184,185,186))
+      val queries = List(List(165, 181, 182, 183, 184, 185, 186))
       println(s"Moment Solver  Trie Experiment for MS = $ms Query Dimensionality = $qs")
       val ql = queries.length
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Query ${i+1}/$ql =  ${q.mkString(":")}")
+        println(s"Query ${i + 1}/$ql =  ${q.mkString(":")}")
         val supersets = dc.m.projections.filter(c => c.size < dc.m.n_bits && q.toSet.subsetOf(c.toSet))
         println("Supersets = " + supersets.mkString("\n"))
         val newprepare = dc.m.prepare_new(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
@@ -251,7 +347,8 @@ object Experimenter {
         val result2 = Profiler("TrieTotal") {
           trieSolve(q)
         }
-        result1.zip(result2).zipWithIndex.foreach{ case ((r1, r2),i) => if(math.abs(r1-r2) > math.pow(10, -9)) println(s"R1[$i]=$r1 != $r2=R2[$i]")}
+        val num = implicitly[Fractional[T]]
+        result1.zip(result2).zipWithIndex.foreach { case ((r1, r2), i) => if (!num.equiv(r1, r2)) println(s"R1[$i]=$r1 != $r2=R2[$i]") }
         assert(result1.sameElements(result2))
         //val err2 = error(trueResult, result2)
         Profiler.print()
@@ -428,7 +525,7 @@ object Experimenter {
     }
   }
 
-  def moment01()(implicit numIters: Int) = {
+  def moment01[T: ClassTag : Fractional]()(implicit numIters: Int) = {
     println("Running Moment 01")
     import SolverTools.error
     //val solver = new CoMoment4Solver(3, true, Moment0Transformer)
@@ -449,42 +546,64 @@ object Experimenter {
     val param = "15_14_30"
     val sch = cg.schema()
 
-    List(true, false).map { isSMS =>
-      val ms = (if (isSMS) "sms" else "rms")
-      val name = s"_${ms}_${param}"
-      val fullname = cg.inputname + name
-      val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val isSMS = true
+    val ms = (if (isSMS) "sms3" else "rms3")
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
 
-      val queries = List(12, 14, 16).flatMap { qs => (0 until numIters).map(_ => sch.root.samplePrefix(qs)) }.distinct
-      dc.loadPrimaryMoments(cg.inputname + "_base")
-
-      val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
-      fileout.println("Query, Moment0Error, Moment1Error")
-      queries.zipWithIndex.foreach { case (qu, qid) =>
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
+    fileout.println("Query, Moment0Error, Moment1Error")
+    val mq = new MaterializedQueryResult(cg)
+    List(12).foreach { qs =>
+      println(s"Moment01 query $ms size $qs")
+      val queries = mq.loadQueries(qs)
+      queries.zipWithIndex.foreach { case (qu, qid) => if (qid == 62) {
         println(s"$ms  Query ${qid + 1}/${queries.length}")
-        val q = qu.sorted
-        val naiveRes = {
-          val l = dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
-          dc.fetch(l).map(p => p.sm)
-        }
 
-        def solverRes(trans: MomentTransformer) = {
+        val q = qu.sorted
+        val naiveRes = mq.loadQueryResult(qs, qid)
+
+        def solverRes(trans: MomentTransformer[T]) = {
           val l = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
-          val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray))
+          val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray))
           val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
-          val s = new CoMoment4Solver(qu.size, true, trans, primaryMoments)
+          val s = new CoMoment4Solver[T](qu.size, true, trans, primaryMoments)
           fetched.foreach { case (bits, array) => s.add(bits, array) }
           s.fillMissing()
           s.solve()
+          (s.moments, s.knownSet, s.solution)
         }
 
-        val solver0Res = solverRes(Moment0Transformer)
-        val solver1Res = solverRes(Moment1Transformer)
+        val (mom0, kS0, solver0Res) = solverRes(Moment0Transformer())
+        val (mom1, kS1, solver1Res) = solverRes(Moment1Transformer())
 
-        fileout.println(s"${qu.size}, ${qu.mkString(";")}, ${error(naiveRes, solver0Res)}, ${error(naiveRes, solver1Res)}")
+        assert(kS0.sameElements(kS1))
+        val total = mom0.head
+        val num = implicitly[Fractional[T]]
+        val mom0to1 = Moment1Transformer().fromComplementaryMoment(mom0)
+        mom0to1.zip(mom1).zipWithIndex.map { case ((m0, m1), i) =>
+          val diff = num.abs(num.minus(m0, m1))
+          (m0, m1, i, diff)
+        }.filter(x => num.gt(num.times(x._4, num.fromInt(1000)), num.zero)).sortBy(x => -num.toDouble(x._4)).take(10).foreach { case (m0, m1, i, diff) =>
+          println(s"m[$i] :: $m0 != $m1  diff=${num.toDouble(diff)}")
+        }
+        solver0Res.zip(solver1Res).zipWithIndex.map { case ((x0, x1), i) =>
+          val diff = num.abs(num.minus(x0, x1))
+          (x0, x1, i, diff)
+        }.filter(x => num.gt(num.times(x._4, num.fromInt(1000)), num.zero)).sortBy(x => -num.toDouble(x._4)).take(10).foreach { case (x0, x1, i, diff) =>
+          println(s"x[$i] :: $x0 != $x1  diff=${num.toDouble(diff)}")
+        }
+        val err0 = error[T](naiveRes, solver0Res)
+        val err1 = error(naiveRes, solver1Res)
+        println(s"Err0=$err0, Err1=$err1")
+        assert(math.abs(err0 - err1) <= math.pow(10, -2))
+        //assert(mom0to1 sameElements (mom1))
+        fileout.println(s"${qu.size}, ${qu.mkString(";")}, $err0, $err1")
+      }
       }
     }
-
   }
 
   def solverScaling(batch: Boolean = true)(implicit numIters: Int) = {
@@ -501,7 +620,7 @@ object Experimenter {
         dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
         val moments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
-        val pm2 = SolverTools.preparePrimaryMomentsForQuery(q, moments)
+        val pm2 = SolverTools.preparePrimaryMomentsForQuery[Double](q, moments)
         val s0 = Profiler.profile("s0 Construct") {
           new MomentSolverAll[Double](nb, CoMoment3)
         }
@@ -509,10 +628,10 @@ object Experimenter {
           new MomentSolverAll[Double](nb, CoMoment4)
         }
         val s2 = Profiler.profile("s2 Construct") {
-          new CoMoment4Solver(nb, true, Moment1Transformer, pm2)
+          new CoMoment4Solver[Double](nb, true, Moment1Transformer(), pm2)
         }
         val s3 = Profiler.profile("s3 Construct") {
-          new CoMoment4Solver(nb, false, Moment1Transformer, pm2)
+          new CoMoment4Solver[Double](nb, false, Moment1Transformer(), pm2)
         }
         var l = dc.m.prepare(q, nb - 1, nb - 1)
         while (!(l.isEmpty)) {
@@ -772,6 +891,7 @@ object Experimenter {
   def main(args: Array[String]) {
     implicit val shouldRecord = true
     implicit val numIters = 100
+    import RationalTools._
     val strategy = CoMoment3
     args.lift(0).getOrElse("debug") match {
       case "Fig7" =>
@@ -793,12 +913,12 @@ object Experimenter {
         mb_prob()
       case "schema" =>
         schemas()
-      case "moment01" => moment01()
+      case "moment01" => moment01[Rational]()
       case "Fig12" | "manual" =>
         manualSSB(strategy, true)
         manualNYC(strategy, true)
       case "scaling" => solverScaling(false)
-      case _ => trieExpt()
+      case _ => momentCompare[Rational]()
     }
   }
 }

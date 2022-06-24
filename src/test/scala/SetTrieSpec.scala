@@ -5,6 +5,7 @@ import util.{BigBinary, Bits, Util}
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 import scala.math.Numeric.Implicits.infixNumericOps
+import scala.reflect.ClassTag
 import scala.util.Random
 
 class SetTrieSpec extends FlatSpec with Matchers {
@@ -90,7 +91,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
 
   "SetTrie" should "return subset moments from cuboids for query " in {
     val trie = new SetTrieForMoments()
-    def ms[T:Numeric](vs : Array[T]) = Moment1Transformer.getMoments(vs.map(_.toDouble))
+    def ms[T:ClassTag:Fractional](vs : Array[T]) = Moment1Transformer[T]().getMoments(vs)
     trie.insertAll(List(0, 1), ms(Array(7, 3, 6, 1)))
     trie.insertAll(List(1, 2), ms(Array(1, 4, 9, 3)))
     trie.insertAll(List(0, 2), ms(Array(3, 2, 10, 2)))

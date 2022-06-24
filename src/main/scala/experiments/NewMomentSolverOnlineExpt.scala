@@ -10,9 +10,9 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
 
   fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,QueryName,Entropy")
 
-  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
-    case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer, pm)
-    case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer, pm)
+  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver[Double] = strategy match {
+    case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer(), pm)
+    case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer(), pm)
   }
 
   override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
@@ -32,7 +32,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     val qstr = qu.mkString(":")
     val stg = new ManualStatsGatherer[(Int, (Int, Array[Double]))]()
     stg.start()
-    val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments))
+    val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments))
     var maxDimFetched = 0
     stg.task = () => ((maxDimFetched, s.getStats))
     var l = Profiler("Prepare") {
