@@ -27,7 +27,7 @@ object SolverTools {
   def preparePrimaryMomentsForQuery[T](q: Seq[Int], primaryMoments:(Long, Array[Long]))(implicit num: Fractional[T]) : Seq[(Int, T)] = {
 
     val m1D = q.zipWithIndex.map{case (b,i) => (1 << i) -> Util.fromLong(primaryMoments._2(b))}
-    m1D :+ (0 -> Util.fromLong(primaryMoments._1))
+    (0 -> Util.fromLong(primaryMoments._1)) +: m1D
   }
 
   def fastMoments(naive: Array[Double]): Array[Double] = {

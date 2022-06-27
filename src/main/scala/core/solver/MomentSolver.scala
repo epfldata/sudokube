@@ -6,45 +6,54 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 //primary moments are calculated assuming transformer is Moment1
-abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) (implicit val num: Fractional[T]) {
+abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)])(implicit val num: Fractional[T]) {
   val N = 1 << qsize
   val solverName: String
   lazy val name = solverName + transformer.name
 
-  var moments = Profiler.profile("Moments construct") {
-    Array.fill(N)(num.zero)
-  }
-  Profiler.profile("Moments init") {
-      primaryMoments.foreach { case (i, m) => moments(i) = m }
-      moments = transformer.from1Moment(moments)
-  }
-
+  var moments: Array[T] = null
   val knownSet = collection.mutable.BitSet()
-  knownSet += 0
-  (0 until qsize).foreach { b => knownSet += (1 << b) }
-
-  val momentProducts = new Array[T](N)
+  var momentProducts: Array[T] = null
   val knownMomentProducts = collection.mutable.BitSet()
 
-  Profiler.profile("ExtraMoments init") {
-    buildMomentProducts()
-    moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = num.times(momentProducts(i), moments(0)) }
-  }
   val momentsToAdd = new ListBuffer[(Int, T)]()
 
-  var solution = transformer.getValues(moments)
+  var solution: Array[T] = null
+
+  init()
+
+  def init(): Unit = {
+    moments = Profiler.profile("Moments construct") {
+      Array.fill(N)(num.zero)
+    }
+    Profiler.profile("Moments init") {
+      primaryMoments.foreach { case (i, m) => moments(i) = m }
+      moments = transformer.from1Moment(moments)
+    }
+
+    knownSet += 0
+    (0 until qsize).foreach { b => knownSet += (1 << b) }
+
+    Profiler.profile("ExtraMoments init") {
+      buildMomentProducts()
+      moments.indices.filter(!knownSet(_)).foreach { i => moments(i) = num.times(momentProducts(i), moments(0)) }
+    }
+    solution = transformer.getValues(moments)
+  }
+
 
   def dof = N - knownSet.size
 
   def getStats = (dof, solution.clone())
 
   def buildMomentProducts() = {
+    momentProducts = new Array[T](N)
     momentProducts(0) = num.one
     knownMomentProducts.clear()
     //Set products corresponding to singleton sets
     (0 until qsize).foreach { i =>
       val j = (1 << i)
-      momentProducts(j) = if (knownSet(j)) num.div(moments(j) , moments(0)) else num.div(num.one, num.fromInt(2))
+      momentProducts(j) = if (knownSet(j)) num.div(moments(j), moments(0)) else num.div(num.one, num.fromInt(2))
       knownMomentProducts += j
     }
     (0 until N).foreach { i =>
@@ -92,8 +101,8 @@ abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transfo
   //extrapolate missing moments
   def fillMissing()
 
-  def solve() = {
-    solution = transformer.getValues(moments)
+  def solve(hn: Boolean = true) = {
+    solution = transformer.getValues(moments, hn)
     solution
   }
 }

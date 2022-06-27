@@ -12,6 +12,7 @@ abstract class MomentTransformer[T](implicit val num: Fractional[T]) {
   def from1Moment(moments: Array[T]): Array[T]
 
   def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T]
+  def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T
 
   def fromComplementaryMoment(moments: Array[T]) = {
     val result = moments.clone()
@@ -75,6 +76,8 @@ case class Moment1Transformer[T: Fractional]() extends MomentTransformer[T] {
   }
 
 
+  override def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T = ???
+
   override def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T] = {
     val result = values.clone()
     val N = values.length
@@ -131,6 +134,8 @@ case class Moment0Transformer[T: Fractional]() extends MomentTransformer[T] {
     rowsToSum.map(values(_)).sum
   }
 
+
+  override def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T = ???
 
   override def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T] = ???
 
