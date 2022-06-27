@@ -1,6 +1,7 @@
 #include <string>
 #include <filesystem>
 #include <queue>
+#include <cassert>
 #include "Utility.h"
 #include "ByteMinHeap.h"
 
@@ -9,7 +10,7 @@ struct Metadata {
     unsigned int ColumnSize; 
     const size_t PageRowsCount;
     unsigned int DestinationKeySize;
-    const unsigned int ValueSize;
+    const unsigned int RecSize;
 };
 
 // return a pointer the specified column from the on memory column store 
@@ -79,18 +80,20 @@ inline Metadata getMetadata(std::string CubeDirPath, unsigned int CuboidID, cons
     unsigned int OldColumnSize = bitsToBytes(OldRowsCount);
 
     unsigned int DestinationKeySize = bitsToBytes(MaskSum);
-    const unsigned int ValueSize = sizeof(value_t);
+    const unsigned int RecSize = DestinationKeySize + sizeof(value_t);
     
     // number of key value pairs that can fit in a page at a time
-    const size_t PageRowsCount = ((PageSize / (DestinationKeySize + ValueSize)) >> 3 ) << 3;
+    const size_t PageRowsCount = ((PageSize / (RecSize)) >> 3 ) << 3;
     
-    Metadata Metadata = {OldRowsCount, OldColumnSize, PageRowsCount, DestinationKeySize, ValueSize};
+    Metadata Metadata = {OldRowsCount, OldColumnSize, PageRowsCount, DestinationKeySize, RecSize};
 
+    #ifdef DEBUG
     printf("IsDense: %hhd\n", *(IsDenseType*)(MetadataOnDisk));
     printf("RowsCount: %zu\n", OldRowsCount);
     printf("ColumnSize: %d\n", OldColumnSize);
 
     printf("PageRowsCount: %zu\n", PageRowsCount);
+    #endif
 
     free(MetadataOnDisk);
 
@@ -114,45 +117,22 @@ inline void writeMetadata(std::string CubeDirPath, unsigned int CuboidID,  IsDen
     fclose(MetadataFile);
 }
 
-inline void printKeyValuePairs(const size_t RowsCount, unsigned int MaskSum, unsigned int KeySize, byte *KeysArray, value_t *ValuesArray) {
-    for (size_t i = 0; i<RowsCount; i++) { 
-        print_key(MaskSum, getKeyFromKeysArray(KeysArray, i, KeySize));
-        printf(" : %lld", *getValueFromValueArray(ValuesArray, i));
-        printf("\n");
-    }
-}
-
-byte *getKeyFromKeyValArray(byte *array, size_t idx, size_t keySize, size_t valSize) {
-    byte *key = array + (keySize+valSize) * idx;
-    // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
-    return key;
-}
-
-value_t *getValueFromKeyValArray(byte *array, size_t idx, size_t keySize, size_t valSize) {
-    value_t *val = (value_t*)(array + (keySize+valSize) * idx + keySize);
-    // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
-    return val;
-}
-
 inline void printKeyValuePairsFromKeyValArray(const size_t RowsCount, unsigned int MaskSum, unsigned int KeySize, unsigned int ValueSize, byte *KeyValueArray) {
     for (size_t i = 0; i<RowsCount; i++) { 
-        print_key(MaskSum, getKeyFromKeyValArray(KeyValueArray, i, KeySize, ValueSize));
-        printf(" : %lld", (value_t)*getValueFromKeyValArray(KeyValueArray, i, KeySize, ValueSize));
+        print_key(MaskSum, getKeyFromKeyValArray(KeyValueArray, i, KeySize + ValueSize));
+        printf(" : %ld", (value_t)*getValueFromKeyValArray(KeyValueArray, i, KeySize + ValueSize));
         printf("\n");
     }
 }
 
-inline size_t MergeKeysInPlace(const size_t BufferRowsCount, unsigned int KeySize, unsigned int ValueSize, byte *KeysArray, value_t *ValuesArray, byte* KeyValueArray) {
-    size_t j = 0; // index of last elemet
-    memcpy(getKeyFromKeyValArray(KeyValueArray, j, KeySize, ValueSize), getKeyFromKeysArray(KeysArray, 0, KeySize), KeySize);
-    memcpy(getValueFromKeyValArray(KeyValueArray, j, KeySize, ValueSize), getValueFromValueArray(ValuesArray, 0), ValueSize);
+inline size_t MergeKeysInPlace(const size_t BufferRowsCount, unsigned int RecSize, byte* KeyValueArray) {
+    size_t j = 0; // index of last merged element
     for (size_t i = 1; i<BufferRowsCount; i++) {
-        if (memcmp(getKeyFromKeyValArray(KeyValueArray, j, KeySize, ValueSize), getKeyFromKeysArray(KeysArray, i, KeySize), KeySize) == 0) {
-            *getValueFromKeyValArray(KeyValueArray, j, KeySize, ValueSize) += *getValueFromValueArray(ValuesArray, i);
+        if (memcmp(getKeyFromKeyValArray(KeyValueArray, j, RecSize), getKeyFromKeyValArray(KeyValueArray, i, RecSize), RecSize - sizeof(value_t)) == 0) {
+            *getValueFromKeyValArray(KeyValueArray, j, RecSize) += *getValueFromKeyValArray(KeyValueArray, i, RecSize);
         } else {
             j++;
-            memcpy(getKeyFromKeyValArray(KeyValueArray, j, KeySize, ValueSize), getKeyFromKeysArray(KeysArray, i, KeySize), KeySize);
-            memcpy(getValueFromKeyValArray(KeyValueArray, j, KeySize, ValueSize), getValueFromValueArray(ValuesArray, i), ValueSize);
+            memcpy(getKeyFromKeyValArray(KeyValueArray, j, RecSize), getKeyFromKeyValArray(KeyValueArray, i, RecSize), RecSize);
         }
     }
     return j + 1; // returns the new length of the array after merge
@@ -183,10 +163,12 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
         unsigned int CurrentOutputRun = 0;
 
         for (int runs = 0; runs < NumberOfInputRuns; runs += K) { // one iteration produce signle run
+            #ifdef DEBUG
             printf("\n\nOutput Run %d\n", CurrentOutputRun);
+            #endif
             int RunsUpperBound = std::min(runs+K, NumberOfInputRuns);
 
-            // number of runs to merge
+            // number of runs to merge in this iteration
             int NumberOfRunsToMerge = RunsUpperBound-runs;
             
             // elements left to be merged in each run
@@ -230,7 +212,7 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
 
                 // read in the key value pairs into the buffer pages
                 fread(InputKeyValueBufferPages + run * PageSize, KeySize + ValueSize, RowsToRead, FilePointers[run]);
-                PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + run * PageSize, *(CurrentRowInInputBuffer + run), KeySize, ValueSize), run);
+                PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + run * PageSize, *(CurrentRowInInputBuffer + run), KeySize + ValueSize), run);
 
                 #ifdef DEBUG
                 // printf("\nRunRowsCount: %zu\n", RunRowsCount);
@@ -263,15 +245,15 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
             // int TotalRows = 0;
             while (PriorityQueue.getSize() != 0) {
                 // get the last key and value in output buffer 
-                byte* CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
-                value_t *CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                byte* CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
+                value_t *CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
                 
                 // page/run number of minimum value
                 pagenumbertype MinRun = PriorityQueue.pop();
 
                 // get the key from run
-                byte* MinRunKey = getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize);
-                value_t* MinRunValue = getValueFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize);
+                byte* MinRunKey = getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize + ValueSize);
+                value_t* MinRunValue = getValueFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize + ValueSize);
 
                 #ifdef DEBUG
                 // printf("MinRun : %d\n", MinRun);
@@ -302,15 +284,15 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
                         CurrentOuputBufferRow = 0;
                         TotalAccumulatedRowsInCurrentOuputBuffer = 0;
 
-                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
-                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
+                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
                     }
                     // don't incement if it's the first value being written to the buffer
                     else if (TotalAccumulatedRowsInCurrentOuputBuffer != 0) {
                         CurrentOuputBufferRow++;
                         
-                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
-                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize, ValueSize);
+                        CurrentOuputKey = getKeyFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
+                        CurrentOutputValue = getValueFromKeyValArray(OutputKeyValueBufferPage, CurrentOuputBufferRow, KeySize + ValueSize);
                     }  
                     *CurrentOutputValue = *MinRunValue;
                     memcpy(CurrentOuputKey, MinRunKey, KeySize);
@@ -337,12 +319,12 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
                         *(CurrentRowInInputBuffer + MinRun) = 0;
 
                         // push the next element to the priority queue
-                        PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize), MinRun);
+                        PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize + ValueSize), MinRun);
                     }
                 } else { // implies  -->  *(CurrentRowInInputBuffer + MinRun) < *(TotalRowsInInputBuffer + MinRun)
                     // printf("priority Queue Push\n");
                     // push the next element to the priority queue
-                    PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize, ValueSize), MinRun);
+                    PriorityQueue.push(getKeyFromKeyValArray(InputKeyValueBufferPages + MinRun * PageSize, *(CurrentRowInInputBuffer + MinRun), KeySize + ValueSize), MinRun);
                 }
             }
 
@@ -359,7 +341,7 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
             fclose(OutputRunFile);
 
             // closing input files and deallocating memory
-            for (int run = 0; run < NumberOfInputRuns; run++) {
+            for (int run = 0; run < NumberOfRunsToMerge; run++) {
                 fclose(FilePointers[run]);
                 std::filesystem::remove(FileNames[run]);
             }
@@ -372,7 +354,6 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
             CurrentOutputRun++;
         } // new run should be produced before this
         
-
         NumberOfInputRuns = CurrentOutputRun; 
         // update current pass
         CurrentPass = NextPass;
@@ -385,8 +366,8 @@ unsigned int ExternalMerge(unsigned int NumberOfRuns, std::string RunFileNamePre
 // converts from row for to column form
 void convertKeyValArrayToColStore(size_t Rows, byte *KeyValueArray, byte **KeyStore, value_t *ValStore, unsigned int KeySize, unsigned int ValueSize, unsigned int MaskSum, unsigned int BufferColumnSize) {
     for (int r = 0; r < Rows; r++) {
-        byte* Key = getKeyFromKeyValArray(KeyValueArray, r, KeySize, ValueSize);
-        value_t* Value = getValueFromKeyValArray(KeyValueArray, r, KeySize, ValueSize);
+        byte* Key = getKeyFromKeyValArray(KeyValueArray, r, KeySize + ValueSize);
+        value_t* Value = getValueFromKeyValArray(KeyValueArray, r, KeySize + ValueSize);
 
         // set key
         for(int c = 0; c < MaskSum; c++) {

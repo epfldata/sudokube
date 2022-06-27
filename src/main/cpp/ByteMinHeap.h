@@ -2,11 +2,13 @@
 #define MINHEAP_H
 
 #include "Utility.h"
+#include <string.h>
+#include <limits.h>
 
 typedef unsigned int pagenumbertype;
 
  // utility function to swap two keys
-void swapKeys(byte *Array, int i, int j, unsigned int KeySize);
+void swapKeysMinHeap(byte *Array, int i, int j, unsigned int KeySize);
 
 // returns the key at index i
 byte *getKeyFromKeyPageArray(byte *Array, size_t i, size_t KeySize);
@@ -85,7 +87,7 @@ void MinHeap::push(byte* Key, pagenumbertype Page) {
 
 	// Fix the min heap property if it is violated
 	while (i != 0 && compareKeys(Array, parent(i), i, KeySize)>0) {
-		swapKeys(Array, parent(i), i, KeySize);
+		swapKeysMinHeap(Array, parent(i), i, KeySize);
 		i = parent(i);
 	}
 }
@@ -120,13 +122,13 @@ void MinHeap::heapify(int i) {
 	if (l < Size && compareKeys(Array, l, smallest, KeySize) < 0) smallest = l;
 	if (r < Size && compareKeys(Array, r, smallest, KeySize) < 0) smallest = r;
 	if (smallest != i) {
-		swapKeys(Array, i, smallest, KeySize);
+		swapKeysMinHeap(Array, i, smallest, KeySize);
 		heapify(smallest);
 	}
 }
 
 // utility function to swap two keys
-void swapKeys(byte *Array, int i, int j, unsigned int KeySize) {
+void swapKeysMinHeap(byte *Array, int i, int j, unsigned int KeySize) {
 
 	byte *TempKeyPage = (byte *)calloc(1, KeySize + sizeof(pagenumbertype));
     
