@@ -1,7 +1,7 @@
 #include "SecondaryStorage.h"
 #include "ByteIntroSort.h"
 
-std::string DatasetDirPath = "/home/tarindu/dataset/";
+std::string DatasetDirPath = "/Users/jayatila/Documents/dataset/";
 
 void writeBaseCuboid(std::string CubeID, std::pair<byte[], long> KeyValuePairs[]) {
     
@@ -115,7 +115,7 @@ void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int
     #endif
 }*/
 
-void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], unsigned int MaskSum) {
+void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int* Mask, unsigned int MaskSum) {    
     std::string CubeDirPath = DatasetDirPath + CubeID + std::filesystem::path::preferred_separator;
     std::string SourceCuboidDirPath = CubeDirPath + "cuboid" + std::to_string(SourceCuboidID) + std::filesystem::path::preferred_separator;
 
@@ -134,10 +134,14 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
     // start rehashing the cuboid stored on disk
     unsigned int RehashIterations = (OldRowsCount + BufferRowsCount - 1) / BufferRowsCount; // ceil(OldRowsCount /BufferRowsCount)
 
-    printf("\nBuffer Rows Count : %zu\n", BufferRowsCount);
-    printf("Rehash Iterations : %d\n", RehashIterations);
     #ifdef DEBUG
-        printf("\nBuffer Rows Count : %zu\n", BufferRowsCount);
+        printf("\nMaskSum : %d\n", MaskSum);
+        printf("Mask: {");
+        for (int m=0; m<MaskSum-1; m++) {
+            printf("%d, ", Mask[m]);
+        }
+        printf("%d}\n", Mask[MaskSum-1]);
+        printf("Buffer Rows Count : %zu\n", BufferRowsCount);
         printf("Rehash Iterations : %d\n", RehashIterations);
     #endif
     // TODO: Add a hybrid algorithm

@@ -17,7 +17,9 @@ int main(int argc, char* argv[]) {
 
     auto start = std::chrono::steady_clock::now();
 
-    rehashToSparse("cube1", 0, 1, mask, masksum);
+    const char* CubeID = "cube1";
+
+    rehashToSparse(CubeID, 0, 1, mask, masksum);
 
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;

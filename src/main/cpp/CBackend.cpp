@@ -1,5 +1,6 @@
 #include<assert.h>
 #include<stdio.h>
+#include <string>
 #include "backend_CBackend.h"
 #include "Keys.h"
 
@@ -11,7 +12,7 @@ extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned
 extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
 // secondary storage
-extern void void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], const unsigned int MaskSum);
+extern void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int* Mask, const unsigned int MaskSum);
 
 extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
@@ -216,17 +217,16 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 }
 
 // secondary storage
-JNIEXPORT void JNICALL Java_backend_CBackend_rehashToDense0
+JNIEXPORT void JNICALL Java_backend_CBackend_rehashToSparse0
 (JNIEnv* env, jobject obj, jstring cube_id, jint src_id, jint dest_id, jintArray pos)
 {
   jsize poslen  = env->GetArrayLength(pos);
   jint* posbody = env->GetIntArrayElements(pos, 0);
-  rehashToDense(cube_id, src_id, dest_id, (unsigned int*) posbody, poslen);
+  const char* cube_id_char = env->GetStringUTFChars(cube_id, 0);
+  rehashToSparse(cube_id_char, src_id, dest_id, (unsigned int*) posbody, poslen);
 
   env->ReleaseIntArrayElements(pos, posbody, 0);
 }
-
-
 
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
 (JNIEnv *env, jobject obj, int d_id)

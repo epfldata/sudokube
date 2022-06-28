@@ -255,6 +255,13 @@ object DemoTxt {
       println("Result = "+res.mkString(" "))
     }
   }
+
+  def secondarystorage() = {
+    val mask = Array(0,1,2,3,8,9,10,11)
+    println("mask: " + mask.toList.toString)
+    CBackend.b.rehashToSparse("cube1", 0, 1, mask)
+  }
+
   def ssb_demo() = {
     val sf = 100
     val cg = SSB(sf)
@@ -293,5 +300,6 @@ object DemoTxt {
     //backend_naive()
     //loadtest()
     //ssb_demo()
+    secondarystorage()
   }
 }
