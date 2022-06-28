@@ -10,6 +10,9 @@ extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
+// secondary storage
+extern void void rehashToDense(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int Mask[], const unsigned int MaskSum);
+
 extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
 extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
@@ -211,6 +214,18 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
   env->ReleaseIntArrayElements(pos, posbody, 0);
   return x;
 }
+
+// secondary storage
+JNIEXPORT void JNICALL Java_backend_CBackend_rehashToDense0
+(JNIEnv* env, jobject obj, jstring cube_id, jint src_id, jint dest_id, jintArray pos)
+{
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
+  rehashToDense(cube_id, src_id, dest_id, (unsigned int*) posbody, poslen);
+
+  env->ReleaseIntArrayElements(pos, posbody, 0);
+}
+
 
 
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0

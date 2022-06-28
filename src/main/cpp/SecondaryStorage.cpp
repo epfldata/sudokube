@@ -310,9 +310,6 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
     IsDenseType DestinationIsDense = 0;
     writeMetadata(CubeDirPath, DestinationCuboidID, DestinationIsDense, NewRowsCount);
 
-    Metadata DestinationMetadata = getMetadata(CubeDirPath, DestinationCuboidID, MaskSum);
-
-
     #ifdef DEBUG
     // READ COL STORE
     size_t NewColSize = bitsToBytes(NewRowsCount);

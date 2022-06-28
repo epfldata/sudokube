@@ -23,10 +23,14 @@ class CBackend extends Backend[Payload] {
 
   @native protected def reset0(): Unit
   @native protected def shhash(s_id: Int, pos: Array[Int]): Int
-  @native protected def   sRehash0(s_id: Int, pos: Array[Int]): Int
+  @native protected def sRehash0(s_id: Int, pos: Array[Int]): Int
   @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
   @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
-  @native protected def   dRehash0(d_id: Int, pos: Array[Int]): Int
+  @native protected def dRehash0(d_id: Int, pos: Array[Int]): Int
+
+  // secondary storage
+  @native protected def rehashToDense0(cube_id: String, src_id: Int, dest_id: Int, mask: Array[Int])
+
   @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
   @native protected def mk0(n_bits: Int): Int
   @native protected def sSize0(id: Int): Int
@@ -166,6 +170,12 @@ class CBackend extends Backend[Payload] {
   protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, mask: Array[Int]): Int = {
     val pos = mask.indices.filter(i => mask(i) == 1).toArray
     dRehash0(d_id, pos)
+  }
+
+  // secondary storage
+  protected def rehashToDense(cube_id: String, src_id: Int, dest_id: Int, mask: Array[Int]) = {
+    val pos = mask.indices.filter(i => mask(i) == 1).toArray
+    rehashToDense0(cube_id, src_id, dest_id, pos)
   }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] =

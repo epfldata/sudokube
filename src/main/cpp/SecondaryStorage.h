@@ -105,7 +105,7 @@ inline void writeMetadata(std::string CubeDirPath, unsigned int CuboidID,  IsDen
     memcpy(MetadataOnDisk, &IsDense, sizeof(IsDenseType));
     memcpy(MetadataOnDisk + sizeof(IsDenseType), &RowsCount, sizeof(size_t));
     
-    FILE* MetadataFile = fopen (MetadataFilePath.c_str(), "ab");
+    FILE* MetadataFile = fopen(MetadataFilePath.c_str(), "ab");
     assert(MetadataFile != NULL);
     
     fseek(MetadataFile, MetadataSizeOnDisk * CuboidID, SEEK_SET);
