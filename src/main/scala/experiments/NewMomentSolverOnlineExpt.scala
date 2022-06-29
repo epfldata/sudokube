@@ -19,13 +19,13 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     //Cannot use default warmup because of "containsAllCuboid" set to true
     val dcwarm = DataCube.load2("warmupall")
     dcwarm.loadPrimaryMoments("warmupall")
-    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, null, false))
+    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, null, false, sliceValues = Vector()))
     println("Warmup Complete")
   }
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)

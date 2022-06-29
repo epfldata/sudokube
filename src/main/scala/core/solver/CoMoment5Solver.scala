@@ -16,7 +16,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
     val total = primaryMoments.head._2
     moments(0) = total
     assert(primaryMoments.head._1 == 0)
-    assert(transformer.isInstanceOf[MomentTransformer[_]])
+    assert(transformer.isInstanceOf[Moment1Transformer[_]])
     pmMap = primaryMoments.map { case (i, m) => i -> num.div(m, total) }.toMap
 
     knownSet += 0
@@ -66,7 +66,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
             moments(j + h) = num.plus(moments(j + h), num.times(pmMap(h), moments(j)))
           }
         }
-        h *= 2
+        h <<= 1
       }
     }
   }

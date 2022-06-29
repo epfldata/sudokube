@@ -45,7 +45,7 @@ import Strategy._
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     import frontend.experiments.Tools.round
     val q = qu.sorted
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)

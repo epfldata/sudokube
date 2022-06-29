@@ -24,7 +24,7 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
     new PrintStream(file)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean, qname: String = ""): Unit
+  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: IndexedSeq[Int]): Unit
 
   def warmup(nw: Int = 10) = {
     val dcwarm = DataCube.load2("warmup")
@@ -34,7 +34,7 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
       Tools.rand_q(dcwarm.m.n_bits, s)
     }
 
-    qs.foreach(q => run(dcwarm, "warmup", q, null, false))
+    qs.foreach(q => run(dcwarm, "warmup", q, null, false, sliceValues = Vector()))
     println("Warmup Complete")
   }
 }

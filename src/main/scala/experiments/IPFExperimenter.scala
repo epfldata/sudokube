@@ -24,7 +24,7 @@ object IPFExperimenter {
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"\tBatch Query ${i + 1}/$ql")
         val trueResult = materializedQueries.loadQueryResult(qs, i)
-        exptfull.run(dc, fullname, q, trueResult)
+        exptfull.run(dc, fullname, q, trueResult, sliceValues = Vector())
       }
     }
     dc.cuboids.head.backend.reset

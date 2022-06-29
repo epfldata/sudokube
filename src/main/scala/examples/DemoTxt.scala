@@ -79,10 +79,11 @@ object DemoTxt {
     val num = implicitly[Fractional[T]]
     val pm = List(0 -> 17, 1 -> 4, 2 -> 7, 4 -> 12).map(x => x._1 -> num.fromInt(x._2))
     val total = 3
-    val slice = Vector()
+    val slice = Vector(1, 0, 1)
     val agg = total - slice.length
-    //val solver = new CoMoment5SliceSolver[T](total ,slice,true, Moment1Transformer(), pm)
-    val solver = new CoMoment5Solver[T](total ,true, Moment1Transformer(), pm)
+    //val solver = new CoMoment5SliceSolver2[T](total ,slice,true, Moment1Transformer(), pm)
+    val solver = new CoMoment5SliceSolver[T](total ,slice,true, Moment1Transformer(), pm)
+    //val solver = new CoMoment5Solver[T](total ,true, Moment1Transformer(), pm)
     val actual = Util.slice(Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble), slice)
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(x => num.fromInt(x)))
     solver.add(List(1, 2), Array(1, 4, 9, 3).map(x => num.fromInt(x)))

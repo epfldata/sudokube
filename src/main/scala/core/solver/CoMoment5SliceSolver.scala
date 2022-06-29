@@ -1,6 +1,6 @@
 package core.solver
 
-import util.{Bits, Util}
+import util.{Bits, Profiler, Util}
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
@@ -14,12 +14,13 @@ class CoMoment5SliceSolver[T: ClassTag : Fractional](totalsize: Int, slicevalue:
   override def init(): Unit = {}
 
   init2()
+
   def init2(): Unit = {
     moments = Array.fill(N)(num.zero) //using moments array for comoments
     val total = primaryMoments.head._2
     moments(0) = total
     assert(primaryMoments.head._1 == 0)
-    assert(transformer.isInstanceOf[MomentTransformer[_]])
+    assert(transformer.isInstanceOf[Moment1Transformer[_]])
     pmMap = primaryMoments.map { case (i, m) => i -> num.div(m, total) }.toMap
 
     knownSet += 0
@@ -45,7 +46,7 @@ class CoMoment5SliceSolver[T: ClassTag : Fractional](totalsize: Int, slicevalue:
     }
     else {
       //need more than log(n0) moments -- do moment transform and filter
-      val projectedMomentProduct = (0 until cols.length).map{ case b =>
+      val projectedMomentProduct = (0 until cols.length).map { case b =>
         val i0 = 1 << b
         val i = Bits.unproject(i0, eqnColSet)
         i0 -> pmMap(i)
@@ -59,29 +60,31 @@ class CoMoment5SliceSolver[T: ClassTag : Fractional](totalsize: Int, slicevalue:
   }
 
   def fillMissing() = {
-    momentsToAdd.foreach { case (i, m) =>
-      moments(i) = m
+    Profiler("MomentsAdd") {
+      momentsToAdd.foreach { case (i, m) =>
+        moments(i) = m
+      }
     }
-
     var h = N >> 1
-    var sliceIdx = if(slicevalue.nonEmpty) slicevalue.indices.last else -1
+    var sliceIdx = if (slicevalue.nonEmpty) slicevalue.indices.last else -1
     var start = 0
     while (h > 0) {
-      (start until N by h * 2).foreach { i =>
-        (i until i + h).foreach { j =>
-          val term = num.plus(moments(j + h), num.times(pmMap(h), moments(j)))
-          if (sliceIdx < 0 || slicevalue(sliceIdx) == 1) { //slice 1 or agg
-            moments(j + h) = term
-          } else { //slice 0
-            moments(j + h) = num.minus(moments(j), term)
+      val name = if (sliceIdx >= 0) "SliceExtrapolate" else "MomentExtrapolate"
+      Profiler(name) {
+        (start until N by h * 2).foreach { i =>
+          (i until i + h).foreach { j =>
+            val term = num.plus(moments(j + h), num.times(pmMap(h), moments(j)))
+            if (sliceIdx < 0 || slicevalue(sliceIdx) == 1) { //slice 1 or agg
+              moments(j + h) = term
+            } else { //slice 0
+              moments(j + h) = num.minus(moments(j), term)
+            }
           }
         }
+        if (h >= aggN) start += h
+        h >>= 1
+        sliceIdx -= 1
       }
-      if (h >= aggN) start += h
-      h >>= 1
-      sliceIdx -= 1
     }
-
   }
-
 }

@@ -8,10 +8,11 @@ import core.solver._
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
 import frontend.schema.encoders._
-import util.{Profiler, Util}
+import util.{Bits, Profiler, Util}
 
 import java.io.PrintStream
 import scala.reflect.ClassTag
+import scala.util.Random
 
 object Experimenter {
 
@@ -143,7 +144,7 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query $i/$ql")
-        expt.run(dc, fullname, q, null, true)
+        expt.run(dc, fullname, q, null, true, sliceValues = Vector())
       }
     }
 
@@ -152,7 +153,7 @@ object Experimenter {
   }
 
 
-  def momentCompare()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def momentCompareFixedSlice()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg = SSB(100)
     val param = "15_14_30"
     val ms = "sms3"
@@ -162,20 +163,52 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("slice")
+    val expt = new MomentSolverCompareBatchExpt("fixedslice")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
-    //val qss = List(9)
     val qss = List(9, 12, 15, 18, 21, 24)
     qss.foreach { qs =>
-      println(s"\n\nMoment Solver Strategy Comparison Experiment for MS = $ms Query Dimensionality = $qs")
+      println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Slice for MS = $ms Query Dimensionality = $qs")
       val queries = mq.loadQueries(qs).take(numIters)
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s" Query ${i + 1}/$ql")
         val trueResult = mq.loadQueryResult(qs, i)
-        expt.run(dc, fullname, q, trueResult, true)
+        expt.run(dc, fullname, q, trueResult, true, sliceValues = Vector(1, 0, 0, 0, 1, 1, 0, 0))
       }
     }
+
+  }
+
+  def momentCompareFixedTotal()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+    val cg = SSB(100)
+    val param = "15_14_30"
+    val ms = "sms3"
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.inputname + "_base")
+
+    val mq = new MaterializedQueryResult(cg)
+    val expt = new MomentSolverCompareBatchExpt("fixedtotal")
+    //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
+    val sss = List(0, 4, 8, 12, 16, 20)
+    //val sss = List( 18, 21)
+    val qs = 24
+    val queries = mq.loadQueries(qs).take(numIters)
+    val ql = queries.length
+    println(s"\n\nMoment Solver Strategy Comparison Fixed Total Experiment for MS = $ms")
+    queries.zipWithIndex.foreach { case (q, i) =>
+      println(s" Query ${i + 1}/$ql")
+      val trueResult = mq.loadQueryResult(qs, i)
+      sss.foreach { ss =>
+        val svs = if(ss == 0) Vector()  else {
+          Bits.intToMask(ss, Random.nextInt(1 << ss))
+        }
+        println(s" Slice Dimensionality = $ss  slice=${svs.mkString(":")}")
+        expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
+      }
+    }
+
 
   }
 
@@ -317,12 +350,12 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query ${i + 1}/$ql")
-        exptfull.run(dc, fullname, q, null)
+        exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Online Query ${i + 1}/$ql")
-        exptonline.run(dc, fullname, q, null)
+        exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
     }
     dc.cuboids.head.backend.reset
@@ -355,12 +388,12 @@ object Experimenter {
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Batch Query ${i + 1}/$ql")
-        exptfull.run(dc, fullname, q, null)
+        exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"Online Query ${i + 1}/$ql")
-        exptonline.run(dc, fullname, q, null)
+        exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       dc.cuboids.head.backend.reset
@@ -384,7 +417,7 @@ object Experimenter {
         dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q, null)
+        expt.run(dc, fullname, q, null, sliceValues = Vector())
         dc.cuboids.head.backend.reset
       }
     }
@@ -407,7 +440,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q, null)
+        expt.run(dc, fullname, q, null, sliceValues = Vector())
         dc.cuboids.head.backend.reset
       }
     }
@@ -430,7 +463,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q, null)
+        expt.run(dc, fullname, q, null, sliceValues = Vector())
         dc.cuboids.head.backend.reset
       }
     }
@@ -452,7 +485,7 @@ object Experimenter {
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
-        expt.run(dc, fullname, q, null)
+        expt.run(dc, fullname, q, null, sliceValues = Vector())
         dc.cuboids.head.backend.reset
       }
     }
@@ -706,7 +739,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize")
-        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)")
+        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
   }
@@ -749,7 +782,7 @@ object Experimenter {
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
         println(s"  Query $i :: $qname   length = $qsize ")
-        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)")
+        expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
   }
@@ -816,7 +849,7 @@ object Experimenter {
     //val m2 =new EfficientMaterializationScheme(dc.m)
     //val expt = new MomentSolverBatchExpt[Double](fullname)
     val expt = new NewMomentSolverBatchExpt(CoMoment3, fullname)
-    (0 until 10).foreach { x => expt.run(dc, fullname, q, null) }
+    (0 until 10).foreach { x => expt.run(dc, fullname, q, null, sliceValues = Vector()) }
     //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
     //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }
@@ -847,7 +880,9 @@ object Experimenter {
       case "schema" =>
         schemas()
       case "moment01" => moment01[Rational]()
-      case "momentcompare" =>  momentCompare()
+      case "momentcompare" =>
+        momentCompareFixedSlice()
+        momentCompareFixedTotal()
       case "Fig12" | "manual" =>
         manualSSB(strategy, true)
         manualNYC(strategy, true)
