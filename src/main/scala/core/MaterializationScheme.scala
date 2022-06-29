@@ -1,19 +1,20 @@
 //package ch.epfl.data.sudokube
 package core
 
-import planning._
-import util._
 import combinatorics._
 import frontend.schema.Schema2
+import planning._
+import util.Util.intersect_intval3
+import util._
 
 import scala.collection.BitSet
+import scala.collection.mutable.ListBuffer
 
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 
   /** the metadata describing each projection in this scheme. */
   val projections: IndexedSeq[List[Int]]
-
 
   object info {
     def wc_estimate(s: Int) = {
@@ -96,6 +97,32 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
           case Some((_, j, _)) => build_plan = (s, i, j) :: build_plan
           case None => assert(false)
         }
+        pi.step
+      }
+    }
+    println
+    build_plan.reverse
+  }
+
+  def create_build_plan_trie(): List[(Set[Int], Int, Int)] = {
+    // aren't they sorted by length by construction?
+    val ps = projections.zipWithIndex.sortBy(_._1.length).reverse.toList
+    assert(ps.head._1.length == n_bits)
+
+    // the edges (_2, _3) form a tree rooted at the full cube
+    var build_plan: List[(Set[Int], Int, Int)] =
+      List((ps.head._1.toSet, ps.head._2, -1))
+    val trie = new SetTrieBuildPlan()
+    trie.insert(ps.head._1, ps.head._1.length, ps.head._2)
+
+    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", true)
+
+    ps.tail.foreach {
+      case ((l: List[Int]), (i: Int)) => {
+        val s = l.toSet
+        val j = trie.getCheapestSuperset(l)
+        build_plan = (s, i, j) :: build_plan
+        trie.insert(l, l.length, i)
         pi.step
       }
     }
@@ -192,7 +219,6 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
     res
   }
 
-
   /** returns the metadata of cuboids that are suggested to be used to answer
    * a given query. The results are ordered large cuboids (i.e. with many
    * dimensions shared with the query) first.
@@ -245,7 +271,9 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
        Needs to be revisited should we ever have cuboids of varying sort
        orders.
     */
+
     val qp0 = qproject(query).filter(_.mask.length <= max_fetch_dim)
+
     val qp1: List[ProjectionMetaData] =
 
       qp0.groupBy(_.accessible_bits).mapValues(l =>
@@ -266,6 +294,157 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
 */
 
     qp2
+  }
+
+  def prepare_online_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                 ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          hm(ab0) = (s, id, p)
+        }
+      }
+    }
+
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_online_new_int(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                        ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[Int, (Int, Int, Seq[Int], List[Int])]()
+    import Util.intersect_intval
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val (ab0, ab0_i) = intersect_intval(qL, p)
+        val res = hm.get(ab0_i)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0_i) = (s, id, p, ab0)
+        } else {
+          hm(ab0_i) = (s, id, p, ab0)
+        }
+      }
+    }
+
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._2._4.size).foreach { case (ab0_i, (c, id, p, ab0)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_online_new_int2(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                            ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[Int, (Int, Int, Seq[Int], List[Int])]()
+    import util.Util.intersect_intval2
+
+    //temporary solution, need to see for variable query size.
+    val qL_2 = List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val (ab0, ab0_i) = intersect_intval2(qL, qL_2, p)
+        val res = hm.get(ab0_i)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0_i) = (s, id, p, ab0)
+        } else {
+          hm(ab0_i) = (s, id, p, ab0)
+        }
+      }
+    }
+
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._2._4.size).foreach { case (ab0_i, (c, id, p, ab0)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_online_new_int3(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                            ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[Int, (Int, Int, Seq[Int], List[Int])]()
+    import Util.intersect_intval
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val (ab0, ab0_i) = intersect_intval3(qL, p)
+        val res = hm.get(ab0_i)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0_i) = (s, id, p, ab0)
+        } else {
+          hm(ab0_i) = (s, id, p, ab0)
+        }
+      }
+    }
+
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._2._4.size).foreach { case (ab0_i, (c, id, p, ab0)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
   }
 
   def prepare_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
@@ -303,6 +482,150 @@ abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
       }
     }
     projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_new_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                     ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    val trie = new SetTrie()
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          val test = trie.existsSuperSet_andGetSubsets(ab0, can_be_subset = true, can_be_superset = true)
+          if(test._1.nonEmpty){
+            test._1.foreach(ab0_to_rem => hm(ab0_to_rem) = (0, -1, List()))
+          }
+          //print("TEST AB0 : " + ab0 + "\n")
+          //println("TEST RET : " + test + "\n")
+          if (test._2) {
+            trie.insert(ab0, ab0 = ab0)
+            hm(ab0) = (0, -1, List())
+          } else {
+            trie.insert(ab0, ab0 = ab0)
+            hm(ab0) = (s, id, p)
+          }
+        }
+      }
+    }
+
+    var projs = List[ProjectionMetaData]()
+
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if(p.nonEmpty) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_batch_new(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                      ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
+    import Util.intersect
+
+    val trie = new SetTrie()
+
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
+
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          if(trie.existsSuperSet(ab0)){
+            hm(ab0) = (0, -1, List())
+          } else {
+            trie.insert(ab0)
+            hm(ab0) = (s, id, p)
+          }
+        }
+      }
+    }
+
+
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if (p.nonEmpty && !trie.existsSuperSet(s)) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+
+  def prepare_opt(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int
+                 ): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    import Util.intersect
+
+    var abMapProjSingle = scala.collection.mutable.Map[IndexedSeq[Int], ProjectionMetaData]()
+    var ret = List[ProjectionMetaData]()
+
+    //For each projection, do filtering
+    projections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p) //compute intersection
+        val s = p.size
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+        val mask = Bits.mk_list_mask(p, qBS)
+        //Only keep min mask.length when same ab
+        if (abMapProjSingle.contains(ab)) {
+          if (mask.length < abMapProjSingle(ab).mask.length) {
+            abMapProjSingle -= ab
+            val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
+            if (!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))) {
+              abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
+              abMapProjSingle += newp
+            }
+            //abMapProjSingle += (ab -> ProjectionMetaData(ab, ab0, mask, id))
+          }
+        } else {
+          val newp = (ab -> ProjectionMetaData(ab, ab0, mask, id))
+          if (!abMapProjSingle.exists(y => y._2.dominates(newp._2, cheap_size))) {
+            abMapProjSingle = abMapProjSingle.filter(x => !newp._2.dominates(x._2))
+            abMapProjSingle += newp
+          }
+        }
+      }
+    }
+
+    //Final filtering for dominating cuboids, could be optimized
+
+    abMapProjSingle.values.toList.sortBy(-_.accessible_bits.length)
+    /*abMapProjSingle.filter(x => !abMapProjSingle.exists(y => y._2.dominates(x._2, cheap_size))).values.toList.sortBy(-_.accessible_bits.length)
+    */
+
+    /* Simpler implem, no performance difference
+    ret = abMapProjSingle.values.toList
+    ret.filter(x => !ret.exists(y => y.dominates(x, cheap_size))
+    ).sortBy(-_.accessible_bits.length)
+
+     */
+
   }
 
 
@@ -488,76 +811,325 @@ case class RandomizedMaterializationScheme2(override val n_bits: Int, logN: Doub
 }
 
 //Wrapper for materialization scheme to try other MS
-class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+case class EfficientMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
   /** the metadata describing each projection in this scheme. */
   override val projections: IndexedSeq[List[Int]] = m.projections
-  val pset = projections.map(_.toSet)
-  val pbset = projections.map(p => BitSet(p: _*))
+
+  val proj_trie = {
+    val trie = new SetTrieIntersect()
+    projections.zipWithIndex.sortBy(res => res._1.size).foreach(res => trie.insert(res._1, res._1.size, res._2, res._1))
+    trie
+  }
 
 
   override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
     val qL = query.toList
-    val hm = collection.mutable.HashMap[List[Int], (Int, Int)]()
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+
+    proj_trie.intersect(qL, List(), max_fetch_dim)
+    val trie = new SetTrieOnline()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    proj_trie.hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
+      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0, c)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
+  }
+}
+
+case class testMaterializationScheme(m: MaterializationScheme) extends  MaterializationScheme(m.n_bits){
+
+  override val projections: IndexedSeq[List[Int]] = m.projections
+  val filteredProjections = {
+    val trie = new SetTrie()
+    var projs_good = List[List[Int]]()
+    var projs_bad = List[List[Int]]()
+    var i = 0
+    projections.sortBy(-_.size).foreach{
+      case p =>
+        println("ITER : " + i)
+        i += 1
+        if(trie.existsSuperSet(p)){
+          projs_bad = p :: projs_bad
+        } else {
+          projs_good = p :: projs_good
+          trie.insert(p)
+        }
+    }
+    print("TOTAL SIZE : " + projections.size)
+    println("GOOD SIZE : " + projs_good.size)
+    println("BAD SIZE : " + projs_bad.size)
+    projs_good
+  }
+
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+    val qL = query.toList
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
     import Util.intersect
 
-    val res1 = Profiler("Intersect") {
-      projections.zipWithIndex.map { case (p, id) =>
-        if (p.size <= max_fetch_dim) {
-          val ab0 = intersect(qL, p)
-          val res = hm.get(ab0)
-          val s = p.size
+    filteredProjections.zipWithIndex.foreach { case (p, id) =>
+      if (p.size <= max_fetch_dim) {
+        val ab0 = intersect(qL, p)
+        val res = hm.get(ab0)
+        val s = p.size
 
-          if (res.isDefined) {
-            if (s < res.get._1)
-              hm(ab0) = (s, id)
-          } else {
-            hm(ab0) = (s, id)
-          }
+        if (res.isDefined) {
+          if (s < res.get._1)
+            hm(ab0) = (s, id, p)
+        } else {
+          hm(ab0) = (s, id, p)
         }
       }
     }
-    val newids = Profiler("dominate") {
-      val trie = new SetTrie()
-      var newids = List[Int]()
-      //decreasing order of projection size
-      hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id)) =>
-        if (!trie.existsSuperSet(s)) {
-          newids = id :: newids
-          trie.insert(s)
-        }
-      }
-      newids.sorted
-    }
-    //val qmap = query.zipWithIndex.toMap
-    //def inter(a: Int, q: List[Int], p: List[Int]):Int = {
-    //  if(p == Nil || q == Nil) a
-    //  else {
-    //    if(p.head < q.head)
-    //      inter(a, p, q.tail)
-    //    else if(p.head > q.head)
-    //      inter(a, p.tail, q)
-    //    else {
-    //      val b = 1 << qmap(p.head)
-    //      inter(a+b, p.tail, q.tail)
-    //    }
-    //  }
-    //}
-    //projections.zipWithIndex.map{case (p, i) =>
-    //    val ab0 = Profiler("i0"){inter(0, query.toList, p)}
-    //}
-    val res0 = super.prepare(query, cheap_size, max_fetch_dim)
 
-    val oldids = res0.map(_.id).sorted
-    println("Query =  " + query)
-    println("Old = " + oldids.map(id => id -> projections(id)))
-    println("New = " + newids.map(id => id -> projections(id)))
-    println(oldids.sameElements(newids))
-    Profiler.resetAll()
-    println()
-    res0
+    val trie = new SetTrie()
+    var projs = List[ProjectionMetaData]()
+    //decreasing order of projection size
+    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
+      if (!trie.existsSuperSet(s)) {
+        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+        val mask = Bits.mk_list_mask(p, qBS)
+        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+        trie.insert(s)
+      }
+    }
+    projs.sortBy(-_.accessible_bits.size)
   }
 
 
+}
+
+case class DAGMaterializationScheme(m: MaterializationScheme) extends MaterializationScheme(m.n_bits) {
+  /** the metadata describing each projection in this scheme. */
+  override val projections: IndexedSeq[List[Int]] = m.projections
+  val proj_zip_sorted = projections.zipWithIndex.sortBy(-_._1.length)
+
+  /**
+   * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
+   */
+  var projectionsDAGroot = buildDag()
+
+  override def prepare(query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
+    val qIS = query.toIndexedSeq
+    val qBS = query.toSet
+    val hm_cheap = collection.mutable.HashMap[Seq[Int], DagVertex]()
+
+    val ret = new ListBuffer[ProjectionMetaData]()
+    val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
+    queue.enqueue((projectionsDAGroot, query))
+    projectionsDAGroot.hasBeenDone = 1
+    var i = 0
+    while (queue.nonEmpty) {
+      i+= 1
+      val (vert_deq, intersect_deq) = queue.dequeue()
+      if (vert_deq.p_length >= max_fetch_dim) {
+        vert_deq.children.foreach(child => {
+          if (child._1.hasBeenDone == 0) {
+            child._1.hasBeenDone = 1
+            val new_intersect = intersect_deq.filter(dim => !child._2.contains(dim))
+            if(new_intersect.nonEmpty){
+              queue.enqueue((child._1, new_intersect))
+            }
+          }
+        })
+      } else if(vert_deq.p_length <= cheap_size){
+        //When we reach cheap size, is basically the same algorithm as prepare_new
+        var good_children = 0
+        //Still iterate through children since if one of the children has the same intersection then
+        //it will dominate => reduce further computation
+        vert_deq.children.foreach(child => {
+          val newdif = intersect_deq.intersect(child._2)
+          if (newdif.isEmpty && child._1.hasBeenDone == 0) {
+            queue.enqueue((child._1, intersect_deq))
+            child._1.hasBeenDone = 1
+            good_children += 1
+          } else {
+            child._1.hasBeenDone = 1
+            val new_intersect = intersect_deq.filter(dim => !newdif.contains(dim))
+            if(new_intersect.nonEmpty){
+              queue.enqueue((child._1, new_intersect))
+            }
+          }
+        })
+        if (good_children == 0) {
+          val res = hm_cheap.get(intersect_deq)
+          if(res.isDefined){
+            if(vert_deq.p_length < res.get.p_length){
+              hm_cheap(intersect_deq) = vert_deq
+            }
+          } else {
+            hm_cheap(intersect_deq) = vert_deq
+          }
+        }
+      } else {
+        var good_children = 0
+        vert_deq.children.foreach(child => {
+          val newdif = intersect_deq.intersect(child._2)
+          if (newdif.isEmpty) {
+            if (child._1.hasBeenDone == 0) {
+              queue.enqueue((child._1, intersect_deq))
+              child._1.hasBeenDone = 1
+            }
+            good_children += 1
+          } else {
+            if (child._1.hasBeenDone == 0) {
+              val new_intersect = intersect_deq.filter(dim => !newdif.contains(dim))
+              if(new_intersect.nonEmpty){
+                queue.enqueue((child._1, intersect_deq.filter(dim => !newdif.contains(dim))))
+              }
+              child._1.hasBeenDone = 1
+            }
+          }
+        })
+        if (good_children == 0) {
+          val ab0 = intersect_deq.toList
+          val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+          val mask = Bits.mk_list_mask(vert_deq.p.toList, qBS)
+          ret += ProjectionMetaData(ab, ab0, mask, vert_deq.id)
+        }
+      }
+    }
+    //Add all cheap projs to ret
+    hm_cheap.foreach({ case (ab0, dv) =>
+      val ab = qIS.indices.filter(i => ab0.contains(qIS(i)))
+      val mask = Bits.mk_list_mask(dv.p.toList, qBS)
+      ret += ProjectionMetaData(ab, ab0, mask, dv.id)
+    })
+    resetDag(projectionsDAGroot)
+    ret.toList
+  }
+
+  /*def buildDag(): DagVertex = {
+    //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
+
+    val root = new DagVertex(proj_zip_sorted.head._1, proj_zip_sorted.head._1.length, proj_zip_sorted.head._2)
+    var addedVtcs = 1
+    var i = 1
+    proj_zip_sorted.tail.foreach { case (p, id) =>
+      print("Curr : " + i + "\n")
+      i += 1
+      val new_dag_v = new DagVertex(p, p.size, id+1)
+      var vertexRet = 0
+      val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
+      queue.enqueue((root, root.p))
+      while (queue.nonEmpty) {
+        val deq_dagV = queue.dequeue()
+        val queue_oldsize = queue.size
+        deq_dagV._1.children.foreach(child =>
+          if (p.forall(p_dim => child._1.p.contains(p_dim))) {
+            queue.enqueue((child._1, deq_dagV._1.p))
+          }
+        )
+        if (queue_oldsize == queue.size) {
+          deq_dagV._1.addChild(new_dag_v)
+          vertexRet += 1
+        }
+      }
+
+      if (vertexRet == 0) {
+        println("Error while adding projection vertex " + (id+1) + " : doesn't have any parent")
+      } else {
+        addedVtcs += 1
+      }
+    }
+    if (addedVtcs != projections.length) {
+      println("Error, not all vertices were added.")
+    }
+    root
+  }*/
+
+  /**
+   *
+   * @return The root of the DAG
+   */
+  def buildDag(): DagVertex = {
+    //val DAG = new mutable.HashMap[Int, List[DagVertex]]().withDefaultValue(Nil) //default value for List[DagVertex] to avoid checking if entry already exists
+
+    val root = new DagVertex(proj_zip_sorted.head._1, proj_zip_sorted.head._1.length, proj_zip_sorted.head._2)
+    var addedVtcs = 1
+    var i = 1
+    proj_zip_sorted.tail.foreach { case (p, id) =>
+      print("Curr : " + i + "\n")
+      i += 1
+      val new_vert = new DagVertex(p, p.size, id)
+      var vertexRet = 0
+      val queue = collection.mutable.Queue[DagVertex]()
+      queue.enqueue(root)
+      while (queue.nonEmpty) {
+        val deq_vert = queue.dequeue()
+        val queue_oldsize = queue.size
+        deq_vert.children.foreach(child => {
+          if (p.forall(p_dim => child._1.p.contains(p_dim))) {
+            queue.enqueue(child._1)
+          }
+        }
+        )
+        if (queue_oldsize == queue.size) {
+          deq_vert.addChild(new_vert)
+          vertexRet += 1
+        }
+      }
+      if (vertexRet == 0) {
+        println("Error while adding projection vertex " + (id+1) + " : doesn't have any parent")
+      } else {
+        addedVtcs += 1
+      }
+    }
+    if (addedVtcs != projections.length) {
+      println("Error, not all vertices were added.")
+    }
+    root
+  }
+
+  /**
+   * Sets all the vertices "hasBeenDone" to 0 to prepare for new query
+   */
+  def resetDag(root: DagVertex): Unit = {
+    val queue = collection.mutable.Queue[DagVertex]()
+    root.hasBeenDone = 0
+    queue.enqueue(root)
+    while (queue.nonEmpty) {
+      val deq_vert = queue.dequeue()
+      deq_vert.children.foreach(child => {
+        if(child._1.hasBeenDone == 1) {
+          child._1.hasBeenDone = 0
+          queue.enqueue(child._1)
+        }
+      })
+    }
+  }
+}
+
+/**
+ * A vertex to be used in the DAG, represents a single projection
+ *
+ * @param p        The projection
+ * @param p_length Its length
+ * @param id       Its id (index in sequence of projections)
+ */
+class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
+  var children = new ListBuffer[(DagVertex, Seq[Int])]()
+  var hasBeenDone = 0
+
+  /**
+   * Adds a child to the vertex
+   *
+   * @param v the vertex of the child to add
+   */
+  def addChild(v: DagVertex): Unit = {
+    val child_diff = p.filter(dim => !v.p.contains(dim))
+    //println(test + "\n")
+    children += ((v, child_diff))
+
+  }
 }
 
 
