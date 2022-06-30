@@ -11,8 +11,8 @@ using MaskOffsetType = int64_t;
 using IsDenseType = int8_t;
 size_t MetadataSizeOnDisk = sizeof(IsDenseType) + sizeof(size_t);
 
-unsigned int PageSize = 4*1024; // 128; //128;//4*1024;
-unsigned int BufferPages = 64;
+unsigned int PageSize = 4096; // 128; //128;//4*1024;
+unsigned int BufferPages = 256;
 unsigned int BufferSize = BufferPages*PageSize;
 
 inline unsigned int bitsToBytes(unsigned int bits) {

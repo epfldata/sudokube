@@ -1,6 +1,7 @@
 package examples
 
 import backend.CBackend
+import backend.CBackendSecondaryStorage
 import breeze.io.{CSVReader, CSVWriter}
 import combinatorics.Combinatorics.{comb, comb2, mk_comb_bi}
 import core.solver.MomentSolverAll
@@ -257,9 +258,17 @@ object DemoTxt {
   }
 
   def secondarystorage() = {
-    val mask = Array(0,1,2,3,8,9,10,11)
-    println("mask: " + mask.toList.toString)
-    CBackend.b.rehashToSparse("cube1", 0, 1, mask)
+    CBackendSecondaryStorage.b.mkRandomSecondaryStorage("cube2", 24, 100000)
+
+    // cube 1 30 bits and 100M rows
+    val mask1 = Array(0,1,2,3,8,9,10,11,12,13)
+    println("mask: " + mask1.toList.toString)
+    CBackendSecondaryStorage.b.rehashToSparse("cube1", 0, 1, mask1)
+
+    // mask relative to the src cuboid (not the absolute mask)
+    val mask2 = Array(0,1,2,3)
+    println("mask: " + mask2.toList.toString)
+    CBackendSecondaryStorage.b.rehashToSparse("cube1", 1, 2, mask2)
   }
 
   def ssb_demo() = {

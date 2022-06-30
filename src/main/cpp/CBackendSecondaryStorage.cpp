@@ -1,7 +1,7 @@
 #include<assert.h>
 #include<stdio.h>
 #include <string>
-#include "backend_CBackend.h"
+#include "backend_CBackendSecondaryStorage.h"
 #include "Keys.h"
 
 extern void reset();
@@ -10,6 +10,10 @@ extern unsigned int   srehash(unsigned int s_id, unsigned int *maskpos, unsigned
 extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
+
+// secondary storage
+extern void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned int DestinationCuboidID, unsigned int* Mask, const unsigned int MaskSum);
+extern void mkRandomSecondaryStorage(std::string CubeID, unsigned int NBits, unsigned int Rows);
 
 extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
@@ -28,12 +32,12 @@ extern void writeDCuboid(const char *filename, unsigned int d_id);
 extern void readMultiCuboid(const char *filename,  int n_bits_array[], int size_array[], unsigned char isSparse_array[], unsigned int id_array[], unsigned int numCuboids);
 extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[],  int ids[], unsigned int numCuboids);
 
-JNIEXPORT void JNICALL Java_backend_CBackend_reset0(JNIEnv *env, jobject obj)
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_reset0(JNIEnv *env, jobject obj)
 {
     reset();
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_readSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
@@ -43,7 +47,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
   return result;
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_readDCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint n_bits, jint size)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
@@ -53,7 +57,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
   return result;
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_writeSCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint s_id)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
@@ -61,7 +65,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
   env->ReleaseStringUTFChars(filename, str);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_writeDCuboid0
 (JNIEnv* env, jobject obj, jstring filename, jint d_id)
 {
   const char *str = env->GetStringUTFChars(filename, 0);
@@ -69,7 +73,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
   env->ReleaseStringUTFChars(filename, str);
 }
 
-JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
+JNIEXPORT jintArray JNICALL Java_backend_CBackendSecondaryStorage_readMultiCuboid0
         (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JnbitsArray, jintArray JsizeArray) {
     jsize numCuboids = env->GetArrayLength(JisSparseArray);
     const char* filename = env->GetStringUTFChars(Jfilename, 0);
@@ -85,7 +89,7 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
 
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_writeMultiCuboid0
         (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JidArray){
     jsize numCuboids = env->GetArrayLength(JisSparseArray);
     const char* filename = env->GetStringUTFChars(Jfilename, 0);
@@ -95,7 +99,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
     writeMultiCuboid(filename, isSparseArray, idArray, numCuboids);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_add_1i
         (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jintArray key, jlong v) {
     jsize keylen  = env->GetArrayLength(key);
     jint* keybody = env->GetIntArrayElements(key, 0);
@@ -111,7 +115,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
     env->ReleaseIntArrayElements(key, keybody, 0);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_add
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_add
 (JNIEnv* env, jobject obj, jint s_id, jint n_bits, jintArray key, jlong v)
 {
   jsize keylen  = env->GetArrayLength(key);
@@ -128,35 +132,44 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add
   env->ReleaseIntArrayElements(key, keybody, 0);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_freeze
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_freeze
 (JNIEnv* env, jobject obj, jint s_id)
 {
   freeze(s_id);
 }
 
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_sSize0
 (JNIEnv* env, jobject obj, jint id)
 {
   return sz(id);
 }
 
-JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
+JNIEXPORT jlong JNICALL Java_backend_CBackendSecondaryStorage_sNumBytes0
         (JNIEnv *, jobject, jint id) {
             return sNumBytes(id);
 }
-JNIEXPORT jint JNICALL Java_backend_CBackend_mk0
+
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_mk0
 (JNIEnv* env, jobject obj, jint n_bits)
 {
   return mk(n_bits);
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_mkRandomSecondaryStorage0
+(JNIEnv* env, jobject obj, jstring cube_id, jint n_bits, jint rows)
+{
+  const char* cube_id_char = env->GetStringUTFChars(cube_id, 0);
+  mkRandomSecondaryStorage(cube_id_char, n_bits, rows);
+}
+
+
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_mkAll0
         (JNIEnv * env, jobject obj, jint n_bits, jint n_rows) {
     return mkAll(n_bits, n_rows);
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_shhash
         (JNIEnv *env, jobject obj, jint s_id, jintArray pos) {
     jsize poslen = env->GetArrayLength(pos);
     jint *posbody = env->GetIntArrayElements(pos, 0);
@@ -166,7 +179,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
 
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_sRehash0
 (JNIEnv* env, jobject obj, jint s_id, jintArray pos)
 {
   jsize poslen  = env->GetArrayLength(pos);
@@ -177,7 +190,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
   return x;
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_d2sRehash0
 (JNIEnv* env, jobject obj,  jint d_id, jintArray pos)
 {
   jsize poslen  = env->GetArrayLength(pos);
@@ -189,7 +202,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
   return x;
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_s2dRehash0
 (JNIEnv* env, jobject obj, jint d_id, jintArray pos)
 {
   jsize poslen  = env->GetArrayLength(pos);
@@ -201,7 +214,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
   return x;
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
+JNIEXPORT jint JNICALL Java_backend_CBackendSecondaryStorage_dRehash0
 (JNIEnv* env, jobject obj, jint d_id, jintArray pos)
 {
   jsize poslen  = env->GetArrayLength(pos);
@@ -213,7 +226,19 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
   return x;
 }
 
-JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
+// secondary storage
+JNIEXPORT void JNICALL Java_backend_CBackendSecondaryStorage_rehashToSparse0
+(JNIEnv* env, jobject obj, jstring cube_id, jint src_id, jint dest_id, jintArray pos)
+{
+  jsize poslen  = env->GetArrayLength(pos);
+  jint* posbody = env->GetIntArrayElements(pos, 0);
+  const char* cube_id_char = env->GetStringUTFChars(cube_id, 0);
+  rehashToSparse(cube_id_char, src_id, dest_id, (unsigned int*) posbody, poslen);
+
+  env->ReleaseIntArrayElements(pos, posbody, 0);
+}
+
+JNIEXPORT jlongArray JNICALL Java_backend_CBackendSecondaryStorage_dFetch0
 (JNIEnv *env, jobject obj, int d_id)
 {
   size_t size;

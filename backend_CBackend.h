@@ -57,14 +57,6 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
 /*
  * Class:     backend_CBackend
- * Method:    rehashToSparse0
- * Signature: (Ljava/lang/String;II[I)V
- */
-JNIEXPORT void JNICALL Java_backend_CBackend_rehashToSparse0
-  (JNIEnv *, jobject, jstring, jint, jint, jintArray);
-
-/*
- * Class:     backend_CBackend
  * Method:    mkAll0
  * Signature: (II)I
  */

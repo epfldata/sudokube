@@ -3,6 +3,105 @@
 
 std::string DatasetDirPath = "/Users/jayatila/Documents/dataset/";
 
+byte *getKey(byte *array, size_t idx, size_t recSize) {
+    byte *key = array + recSize * idx;
+    // printf("array = %d idx = %d recSize = %d key = %d\n", array, idx, recSize, key);
+    return key;
+}
+
+value_t *getVal(byte *array, size_t idx, size_t recSize) {
+    value_t *val = (value_t *) (array + (idx + 1) * recSize - sizeof(value_t));
+//    printf("array = %d idx = %d recSize = %d val = %d\n", array, idx, recSize, val);
+    return val;
+}
+
+void mkRandomSecondaryStorage (std::string CubeID, unsigned int NBits, unsigned int Rows) {
+    const size_t oldKeyBits = NBits;
+    size_t maxOldRows = 1<<oldKeyBits;
+    unsigned int oldKeySize = bitsToBytes(oldKeyBits);
+    unsigned int oldRecSize = oldKeySize + sizeof(value_t);
+    byte *store = (byte *) calloc(maxOldRows, oldRecSize);
+
+    srand(8);
+    for (size_t i = 0; i<Rows; i++) { 
+        value_t randVal = (value_t)rand()%10;
+        size_t randKey = (size_t)rand()%1000;
+        memcpy(getKey(store, i, oldRecSize), &randKey, oldKeySize);
+        memcpy(getVal(store, i, oldRecSize), &randVal, sizeof(value_t));
+    }
+
+    const size_t oldRows = Rows;
+
+    store = (byte *) realloc(store, oldRows*oldRecSize);
+
+    //col source generation
+    unsigned int oldColumnSize = bitsToBytes(oldRows);
+    // printf("Old Rows Size: %u\n", oldColumnSize);
+
+    // stores values
+    value_t *oldValueStore = (value_t *) calloc(oldRows, sizeof(value_t));
+
+    // stores keys 
+    byte **oldColStore = (byte**)calloc(oldKeyBits, oldColumnSize);
+
+    for (size_t r = 0; r<oldRows; r++) { 
+        memcpy(&oldValueStore[r], getVal(store, r, oldRecSize), sizeof(value_t));
+        byte *key = getKey(store, r, oldRecSize);
+        value_t intKey;  // CAUTION; KEYS BIGGER THAN 64 BITS WILL NOT WORK
+        memcpy(&intKey, key, oldKeySize); 
+        std::bitset<sizeof(value_t)*8> bit_r = std::bitset<sizeof(value_t)*8>(intKey);
+        for(int i = 0; i < oldKeyBits; i++) {
+            if (bit_r[i]) {
+                byte* col = getColumn(oldColStore, i, oldColumnSize);
+                setBit(col, r);
+            }
+        }
+    }
+
+    std::string CubeDirPath = DatasetDirPath + CubeID + "/";
+    std::string CuboidDirPath = CubeDirPath + "cuboid0/" ;
+    printf("%s\n", CuboidDirPath.c_str());
+    #ifdef DEBUG
+    printf("%s\n", CuboidDirPath.c_str());
+    #endif
+    
+    std::filesystem::create_directories(CuboidDirPath);
+
+    // SAVE COL STORE
+    for(int i=0; i<oldKeyBits; i++){
+        std::string filename = CuboidDirPath + "col" + std::to_string(i);
+        FILE* colfile;
+        colfile = fopen(filename.c_str(), "wb");
+        fwrite(getColumn(oldColStore, i, oldColumnSize), sizeof(byte), oldColumnSize, colfile);
+        fclose(colfile);
+    }
+
+    // SAVE COL STORE VALUES
+    FILE* valfile;
+    std::string valfilename = CuboidDirPath + "values";
+    valfile = fopen (valfilename.c_str(), "wb");
+    fwrite(oldValueStore, sizeof(value_t), oldRows, valfile);
+    fclose(valfile);
+
+    IsDenseType IsDense = 0;
+
+    size_t MetadataDize = sizeof(IsDenseType) + sizeof(size_t);
+    
+    byte *Metadata = (byte*)calloc(MetadataDize, sizeof(byte));
+    memcpy(Metadata, &IsDense, sizeof(IsDenseType));
+    memcpy(Metadata + sizeof(IsDenseType), &oldRows, sizeof(size_t));
+
+    printf("IsDense: %hhd\n", *(IsDenseType*)(Metadata));
+    printf("Rows: %zu\n", *(size_t*)(Metadata + sizeof(IsDenseType)));
+
+    std::string MetadataFileName = CubeDirPath + "metadata";
+
+    FILE* MetadataFile;
+    MetadataFile = fopen (MetadataFileName.c_str(), "wb");
+    fwrite(Metadata, sizeof(byte), MetadataDize, MetadataFile);
+    fclose(MetadataFile);
+}
+
 void writeBaseCuboid(std::string CubeID, std::pair<byte[], long> KeyValuePairs[]) {
     
 }
@@ -168,8 +267,6 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
         value_t *IntermediateValStore = (value_t *)calloc(BufferRowsCount, sizeof(value_t));
         readValues(SourceCuboidDirPath, i, BufferRowsCount, IntermediateValStore);
 
-        ////////////////////////
-
         // write them to a new Key Value Array that has key value pairs together
         byte *KeyValueArray = (byte*)calloc(BufferRowsCount, RecSize);
 
@@ -248,10 +345,8 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
         #endif
     }
     
-    printf("external merge\n");
     // external merge
     unsigned int PassNumber = ExternalMerge(RehashIterations, TempRunFileNamePrefix, TempRunFileNameSuffix, PageRowsCount, DestinationKeySize, sizeof(value_t), MaskSum);
-    printf("external merge done\n");
 
     #ifdef DEBUG
     printf("\nPassNumber: %d\n", PassNumber);
@@ -343,13 +438,13 @@ void rehashToSparse(std::string CubeID, unsigned int SourceCuboidID, unsigned in
     fread(readvaluestore, sizeof(value_t), NewRowsCount, readvaluefile);
     fclose(readvaluefile);
 
-    printf("Old Key Value Pairs\n");
+    printf("Key Value Pairs\n");
     for (size_t i = 0; i<NewRowsCount; i++) { 
-        printf("\tCol Read Key: ");
+        printf("\tKey: ");
         for(int j = MaskSum-1; j >= 0; j--)
             printColumnBit(i, getColumn(readcolstore, j, NewColSize));
 
-        printf("\tCol Read Value: %ld\n", readvaluestore[i]);
+        printf("\tValue: %ld\n", readvaluestore[i]);
     }
     #endif
 }

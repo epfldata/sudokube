@@ -9,7 +9,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 /** proxy for C implementation; provides access to native functions
     via JNI.
 */
-class CBackend extends Backend[Payload] {
+class CBackendSecondaryStorage extends Backend[Payload] {
   protected type DENSE_T  = Int // index in C registry data structure
   protected type SPARSE_T = Int
   protected type HYBRID_T = Int
@@ -27,6 +27,10 @@ class CBackend extends Backend[Payload] {
   @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
   @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
   @native protected def dRehash0(d_id: Int, pos: Array[Int]): Int
+
+  // secondary storage
+  @native protected def rehashToSparse0(cube_id: String, src_id: Int, dest_id: Int, mask: Array[Int])
+  @native protected def mkRandomSecondaryStorage0(cube_id: String, n_bits: Int, rows: Int)
 
   @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
   @native protected def mk0(n_bits: Int): Int
@@ -141,6 +145,10 @@ class CBackend extends Backend[Payload] {
   }
 
 
+  def mkRandomSecondaryStorage(cube_id: String, n_bits: Int, rows: Int) = {
+    mkRandomSecondaryStorage0(cube_id, n_bits, rows)
+  }
+
   // inherited methods seem to add some invisible args that break JNI,
   // so we have yet another indirection.
 
@@ -169,6 +177,12 @@ class CBackend extends Backend[Payload] {
     dRehash0(d_id, pos)
   }
 
+  // secondary storage
+  def rehashToSparse(cube_id: String, src_id: Int, dest_id: Int, mask: Array[Int]) = {
+    val pos = mask // mask.indices.filter(i => mask(i) == 1).toArray
+    rehashToSparse0(cube_id, src_id, dest_id, pos)
+  }
+
   protected def dFetch(data: DENSE_T) : Array[Payload] =
     Payload.decode_fetched(dFetch0(data))
 
@@ -178,8 +192,8 @@ class CBackend extends Backend[Payload] {
 }
 
 
-object CBackend {
-  System.loadLibrary("CBackend")
-  val b = new CBackend
+object CBackendSecondaryStorage {
+  System.loadLibrary("CBackendSecondaryStorage")
+  val b = new CBackendSecondaryStorage
 }
 
