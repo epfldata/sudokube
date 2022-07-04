@@ -33,85 +33,82 @@ class VanillaIPFTest {
 
   @Test
   def testGetAllVariablesValuesAsInt(): Unit = {
-    val solver = new VanillaIPFSolver(5)
-    val allVariablesValuesAsInt = solver.encodeAllVariablesValues(18, 1 /* 01 */, 5 /* 101 */)
+    val allVariablesValuesAsInt = IPFUtils.encodeAllVariablesValues(5, 18, 1 /* 01 */, 5 /* 101 */)
     assert(allVariablesValuesAsInt == 11)
   }
 
   @Test
   def testGetMarginalProbability2D(): Unit = {
-    val solver = new VanillaIPFSolver(2)
-    solver.totalDistribution = Array(0.1, 0.2, 0.3, 0.4)
+    val totalDistribution = Array(0.1, 0.2, 0.3, 0.4)
 
-    assertApprox(solver.getMarginalProbability(0, 0), 1.0)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 0, 0), 1.0)
 
-    assertApprox(solver.getMarginalProbability(1, 0), 0.4)
-    assertApprox(solver.getMarginalProbability(1, 1), 0.6)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 1, 0), 0.4)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 1, 1), 0.6)
 
-    assertApprox(solver.getMarginalProbability(2, 0), 0.3)
-    assertApprox(solver.getMarginalProbability(2, 1), 0.7)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 2, 0), 0.3)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 2, 1), 0.7)
 
-    assertApprox(solver.getMarginalProbability(3, 0), 0.1)
-    assertApprox(solver.getMarginalProbability(3, 1), 0.2)
-    assertApprox(solver.getMarginalProbability(3, 2), 0.3)
-    assertApprox(solver.getMarginalProbability(3, 3), 0.4)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 3, 0), 0.1)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 3, 1), 0.2)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 3, 2), 0.3)
+    assertApprox(IPFUtils.getMarginalProbability(2, totalDistribution, 3, 3), 0.4)
   }
 
   @Test
   def testGetMarginalDistribution3D(): Unit = {
-    val solver = new VanillaIPFSolver(3)
-    solver.totalDistribution = (1 to 8).map(_ / 36.0).toArray
+    val totalDistribution = (1 to 8).map(_ / 36.0).toArray
 
-    assertApprox(solver.getMarginalProbability(1, 0), 16.0/36.0)
-    assertApprox(solver.getMarginalProbability(1, 1), 20.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 1, 0), 16.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 1, 1), 20.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(2, 0), 14.0/36.0)
-    assertApprox(solver.getMarginalProbability(2, 1), 22.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 2, 0), 14.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 2, 1), 22.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(4, 0), 10.0/36.0)
-    assertApprox(solver.getMarginalProbability(4, 1), 26.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 4, 0), 10.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 4, 1), 26.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(3, 0), 6.0/36.0)
-    assertApprox(solver.getMarginalProbability(3, 1), 8.0/36.0)
-    assertApprox(solver.getMarginalProbability(3, 2), 10.0/36.0)
-    assertApprox(solver.getMarginalProbability(3, 3), 12.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 3, 0), 6.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 3, 1), 8.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 3, 2), 10.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 3, 3), 12.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(5, 0), 4.0/36.0)
-    assertApprox(solver.getMarginalProbability(5, 1), 6.0/36.0)
-    assertApprox(solver.getMarginalProbability(5, 2), 12.0/36.0)
-    assertApprox(solver.getMarginalProbability(5, 3), 14.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 5, 0), 4.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 5, 1), 6.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 5, 2), 12.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 5, 3), 14.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(6, 0), 3.0/36.0)
-    assertApprox(solver.getMarginalProbability(6, 1), 7.0/36.0)
-    assertApprox(solver.getMarginalProbability(6, 2), 11.0/36.0)
-    assertApprox(solver.getMarginalProbability(6, 3), 15.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 6, 0), 3.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 6, 1), 7.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 6, 2), 11.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 6, 3), 15.0/36.0)
 
-    assertApprox(solver.getMarginalProbability(7, 0), 1.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 1), 2.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 2), 3.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 3), 4.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 4), 5.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 5), 6.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 6), 7.0/36.0)
-    assertApprox(solver.getMarginalProbability(7, 7), 8.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 0), 1.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 1), 2.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 2), 3.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 3), 4.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 4), 5.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 5), 6.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 6), 7.0/36.0)
+    assertApprox(IPFUtils.getMarginalProbability(3, totalDistribution, 7, 7), 8.0/36.0)
   }
 
   @Test
   def testUpdateDistributionForOneValueInstance2D(): Unit = {
     val solver = new VanillaIPFSolver(2) // Initialized to uniform — all 0.25's
-    solver.updateDistributionForOneMarginalValue(1, 0, 4.0/5.0)
+    IPFUtils.updateDistributionForOneMarginalValue(2, solver.totalDistribution, 1, 0, 4.0/5.0)
     for ((i, p) <- Seq((0, 0.2), (1, 0.25), (2, 0.2), (3, 0.25))) {
       assertApprox(solver.totalDistribution(i), p)
     }
-    solver.updateDistributionForOneMarginalValue(1, 1, 6.0/5.0)
+    IPFUtils.updateDistributionForOneMarginalValue(2, solver.totalDistribution, 1, 1, 6.0/5.0)
     for ((i, p) <- Seq((0, 0.2), (1, 0.3), (2, 0.2), (3, 0.3))) {
       assertApprox(solver.totalDistribution(i), p)
     }
-    solver.updateDistributionForOneMarginalValue(2, 0, 3.0/5.0)
+    IPFUtils.updateDistributionForOneMarginalValue(2, solver.totalDistribution, 2, 0, 3.0/5.0)
     for ((i, p) <- Seq((0, 0.12), (1, 0.18), (2, 0.2), (3, 0.3))) {
       assertApprox(solver.totalDistribution(i), p)
     }
-    solver.updateDistributionForOneMarginalValue(2, 1, 7.0/5.0)
+    IPFUtils.updateDistributionForOneMarginalValue(2, solver.totalDistribution, 2, 1, 7.0/5.0)
     for ((i, p) <- Seq((0, 0.12), (1, 0.18), (2, 0.28), (3, 0.42))) {
       assertApprox(solver.totalDistribution(i), p)
     }
@@ -121,11 +118,11 @@ class VanillaIPFTest {
   def testUpdateDistributionForOneValueInstance3D(): Unit = {
     val solver = new VanillaIPFSolver(3)
     solver.totalDistribution = (1 to 8).map(_ / 36.0).toArray
-    solver.updateDistributionForOneMarginalValue(2, 0, 18.0/14.0)
+    IPFUtils.updateDistributionForOneMarginalValue(3, solver.totalDistribution, 2, 0, 18.0/14.0)
     for ((i, p) <- Seq((0, 1.0/28.0), (1, 2.0/28.0), (2, 3.0/36.0), (3, 4.0/36.0), (4, 5.0/28.0), (5, 6.0/28.0), (6, 7.0/36.0), (7, 8.0/36.0))) {
       assertApprox(solver.totalDistribution(i), p)
     }
-    solver.updateDistributionForOneMarginalValue(2, 1, 18.0/22.0)
+    IPFUtils.updateDistributionForOneMarginalValue(3, solver.totalDistribution, 2, 1, 18.0/22.0)
     for ((i, p) <- Seq((0, 1.0/28.0), (1, 2.0/28.0), (2, 3.0/44.0), (3, 4.0/44.0), (4, 5.0/28.0), (5, 6.0/28.0), (6, 7.0/44.0), (7, 8.0/44.0))) {
       assertApprox(solver.totalDistribution(i), p)
     }
@@ -136,7 +133,7 @@ class VanillaIPFTest {
     val solver = new VanillaIPFSolver(2)
     solver.add(Seq(0), Array(0.4, 0.6))
     solver.add(Seq(1), Array(0.3, 0.7))
-    val totalDelta = solver.updateDistribution()
+    val totalDelta = solver.iterativeUpdate()
     for ((i, p) <- Seq((0, 0.12), (1, 0.18), (2, 0.28), (3, 0.42))) {
       assertApprox(solver.totalDistribution(i), p)
     }
@@ -170,6 +167,7 @@ class VanillaIPFTest {
     solver.add(Seq(1, 2), Array(0.3, 0.3, 0.4, 0.0))
     solver.solve()
     checkSolutionConsistency(solver)
+    println(solver.solution.mkString(" "))
   }
 
   @Test
@@ -188,7 +186,7 @@ class VanillaIPFTest {
 
     for (_ <- 0 until numClusters) {
       val marginalVariables = randomGenerator.nextInt(1 << numDimensions)
-      val numMarginalVariables = vanillaIPFSolver.getNumOnesInBinary(marginalVariables)
+      val numMarginalVariables = IPFUtils.getNumOnesInBinary(marginalVariables)
       val numNonMarginalVariables = numDimensions - numMarginalVariables
 
       val marginalDistribution: Array[Double] = Array.fill(1 << numMarginalVariables)(0)
@@ -236,6 +234,39 @@ class VanillaIPFTest {
     Profiler.print()
   }
 
+  @Test
+  def testBreakingIPF(): Unit = {
+    val numDimensions = 15
+
+    val vanillaIPFSolver = new VanillaIPFSolver(numDimensions)
+
+    val randomGenerator = new Random()
+
+    var distribution: IndexedSeq[Double] = for (_ <- 0 until 1 << numDimensions) yield randomGenerator.nextInt(100).toDouble + 1
+    val sum = distribution.sum
+    distribution = distribution.map(_ / sum)
+
+//    println(distribution)
+
+    for (marginalVariables <- Seq((1 << 10) - 1, ((1 << 10) - 1) << 5)) {
+      val numMarginalVariables = IPFUtils.getNumOnesInBinary(marginalVariables)
+      val numNonMarginalVariables = numDimensions - numMarginalVariables
+
+      val marginalDistribution: Array[Double] = Array.fill(1 << numMarginalVariables)(0)
+      for (marginalVariablesValues <- 0 until 1 << numMarginalVariables) {
+        for (nonMarginalVariablesValues <- 0 until 1 << numNonMarginalVariables) {
+          val nonMarginalVariables = ((1 << numDimensions) - 1) ^ marginalVariables
+          val allVariablesValues = Bits.unproject(marginalVariablesValues, marginalVariables) | Bits.unproject(nonMarginalVariablesValues, nonMarginalVariables)
+          marginalDistribution(marginalVariablesValues) += distribution(allVariablesValues)
+        }
+      }
+
+      vanillaIPFSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
+    }
+
+    vanillaIPFSolver.solve()
+  }
+
   private def assertApprox: (Double, Double) => Unit = (a, b) => assert((a - b).abs < eps)
 
   private def checkSolutionConsistency(solver: VanillaIPFSolver): Unit = {
@@ -243,7 +274,7 @@ class VanillaIPFTest {
       val marginalVariables = Bits.fromInt(marginalVariablesAsInt).reverse
       for (marginalVariablesValues <- 0 until (1 << marginalVariables.length)) {
         assertApprox(
-          solver.getMarginalProbability(marginalVariablesAsInt, marginalVariablesValues),
+          IPFUtils.getMarginalProbability(solver.querySize, solver.totalDistribution, marginalVariablesAsInt, marginalVariablesValues),
           expectedMarginalDistribution(marginalVariablesValues)
         )
       }
