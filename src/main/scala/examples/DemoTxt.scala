@@ -4,6 +4,7 @@ import combinatorics.Combinatorics.comb
 import core.SolverTools._
 import core.solver.MomentSolverAll
 import core.solver.Strategy._
+import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, IPFUtils, VanillaIPFSolver}
 import frontend.TUPLES_PREFIX
 import frontend.experiments.Tools
 import frontend.generators._
@@ -75,7 +76,7 @@ object DemoTxt {
     //println(res.mkString(" "))
   }
 
-  def momentSolver2() = {
+  def momentSolver2(): Unit = {
     val solver = new MomentSolverAll[Rational](3, CoMoment4)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(Rational(_, 1)))
@@ -87,7 +88,87 @@ object DemoTxt {
     println("Moments after =" + solver.sumValues.mkString(" "))
     val result = solver.fastSolve().map(_.toDouble)
     println(result.mkString(" "))
-    println("Error = " + error(actual, result.toArray))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def vanillaIPFSolver(): Unit = { // Same as momentSolver2, seems to be a bad case for IPF
+    val solver = new VanillaIPFSolver(3)
+    val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
+    solver.add(List(2), Array(5, 12))
+    solver.add(List(0, 1), Array(7, 3, 6, 1))
+    solver.add(List(1, 2), Array(1, 4, 9, 3))
+    solver.add(List(0, 2), Array(3, 2, 10, 2))
+    val result = solver.solve()
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def effectiveIPFSolver(): Unit = { // Decomposable
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new EffectiveIPFSolver(6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution)
+    }
+
+    val result = solver.solve()
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def vanillaIPFSolver2(): Unit = { // Decomposable, just for comparison
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new VanillaIPFSolver(6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution)
+    }
+
+    val result = solver.solve()
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def momentSolver3(): Unit = { // Decomposable, just for comparison
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new MomentSolverAll[Rational](6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution.map(n => Rational(BigInt(n.toInt), 1)))
+    }
+    solver.fillMissing()
+
+    val result = solver.fastSolve().map(_.toDouble)
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
     solver.verifySolution()
   }
 
@@ -354,6 +435,10 @@ object DemoTxt {
     //investment()
     //momentSolver()
     //momentSolver2()
+    //vanillaIPFSolver()
+    //effectiveIPFSolver()
+    //vanillaIPFSolver2()
+    //momentSolver3()
     //backend_naive()
     //loadtest()
     //ssb_demo()
