@@ -7,8 +7,22 @@ import util.Bits
 import util.Util.intersect_intval3
 
 //Refactored from prepare_online_new_int3 by Eloi This is the best.
-object SetTrieOnlinePrepare4 extends Preparer {
+object SetTrieOnlinePrepareWithInt extends Preparer {
 
+  /** Optimized version of prepare for online mode.
+   * Equivalent to prepare_online_new, but with integer representation of intersections for faster hashmap accesses.
+   * Note the max query size of 32 limited by the integer representation, could be implemented with custom data type.
+   * @param query         the query. The accessible bits of the resulting
+   *                      ProjectionMetaData records are shifted as if the
+   *                      query were (0 to query.length - 1). So the solver
+   *                      does not need to know the actual query.
+   * @param cheap_size    cuboids below this size are only fetched if there
+   *                      is no larger cuboid in our selection that subsumes
+   *                      it.
+   * @param max_fetch_dim the maximum dimensionality of cuboids to fetch.
+   *                      This refers to their actual storage size, not the
+   *                      number of dimensions shared with the query.
+   */
   override def prepareOnline(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[ProjectionMetaData] = {
     val qL = query.toList
     val qIS = query.toIndexedSeq

@@ -7,7 +7,22 @@ import util.{Bits, Util}
 import util.Util.intersect
 
 //Refactored from prepare_online_new by Eloi
-object SetTrieOnlinePrepare1 extends Preparer {
+object SetTrieOnlinePrepareNoInt extends Preparer {
+  /** Optimized version of prepare for online mode. Uses the adapted SetTrie to check for cheap superset
+   * returns the metadata of cuboids that are suggested to be used to answer
+   * a given query. The results are ordered large cuboids (i.e. with many
+   * dimensions shared with the query) first.
+   * @param query         the query. The accessible bits of the resulting
+   *                      ProjectionMetaData records are shifted as if the
+   *                      query were (0 to query.length - 1). So the solver
+   *                      does not need to know the actual query.
+   * @param cheap_size    cuboids below this size are only fetched if there
+   *                      is no larger cuboid in our selection that subsumes
+   *                      it.
+   * @param max_fetch_dim the maximum dimensionality of cuboids to fetch.
+   *                      This refers to their actual storage size, not the
+   *                      number of dimensions shared with the query.
+   */
   override def prepareOnline(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[ProjectionMetaData] = {
     val qL = query.toList
     val qIS = query.toIndexedSeq

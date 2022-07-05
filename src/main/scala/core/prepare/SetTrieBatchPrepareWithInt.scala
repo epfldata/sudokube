@@ -7,7 +7,18 @@ import util.{Bits, Util}
 import util.Util.intersect
 
 //Refactored from prepare_batch_new by Eloi
-object SetTrieBatchPrepare3 extends Preparer {
+object SetTrieBatchPrepareWithInt extends Preparer {
+  /** Optimized version of prepare for batch mode.
+   * Equivalent to prepare_new, but with integer representation of intersection for faster hashmap accesses.
+   * @param query         the query. The accessible bits of the resulting
+   *                      ProjectionMetaData records are shifted as if the
+   *                      query were (0 to query.length - 1). So the solver
+   *                      does not need to know the actual query.
+   * @param cheap_size    unused, expected to be >= max_fetch_dim in batch mode
+   * @param max_fetch_dim the maximum dimensionality of cuboids to fetch.
+   *                      This refers to their actual storage size, not the
+   *                      number of dimensions shared with the query.
+   */
   override def prepareBatch(m: MaterializationScheme, query: Seq[Int], max_fetch_dim: Int): Seq[ProjectionMetaData] = {
     val qL = query.toList
     val qIS = query.toIndexedSeq
