@@ -154,8 +154,4 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
     res = userCube.queryDimension(("spicy", 4, Nil), "difficulty", MOMENT)
     assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-5.0, 15.0))
   }
-
-  "ArrayFunctions" should "find the correct number of monotonicity breaks" in {
-
-  }
 }

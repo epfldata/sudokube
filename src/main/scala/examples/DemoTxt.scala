@@ -229,6 +229,10 @@ object DemoTxt {
     array = ArrayFunctions.deleteZeroColumns(array)
     println(array.mkString("(", "\n ", ")\n \n"))
 
+    array = userCube.query(List(("Type", 0, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
     //can apply some binary function
     println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), EXIST))
     println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), FORALL) + "\n \n")
