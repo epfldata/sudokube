@@ -6,7 +6,10 @@ import core._
 import combinatorics._
 import util._
 import backend._
+import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, RandomizedMaterializationScheme}
+import core.prepare.ClassicPreparer
 import generators._
+
 import scala.util.Random
 object Tools {
   def round(v: Double, digits: Int) ={
@@ -78,7 +81,7 @@ object minus1_adv {
       using only the full cube:
       how much bigger (in bits, i.e. log2(factor)) is the best cube to answer
       the query in full compared to the worst size cube
-      of size |q| - 1?
+      of (projected) size |q| - 1?
   */
   def apply(nbits: Int, rf: Double, base: Double, lognrows: Int, qsize: Int, num_it: Int) = {
     val pw = new PrintWriter(new File("expdata/m1_adv_" + nbits + "_" + rf
@@ -92,8 +95,8 @@ object minus1_adv {
       val q = Tools.qq(qsize)
       val m = RandomizedMaterializationScheme(nbits, rf, base)
 
-      //SBJ: cheap size of qsize - 1 is arbitrary
-      val a = m.prepare(q, qsize - 1, nbits).groupBy(_.accessible_bits.length)
+      //SBJ: Changed parameters for this calculation
+      val a = ClassicPreparer.prepareBatch(m, q, nbits - 1).groupBy(_.accessible_bits.length)
       val full_cost = cost(a(q.length).head.mask.length)
       accum_full_cost += full_cost
 
@@ -164,11 +167,11 @@ object fd_storage {
       val base = 1.0 + j.toDouble / 100  // 1.01 to 1.2 
       println(rf + " " + base)
 
-      val m = core.RandomizedMaterializationScheme(n, rf, base)
-
+      val m = RandomizedMaterializationScheme(n, rf, base)
+      val info = new MaterializationSchemeInfo(m)
       pw.write(rf + "\t" + base + "\t" + m.projections.length
-        + "\t" + m.info.wc_ratio(30) + "\t" + m.info.wc_ratio(40)
-        + "\t" + m.info.fd_ratio(30) + "\t" + m.info.fd_ratio(40) + "\n")
+        + "\t" + info.wc_ratio(30) + "\t" + info.wc_ratio(40)
+        + "\t" + info.fd_ratio(30) + "\t" + info.fd_ratio(40) + "\n")
       pw.flush
     }
     pw.close
@@ -189,7 +192,7 @@ object exp_e_df {
     import backend.Payload
     val m = RandomizedMaterializationScheme(n_bits, rf, base)
     val q = (0 to qsize-1).toList
-    val l = m.prepare(q, max_fetch_dim, max_fetch_dim).map(_.accessible_bits)
+    val l = ClassicPreparer.prepareBatch(m, q, max_fetch_dim).map(_.accessible_bits)
 
 /*
     val n_vval = l.map(x => Big.pow2(x.length)).sum

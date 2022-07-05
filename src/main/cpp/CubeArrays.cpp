@@ -33,12 +33,13 @@ SetTrie globalSetTrie;
  */
 
 //Used in sorting within global_compare_keys  to store the number of bytes (out of tempKeySize=40) that need to be compared
-thread_local unsigned short globalnumkeybytes = 0;
+ thread_local unsigned short globalnumkeybytes = 0;
 
 /*
  * Returns whether k1 < k2 . Assumes the bytes are in little endian (LS byte first). Requires globalnumkeybytes to be set.
+ * TODO: Check why :: If inlined, weird behaviour( no sorting happens) when run multiple times within the same sbt instance. No issue for the first time.
  */
-inline bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
+ bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
     //DO NOT use unsigned !! i >= 0 always true
     for (short i = globalnumkeybytes - 1; i >= 0; i--) {
         if (k1.key[i] < k2.key[i]) return true;
@@ -598,7 +599,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
         if (watermark < r) {
             byte *key1 = getKey((byte **) tempstore, watermark, tempRecSize);
             byte *key2 = getKey((byte **) tempstore, r, tempRecSize);
-            bool cmp = compare_keys(key1, key2, keySize);
+            bool cmp = compare_keys(key1, key2, newKeySize);
 #ifdef VERBOSE
             printf(" Comparing ");
             print_key(masklen, key1);

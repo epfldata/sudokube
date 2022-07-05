@@ -1,9 +1,8 @@
 package frontend.generators
 
-import backend.CBackend
-import core.{DataCube, MaterializationScheme}
+import core.DataCube
+import frontend.schema.encoders.StaticNatCol
 import frontend.schema.encoders.StaticNatCol.defaultToInt
-import frontend.schema.encoders.{NatCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2, StructuredDynamicSchema}
 import util.BigBinary
 

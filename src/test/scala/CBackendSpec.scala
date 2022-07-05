@@ -1,3 +1,4 @@
+import core.materialization.RandomizedMaterializationScheme
 import core.solver.Moment1Transformer
 import frontend.experiments.Tools
 import org.scalatest._

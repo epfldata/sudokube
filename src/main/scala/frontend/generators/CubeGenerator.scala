@@ -1,7 +1,8 @@
 package frontend.generators
 
 import backend.CBackend
-import core.{DataCube, MaterializationScheme, PartialDataCube, RandomizedMaterializationScheme}
+import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme}
+import core.{DataCube, PartialDataCube}
 import frontend.schema.{Schema2, StructuredDynamicSchema}
 import util.BigBinary
 

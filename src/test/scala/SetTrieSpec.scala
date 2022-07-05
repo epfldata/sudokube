@@ -53,7 +53,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
       else falseCount += 1
       assert(s1 == s2)
     }
-    print(s"Trie Randomtest true = $trueCount false = $falseCount")
+    println(s"Trie Randomtest true = $trueCount false = $falseCount")
   }
 
   "Trie ExistSuperset" should s"be correct for random sets 1" in randomTest(10, 5, 20, 10, 2)

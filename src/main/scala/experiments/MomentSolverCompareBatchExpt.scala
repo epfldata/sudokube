@@ -1,12 +1,10 @@
 package experiments
 
-import core.{DataCube, SolverTools}
 import core.solver.Strategy._
 import core.solver._
-import frontend.experiments.Tools
+import core.{DataCube, SolverTools}
 import util.{Profiler, Util}
-
-import scala.util.Random
+import core.prepare.Preparer
 
 class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"momentcompare-batch", ename2) {
   {
@@ -97,7 +95,7 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
   def solve(dc: DataCube, strategy: Strategy, q: Seq[Int], sliceValues: IndexedSeq[Int] = Vector()) = {
     type T = Double
     val (l, pm) = Profiler(strategy + "Moment Prepare") {
-      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.mask.length
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)

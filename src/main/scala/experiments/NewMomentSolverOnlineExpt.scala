@@ -5,6 +5,7 @@ import core.SolverTools._
 import core.solver._
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 import Strategy._
+import core.prepare.{FullLatticeOnlinePreparer, Preparer}
 
 class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 
@@ -37,9 +38,9 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     stg.task = () => ((maxDimFetched, s.getStats))
     var l = Profiler("Prepare") {
       if (containsAllCuboids)
-        dc.m.prepare_online_full(q, 2)
+        FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 2, dc.m.n_bits)
       else
-        dc.m.prepare_online_agg(q, 2)
+        Preparer.default.prepareOnline(dc.m, q, 2, dc.m.n_bits)
     }
     val totalsize = l.size
     //println("Prepare over. #Cuboids to fetch = " + totalsize)

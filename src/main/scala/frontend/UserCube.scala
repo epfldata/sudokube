@@ -3,8 +3,9 @@ package frontend
 import backend.CBackend
 import breeze.linalg.{Axis, DenseMatrix}
 import core.solver.MomentSolverAll
-import core.{DataCube, RandomizedMaterializationScheme2}
+import core.DataCube
 import TestLine.testLineOp
+import core.materialization.RandomizedMaterializationScheme2
 import frontend.schema.Schema
 import util.Bits
 

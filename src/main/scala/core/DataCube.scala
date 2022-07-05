@@ -2,6 +2,9 @@
 package core
 
 import backend._
+import core.materialization.MaterializationScheme
+import core.materialization.builder.{CubeBuilder, ParallelCubeBuilder}
+import core.prepare.Preparer
 import core.solver.Strategy.CoMoment3
 import planning.ProjectionMetaData
 import util._
@@ -55,77 +58,14 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
    *
    * @param full_cube is integrated into the data cube as is and not copied.
    */
-  def build(full_cube: Cuboid) {
+  def build(full_cube: Cuboid, cb : CubeBuilder = ParallelCubeBuilder) {
     assert(full_cube.n_bits == m.n_bits)
+    cuboids = cb.build(full_cube, m, showProgress).toArray
 
-
-    val parallel = true
-    val ab = Util.mkAB[Cuboid](m.projections.length, _ => full_cube)
-    if (parallel) {
-      val cores = Runtime.getRuntime.availableProcessors - 2
-      val par_build_plan = Profiler("CreateBuildPlan") {
-        m.create_parallel_build_plan(cores)(showProgress)
-      }
-
-      // puts a ref to the same object into all fields of the array.
-      val backend = full_cube.backend
-      val pi = new ProgressIndicator(par_build_plan.map(_.length).sum, s"Dividing plan into $cores threads", showProgress)
-      val full_cube_id = par_build_plan.head.head._2
-      ab(full_cube_id) = full_cube
-
-      val threadBuffer = par_build_plan.map { build_plan =>
-        new Thread {
-          override def run(): Unit = {
-            build_plan.foreach {
-              case (_, id, -1) => ()
-              case (s, id, parent_id) => {
-                val mask = Bits.mk_list_mask(m.projections(parent_id), s.toSet).toArray
-                ab(id) = ab(parent_id).rehash(mask)
-
-                // completion status updates
-                //if(ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
-                pi.step
-              }
-            }
-          }
-        }
-      }
-      if (showProgress)
-        println(s"Starting projections  ")
-      threadBuffer.foreach(_.start())
-      Profiler("Projections") {
-        threadBuffer.foreach(_.join())
-      }
-    } else {
-      val build_plan = m.create_build_plan()
-
-
-      // puts a ref to the same object into all fields of the array.
-      val backend = full_cube.backend
-      val pi = new ProgressIndicator(build_plan.length, "Projecting...", showProgress)
-
-      build_plan.foreach {
-        case (_, id, -1) => ab(id) = full_cube
-        case (s, id, parent_id) => {
-          val mask = Bits.mk_list_mask(m.projections(parent_id), s).toArray
-          ab(id) = ab(parent_id).rehash(mask)
-
-          // completion status updates
-          if (showProgress) {
-            if (ab(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
-            pi.step
-          }
-        }
-      }
-    }
-    cuboids = ab.toArray
-    if (showProgress)
-      println
-
-    // statistics output
     val real_size = cuboids.map(c => c.size).sum
+    // statistics output
     if (showProgress) {
-      println("Real size: " + real_size + " data points ("
+      println("\nReal size: " + real_size + " data points ("
         + real_size.toDouble / full_cube.size.toLong + "x base cube size).")
     }
   }
@@ -264,7 +204,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
                )(implicit num: Fractional[T]): SparseSolver[T] = {
 
     val l = Profiler("SolverPrepare") {
-      m.prepare(query, max_fetch_dim, max_fetch_dim)
+     Preparer.default.prepareBatch(m, query, max_fetch_dim)
     }
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
@@ -316,7 +256,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
                      sliceFunc: Int => Boolean = _ => true // determines what variables to filter
                    )(implicit num: Fractional[T]) {
 
-    var l = m.prepare_online_agg(query, cheap_size)
+    var l = Preparer.default.prepareOnline(m, query, cheap_size, m.n_bits)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
     val s = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df = s.df
@@ -339,7 +279,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   def online_agg_moment(query: List[Int], cheap_size: Int, callback: MomentSolverAll[Double] => Boolean) = {
     val s = new MomentSolverAll[Double](query.size, CoMoment3)
-    var l = m.prepare_online_agg(query, cheap_size)
+    var l = Preparer.default.prepareOnline(m, query, cheap_size, m.n_bits)
     var cont = true
     while (!(l.isEmpty) && cont) {
       val fetched = fetch2[Double](List(l.head))
@@ -357,7 +297,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
    */
   def naive_eval(query: Seq[Int]): Array[Double] = {
     val l = Profiler("NaivePrepare") {
-      m.prepare(query, m.n_bits, m.n_bits)
+      Preparer.default.prepareBatch(m, query, m.n_bits)
     }
     //println("Naive query "+l.head.mask.sum + "  fetch = " + l.head.mask.length)
     Profiler("NaiveFetch") {

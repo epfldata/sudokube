@@ -109,7 +109,7 @@ class SetTrie() {
 
 
   def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
-    case Nil => if (n.children.nonEmpty) true else false
+    case Nil => true //Fixed Eloi's bug. TODO: Check if this breaks existsSuperSet_andGetSubsets
     case h :: t =>
       var found = false
       val child = n.children.iterator

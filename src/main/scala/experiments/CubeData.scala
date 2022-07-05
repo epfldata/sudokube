@@ -1,5 +1,6 @@
 package experiments
 
+import core.prepare.Preparer
 import core.{DataCube, Rational, SolverTools, SparseSolver}
 import frontend._
 import frontend.experiments._
@@ -9,7 +10,6 @@ import util.{AutoStatsGatherer, Profiler, StatsGatherer}
 import java.io.PrintStream
 
 object CubeData {
-
 
 
   def mkCube(log: Int) = {
@@ -23,7 +23,7 @@ object CubeData {
       case "S2" => Sampling.f2(_)
     }
 
-     dc = Profiler("mkDC") {
+    dc = Profiler("mkDC") {
       Tools.mkDC(n_bits, rf, base, nrows, sampling_f)
     }
     Profiler("Save DC") {
@@ -76,7 +76,7 @@ object CubeData {
 
         val naiveRes = Profiler("Naive") {
           val naivePlan = Profiler("NaiveInit") {
-            dc.m.prepare(query, n_bits, n_bits)
+            Preparer.default.prepareBatch(dc.m, query, n_bits)
           }
           naiveDimFetched = naivePlan.head.mask.length
           Profiler("NaiveFetch") {
@@ -86,7 +86,7 @@ object CubeData {
 
         val stg = Profiler("Solver") {
           var l = Profiler("Init") {
-            dc.m.prepare_online_agg(query, cheap_size)
+            Preparer.default.prepareOnline(dc.m, query, cheap_size, dc.m.n_bits)
           }
           val bounds = Profiler("Init") {
             SolverTools.mk_all_non_neg[Rational](1 << query.length)
@@ -115,13 +115,13 @@ object CubeData {
               }
               //TODO: Probably gauss not required if newly added variables are first rewritten in terms of non-basic
 
-                Profiler("Gauss") {
-                  s.gauss(s.det_vars)
-                }
-                Profiler("ComputeBounds") {
-                  s.compute_bounds
-                }
-                df = s.df
+              Profiler("Gauss") {
+                s.gauss(s.det_vars)
+              }
+              Profiler("ComputeBounds") {
+                s.compute_bounds
+              }
+              df = s.df
 
             } else {
               println(s"Preemptively skipping fetch of cuboid ${l.head.accessible_bits}")
@@ -129,7 +129,7 @@ object CubeData {
             l = l.tail
             Profiler.print()
           }
-          println("Remaining cuboids = "+l.size)
+          println("Remaining cuboids = " + l.size)
           statsGatherer.finish()
           statsGatherer
         }
@@ -147,8 +147,8 @@ object CubeData {
         println("\n\n\n" + result)
         pw.println(result)
 
-        stg.stats.map{kv =>
-         val statres = s"$n_bits,$rf,$base,$n_row_log,${qsize},${iternum},  " +
+        stg.stats.map { kv =>
+          val statres = s"$n_bits,$rf,$base,$n_row_log,${qsize},${iternum},  " +
             s"${kv._1}, ${kv._3._1}, ${kv._3._2}, ${kv._3._3}"
           println(statres)
           pwstat.println(statres)
@@ -216,7 +216,7 @@ object CubeData {
     val q = List(63, 62, 61, 60).sorted
     val s = dc.solver[Rational](q, 3)
     s.compute_bounds
-    println("DF = "+s.df)
+    println("DF = " + s.df)
     s.bounds.foreach(println)
     println(dc.naive_eval(q).mkString("   "))
 

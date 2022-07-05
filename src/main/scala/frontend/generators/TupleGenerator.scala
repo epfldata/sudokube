@@ -1,7 +1,7 @@
 package frontend.generators
 
-import util.{BigBinary, Profiler}
 import frontend.schema._
+import util.BigBinary
 
 /** returns an iterator for sampling a relation. */
 case class TupleGenerator(sch: Schema, n: Long, sampling_f: Int => Int,

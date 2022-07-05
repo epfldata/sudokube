@@ -1,6 +1,7 @@
 //package ch.epfl.data.sudokube
 package core
 
+import core.prepare.Preparer
 import core.solver.MomentTransformer
 import util.{ProgressIndicator, Util}
 
@@ -12,7 +13,7 @@ object SolverTools {
     val moments1D = Array.fill(nbits)(0L)
     val pi = new ProgressIndicator(nbits, "Primary Moment Computation", showProgress)
     moments1D.indices.foreach { i =>
-      val l = dc.m.prepare(List(i), nbits, nbits)
+      val l = Preparer.default.prepareBatch(dc.m, List(i), nbits)
       val fetched = dc.fetch(l).map(_.smLong)
       if (i == 0)
         total = fetched.sum

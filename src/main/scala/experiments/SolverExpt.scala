@@ -3,6 +3,7 @@ package experiments
 import core.{Rational, SolverTools, SparseSolver}
 import core.solver.SliceSparseSolver
 import core.RationalTools._
+import core.prepare.Preparer
 import util.Profiler
 
 import java.io.PrintStream
@@ -46,7 +47,7 @@ object SolverExpt {
    */
   def run(s: SparseSolver[Rational]): Long = {
     val dc = core.DataCube.load("trend.dc")
-    var l = dc.m.prepare_online_agg(query, cheap)
+    var l = Preparer.default.prepareOnline(dc.m, query, cheap, dc.m.n_bits)
 
     var df = s.df
     var cont = true

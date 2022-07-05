@@ -2,6 +2,7 @@ package examples
 
 import combinatorics.Combinatorics.comb
 import core.SolverTools._
+import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme, RandomizedMaterializationScheme2}
 import core.solver._
 import core.solver.Strategy._
 import frontend.experiments.Tools

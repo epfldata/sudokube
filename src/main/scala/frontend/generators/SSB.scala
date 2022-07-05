@@ -1,24 +1,21 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.{DataCube, PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
-import frontend.experiments.Tools
+import core.PartialDataCube
+import core.materialization.{RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
 import util.Profiler
 
 import java.io.FileReader
-import java.text.SimpleDateFormat
-import scala.concurrent.duration.{Duration => ScalaDur}
 import java.util.Date
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
   override def schema(): Schema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
-    import StaticNatCol._
     import StaticDateCol._
     val louniqs = uniq("lineorder") _
     //val oidCol = LD2[String]("order_key", new LazyMemCol(louniqs(1)))

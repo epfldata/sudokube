@@ -3,6 +3,8 @@ package experiments
 import backend.CBackend
 import combinatorics.Combinatorics
 import core._
+import core.materialization.MaterializationScheme
+import core.prepare.Preparer
 import core.solver.Strategy._
 import core.solver._
 import frontend.experiments.Tools
@@ -228,7 +230,7 @@ object Experimenter {
 
     def momentSolve(q: List[Int]) = {
       val (l, pm) = Profiler("Moment Prepare") {
-        dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+        Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
       }
       val maxDimFetch = l.last.mask.length
       //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
@@ -532,7 +534,7 @@ object Experimenter {
         val naiveRes = mq.loadQueryResult(qs, qid)
 
         def solverRes(trans: MomentTransformer[T]) = {
-          val l = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+          val l = Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1)
           val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray))
           val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
           val s = new CoMoment4Solver[T](qu.size, true, trans, primaryMoments)
@@ -599,7 +601,7 @@ object Experimenter {
         val s3 = Profiler.profile("s3 Construct") {
           new CoMoment4Solver[Double](nb, false, Moment1Transformer(), pm2)
         }
-        var l = dc.m.prepare(q, nb - 1, nb - 1)
+        var l = Preparer.default.prepareBatch(dc.m, q, nb - 1)
         while (!(l.isEmpty)) {
           val fetched = dc.fetch2[Double](List(l.head))
           val bits = l.head.accessible_bits

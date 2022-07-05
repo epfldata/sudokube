@@ -1,3 +1,4 @@
+import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme}
 import frontend.schema.StaticSchema
 import org.scalatest._
 

@@ -1,5 +1,6 @@
 import backend.CBackend
-import core.{DataCube, RandomizedMaterializationScheme2}
+import core.DataCube
+import core.materialization.RandomizedMaterializationScheme2
 import frontend.schema.DynamicSchema
 import org.scalatest.{FreeSpec, Matchers}
 import util.Bits

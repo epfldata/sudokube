@@ -1,5 +1,6 @@
 package experiments
 
+import core.prepare.Preparer
 import core.solver.SliceSparseSolver
 import core.{DataCube, SolverTools, SparseSolver}
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
@@ -28,7 +29,7 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
     var maxDimFetched = 0
     stg.task = () => (maxDimFetched, solver.getStats)
     var l = Profiler("Prepare") {
-      dc.m.prepare_online_agg(q, 30)
+      Preparer.default.prepareOnline(dc.m, q, 30, dc.m.n_bits)
     }
     val totalsize = l.size
     //println("Prepare over. #Cuboids to fetch = " + totalsize)

@@ -1,10 +1,10 @@
 package frontend.generators
 
-import core.{PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
-import frontend.experiments.Tools
+import core.PartialDataCube
+import core.materialization.{RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme}
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
-import util.{BigBinary, Util}
+import util.BigBinary
 
 import java.util.Date
 import scala.io.Source

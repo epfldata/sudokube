@@ -5,6 +5,7 @@ import core._
 import core.solver._
 import util._
 import Strategy._
+import core.prepare.Preparer
 
  class NewMomentSolverBatchExpt(strategy: Strategy, ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"newmoment-batch", ename2) {
 
@@ -18,7 +19,7 @@ import Strategy._
   def moment_solve(dc: DataCube, q: Seq[Int]) = {
 
     val (l, pm) = Profiler("Moment Prepare") {
-      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.mask.length
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
@@ -52,7 +53,7 @@ import Strategy._
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Total") {
       val l = Profiler("Naive Prepare") {
-        dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
+        Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits)
       }
       val maxDim = l.head.mask.length
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)

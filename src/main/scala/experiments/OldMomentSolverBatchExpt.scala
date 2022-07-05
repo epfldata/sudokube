@@ -1,17 +1,11 @@
 package experiments
 
+import core.SolverTools._
 import core._
-import solver._
+import core.prepare.Preparer
+import core.solver._
 import util._
-import RationalTools._
-import breeze.linalg.DenseVector
-import SolverTools._
-import core.solver.Strategy.{CoMoment, CoMomentFrechet, Strategy}
-import frontend.experiments.Tools
 
-import java.io.{File, PrintStream}
-import java.time.{Instant, LocalDateTime}
-import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 
@@ -24,7 +18,7 @@ class OldMomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(i
   def uniform_solve(dc: DataCube, q: Seq[Int]) = {
 
     val l = Profiler("USolve Prepare") {
-      dc.m.prepare(q, dc.m.n_bits-1, dc.m.n_bits-1)
+      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits-1)
     }
     val maxDimFetch = l.last.mask.length
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
@@ -60,7 +54,7 @@ class OldMomentSolverBatchExpt[T:Fractional:ClassTag](val ename2: String = "")(i
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Full"){
-      val l = Profiler("NaivePrepare"){dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)}
+      val l = Profiler("NaivePrepare"){Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits)}
       val maxDim = l.head.mask.length
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
       val res = Profiler("NaiveFetch"){dc.fetch(l).map(p => p.sm.toDouble)}

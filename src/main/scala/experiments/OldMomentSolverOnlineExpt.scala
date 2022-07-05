@@ -1,14 +1,12 @@
 package experiments
 
+import core.DataCube
 import core.SolverTools._
-import core.{DataCube, RandomizedMaterializationScheme, SolverTools}
-import core.solver.Strategy.{CoMoment3, CoMomentFrechet, MeanProduct}
-import core.solver.{Strategy, MomentSolverAll}
-import util.{AutoStatsGatherer, ManualStatsGatherer, Profiler, ProgressIndicator}
+import core.prepare.{FullLatticeOnlinePreparer, Preparer}
+import core.solver.MomentSolverAll
+import core.solver.Strategy.CoMoment3
+import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
-import java.io.{File, PrintStream}
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("moment-online", ename2) {
@@ -38,9 +36,9 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
     stg.task = () => (maxDimFetched, s.getStats)
     var l = Profiler("Prepare") {
       if (containsAllCuboids)
-        dc.m.prepare_online_full(q, 1)
+        FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 1, dc.m.n_bits)
       else
-        dc.m.prepare_online_agg(q, 1)
+        Preparer.default.prepareOnline(dc.m, q, 1, dc.m.n_bits)
     }
     val totalsize = l.size
     //println("Prepare over. #Cuboids to fetch = " + totalsize)

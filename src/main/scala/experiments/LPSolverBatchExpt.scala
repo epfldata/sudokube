@@ -1,6 +1,7 @@
 package experiments
 
-import core.{DataCube, RandomizedMaterializationScheme, SolverTools, SparseSolver}
+import core.prepare.Preparer
+import core.{DataCube, SolverTools, SparseSolver}
 import core.solver.{SliceSparseSolver, Strategy}
 import frontend.experiments.Tools
 import util.Profiler
@@ -20,7 +21,7 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
 
   def lp_solve(dc: DataCube, q: Seq[Int]) = {
     val l = Profiler("LPSolve Prepare") {
-      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) //fetch most dominating cuboids other than full
+      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) //fetch most dominating cuboids other than full
     }
     val prepareMaxDim = l.last.mask.length
     //println("Prepare over. #Cuboids to fetch = "+l.size + "  Last cuboid size =" + prepareMaxDim)
@@ -62,7 +63,7 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
 
     val (naiveRes, naiveMaxDim) = Profiler("Naive Full") {
       val l = Profiler("NaivePrepare") {
-        dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
+        Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits)
       }
       val maxDim = l.head.mask.length
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
