@@ -14,13 +14,12 @@ ifeq ($(osname), darwin)
 else
 	lib=libCBackend.so
 endif
-
-libCBackend: $(lib)
-backend_CBackend.h: src/main/scala/backend/CBackend.scala
-	$(info java home is $(JAVA_HOME))
 ifeq ($(JAVA_HOME),)
 	$(error JAVA_HOME is not set)
 endif
+libCBackend: $(lib)
+backend_CBackend.h: src/main/scala/backend/CBackend.scala
+	$(info java home is $(JAVA_HOME))
 	sbt compile
 	javah -cp $(CP):target/scala-2.12/classes:. backend.CBackend
 
