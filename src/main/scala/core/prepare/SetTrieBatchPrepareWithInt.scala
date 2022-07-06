@@ -4,7 +4,7 @@ import core.SetTrie
 import core.materialization.MaterializationScheme
 import planning.ProjectionMetaData
 import util.{Bits, Util}
-import util.Util.intersect
+import util.Util.{intersect, intersect_intval3}
 
 //Refactored from prepare_batch_new by Eloi
 object SetTrieBatchPrepareWithInt extends Preparer {
@@ -23,39 +23,32 @@ object SetTrieBatchPrepareWithInt extends Preparer {
     val qL = query.toList
     val qIS = query.toIndexedSeq
     val qBS = query.toSet
-    val hm = collection.mutable.HashMap[List[Int], (Int, Int, Seq[Int])]()
-    import Util.intersect
-
-    val trie = new SetTrie()
+    val hm = collection.mutable.HashMap[Int, (Int, Int, Seq[Int], List[Int])]()
 
     m.projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
-        val ab0 = intersect(qL, p)
-        val res = hm.get(ab0)
+        val (ab0, ab0_i) = intersect_intval3(qL, p)
+        val res = hm.get(ab0_i)
         val s = p.size
 
         if (res.isDefined) {
           if (s < res.get._1)
-            hm(ab0) = (s, id, p)
+            hm(ab0_i) = (s, id, p, ab0)
         } else {
-          if (trie.existsSuperSet(ab0)) {
-            hm(ab0) = (0, -1, List())
-          } else {
-            trie.insert(ab0)
-            hm(ab0) = (s, id, p)
-          }
+          hm(ab0_i) = (s, id, p, ab0)
         }
       }
     }
 
-
+    val trie = new SetTrie()
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
-    hm.toList.sortBy(x => -x._1.size).foreach { case (s, (c, id, p)) =>
-      if (p.nonEmpty && !trie.existsSuperSet(s)) {
-        val ab = qIS.indices.filter(i => s.contains(qIS(i))) // normalized
+    hm.toList.sortBy(x => -x._2._4.size).foreach { case (ab0_i, (c, id, p, ab0)) =>
+      if (!trie.existsSuperSet(ab0)) {
+        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
         val mask = Bits.mk_list_mask(p, qBS)
-        projs = ProjectionMetaData(ab, s, mask, id) :: projs
+        projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
+        trie.insert(ab0)
       }
     }
     projs.sortBy(-_.accessible_bits.size)
