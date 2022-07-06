@@ -1,10 +1,15 @@
 package examples
 
+import backend._
+import breeze.linalg.DenseMatrix
 import combinatorics.Combinatorics.comb
+import core.RationalTools._
 import core.SolverTools._
+import core._
 import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme, RandomizedMaterializationScheme2}
-import core.solver._
 import core.solver.Strategy._
+import core.solver._
+import frontend._
 import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrame, FeatureFrameSSB}
@@ -16,11 +21,6 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 object DemoTxt {
-
-  import backend._
-  import core.RationalTools._
-  import core._
-  import frontend._
 
   def trieCube(): Unit = {
     val dc = PartialDataCube.load2("SSB-sf100_sms3_15_14_30", "SSB-sf100_base")
@@ -217,28 +217,82 @@ object DemoTxt {
     od.l_run(q, 2)
   }
 
-  def cooking(): Unit = {
+  def cooking_demo(): Unit = {
 
 
-    val userCube = UserCube.createFromJson("recipes.json", "rating")
+    val cube = UserCube.createFromJson("demo_recipes.json", "rating")
 
-    //var matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), AND, MOMENT)
-    /*var matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List("<=1")), ("Type", 1, Nil)),List(), AND, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n")*/
-    //val qH = userCube.query(List())
+    //save/load matrices
+    cube.save("demoCube")
+    val userCube = UserCube.load("demoCube")
 
-    //matrix = userCube.queryMatrix(List(("spicy", 1), ("Region", 2)), List(("Vegetarian", 1)), OR, MOMENT)
-    /*matrix = userCube.querySliceMatrix(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)),List(), OR, MOMENT)
-    println(matrix.toString(Int.MaxValue, Int.MaxValue))*/
+    //can query for a matrix
+    var matrix = userCube.query(List(("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
-    println(userCube.query(List(("Region", 3, List("India")), ("spicy", 1, List(">=0")), ("Type", 1, Nil)), List(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[String]].mkString("Array(", ",\n", ")"))
+    // can add several dimensions, internal sorting
+    matrix = userCube.query(List(("Region", 2, Nil), ("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
-    //val array = userCube.queryArray(List(("Region", 2), ("Type", 1)), List(("Vegetarian", 1)), "moment")
-    //val array = userCube.queryArrayS(List(("Region", 3, List("India")), ("spicy", 1, List()), ("Type", 1, List())),List(("Vegetarian", 1, List())), AND, MOMENT)
-    //println(array._3.mkString("Array(", ", ", ")"))
+    //can query for an array, return top/left/values
+    val tuple = userCube.query(List(("Region", 2, Nil)), List(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
+      Array[Any], Array[Any])]
+    println(tuple._1.mkString("top header\n(", ", ", ")\n"))
+    println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
+    println(tuple._3.mkString("values\n(", ", ", ")\n \n"))
 
-  
+  //can query for array of tuples with bit format
+    var array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //can query for array of tuples with prefix format
+    array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //can slice and dice: select (Type = Dish || Type = Side) && price = cheap
+    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //select (Type = Dish || Type = Side) || price = cheap
+    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+    //delete zero tuples
+    array = ArrayFunctions.deleteZeroColumns(array)
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    array = userCube.query(List(("Type", 0, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+      Any]].map(x => x.asInstanceOf[(String, Any)])
+    println(array.mkString("(", "\n ", ")\n \n"))
+
+    //can apply some binary function
+    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), EXIST))
+    println(ArrayFunctions.applyBinary(array, binaryFunction, ("price", "Type"), FORALL) + "\n \n")
+
+    def binaryFunction(str1: Any, str2: Any): Boolean = {
+      str1.toString.equals("cheap") && !str2.toString.equals("Dish")
+    }
+
+    def transformForGroupBy(src : String): String = {
+      src match {
+        case "Europe" | "Italy" | "France" => "European"
+        case _ => "Non-European"
+      }
+    }
+
+    //can query another dimension, with TUPLES_PREFIX format
+    println(userCube.queryDimension(("time", 4, Nil), "difficulty", MOMENT))
+    println(userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT) + "\n \n")
+
+    //can detect double peaks and monotonicity
+    println(userCube.queryDimensionDoublePeak(("time", 4, Nil), "difficulty", MOMENT, 0.0))
+    println(userCube.queryDimensionDoublePeak(("difficulty", 4, Nil), null, MOMENT, 0.0))
+
   }
+
 
   def shoppen() = {
     // exploration example -- unknown file
@@ -360,13 +414,12 @@ object DemoTxt {
   def main(args: Array[String]): Unit = {
     //investment()
     //momentSolver()
-    momentSolver2()
+    //momentSolver2()
     //backend_naive()
     //loadtest()
     //ssb_demo()
-    //cooking()
+    cooking_demo()
     //trieCube()
     //toTrie()
   }
-
 }
