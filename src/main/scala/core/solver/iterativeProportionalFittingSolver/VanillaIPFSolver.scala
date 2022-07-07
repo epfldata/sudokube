@@ -46,17 +46,17 @@ class VanillaIPFSolver(override val querySize: Int,
 //    println()
     do {
       numIterations += 1
-//      println(s"Iteration ${numIterations}")
+      println(s"Iteration $numIterations")
       totalDelta = iterativeUpdate()
       verifySolution()
 
 //      if (isExperimenting) {
 //        printExperimentTimeErrorDataToFile()
-        //      println(s"\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
-        //      println(s"\t\tError: ${error(naiveRes, totalDistribution)}")
+              println(s"\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
+              println(s"\t\tError: ${error(trueDistribution, getSolution)}")
 //      }
 
-    } while (totalDelta >= convergenceThreshold * /*N **/ clusters.length/* * totalDistribution.sum*/)
+    } while (totalDelta >= convergenceThreshold * N * clusters.length)
     println(s"\t\t\tVanilla IPF number of iterations: $numIterations")
     getSolution
   }
@@ -70,7 +70,7 @@ class VanillaIPFSolver(override val querySize: Int,
 
     clusters.foreach { case Cluster(marginalVariables: Int, expectedMarginalDistribution: Array[Double]) =>
       totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution)
-//      print(s"${Bits.fromInt(marginalVariables).mkString(":")}, ")
+      println(s"Updating ${Bits.fromInt(marginalVariables).mkString(":")}")
 //      clusters.foreach(cluster => {
 //        print(s"${error(cluster.distribution, IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables))}, ")
 //        println(s"Expected ${cluster.distribution.mkString(",")}, got ${IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables).mkString(",")}")
