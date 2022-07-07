@@ -1,6 +1,6 @@
 package experiments
 
-import core.materialization.{MaterializationSchemeInfo, RandomizedMaterializationScheme}
+import core.materialization.{MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
 
 object Simulator {
   val onemill = 1000 * 1000L
@@ -14,7 +14,7 @@ object Simulator {
 
     val rms = rfs.map { lrf =>
       val rf = math.pow(10, lrf)
-      val proj = RandomizedMaterializationScheme(ssb100._1, rf, base).projections
+      val proj = OldRandomizedMaterializationScheme(ssb100._1, rf, base).projections
       println("Median size = "+ proj(proj.size/2).size)
       lrf -> proj.groupBy(_.length).mapValues(_.length).toList.sortBy(_._1)
     }
@@ -27,7 +27,7 @@ object Simulator {
   def expt2() = {
     val data = rfs.map { lrf =>
       val rf = math.pow(10, lrf)
-      val rms = RandomizedMaterializationScheme(ssb100._1, rf, base)
+      val rms = OldRandomizedMaterializationScheme(ssb100._1, rf, base)
       val info = new MaterializationSchemeInfo(rms)
       val sizes = List(22, 23, 29, 30).map(s => s -> (info.fd_ratio(s) - 1.0))
       lrf -> sizes

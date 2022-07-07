@@ -6,7 +6,7 @@ import combinatorics.Combinatorics.comb
 import core.RationalTools._
 import core.SolverTools._
 import core._
-import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme, RandomizedMaterializationScheme2}
+import core.materialization._
 import core.solver.Strategy._
 import core.solver._
 import frontend._
@@ -101,7 +101,7 @@ object DemoTxt {
   def test() = {
     val data = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val nbits = 10
-    val dc = new DataCube(RandomizedMaterializationScheme(nbits, 1, 1))
+    val dc = new DataCube(OldRandomizedMaterializationScheme(nbits, 1, 1))
     dc.build(CBackend.b.mk(nbits, data.toIterator))
     dc.save("test")
   }
@@ -136,14 +136,7 @@ object DemoTxt {
     Profiler.print()
   }
 
-  def printMatStats(ms: MaterializationScheme) = {
-    val m = ms.asInstanceOf[RandomizedMaterializationScheme]
-    (0 until m.n_bits).foreach { d =>
-      val total = comb(m.n_bits, d)
-      val nproj = m.n_proj_d(d)
-      println(s" $d :: $nproj/$total ")
-    }
-  }
+
 
   def solve2(dc: DataCube)(q: List[Int]) = {
     Profiler.resetAll()
@@ -179,7 +172,7 @@ object DemoTxt {
 
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-    val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+    val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
     val dc = new DataCube(matscheme)
     dc.build(basecuboid)
 
@@ -294,16 +287,6 @@ object DemoTxt {
   }
 
 
-  def shoppen() = {
-    // exploration example -- unknown file
-
-    val sch = new schema.DynamicSchema
-    val R = sch.read("Shoppen.json")
-    val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, .005, 1.02))
-    dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
-    Exploration.col_names(sch)
-  }
-
   def feature() = {
 
     val n_cols = 3
@@ -369,7 +352,7 @@ object DemoTxt {
     val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
     val fullcub = CBackend.b.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
-    val dc = new DataCube(RandomizedMaterializationScheme(n_bits, 0.1, 1.8))
+    val dc = new DataCube(new RandomizedMaterializationScheme(n_bits, 6, 2))
     dc.build(fullcub)
     (0 until n_queries).map { i =>
       val q = Tools.rand_q(n_bits, query_size)

@@ -1,6 +1,6 @@
 import backend.CBackend
 import core.DataCube
-import core.materialization.RandomizedMaterializationScheme2
+import core.materialization.RandomizedMaterializationScheme
 import frontend.schema.DynamicSchema
 import org.scalatest.{FreeSpec, Matchers}
 import util.Bits
@@ -39,7 +39,7 @@ class SchemaSpec extends FreeSpec with Matchers {
 
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-    val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
+    val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
     val dc = new DataCube(matscheme)
     dc.build(basecuboid)
 

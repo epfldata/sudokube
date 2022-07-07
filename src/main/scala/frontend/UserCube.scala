@@ -4,7 +4,7 @@ import backend.CBackend
 import core.solver.MomentSolverAll
 import core.DataCube
 import TestLine.testLineOp
-import core.materialization.RandomizedMaterializationScheme2
+import core.materialization.RandomizedMaterializationScheme
 import frontend.schema.Schema
 import util.Bits
 
@@ -294,7 +294,7 @@ object UserCube {
   def createFromJson(filename: String, fieldToConsider: String): UserCube = {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
-    val matScheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4) //8, 4, 4 numbers can be optimized
+    val matScheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
     val dc = new DataCube(matScheme)
     dc.build(CBackend.b.mk(sch.n_bits, R.toIterator))
     new UserCube(dc, sch)

@@ -12,7 +12,7 @@ class PrepareSpec extends FlatSpec with Matchers {
     oldpmd.zip(newpmd).foreach{case (o, n) => assert(o.accessible_bits.sameElements(n.accessible_bits) && o.mask.length == n.mask.length)}
   }
   def RMS(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin, dmin + logncubs)
+    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       val oldpo = Profiler("OldPrepareOnline"){ClassicPreparer.prepareOnline(m, q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
@@ -27,7 +27,7 @@ class PrepareSpec extends FlatSpec with Matchers {
   }
 
   def RMS_online_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin, dmin + logncubs)
+    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
 
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
@@ -43,7 +43,7 @@ class PrepareSpec extends FlatSpec with Matchers {
   }
 
   def RMS_batch_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin, dmin + logncubs)
+    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
 
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
@@ -57,7 +57,7 @@ class PrepareSpec extends FlatSpec with Matchers {
   }
 
   def RMS_performance(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin, dmin + logncubs)
+    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       print(i + " ")

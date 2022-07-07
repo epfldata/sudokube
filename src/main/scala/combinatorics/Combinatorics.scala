@@ -1,6 +1,6 @@
 //package ch.epfl.data.sudokube
 package combinatorics
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.OldRandomizedMaterializationScheme
 import util._
 
 
@@ -267,7 +267,7 @@ object Combinatorics {
 
     var k = 0
     var x: BigDecimal = 0
-    val m = RandomizedMaterializationScheme(n, rf, base, mindim)
+    val m = OldRandomizedMaterializationScheme(n, rf, base, mindim)
 
     while((x < 1) && (k <= n)) {
       val npd = m.n_proj_d(k)

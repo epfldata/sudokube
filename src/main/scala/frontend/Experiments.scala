@@ -6,7 +6,7 @@ import core._
 import combinatorics._
 import util._
 import backend._
-import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, RandomizedMaterializationScheme}
+import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
 import core.prepare.ClassicPreparer
 import generators._
 
@@ -62,7 +62,7 @@ object Tools {
     println("mkDC: Creating maximum-granularity cuboid...")
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
-    val m = RandomizedMaterializationScheme(n_bits, rf, base)
+    val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
     val dc = new DataCube(m);
     Profiler("Projections"){dc.build(fc)}
     //    val dc = new JailBrokenDataCube(m, fc)
@@ -93,7 +93,7 @@ object minus1_adv {
 
     for(i <- 1 to num_it) {
       val q = Tools.qq(qsize)
-      val m = RandomizedMaterializationScheme(nbits, rf, base)
+      val m = OldRandomizedMaterializationScheme(nbits, rf, base)
 
       //SBJ: Changed parameters for this calculation
       val a = ClassicPreparer.prepareBatch(m, q, nbits - 1).groupBy(_.accessible_bits.length)
@@ -167,7 +167,7 @@ object fd_storage {
       val base = 1.0 + j.toDouble / 100  // 1.01 to 1.2 
       println(rf + " " + base)
 
-      val m = RandomizedMaterializationScheme(n, rf, base)
+      val m = OldRandomizedMaterializationScheme(n, rf, base)
       val info = new MaterializationSchemeInfo(m)
       pw.write(rf + "\t" + base + "\t" + m.projections.length
         + "\t" + info.wc_ratio(30) + "\t" + info.wc_ratio(40)
@@ -190,7 +190,7 @@ object exp_e_df {
     max_fetch_dim: Int
   ) = {
     import backend.Payload
-    val m = RandomizedMaterializationScheme(n_bits, rf, base)
+    val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
     val q = (0 to qsize-1).toList
     val l = ClassicPreparer.prepareBatch(m, q, max_fetch_dim).map(_.accessible_bits)
 

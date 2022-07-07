@@ -15,7 +15,7 @@ import util.Util
  */
 
 @SerialVersionUID(1L)
-case class RandomizedMaterializationScheme(
+case class OldRandomizedMaterializationScheme(
                                             _n_bits: Int,
                                             rf: Double,
                                             base: Double,

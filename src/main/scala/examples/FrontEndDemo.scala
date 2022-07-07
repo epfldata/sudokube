@@ -1,7 +1,7 @@
 package examples
 
 import breeze.linalg.DenseMatrix
-import frontend.{AND, ARRAY, ArrayFunctions, EXIST, FORALL, MATRIX, MOMENT, NUM_ROWS, OR, TUPLES_BIT, TUPLES_PREFIX, UserCube, VALUES_ROWS}
+import frontend._
 
 /**
  * This a demo class to identify the functions working with UserCube and their respective utility

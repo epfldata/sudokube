@@ -42,7 +42,8 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
 
 
 @SerialVersionUID(4L)
-case class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
+class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
+  def this(sch: Schema2, logN: Double, minD: Int) = this(sch, logN, minD, (minD + logN - 1).toInt)
   override def getCuboidsForD(d: Int): Vector[List[Int]] = {
     val n_proj = n_proj_d(d)
     (0 until n_proj).map { i => sch.root.samplePrefix(d).toList.sorted }.distinct.toVector
@@ -53,7 +54,8 @@ case class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: In
  * Same idea as Randomized Materialization Scheme, but parameters are different
  */
 @SerialVersionUID(5L)
-case class RandomizedMaterializationScheme2(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {
+class RandomizedMaterializationScheme(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {
+  def this(n_bits: Int, logN: Double, minD: Int) = this(n_bits, logN, minD, (minD + logN - 1).toInt)
   override def getCuboidsForD(d: Int): Vector[List[Int]] = {
     val n_proj = n_proj_d(d)
     Util.collect_n[List[Int]](n_proj, () =>

@@ -1,4 +1,4 @@
-import frontend.{AND, ArrayFunctions, EXIST, FORALL, MOMENT, NUM_ROWS, OR, TUPLES_PREFIX, TestLine, UserCube, VALUES_ROWS}
+import frontend._
 import org.scalatest.{FlatSpec, Matchers}
 
 class ArrayFunctionsSpec extends FlatSpec with Matchers{

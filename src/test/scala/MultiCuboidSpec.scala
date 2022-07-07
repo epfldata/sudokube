@@ -1,4 +1,4 @@
-import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme}
+import core.materialization._
 import frontend.schema.StaticSchema
 import org.scalatest._
 
@@ -81,7 +81,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
-    val m = RandomizedMaterializationScheme(schema.n_bits, 1, 1)
+    val m = OldRandomizedMaterializationScheme(schema.n_bits, 1, 1)
     val dc1 = new DataCube(m)
     dc1.build(full_cube)
     val name = "MultiCuboidTest1"
@@ -120,7 +120,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = TupleGenerator(schema, n_rows, Sampling.f1)
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
-    val m = RandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
     val dc1 = new DataCube(m)
     dc1.build(full_cube)
     dc1.save2(name)
