@@ -36,7 +36,7 @@ class PrepareSpec extends FlatSpec with Matchers {
       val oldpo = Profiler("OldPrepareOnline"){ClassicPreparer.prepareOnline(m, q, cheap, maxFetch)}
       val newpo = Profiler("NewPrepareOnline"){SetTrieOnlinePrepareNoInt.prepareOnline(m, q, cheap, maxFetch)}
       val newpo_int = Profiler("NewPrepareOnlineWithInt"){SetTrieOnlinePrepareWithInt.prepareOnline(m, q, cheap, maxFetch)}
-      //isSameAs(oldpo, newpo)
+      isSameAs(oldpo, newpo)
       isSameAs(newpo, newpo_int)
     }
     println("\nTime for RMS")

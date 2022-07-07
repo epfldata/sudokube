@@ -39,7 +39,7 @@ object ClassicPreparer extends Preparer {
   /** prepare for online aggregation. Evaluate in the order returned.
    * The final cuboid will answer the query exactly by itself.
    */
-  override def prepareOnline(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[ProjectionMetaData] = prepareClassic(m, query, max_fetch_dim, max_fetch_dim).sortBy(_.mask.length)
+  override def prepareOnline(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[ProjectionMetaData] = prepareClassic(m, query, cheap_size, max_fetch_dim).sortBy(_.mask.length)
 
   def prepareClassic(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[ProjectionMetaData] = {
 
