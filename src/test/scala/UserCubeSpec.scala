@@ -95,7 +95,7 @@ class UserCubeSpec extends FlatSpec with Matchers{
   it should "work for querying a dimension" in {
     val userCube = fixture.userCube
     var result = userCube.queryDimension(("Region", 2, Nil), "difficulty", MOMENT).asInstanceOf[Vector[(String, Any)]]
-    assert(result.map(x => x._2) sameElements  List(0.0, 7.0, 3.0, 3.0))
+    assert(result.map(x => x._2) sameElements  List(0.0, 17.0, 18.0, 3.0))
     assert(result.map(x => x._1) sameElements Set("Europe", "India", "Italy", "NULL"))
     result = userCube.queryDimension(("Region", 2, Nil), null, MOMENT).asInstanceOf[Vector[(String, Any)]]
     assert(result.map(x => x._2) sameElements  List(12.0, 9.0, 15.0, 4.0))

@@ -134,7 +134,8 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     } else {
       val resultArrayTuple = query(q :: List((aggregateDim, sch.n_bits, Nil)), Nil, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]] //refactor the aggregateDim param to be able to use the query function
         .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
-      res = resultArrayTuple.map(x => (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2)).groupBy(x => x._1).map(value =>
+      res = resultArrayTuple.map(x => (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false))).
+        groupBy(x => x._1).map(value =>
         (value._1, value._2.foldLeft(0.0)((acc, x) =>
             acc + x._2.toString.toDouble
         ))

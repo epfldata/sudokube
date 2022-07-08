@@ -152,6 +152,6 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
     var res = userCube.queryDimension(("difficulty", 4, Nil), null, MOMENT)
     assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-0.4420289855072464, 11.094202898550725))
     res = userCube.queryDimension(("spicy", 4, Nil), "difficulty", MOMENT)
-    assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-5.0, 15.0))
+    assert(ArrayFunctions.slopeAndIntercept(res.map(x => (x._1.toDouble, x._2))) == (-1.0, 18.0))
   }
 }
