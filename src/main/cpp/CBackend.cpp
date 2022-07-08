@@ -16,6 +16,7 @@ extern unsigned int      mk(unsigned int n_bits);
 extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
 extern void     add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
 extern void     freeze(unsigned int s_id);
+extern void     freezePartial(unsigned int s_id, unsigned int n_bits);
 extern value_t *fetch(unsigned int d_id, size_t& size);
 extern void cuboid_GC(unsigned int id);
 extern size_t      sz(unsigned int id);
@@ -135,6 +136,12 @@ JNIEXPORT void JNICALL Java_backend_CBackend_freeze
         (JNIEnv *env, jobject obj, jint s_id) {
     freeze(s_id);
 }
+
+JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
+  (JNIEnv* env, jobject obj, jint s_id, jint n_bits)
+  {
+    freezePartial(s_id, n_bits);
+  }
 
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0

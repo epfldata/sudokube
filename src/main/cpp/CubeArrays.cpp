@@ -228,6 +228,35 @@ void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
  * Also sets the cuboid size. Only single thread may call it.
  * @param s_id Id of the cuboid (retured by mk()) to be finalized.
  */
+void freezePartial(unsigned int s_id, unsigned int n_bits) {
+    //SBJ: No other threads. No locks
+    std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
+    unsigned short keySize = bitsToBytes(n_bits);
+    globalRegistry.keysz_registry[s_id] = keySize;
+    size_t rows = store->size();
+    size_t recSize = keySize + sizeof(value_t);
+    byte **newstore = (byte **) calloc(rows, recSize);
+    size_t sizeMB = rows * recSize / (1000 * 1000);
+    if (sizeMB > 100) fprintf(stderr, "\nfreeze calloc : %lu MB\n", sizeMB);
+
+    for (size_t r = 0; r < rows; r++) {
+        memcpy(getKey(newstore, r, recSize), &(*store)[r].key[0], keySize);
+        memcpy(getVal(newstore, r, recSize), &((*store)[r].val), sizeof(value_t));
+    }
+
+#ifdef VERBOSE
+    printf("\nFREEZE keySize = %d  recSize = %lu\n", keySize, recSize);
+    for (unsigned i = 0; i < rows; i++) {
+        print_key(10, getKey(newstore, i, recSize)); //hard coded 10 bits
+        printf(" ");
+        printf(" %lld ", *getVal(newstore, i, recSize));
+        printf("\n");
+    }
+#endif
+    delete store;
+    globalRegistry.ptr_registry[s_id] = newstore;
+}
+
 void freeze(unsigned int s_id) {
     //SBJ: No other threads. No locks
     std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];

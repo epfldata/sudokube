@@ -145,6 +145,14 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add
 
 /*
  * Class:     backend_CBackend
+ * Method:    freezePartial
+ * Signature: (II)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
+  (JNIEnv *, jobject, jint, jint);
+
+/*
+ * Class:     backend_CBackend
  * Method:    freeze
  * Signature: (I)V
  */

@@ -111,6 +111,10 @@ abstract class Backend[MEASURES_T] {
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid
   def mkAll(n_bits: Int, it: Seq[(BigBinary, Long)]) : SparseCuboid
 
+  def mkPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid
+  def initPartial(): SparseCuboid
+  def finalisePartial(sc :SparseCuboid): SparseCuboid
+
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
   protected def cuboidGC(data: HYBRID_T): Unit
   protected def sSize(data: SPARSE_T) : BigInt

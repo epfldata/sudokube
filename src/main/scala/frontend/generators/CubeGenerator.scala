@@ -1,5 +1,4 @@
 package frontend.generators
-
 import backend.CBackend
 import core.materialization.{MaterializationScheme, OldRandomizedMaterializationScheme}
 import core.{DataCube, PartialDataCube}

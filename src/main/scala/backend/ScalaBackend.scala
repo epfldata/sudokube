@@ -65,6 +65,27 @@ object ScalaBackend extends Backend[Payload] {
     val mask = (1 to n_bits).map(_ => 1).toArray // dummy for deduplication
     SparseCuboid(n_bits, sRehash(a, mask))
   }
+  def mkPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid = {
+      val a : SPARSE_T = it.toSeq.map(x => (x._1, Payload.mk(x._2)))
+      val mask = (1 to n_bits).map(_ => 1).toArray
+      SparseCuboid(n_bits, sRehashPartial(a, mask, sc.data))
+    
+  }
+
+  protected def sRehashPartial(a: SPARSE_T, mask: MASK_T, prev : SPARSE_T) : SPARSE_T = {
+    val hash_f: BigBinary => BigBinary = Bits.mk_project_f(mask)
+
+    def dedup(b: SPARSE_T) : SPARSE_T = b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList
+
+    dedup(a.map{ case (i, v) => (hash_f(i), v) } ++ prev)
+  }
+
+  def initPartial(): SparseCuboid = {
+    return new SparseCuboid(0, Seq[(BigBinary, Payload)]())
+  }
+  def finalisePartial(sc :SparseCuboid): SparseCuboid = {
+    sc
+  }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] = data
 
