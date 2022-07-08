@@ -3,7 +3,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class ArrayFunctionsSpec extends FlatSpec with Matchers{
   def fixture = new {
-    val userCube = UserCube.createFromJson("testing_database.json", "rating")
+    val userCube = UserCube.createFromJson("example-data/testing_database.json", "rating")
   }
 
   it should "find value of prefix correctly" in {

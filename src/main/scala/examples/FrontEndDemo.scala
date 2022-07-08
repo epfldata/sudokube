@@ -169,7 +169,7 @@ object FrontEndDemo {
   }
 
   def main(args: Array[String]): Unit = {
-    val cube = UserCube.createFromJson("demo_recipes.json", "rating") //create a UserCube from a csv or a json file
+    val cube = UserCube.createFromJson("example-data/demo_recipes.json", "rating") //create a UserCube from a csv or a json file
     val userCube = save_load(cube)
 
     query_matrix(userCube)

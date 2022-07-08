@@ -18,7 +18,7 @@ class SchemaSpec extends FreeSpec with Matchers {
   )
   "DynamicSchema" - {
     val sch = new DynamicSchema()
-    val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
+    val R = sch.read("example-data/investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
 
     "must read tuples correctly" in {
       val d1 = R.map { case (k, v) => sch.decode_tuple(k).map({

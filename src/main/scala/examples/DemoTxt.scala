@@ -167,7 +167,7 @@ object DemoTxt {
 
     val sch = new schema.DynamicSchema
 
-    val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
+    val R = sch.read("example-data/investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
     //R.map{case (k, v) => sch.decode_tuple(k).mkString("{",",","}") + "  " + k + " " + v }.foreach(println)
 
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
@@ -213,7 +213,7 @@ object DemoTxt {
   def cooking_demo(): Unit = {
 
 
-    val cube = UserCube.createFromJson("demo_recipes.json", "rating")
+    val cube = UserCube.createFromJson("example-data/demo_recipes.json", "rating")
 
     //save/load matrices
     cube.save("demoCube")

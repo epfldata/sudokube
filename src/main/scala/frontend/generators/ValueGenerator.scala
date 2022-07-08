@@ -6,7 +6,7 @@ import util.BigBinary
 import java.io.PrintStream
 
 trait ValueGenerator {
-  val out = new PrintStream("basecube.txt")
+  lazy val out = new PrintStream("basecube.txt")
   def apply(k: BigBinary): Long
   def applyWithLog(k: BigBinary): Long = {
     val v = apply(k)
