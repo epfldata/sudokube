@@ -3,7 +3,7 @@ package core.prepare
 import core.SetTrieOnline
 import core.materialization.MaterializationScheme
 import planning.ProjectionMetaData
-import util.Bits
+import util.{Bits, Profiler}
 import util.Util.intersect_intval3
 
 //Refactored from prepare_online_new_int3 by Eloi This is the best.

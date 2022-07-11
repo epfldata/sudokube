@@ -3,7 +3,7 @@ package core.prepare
 import core.SetTrie
 import core.materialization.MaterializationScheme
 import planning.ProjectionMetaData
-import util.{Bits, Util}
+import util.{Bits, Profiler, Util}
 import util.Util.{intersect, intersect_intval3}
 
 //Refactored from prepare_batch_new by Eloi

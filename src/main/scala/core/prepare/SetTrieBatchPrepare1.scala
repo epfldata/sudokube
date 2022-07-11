@@ -3,7 +3,7 @@ package core.prepare
 import core.SetTrie
 import core.materialization.MaterializationScheme
 import planning.ProjectionMetaData
-import util.{Bits, Util}
+import util.{Bits, Profiler, Util}
 
 //Refactored prepare_new() method by SBJ
 object SetTrieBatchPrepare1 extends Preparer {

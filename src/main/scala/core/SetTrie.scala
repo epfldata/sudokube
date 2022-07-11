@@ -1,8 +1,7 @@
 package core
 
 import scala.collection.mutable.SortedSet
-
-import util.Bits
+import util.{Bits, Profiler}
 
 //we assume every node has moment stored
 @SerialVersionUID(1L)
@@ -99,6 +98,19 @@ class Node(var b: Int, var moment: Double, var firstChild: Int, var nextSibling:
 class SetTrie() {
   val root = Node(-1)
 
+  def insertInt(si: Int): Unit = {
+    var s = si
+    var n = root
+    var h = 0
+    while (s > 0) {
+      val b = s & 1
+      if(b != 0) {
+        n = n.findOrElseInsert(h)
+      }
+      s >>= 1
+      h += 1
+    }
+  }
   def insert(s: List[Int], n: Node = root): Unit = s match {
     //s is assumed to have distinct elements
     case Nil => ()
@@ -107,7 +119,32 @@ class SetTrie() {
       insert(t, c)
   }
 
-
+  def existsSuperSetInt(si0: Int, h0: Int = 0, n: Node = root): Boolean = {
+    if (si0 == 0) true else {
+      var h = h0
+      var si = si0
+      var b = si & 1
+      while (b == 0) {
+        h += 1
+        si >>= 1
+        b = si & 1
+      }
+      var found = false
+      val child = n.children.iterator
+      var ce = n.b
+      while (child.hasNext && !found && ce <= h) {
+        val cn = child.next()
+        ce = cn.b
+        if (ce < h) {
+          found = existsSuperSetInt(si, h, cn)
+        } else if (ce == h) {
+          found = existsSuperSetInt(si >> 1, h + 1, cn)
+        } else
+          ()
+      }
+      found
+    }
+  }
   def existsSuperSet(s: List[Int], n: Node = root): Boolean = s match {
     case Nil => true
     case h :: t =>

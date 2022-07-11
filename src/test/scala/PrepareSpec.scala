@@ -14,6 +14,7 @@ class PrepareSpec extends FlatSpec with Matchers {
   }
   def RMS(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
+    Profiler.resetAll()
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       val newpo = Profiler("NewPrepareOnline"){Preparer.default.prepareOnline(m, q, cheap, maxFetch)}
@@ -29,7 +30,7 @@ class PrepareSpec extends FlatSpec with Matchers {
 
   def RMS_online_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
-
+    Profiler.resetAll()
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       print(i + " ")
@@ -45,11 +46,13 @@ class PrepareSpec extends FlatSpec with Matchers {
 
   def RMS_batch_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
-
+    val stMS = SetTrieMaterializationScheme(m)
+    Profiler.resetAll()
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       print(i + " ")
       val oldpb = Profiler("OldPrepareBatch"){SetTrieBatchPrepare1.prepareBatch(m, q, maxFetch)}
+      val setpb = Profiler("SetTriePrepareBatch"){ SetTrieMSPreparer.prepareBatch(stMS, q, maxFetch)}
       val newpb = Profiler("NewPrepareBatchWithInt"){SetTrieBatchPrepareWithInt.prepareBatch(m, q, maxFetch)}
       isSameAs(oldpb, newpb)
     }
@@ -59,6 +62,7 @@ class PrepareSpec extends FlatSpec with Matchers {
 
   def RMS_performance(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
+    Profiler.resetAll()
     (0 until nq).foreach{ i =>
       val q = Tools.rand_q(nbits, qs)
       print(i + " ")

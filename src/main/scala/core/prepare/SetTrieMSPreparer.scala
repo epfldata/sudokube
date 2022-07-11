@@ -3,7 +3,7 @@ package core.prepare
 import core.SetTrieOnline
 import core.materialization.{MaterializationScheme, SetTrieMaterializationScheme}
 import planning.ProjectionMetaData
-import util.Bits
+import util.{Bits, Profiler}
 
 object SetTrieMSPreparer extends Preparer {
   override def prepareOnline(m: MaterializationScheme, query: Seq[Int], cheap_size: Int, max_fetch_dim: Int): List[ProjectionMetaData] = {
