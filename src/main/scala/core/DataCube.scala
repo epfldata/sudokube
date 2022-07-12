@@ -3,7 +3,7 @@ package core
 
 import backend._
 import core.materialization.MaterializationScheme
-import core.materialization.builder.{CubeBuilder, ParallelCubeBuilder}
+import core.materialization.builder._
 import core.prepare.Preparer
 import core.solver.Strategy.CoMoment3
 import planning.ProjectionMetaData
@@ -58,7 +58,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
    *
    * @param full_cube is integrated into the data cube as is and not copied.
    */
-  def build(full_cube: Cuboid, cb : CubeBuilder = ParallelCubeBuilder) {
+  def build(full_cube: Cuboid, cb : CubeBuilder = SimpleCubeBuilderMT) {
     assert(full_cube.n_bits == m.n_bits)
     cuboids = cb.build(full_cube, m, showProgress).toArray
 

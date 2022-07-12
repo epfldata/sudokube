@@ -3,7 +3,7 @@ package core.materialization.builder
 import core.materialization.MaterializationScheme
 import util.ProgressIndicator
 
-object SimpleCubeBuilder extends SingleThreadedCubeBuilder {
+trait SimpleBuildPlan {
 
   /** Create a plan for building each cuboid from the smallest that subsumes
    * it. Using BestSubsumerPlanBuilder for this is too expensive though.
@@ -23,7 +23,7 @@ object SimpleCubeBuilder extends SingleThreadedCubeBuilder {
    * same projections (in the same order), it always produces the same
    * result.
    */
-  override def create_build_plan(m: MaterializationScheme, showProgress: Boolean): List[(Set[Int], Int, Int)] = {
+   def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): List[(Set[Int], Int, Int)] = {
     // aren't they sorted by length by construction?
     val ps = m.projections.zipWithIndex.sortBy(_._1.length).reverse.toList
     assert(ps.head._1.length == m.n_bits)
@@ -32,7 +32,7 @@ object SimpleCubeBuilder extends SingleThreadedCubeBuilder {
     var build_plan: List[(Set[Int], Int, Int)] =
       List((ps.head._1.toSet, ps.head._2, -1))
 
-    val pi = new ProgressIndicator(ps.tail.length, "Create Build Plan", showProgress)
+    val pi = new ProgressIndicator(ps.tail.length, "Create Simple Build Plan", showProgress)
 
     ps.tail.foreach {
       case ((l: List[Int]), (i: Int)) => {
@@ -51,3 +51,6 @@ object SimpleCubeBuilder extends SingleThreadedCubeBuilder {
     build_plan.reverse
   }
 }
+
+object SimpleCubeBuilderST extends SingleThreadedCubeBuilder with SimpleBuildPlan
+object SimpleCubeBuilderMT extends MultiThreadedCubeBuilder with SimpleBuildPlan
