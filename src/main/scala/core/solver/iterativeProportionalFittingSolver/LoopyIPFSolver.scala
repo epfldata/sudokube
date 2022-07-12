@@ -8,7 +8,6 @@ import scala.collection.mutable
  * The IPF with loopy scaling updates.
  * The current version is the worst one with the smallest possible cliques (i.e., one cluster per clique).
  * TODO: delete printing statements for testing/demo
- * TODO: better ways to group clusters
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
  */
@@ -53,8 +52,7 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
         verifyReducedFormula()
         verifyJunctionGraph()
         verifyEqualToCuboids()
-        println(getTotalDistribution.sum)
-        println(s"Sum: ${getTotalDistribution.sum}")
+        println(s"\t\t\tSum of distribution: ${getTotalDistribution.sum}")
       } while (totalDelta >= convergenceThreshold * (1 << querySize))
     }
     //        assertApprox(1.0, getTotalDistribution.sum) // for testing purpose only => this shows that the probabilities do not even sum up to 1

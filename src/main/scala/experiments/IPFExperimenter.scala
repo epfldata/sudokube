@@ -4,9 +4,9 @@ import core.{MaterializedQueryResult, PartialDataCube}
 import frontend.generators.{CubeGenerator, NYC, SSB}
 
 object IPFExperimenter {
-  def ipf_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def ipf_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC else SSB(100)
-    val param = "15_6_30"
+    val param = s"15_${minNumDimensions}_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
@@ -34,9 +34,11 @@ object IPFExperimenter {
   def main(args: Array[String]): Unit = {
     implicit val shouldRecord: Boolean = false
     implicit val numIters: Int = 2
-    ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "NYC")
-    ipf_moment_compareTimeError(isSMS = false, cubeGenerator = "NYC")
-    ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "SSB")
-    ipf_moment_compareTimeError(isSMS = false, cubeGenerator = "SSB")
+    ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6)
+    ipf_moment_compareTimeError(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 6)
+    ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14)
+    ipf_moment_compareTimeError(isSMS = false, cubeGenerator = "SSB", minNumDimensions = 14)
+    ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14)
+    ipf_moment_compareTimeError(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 14)
   }
 }
