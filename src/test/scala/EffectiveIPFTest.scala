@@ -1,5 +1,4 @@
-package core.solver.iterativeProportionalFittingSolver
-
+import core.solver.iterativeProportionalFittingSolver.{Cluster, EffectiveIPFSolver, IPFUtils, JunctionGraph}
 import org.junit.Test
 import util.Bits
 

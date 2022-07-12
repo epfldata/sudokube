@@ -1,5 +1,4 @@
-package core.solver.iterativeProportionalFittingSolver
-
+import core.solver.iterativeProportionalFittingSolver.{IPFUtils, LoopyIPFSolver}
 import org.junit.Test
 import util.Bits
 
@@ -105,16 +104,6 @@ class LoopyIPFTest {
 
 
     println("Reconstructed distribution: " + solver.getSolution.mkString(", "))
-
-//    marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
-//      marginalDistribution.indices.foreach(marginalVariablesValues => {
-//        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(4, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
-////        assertApprox(
-////          marginalDistribution(marginalVariablesValues),
-////          IPFUtils.getMarginalProbability(4, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
-////        )
-//      })
-//    }
   }
 
   @Test
@@ -142,10 +131,6 @@ class LoopyIPFTest {
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
         println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
-//        assertApprox(
-//          marginalDistribution(marginalVariablesValues),
-//          IPFUtils.getMarginalProbability(5, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
-//        )
       })
     }
   }

@@ -1,15 +1,13 @@
-package core.solver.iterativeProportionalFittingSolver
-
 import core.SolverTools.error
 import core.solver.MomentSolverAll
 import core.solver.Strategy._
+import core.solver.iterativeProportionalFittingSolver.{Cluster, IPFUtils, VanillaIPFSolver}
 import org.junit.Test
 import util.{Bits, Profiler}
 
 import scala.util.Random
 
 /**
- * TODO: perhaps move to test/experiment directory
  * TODO: extending FlatSpec with Matchers in org.scalatest._ ? (Cannot resolve symbol)
  * @author Zhekai Jiang
  */
@@ -208,21 +206,13 @@ class VanillaIPFTest {
       vanillaIPFSolver.solve()
     }
     println("Vanilla IPF Error = " + error(distribution.toArray, vanillaIPFSolver.totalDistribution))
-//    checkSolutionConsistency(vanillaIPFSolver)
 
     Profiler("Moment") {
       momentSolver.fastSolve()
     }
     println("Moment Error = " + error(distribution.toArray, momentSolver.solution))
-//    momentSolver.verifySolution()
 
     println("Difference (using error measure) = " + error(momentSolver.solution, vanillaIPFSolver.totalDistribution))
-//    println("Max relative difference = " +
-//      (
-//        for (i <- 0 until 1 << numDimensions)
-//          yield (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs / distribution(i)
-//      ).max
-//    )
 
     println("Max difference out of total sum = " +
       (0 until 1 << numDimensions).map(i => (momentSolver.solution(i) - vanillaIPFSolver.totalDistribution(i)).abs).max
@@ -245,8 +235,6 @@ class VanillaIPFTest {
     var distribution: IndexedSeq[Double] = for (_ <- 0 until 1 << numDimensions) yield randomGenerator.nextInt(100).toDouble + 1
     val sum = distribution.sum
     distribution = distribution.map(_ / sum)
-
-//    println(distribution)
 
     for (marginalVariables <- Seq((1 << 10) - 1, ((1 << 10) - 1) << 5)) {
       val numMarginalVariables = IPFUtils.getNumOnesInBinary(marginalVariables)
