@@ -3,29 +3,30 @@ package core
 
 
 /** Differently from Solver, SparseSolver uses our own sparse matrix
- * representation SparseMatrix[T], rather than the breeze dense matrix
- * implementation. T can be Rational, so we have full precision.
- *
- * It also uses our own simplex solver, though not in simplex_add
- * and full_matrix_simplex.
- *
- * The constructor does Gaussian elimination but no further solving.
- *
- * The recommended use is to call compute_bounds.
- *
- * {{{
- *import core._
- *import RationalTools._
- *val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8), List(List(0,1), List(2)), List(2,2,2,2,4,4))
- *scala> s.M
- *res0: core.SparseMatrix[core.Rational] =
- *1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
- *1.0   0.0   0.0   0.0  1.0  0.0  0.0  0.0  2.0
- *0.0   1.0   0.0   0.0  0.0  1.0  0.0  0.0  2.0
- *0.0   0.0   1.0   0.0  0.0  0.0  1.0  0.0  2.0
- *-1.0  -1.0  -1.0  0.0  0.0  0.0  0.0  1.0  -2.0
- * }}}
- */
+    representation SparseMatrix[T], rather than the breeze dense matrix
+    implementation. T can be Rational, so we have full precision.
+
+    It also uses our own simplex solver, though not in simplex_add
+    and full_matrix_simplex.
+
+    The constructor does Gaussian elimination but no further solving.
+
+    The recommended use is to call compute_bounds.
+
+    {{{
+    import core._
+    import RationalTools._
+    val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8),
+                                   List(List(0,1), List(2)), List(2,2,2,2,4,4))
+    scala> s.M
+    res0: core.SparseMatrix[core.Rational] =
+    1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
+    1.0   0.0   0.0   0.0  1.0  0.0  0.0  0.0  2.0
+    0.0   1.0   0.0   0.0  0.0  1.0  0.0  0.0  2.0
+    0.0   0.0   1.0   0.0  0.0  0.0  1.0  0.0  2.0
+    -1.0  -1.0  -1.0  0.0  0.0  0.0  0.0  1.0  -2.0
+    }}}
+*/
 case class SparseSolver[T](
                             val n_bits: Int,
                             bounds: collection.mutable.ArrayBuffer[Interval[T]],
@@ -45,23 +46,36 @@ case class SparseSolver[T](
 
   protected def free_vars = (0 to n_vars - 1).filter(x => M.data(x) == None)
 
+  // these are the variables x for which we have a row M(x).
   def det_vars = (0 to n_vars - 1).filter(x => M.data(x) != None)
 
-  val solved_vars = collection.mutable.BitSet()
+  /// for these we know an exact value.
+  var solved_vars = collection.mutable.BitSet()
 
   // We do gaussian elimination in the constructor.
   gauss(add2(projections, values))
 
   /** Gaussian elimination.
-   * This implementation is intentionally limited in that it requires that
-   * the pivot fields have value one. That doesn't make the algorithm
-   * simpler, but it's a guaranteed property.
+
+      The assumption is that the rows <pivs> have just been added, and before
+      that
+      This implementation is intentionally limited in that it requires that
+      the pivot fields have value one. That doesn't make the algorithm
+      simpler, but it's a guaranteed property.
    */
   def gauss(pivs: Seq[Int]) {
     for (piv <- pivs.sorted.reverse) {
-      val pivot_row = M(piv)
 
-      assert(pivot_row(piv) == num.one)
+      assert(M(piv)(piv) == num.one)
+
+      for(col <- (piv - 1) to 0 by -1) {
+        val c = M(piv)(col)
+        if((c != 0) && (M.data(col) != None)) {
+          M.data(piv) = Some(M(piv) + M(col) * num.negate(c))
+        }
+      }
+
+      val pivot_row = M(piv)
 
       for (other_row <- piv + 1 to n_vars - 1) {
 
