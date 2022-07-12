@@ -191,4 +191,8 @@ object IPFUtils {
   def isVariablesContained(containedVariables: Int, containingVariables: Int): Boolean = {
     (containedVariables & containingVariables) == containedVariables
   }
+
+  def existsIntersectingVariables(variables1: Int, variables2: Int): Boolean = {
+    (variables1 & variables2) != 0
+  }
 }

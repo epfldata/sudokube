@@ -1,8 +1,10 @@
 package core.solver.iterativeProportionalFittingSolver
 
+import core.solver.iterativeProportionalFittingSolver.IPFUtils.isVariablesContained
 import util.Bits
 
 import scala.collection.mutable
+import scala.util.control.Breaks.{break, breakable}
 
 /**
  * Definition of junction graphs.
@@ -13,9 +15,9 @@ object JunctionGraph {
    * @param variables Variables associated with this clique, encoded as bits of 1 in an Int.
    * @param clusters Set of clusters associated with the clique.
    */
-  class Clique(val variables: Int, var clusters: mutable.Set[Cluster] = mutable.Set[Cluster]() /* clusters associated with the clique */) {
-    val numVariables: Int = IPFUtils.getNumOnesInBinary(variables)
-    val N: Int = 1 << numVariables
+  class Clique(var variables: Int, var clusters: mutable.Set[Cluster] = mutable.Set[Cluster]() /* clusters associated with the clique */) {
+    var numVariables: Int = IPFUtils.getNumOnesInBinary(variables)
+    var N: Int = 1 << numVariables
     var distribution: Array[Double] = Array.fill(N)(1.0 / N) // initialized to uniform
     var adjacencyList: mutable.Map[Clique, Separator] = mutable.Map[Clique, Separator]()
   }
@@ -38,6 +40,17 @@ class JunctionGraph {
 
   var cliques: mutable.Set[JunctionGraph.Clique] = mutable.Set[JunctionGraph.Clique]()
   var separators: mutable.Set[JunctionGraph.Separator] = mutable.Set[JunctionGraph.Separator]()
+
+  /**
+   * For use after changing variables in cliques.
+   */
+  def initializeCliques(): Unit = {
+    cliques.foreach(clique => {
+      clique.numVariables = IPFUtils.getNumOnesInBinary(clique.variables)
+      clique.N = 1 << clique.numVariables
+      clique.distribution = Array.fill(clique.N)(1.0 / clique.N)
+    })
+  }
 
   /**
    * For use after deleting variables from separator for the loopy scaling update.
@@ -84,20 +97,19 @@ class JunctionGraph {
   /**
    * Delete all non-maximal cliques (whose variables are contained in some other clique).
    * The clusters associated with those cliques will be merged into the their corresponding maximal cliques.
+   * TODO: Optimize this?
    */
   def deleteNonMaximalCliques(): Unit = {
-    val cliquesToBeDeleted = cliques.filter(clique => {
-      (cliques - clique).exists(clique2 => IPFUtils.isVariablesContained(clique.variables, clique2.variables))
-    })
-
-    cliquesToBeDeleted.foreach(clique =>
-      (cliques -- cliquesToBeDeleted).find(clique2 => IPFUtils.isVariablesContained(clique.variables, clique2.variables)) match {
-        case Some(maximalClique) => maximalClique.clusters ++= clique.clusters
-        case None => () // Shouldn't happen
+    breakable { while (true) {
+      (for (clique1 <- cliques; clique2 <- cliques) yield (clique1, clique2)).find { case (containedClique, containingClique) =>
+        containedClique != containingClique && isVariablesContained(containedClique.variables, containingClique.variables)
+      } match {
+        case Some((containedClique, containingClique)) =>
+          containingClique.clusters ++= containedClique.clusters
+          cliques -= containedClique
+        case None => break
       }
-    )
-
-    cliques --= cliquesToBeDeleted
+    } }
   }
 
   /**
@@ -214,5 +226,21 @@ class JunctionGraph {
       separator.clique2.adjacencyList -= separator.clique1
       separators -= separator
     })
+  }
+
+  /**
+   * For testing and demo purposes only.
+   */
+  def printAllCliquesAndSeparators(): Unit = {
+    println(s"\t\t\t${cliques.size} cliques, ${separators.size} separators")
+    println("\t\t\tCliques:")
+    cliques.foreach(clique =>
+      println(s"\t\t\t\t${clique.numVariables} variables: ${Bits.fromInt(clique.variables).mkString(":")}, "
+        + s"${clique.clusters.size} clusters: ${clique.clusters.map(cluster => Bits.fromInt(cluster.variables).mkString(":")).mkString(", ")}")
+    )
+    println("\t\t\tSeparators:")
+    separators.foreach(separator =>
+      println(s"\t\t\t\t${Bits.fromInt(separator.clique1.variables).mkString(":")} <--> ${Bits.fromInt(separator.clique2.variables).mkString(":")}: ${separator.numVariables} variables: ${Bits.fromInt(separator.variables).mkString(":")}")
+    )
   }
 }

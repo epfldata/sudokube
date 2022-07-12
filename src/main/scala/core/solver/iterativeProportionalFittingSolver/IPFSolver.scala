@@ -14,7 +14,8 @@ abstract class IPFSolver(val querySize: Int) {
   /* private */ var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
   var solution: Array[Double] = Array[Double]() // the un-normalized total distribution
   def getSolution: Array[Double] = {
-    solution = totalDistribution.map(_ * normalizationFactor)
+    val distributionSum = totalDistribution.sum // TODO: Confirm about this normalization, for junction graph only
+    solution = totalDistribution.map(_ / distributionSum * normalizationFactor)
     solution
   }
   /* private */ val convergenceThreshold: Double = 1e-5
