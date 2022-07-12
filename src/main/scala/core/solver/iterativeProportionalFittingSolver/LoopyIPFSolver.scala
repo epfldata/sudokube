@@ -36,16 +36,7 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
       constructJunctionGraph()
     }
 
-    println(s"\t\t\t${junctionGraph.cliques.size} cliques, ${junctionGraph.separators.size} separators")
-    println("\t\t\tCliques:")
-    junctionGraph.cliques.foreach(clique =>
-      println(s"\t\t\t\t${clique.numVariables} variables: ${Bits.fromInt(clique.variables).mkString(":")}, "
-        + s"${clique.clusters.size} clusters: ${clique.clusters.map(cluster => Bits.fromInt(cluster.variables).mkString(":")).mkString(", ")}")
-    )
-    println("\t\t\tSepartors:")
-    junctionGraph.separators.foreach(separator =>
-      println(s"\t\t\t\t${Bits.fromInt(separator.clique1.variables).mkString(":")} <--> ${Bits.fromInt(separator.clique2.variables).mkString(":")}: ${separator.numVariables} variables: ${Bits.fromInt(separator.variables).mkString(":")}")
-    )
+    junctionGraph.printAllCliquesAndSeparators()
 
     verifyJunctionGraph() // for testing purpose only
 
@@ -82,6 +73,13 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
    */
   def constructJunctionGraph(): Unit = {
     clusters.foreach(cluster => junctionGraph.cliques += new JunctionGraph.Clique(cluster.variables, mutable.Set[Cluster](cluster)))
+    constructSeparators()
+  }
+
+  /**
+   * Connect all pairs of cliques completely, then delete variables from separators until the connectedness condition is satisfied.
+   */
+  def constructSeparators(): Unit = {
     junctionGraph.connectAllCliquesCompletely()
     (0 until querySize).foreach(variable => junctionGraph.retainSpanningTreeForVariable(variable))
     junctionGraph.initializeSeparators()

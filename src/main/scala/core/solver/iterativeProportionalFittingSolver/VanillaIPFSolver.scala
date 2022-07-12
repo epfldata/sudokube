@@ -13,7 +13,7 @@ import java.io.PrintStream
  */
 class VanillaIPFSolver(override val querySize: Int,
                        val isExperimenting: Boolean = false,
-                       val trueDistribution: Array[Double] = null, /* for experimentation only */
+                       val trueResult: Array[Double] = null, /* for experimentation only */
                        val timeErrorFileOut: PrintStream = null, /* for experimentation only */
                        val cubeName: String = "", val query: String = "" /* for experimentation only */) extends IPFSolver(querySize) {
 
@@ -46,14 +46,14 @@ class VanillaIPFSolver(override val querySize: Int,
 //    println()
     do {
       numIterations += 1
-      println(s"Iteration $numIterations")
+      println(s"\t\t\tIteration $numIterations")
       totalDelta = iterativeUpdate()
-      verifySolution()
+//      verifySolution()
 
 //      if (isExperimenting) {
 //        printExperimentTimeErrorDataToFile()
-              println(s"\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
-              println(s"\t\tError: ${error(trueDistribution, getSolution)}")
+              println(s"\t\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
+              println(s"\t\t\tError: ${error(trueResult, getSolution)}")
 //      }
 
     } while (totalDelta >= convergenceThreshold * N * clusters.length)
@@ -85,7 +85,7 @@ class VanillaIPFSolver(override val querySize: Int,
     val currentTime = System.nanoTime()
     val totalTime = (currentTime - Profiler.startTimers("Vanilla IPF Total")) / 1000
     val solveTime = (currentTime - Profiler.startTimers("Vanilla IPF Solve")) / 1000
-    val currentError = error(trueDistribution, getSolution)
+    val currentError = error(trueResult, getSolution)
 //    println(s"\t\tTotal Time: $totalTime, solveTime: $solveTime, Error: $currentError")
     // CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr
     timeErrorFileOut.println(s"$cubeName, $query, $querySize, $totalTime, $solveTime, $currentError")

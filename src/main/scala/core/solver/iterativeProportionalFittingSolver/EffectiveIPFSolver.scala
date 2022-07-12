@@ -33,12 +33,8 @@ class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver
       constructJunctionTree()
     }
 
-    println(s"\t\t\t${junctionGraph.cliques.size} cliques, ${junctionGraph.separators.size} separators")
-    println("\t\t\tCliques:")
-    junctionGraph.cliques.foreach(clique =>
-      println(s"\t\t\t\t${clique.numVariables} variables: ${Bits.fromInt(clique.variables).mkString(":")}, "
-        + s"${clique.clusters.size} clusters: ${clique.clusters.map(cluster => Bits.fromInt(cluster.variables).mkString(":")).mkString(", ")}")
-    )
+    junctionGraph.printAllCliquesAndSeparators()
+
     val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
     println(s"\t\t\tEffective IPF number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
 
@@ -47,6 +43,7 @@ class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver
     Profiler("Effective IPF Iterations") {
       do {
         numIterations += 1
+        println(s"\t\t\tEffective IPF Iteration $numIterations")
         totalDelta = iterativeUpdate()
       } while (totalDelta >= convergenceThreshold * totalNumUpdates)
     }
