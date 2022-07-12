@@ -1,5 +1,5 @@
 //package ch.epfl.data.sudokube
-package core
+package core.solver.lpp
 import util._
 
 

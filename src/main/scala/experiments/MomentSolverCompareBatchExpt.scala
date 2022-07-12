@@ -1,10 +1,11 @@
 package experiments
 
-import core.solver.Strategy._
+import core.solver.moment.Strategy._
 import core.solver._
-import core.{DataCube, SolverTools}
+import core.DataCube
 import util.{Profiler, Util}
 import core.prepare.Preparer
+import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, CoMoment5SliceSolver, CoMoment5SliceSolver2, CoMoment5Solver, Moment1Transformer}
 
 class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"momentcompare-batch", ename2) {
   {

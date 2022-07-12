@@ -46,8 +46,7 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
 
   override def build(full_cube: Cuboid, m: MaterializationScheme, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
-    val cuboidFutures = new ArrayBuffer[Future[Cuboid]](m.projections.length)
-    val backend = full_cube.backend
+    val cuboidFutures = Util.mkAB[Future[Cuboid]](m.projections.length, _ => null)
     val pi = new ProgressIndicator(build_plan.length, "Projecting...", showProgress)
     implicit val ec = ExecutionContext.global
     build_plan.foreach {
@@ -56,10 +55,7 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
         val mask = Bits.mk_list_mask(m.projections(parent_id), s).toArray
         cuboidFutures(id) = cuboidFutures(parent_id).map { oldcub =>
           val newcub = oldcub.rehash(mask)
-          if (showProgress) {
-            if (cuboidFutures(id).isInstanceOf[backend.SparseCuboid]) print(".") else print("#")
             pi.step
-          }
           newcub
         }
     }

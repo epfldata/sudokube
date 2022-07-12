@@ -1,8 +1,8 @@
 //package ch.epfl.data.sudokube
-package core
-
+package core.solver
+import core.DataCube
 import core.prepare.Preparer
-import core.solver.MomentTransformer
+import core.solver.lpp.Interval
 import util.{ProgressIndicator, Util}
 
 

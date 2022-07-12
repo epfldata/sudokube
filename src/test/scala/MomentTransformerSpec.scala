@@ -1,5 +1,5 @@
-import core.{Rational, RationalTools}
-import core.solver.{Moment0Transformer, Moment1Transformer}
+import core.solver.moment.{Moment0Transformer, Moment1Transformer}
+import core.solver.{Rational, RationalTools}
 import org.scalatest.{FlatSpec, Matchers}
 
 class MomentTransformerSpec extends FlatSpec with Matchers {

@@ -5,8 +5,9 @@ import combinatorics.Combinatorics
 import core._
 import core.materialization.MaterializationScheme
 import core.prepare.Preparer
-import core.solver.Strategy._
-import core.solver._
+import core.solver.moment.Strategy._
+import core.solver.{Rational, SolverTools, RationalTools}
+import core.solver.moment._
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
 import frontend.schema.encoders._
@@ -306,7 +307,6 @@ object Experimenter {
         val result1 = Profiler("MomentTotal") {
           momentSolve(q)
         }
-        import SolverTools.error
         //val err1 = error(trueResult, result1)
         Profiler.print()
         //println("Error1 = " + err1)

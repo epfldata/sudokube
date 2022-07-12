@@ -1,6 +1,6 @@
 package core.materialization.builder
-import core.SetTrieBuildPlan
 import core.materialization.MaterializationScheme
+import core.solver.SetTrieBuildPlan
 import util.{Profiler, ProgressIndicator}
 
 trait TrieBuildPlan  {

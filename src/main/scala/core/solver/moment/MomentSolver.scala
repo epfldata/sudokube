@@ -1,6 +1,6 @@
-package core.solver
+package core.solver.moment
 
-import util.{BigBinary, Bits, Profiler}
+import util.{Bits, Profiler}
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag

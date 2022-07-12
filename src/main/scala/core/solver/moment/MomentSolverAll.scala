@@ -1,11 +1,9 @@
-package core.solver
+package core.solver.moment
 
-import breeze.linalg.{DenseMatrix, DenseVector, copy, inv}
 import combinatorics.Combinatorics
-import core.solver.Strategy.{CoMoment, Strategy}
-import util.{BigBinary, Bits, Profiler, Util}
+import core.solver.moment.Strategy.{CoMoment, Strategy}
+import util.{BigBinary, Bits, Profiler}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
@@ -419,7 +417,6 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
    * Interpolates unknown moments using known moments depending on strategy
    */
   def fillMissing() = {
-    import core.solver.Strategy.Strategy
 
     //unknown moments
     val toSolve = Profiler(s"Solve Filter $strategy") {

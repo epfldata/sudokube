@@ -1,11 +1,12 @@
 package experiments
 
-import core.SolverTools._
+import core.solver.SolverTools._
 import core._
 import core.solver._
 import util._
-import Strategy._
+import core.solver.moment.Strategy._
 import core.prepare.Preparer
+import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer, MomentSolver}
 
  class NewMomentSolverBatchExpt(strategy: Strategy, ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"newmoment-batch", ename2) {
 

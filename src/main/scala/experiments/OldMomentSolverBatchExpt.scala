@@ -1,9 +1,10 @@
 package experiments
 
-import core.SolverTools._
+import core.solver.SolverTools._
 import core._
 import core.prepare.Preparer
 import core.solver._
+import core.solver.moment.{MomentSolverAll, Strategy}
 import util._
 
 import scala.reflect.ClassTag

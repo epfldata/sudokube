@@ -1,7 +1,8 @@
 //package ch.epfl.data.sudokube
-package core
+package core.solver.lpp
 import util._
 import backend.Payload
+import core.solver.SolverTools
 
 
 /** The main solver; uses Gaussian elimination and linear programming.

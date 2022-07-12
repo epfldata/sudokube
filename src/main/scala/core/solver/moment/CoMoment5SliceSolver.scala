@@ -1,8 +1,7 @@
-package core.solver
+package core.solver.moment
 
-import util.{Bits, Profiler, Util}
+import util.{Bits, Profiler}
 
-import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 class CoMoment5SliceSolver[T: ClassTag : Fractional](totalsize: Int, slicevalue: IndexedSeq[Int], batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver(totalsize, batchmode, transformer, primaryMoments) {

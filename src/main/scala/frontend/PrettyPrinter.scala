@@ -2,6 +2,8 @@
 package frontend
 import core._
 import breeze.linalg._
+import core.solver.Rational
+import core.solver.lpp.Interval
 import schema._
 import util.Bits
 

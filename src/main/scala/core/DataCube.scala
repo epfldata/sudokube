@@ -5,7 +5,9 @@ import backend._
 import core.materialization.MaterializationScheme
 import core.materialization.builder._
 import core.prepare.Preparer
-import core.solver.Strategy.CoMoment3
+import core.solver.lpp.{SliceSparseSolver, SparseSolver}
+import core.solver.moment.Strategy._
+import core.solver.moment._
 import planning.ProjectionMetaData
 import util._
 

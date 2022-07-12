@@ -1,11 +1,12 @@
 package experiments
 
-import core.{DataCube, SolverTools}
-import core.SolverTools._
+import core.DataCube
+import core.solver.SolverTools._
 import core.solver._
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
-import Strategy._
+import core.solver.moment.Strategy._
 import core.prepare.{FullLatticeOnlinePreparer, Preparer}
+import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer, MomentSolver}
 
 class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 

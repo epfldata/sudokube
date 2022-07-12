@@ -1,11 +1,12 @@
 package experiments
 
+import core.DataCube
 import core.prepare.Preparer
-import core.{DataCube, Rational, SolverTools, SparseSolver}
+import core.solver.lpp.SparseSolver
+import core.solver.{Rational, SolverTools, RationalTools}
 import frontend._
 import frontend.experiments._
-import planning.ProjectionMetaData
-import util.{AutoStatsGatherer, Profiler, StatsGatherer}
+import util.{AutoStatsGatherer, Profiler}
 
 import java.io.PrintStream
 
@@ -53,7 +54,7 @@ object CubeData {
   }
 
   def expt(qsizes: Seq[Int], iters: Int) {
-    import core.RationalTools._
+    import core.solver.RationalTools._
     val pw = new PrintStream(s"expdata/expt_${sampling}_${n_bits}_${rf}_${base}_${n_row_log}_timedata.csv")
     val pwstat = new PrintStream(s"expdata/expt_${sampling}_${n_bits}_${rf}_${base}_${n_row_log}_statdata.csv")
     val header = s"NBits,rf,Base,logNrows,Qsize,IterNum, NaiveTotalTime(ms), NaiveMaxDimFetched, NaiveInit(ms), NaiveFetch(ms), SolverTotalTime(ms),SolverMaxDimFetched, SolverRounds, SolverInitTime(ms),SolverFetch(ms),SolverAdd(ms),SolverGauss(ms),SolverComputeBounds(ms)"
@@ -165,6 +166,7 @@ object CubeData {
   }
 
   import util.Profiler
+
   import scala.util.Random
 
   def rnd(n: Int, base: Int) = {
@@ -197,7 +199,7 @@ object CubeData {
   }
 
   def main(args: Array[String]) {
-    import core.RationalTools._
+    import RationalTools._
     //n_row_log = 30
     //(1 to 10).foreach { i => minus1_adv(n_bits, rf, base, n_row_log, i, 100)}
     //mkCube(15)

@@ -1,7 +1,8 @@
-package core
+package core.solver
+
+import util.Bits
 
 import scala.collection.mutable.SortedSet
-import util.{Bits, Profiler}
 
 //we assume every node has moment stored
 @SerialVersionUID(1L)

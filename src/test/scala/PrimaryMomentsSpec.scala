@@ -1,6 +1,6 @@
 import backend.CBackend
-import core.SolverTools
-import core.solver.Moment1Transformer
+import core.solver.SolverTools
+import core.solver.moment.Moment1Transformer
 import frontend.Sampling
 import frontend.experiments.Tools
 import frontend.experiments.Tools.mkDC

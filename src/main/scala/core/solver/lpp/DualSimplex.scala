@@ -1,10 +1,7 @@
-package core.solver
+package core.solver.lpp
 
 import core._
 import util.Profiler
-import util.Util.mkAB
-
-import scala.util.control.Breaks._
 
 /**
  * Altenative to (Primal) Simplex algorithm to find bounds

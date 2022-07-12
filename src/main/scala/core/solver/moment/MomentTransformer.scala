@@ -1,4 +1,4 @@
-package core.solver
+package core.solver.moment
 
 abstract class MomentTransformer[T](implicit val num: Fractional[T]) {
   //get i0th local moment of a cuboid. Used when we need few moments

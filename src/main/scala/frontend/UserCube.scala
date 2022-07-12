@@ -1,7 +1,6 @@
 package frontend
 
 import backend.CBackend
-import core.solver.MomentSolverAll
 import core.DataCube
 import TestLine.testLineOp
 import core.materialization.RandomizedMaterializationScheme
@@ -10,6 +9,7 @@ import util.Bits
 
 import scala.annotation.tailrec
 import breeze.linalg.{Axis, DenseMatrix}
+import core.solver.moment.MomentSolverAll
 
 
 sealed class METHOD

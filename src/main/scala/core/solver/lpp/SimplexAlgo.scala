@@ -1,6 +1,7 @@
-package core
+package core.solver.lpp
+
+import core.solver.Rational
 import util.Util._
-import RationalTools._
 
 
 /** Simplex algorithm for maximization. Supports >= constraints via

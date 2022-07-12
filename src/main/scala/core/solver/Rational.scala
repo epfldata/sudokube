@@ -1,5 +1,4 @@
-package core
-
+package core.solver
 
 sealed class Rational(_a: BigInt, _b: BigInt) extends Ordered[Rational] {
   assert(_b != 0)

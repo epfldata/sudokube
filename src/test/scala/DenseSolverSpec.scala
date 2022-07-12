@@ -1,7 +1,7 @@
-import org.scalatest._
-import core._
-import DenseSolverTools._
 import backend.Payload
+import core.solver.lpp.{DenseSolver, DenseSolverTools, Interval}
+import core.solver.{SolverTools, lpp}
+import org.scalatest._
 import planning.ProjectionMetaData
 
 

@@ -1,10 +1,11 @@
 package experiments
 
-import core.SolverTools.error
+import core.solver.SolverTools.error
 import core.prepare.Preparer
-import core.{DataCube, SolverTools}
-import core.solver.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer}
+import core.DataCube
+import core.solver.SolverTools
 import core.solver.iterativeProportionalFittingSolver.VanillaIPFSolver
+import core.solver.moment.{CoMoment4Solver, Moment1Transformer}
 import util.Profiler
 
 class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"vanilla-ipf-moment-batch", ename2) {

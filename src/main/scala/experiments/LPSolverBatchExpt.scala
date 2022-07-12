@@ -1,8 +1,9 @@
 package experiments
 
 import core.prepare.Preparer
-import core.{DataCube, SolverTools, SparseSolver}
-import core.solver.{SliceSparseSolver, Strategy}
+import core.solver.lpp.{SliceSparseSolver, SparseSolver}
+import core.DataCube
+import core.solver.SolverTools
 import frontend.experiments.Tools
 import util.Profiler
 

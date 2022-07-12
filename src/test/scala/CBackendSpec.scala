@@ -1,5 +1,5 @@
 import core.materialization.OldRandomizedMaterializationScheme
-import core.solver.Moment1Transformer
+import core.solver.moment.Moment1Transformer
 import frontend.experiments.Tools
 import org.scalatest._
 

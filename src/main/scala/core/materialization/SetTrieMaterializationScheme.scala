@@ -1,8 +1,6 @@
 package core.materialization
 
-import core.{SetTrieIntersect, SetTrieOnline}
-import planning.ProjectionMetaData
-import util.Bits
+import core.solver.SetTrieIntersect
 
 /**
  * Wrapper around materialization scheme that builds a Set-Trie index on the list of materialized cuboids

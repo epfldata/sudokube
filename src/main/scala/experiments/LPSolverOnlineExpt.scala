@@ -1,8 +1,9 @@
 package experiments
 
 import core.prepare.Preparer
-import core.solver.SliceSparseSolver
-import core.{DataCube, SolverTools, SparseSolver}
+import core.solver.lpp.SliceSparseSolver
+import core.DataCube
+import core.solver.SolverTools
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import scala.reflect.ClassTag

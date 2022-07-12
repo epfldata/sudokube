@@ -1,10 +1,7 @@
-import core.solver.Moment1Transformer
-import core.{SetTrie, SetTrieForMoments}
+import core.solver.SetTrie
 import org.scalatest.{FlatSpec, Matchers}
-import util.{BigBinary, Bits, Util}
+import util.Util
 
-import java.io._
-import scala.reflect.ClassTag
 import scala.util.Random
 
 class SetTrieIntSpec extends FlatSpec with Matchers {

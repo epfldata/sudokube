@@ -1,7 +1,8 @@
 import org.scalatest._
-import core.{SparseSolver => _ , _}
-import SolverTools._
+import core._
+import core.solver.SolverTools._
 import backend.Payload
+import core.solver.lpp.{Interval, IntervalTools, SliceSparseSolver}
 import planning.ProjectionMetaData
 import solver._
 
@@ -135,7 +136,7 @@ class SliceSparseSolverSpec extends FlatSpec with Matchers {
 
     /* Note: This one has a -2 weight in the matrix!
     s.M
-    res0: core.SparseMatrix[Double] =
+    res0: SparseMatrix[Double] =
     1.0   1.0   1.0   1.0  0.0   0.0  0.0  0.0  10.0
     1.0   1.0   0.0   0.0  1.0   1.0  0.0  0.0  14.0
     1.0   0.0   1.0   0.0  1.0   0.0  1.0  0.0  16.0

@@ -1,8 +1,8 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import core.SolverTools.error
-import core.solver.MomentSolverAll
-import core.solver.Strategy._
+import core.solver.SolverTools.error
+import core.solver.moment.Strategy._
+import core.solver.moment.MomentSolverAll
 import org.junit.Test
 import util.{Bits, Profiler}
 

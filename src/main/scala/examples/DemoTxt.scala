@@ -2,13 +2,12 @@ package examples
 
 import backend._
 import breeze.linalg.DenseMatrix
-import combinatorics.Combinatorics.comb
-import core.RationalTools._
-import core.SolverTools._
 import core._
 import core.materialization._
-import core.solver.Strategy._
+import core.solver.SolverTools.error
 import core.solver._
+import core.solver.moment.Strategy._
+import core.solver.moment._
 import frontend._
 import frontend.experiments.Tools
 import frontend.generators._
@@ -16,7 +15,7 @@ import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
-
+import RationalTools._
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -26,7 +25,6 @@ object DemoTxt {
     val dc = PartialDataCube.load2("SSB-sf100_sms3_15_14_30", "SSB-sf100_base")
     val cids = dc.m.projections.zipWithIndex.groupBy(_._1.length).mapValues(_.head).values.toList.sortBy(_._1.length)
     import CBackend.b.{DenseCuboid => DC}
-    import core.solver.Moment1Transformer
     val trie = new SetTrieForMoments()
 
     def process(cidcol: (List[Int], Int)) = {

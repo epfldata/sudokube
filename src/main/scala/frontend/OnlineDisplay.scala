@@ -2,6 +2,9 @@
 package frontend
 import schema._
 import core._
+import core.solver.{Rational, RationalTools}
+import core.solver.lpp.{Interval, SparseSolver}
+
 import scala.swing._
 
 

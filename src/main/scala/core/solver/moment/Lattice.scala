@@ -1,4 +1,4 @@
-package core.solver
+package core.solver.moment
 
 class Lattice[T](qbits: Int)(implicit val num2: Fractional[T]) {
   val N = 1 << qbits

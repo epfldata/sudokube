@@ -1,9 +1,9 @@
 package experiments
 
-import core.{Rational, SolverTools, SparseSolver}
-import core.solver.SliceSparseSolver
-import core.RationalTools._
 import core.prepare.Preparer
+import core.solver.RationalTools._
+import core.solver.lpp.{SliceSparseSolver, SparseSolver}
+import core.solver.{Rational, SolverTools}
 import util.Profiler
 
 import java.io.PrintStream

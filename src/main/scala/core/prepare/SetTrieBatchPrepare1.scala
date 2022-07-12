@@ -1,7 +1,7 @@
 package core.prepare
 
-import core.SetTrie
 import core.materialization.MaterializationScheme
+import core.solver.SetTrie
 import planning.ProjectionMetaData
 import util.{Bits, Profiler, Util}
 

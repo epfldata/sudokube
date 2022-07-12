@@ -1,9 +1,9 @@
 import org.scalatest._
 import core._
-import core.solver.MomentSolverAll
-import RationalTools._
-import core.solver.Strategy._
+import core.solver.RationalTools._
+import core.solver.moment.Strategy._
 import core.solver._
+import core.solver.moment.{CoMoment4Solver, Moment1Transformer, MomentSolverAll}
 
 class MomentSolverAllSpec extends FlatSpec with Matchers {
 

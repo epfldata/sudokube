@@ -1,7 +1,7 @@
 package core.prepare
 
-import core.SetTrieOnline
 import core.materialization.MaterializationScheme
+import core.solver.SetTrieOnline
 import planning.ProjectionMetaData
 import util.{Bits, Util}
 import util.Util.intersect

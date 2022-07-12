@@ -1,10 +1,10 @@
 package experiments
 
 import core.DataCube
-import core.SolverTools._
+import core.solver.SolverTools._
 import core.prepare.{FullLatticeOnlinePreparer, Preparer}
-import core.solver.MomentSolverAll
-import core.solver.Strategy.CoMoment3
+import core.solver.moment.Strategy.CoMoment3
+import core.solver.moment.MomentSolverAll
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import scala.reflect.ClassTag

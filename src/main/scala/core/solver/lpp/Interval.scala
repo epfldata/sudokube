@@ -1,7 +1,8 @@
 //package ch.epfl.data.sudokube
-package core
+package core.solver.lpp
 
-
+import core.solver.Rational
+import core.solver.RationalTools.RationalOps
 /** empty intervals cannot be represented.
 */
 case class Interval[T](
@@ -35,7 +36,7 @@ case class Interval[T](
   /** multiplies the bounds of an interval with a constant.
     Example: {{{
       scala> Interval[Int](Some(3),Some(5)) * -2
-      res1: core.Interval[Int] = Interval(Some(-10),Some(-6))
+      res1: Interval[Int] = Interval(Some(-10),Some(-6))
       }}}
   */
   def *(c: T) : Interval[T] = {
@@ -48,9 +49,9 @@ case class Interval[T](
   /** sums up two intervals.
       Example: {{{
       scala> Interval[Int](Some(3),Some(5)) + Interval[Int](Some(3),Some(5))
-      res2: core.Interval[Int] = Interval(Some(6),Some(10))
+      res2: Interval[Int] = Interval(Some(6),Some(10))
       scala> Interval[Int](Some(3),Some(5)) + Interval[Int](None,Some(5))
-      res3: core.Interval[Int] = Interval(None,Some(10))
+      res3: Interval[Int] = Interval(None,Some(10))
       }}}
   */
   def +(other: Interval[T]) : Interval[T] = {
@@ -62,7 +63,7 @@ case class Interval[T](
   /** Computes a minimally-sized interval that contains both this and other.
       Example: {{{
       scala> Interval[Int](Some(6),Some(7)).envelope(Interval[Int](None,Some(5)))
-      res5: core.Interval[Int] = Interval(None,Some(7))
+      res5: Interval[Int] = Interval(None,Some(7))
       }}}
   */
   def envelope(other: Interval[T]) : Interval[T] = {
@@ -81,7 +82,7 @@ case class Interval[T](
       java.lang.Exception: Broken interval [Some(6), Some(5)]
 
       scala> Interval[Int](Some(1),Some(2)).intersect(Interval[Int](None,Some(5)))
-      res7: core.Interval[Int] = Interval(Some(1),Some(2))
+      res7: Interval[Int] = Interval(Some(1),Some(2))
       }}}
   */
   def intersect(other: Interval[T]) : Interval[T] = {
@@ -126,8 +127,6 @@ object IntervalTools {
     case Interval(Some(lb), None) => Interval(Some(lb.toDouble), None)
     case Interval(None, None)     => Interval[Double](None, None)
   }
-
-  import RationalTools._
 
   def i2r(di: Interval[Int]) : Interval[Rational] = di match {
     case Interval(Some(lb), Some(ub)) =>

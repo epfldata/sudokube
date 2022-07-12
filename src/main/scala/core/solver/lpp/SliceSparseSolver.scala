@@ -1,4 +1,4 @@
-package core.solver
+package core.solver.lpp
 
 import core._
 import util._

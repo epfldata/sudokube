@@ -1,7 +1,7 @@
+import core.solver.RationalTools
+import core.solver.lpp.{Interval, IntervalTools, SparseSolver}
+import core.solver.{Rational, SolverTools, lpp}
 import org.scalatest._
-import core._
-import SolverTools._
-import backend.Payload
 import planning.ProjectionMetaData
 
 
@@ -126,7 +126,7 @@ class SparseSolverSpec extends FlatSpec with Matchers {
 
     /* Note: This one has a -2 weight in the matrix!
     s.M
-    res0: core.SparseMatrix[Double] =
+    res0: SparseMatrix[Double] =
     1.0   1.0   1.0   1.0  0.0   0.0  0.0  0.0  10.0
     1.0   1.0   0.0   0.0  1.0   1.0  0.0  0.0  14.0
     1.0   0.0   1.0   0.0  1.0   0.0  1.0  0.0  16.0
@@ -164,7 +164,6 @@ class SparseSolverSpec extends FlatSpec with Matchers {
     // this is an example demonstrating that it is not sufficient to only
     // run the simplex algorithm on the free variables and propagate.
 
-    import core._
     import RationalTools._
 
     val l1 = List(List(1))

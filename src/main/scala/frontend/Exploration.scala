@@ -1,7 +1,8 @@
 //package ch.epfl.data.sudokube
 package frontend
 import core._
-import core.RationalTools._
+import core.solver.Rational
+import core.solver.RationalTools._
 import schema._
 
 
@@ -62,7 +63,7 @@ import frontend.schema._
 import frontend.Exploration._
 import backend._
 import core._
-import core.RationalTools._
+import core.solver.RationalTools._
 
 val sch = new DynamicSchema
 val R   = sch.read("/Users/ckoch/json/Shoppen.json")

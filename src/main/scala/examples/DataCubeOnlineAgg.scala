@@ -1,10 +1,13 @@
 package examples
 
+import core.solver.{Rational, RationalTools}
+import core.solver.lpp.{Interval, SparseSolver}
+
 object DataCubeOnlineAgg {
   def main(args: Array[String]): Unit = {
 
     import frontend.experiments.Tools._
-    import core._
+
     import RationalTools._
 
     class CB {

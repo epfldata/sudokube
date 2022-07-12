@@ -8,6 +8,8 @@ import util._
 import backend._
 import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
 import core.prepare.ClassicPreparer
+import core.solver.{Rational, RationalTools}
+import core.solver.lpp.Interval
 import generators._
 
 import scala.util.Random

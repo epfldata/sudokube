@@ -1,17 +1,17 @@
 package frontend.gui
 
 import core._
-import core.solver.MomentSolverAll
+import core.solver.{Rational, RationalTools}
+import core.solver.lpp.SparseSolver
+import core.solver.moment.MomentSolverAll
 import frontend.generators.SSB
-import frontend.schema._
-import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol, StaticMemCol}
+import frontend.schema.encoders.{LazyMemCol, StaticDateCol}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.DeviationRenderer
 import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{YIntervalSeries, YIntervalSeriesCollection}
 import org.jfree.ui.RectangleInsets
-import util.BigBinary
 
 import java.awt.{BasicStroke, Color}
 import scala.swing.BorderPanel.Position.{Center, South}

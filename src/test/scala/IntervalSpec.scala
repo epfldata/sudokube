@@ -1,5 +1,5 @@
+import core.solver.lpp.Interval
 import org.scalatest._
-import core.Interval
 
 class IntervalSpec extends FlatSpec with Matchers {
   val i1 = Interval(None, Some(3.0))

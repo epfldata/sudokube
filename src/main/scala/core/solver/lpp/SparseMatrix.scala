@@ -1,5 +1,6 @@
 //package ch.epfl.data.sudokube
-package core
+package core.solver.lpp
+
 import breeze.linalg.DenseMatrix
 
 

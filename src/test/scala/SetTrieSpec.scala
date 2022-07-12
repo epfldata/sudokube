@@ -1,10 +1,9 @@
-import core.solver.Moment1Transformer
-import core.{SetTrie, SetTrieForMoments}
+import core.solver.moment.Moment1Transformer
+import core.solver.{SetTrie, SetTrieForMoments}
 import org.scalatest.{FlatSpec, Matchers}
 import util.{BigBinary, Bits, Util}
 
-import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
-import scala.math.Numeric.Implicits.infixNumericOps
+import java.io._
 import scala.reflect.ClassTag
 import scala.util.Random
 

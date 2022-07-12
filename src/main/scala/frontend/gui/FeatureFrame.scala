@@ -2,18 +2,19 @@ package frontend.gui
 
 
 import core._
+import core.solver.lpp.SparseSolver
+import core.solver.{Rational, RationalTools}
 import frontend.schema._
-import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.DeviationRenderer
+import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{YIntervalSeries, YIntervalSeriesCollection}
 import org.jfree.ui.RectangleInsets
 import util.BigBinary
 
-import java.awt.{BasicStroke, BorderLayout, Color}
-
-import scala.swing.BorderPanel.Position.{Center, North, South}
+import java.awt.{BasicStroke, Color}
+import scala.swing.BorderPanel.Position.{Center, South}
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 

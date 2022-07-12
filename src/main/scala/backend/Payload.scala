@@ -1,5 +1,6 @@
 package backend
-import core.Interval
+
+import core.solver.lpp.Interval
 
 
 /** A payload consisting of three values, a sum, a max, and a min (as an
@@ -13,7 +14,7 @@ import core.Interval
     Summable or Monoid.
 
     TODO: This is ugly.
-*/
+ */
 class Payload(var sm: Double, var i: Option[Interval[Double]]) {
   var smLong = sm.toLong //Hack to avoid precision error
   /** an aggregation function for payload with the same key (a hash collision).

@@ -1,31 +1,33 @@
 //package ch.epfl.data.sudokube
-package core
+package core.solver.lpp
+
+import core.solver.SolverTools
 
 
 /** Differently from Solver, SparseSolver uses our own sparse matrix
-    representation SparseMatrix[T], rather than the breeze dense matrix
-    implementation. T can be Rational, so we have full precision.
+representation SparseMatrix[T], rather than the breeze dense matrix
+implementation. T can be Rational, so we have full precision.
 
-    It also uses our own simplex solver, though not in simplex_add
-    and full_matrix_simplex.
+It also uses our own simplex solver, though not in simplex_add
+and full_matrix_simplex.
 
-    The constructor does Gaussian elimination but no further solving.
+The constructor does Gaussian elimination but no further solving.
 
-    The recommended use is to call compute_bounds.
+The recommended use is to call compute_bounds.
 
-    {{{
-    import core._
-    import RationalTools._
-    val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8),
-                                   List(List(0,1), List(2)), List(2,2,2,2,4,4))
-    scala> s.M
-    res0: core.SparseMatrix[core.Rational] =
-    1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
-    1.0   0.0   0.0   0.0  1.0  0.0  0.0  0.0  2.0
-    0.0   1.0   0.0   0.0  0.0  1.0  0.0  0.0  2.0
-    0.0   0.0   1.0   0.0  0.0  0.0  1.0  0.0  2.0
-    -1.0  -1.0  -1.0  0.0  0.0  0.0  0.0  1.0  -2.0
-    }}}
+@example{{{
+  import core._
+  import RationalTools._
+  val s = SparseSolver[Rational](3, SolverTools.mk_all_non_neg(8),
+  List(List(0,1), List(2)), List(2,2,2,2,4,4))
+  scala> s.M
+  res0: core.SparseMatrix[core.Rational] =
+  1.0   1.0   1.0   1.0  0.0  0.0  0.0  0.0  4.0
+  1.0   0.0   0.0   0.0  1.0  0.0  0.0  0.0  2.0
+  0.0   1.0   0.0   0.0  0.0  1.0  0.0  0.0  2.0
+  0.0   0.0   1.0   0.0  0.0  0.0  1.0  0.0  2.0
+  -1.0  -1.0  -1.0  0.0  0.0  0.0  0.0  1.0  -2.0
+  }}}
 */
 case class SparseSolver[T](
                             val n_bits: Int,
