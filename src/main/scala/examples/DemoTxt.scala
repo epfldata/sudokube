@@ -92,13 +92,12 @@ object DemoTxt {
     solver.verifySolution()
   }
 
-  def vanillaIPFSolver(): Unit = { // Same as momentSolver2, seems to be a bad case for IPF
-    val solver = new VanillaIPFSolver(3)
-    val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
-    solver.add(List(2), Array(5, 12))
-    solver.add(List(0, 1), Array(7, 3, 6, 1))
-    solver.add(List(1, 2), Array(1, 4, 9, 3))
-    solver.add(List(0, 2), Array(3, 2, 10, 2))
+  def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
+    val actual = Array(0, 1, 1, 1, 1, 0, 0, 0).map(_.toDouble)
+    val solver = new VanillaIPFSolver(3, true, actual)
+    solver.add(List(0, 1), Array(1, 1, 1, 1))
+    solver.add(List(1, 2), Array(1, 2, 1, 0))
+    solver.add(List(0, 2), Array(1, 2, 1, 0))
     val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result))
