@@ -1,4 +1,4 @@
-import core.solver.SetTrie
+import core.ds.settrie.SetTrie
 import org.scalatest.{FlatSpec, Matchers}
 import util.Util
 
@@ -10,7 +10,7 @@ class SetTrieIntSpec extends FlatSpec with Matchers {
     val trie = new SetTrie()
     trie.insertInt(List(1, 2, 3, 4, 5).map(1 << _).sum)
     trie.insertInt(List(10, 12, 15, 21, 25, 26).map(1 << _).sum)
-    trie.insertInt(List(11, 12, 16, 18, 30, 31).map(1 << _).sum)
+    trie.insertInt(List(11, 12, 16, 18, 30).map(1 << _).sum)
     trie.insertInt(List(1, 5, 10, 15, 20, 25, 30).map(1 << _).sum)
     trie.insertInt(List(1, 2, 3).map(1 << _).sum)
     trie.insertInt(List(4, 5, 6).map(1 << _).sum)
@@ -53,8 +53,8 @@ class SetTrieIntSpec extends FlatSpec with Matchers {
   }
 
   "Trie ExistSupersetInt" should s"be correct for random sets 1" in randomTest(10, 5, 20, 10, 2)
-  "TrieInt ExistSupersetInt" should s"be correct for random sets 2" in randomTest(100, 5, 31, 100, 5)
-  "TrieInt ExistSupersetInt" should s"be correct for random sets 3" in randomTest(1000, 10, 31, 1000, 5)
-  "Trie ExistSupersetInt" should s"be correct for random sets 4" in randomTest(1000, 30, 31, 10000, 3)
+  "TrieInt ExistSupersetInt" should s"be correct for random sets 2" in randomTest(100, 5, 30, 100, 5)
+  "TrieInt ExistSupersetInt" should s"be correct for random sets 3" in randomTest(1000, 10, 30, 1000, 5)
+  "Trie ExistSupersetInt" should s"be correct for random sets 4" in randomTest(1000, 20, 30, 10000, 3)
 
 }

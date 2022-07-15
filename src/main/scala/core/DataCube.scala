@@ -2,9 +2,11 @@
 package core
 
 import backend._
+import core.ds.settrie.SetTrieForMoments
 import core.materialization.MaterializationScheme
 import core.materialization.builder._
 import core.prepare.Preparer
+import core.cube.CuboidIndex
 import core.solver.lpp.{SliceSparseSolver, SparseSolver}
 import core.solver.moment.Strategy._
 import core.solver.moment._
@@ -19,23 +21,23 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, future}
 
 /** To create a DataCube, must either
- * (1) call DataCube.build(full_cube) or
- * (2) call (companion object) DataCube.load(..)
- * before use.
- *
- * An instance of the DataCube class has an associated MaterializationScheme
- * that holds the metadata -- the decisions on which cuboids to materialize.
- *
- * The DataCube instance itself stores the Cuboids -- the data or proxies
- * to the data held in the backend.
- */
+  * (1) call DataCube.build(full_cube) or
+  * (2) call (companion object) DataCube.load(..)
+  * before use.
+  *
+  * An instance of the DataCube class has an associated MaterializationScheme
+  * that holds the metadata -- the decisions on which cuboids to materialize.
+  *
+  * The DataCube instance itself stores the Cuboids -- the data or proxies
+  * to the data held in the backend.
+  */
 @SerialVersionUID(2L)
 class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /* protected */
   var cuboids = Array[Cuboid]()
   var primaryMoments: (Long, Array[Long]) = null
-
+  var index: CuboidIndex = null
   def showProgress = m.n_bits > 25
 
   /** this is too slow. */
@@ -45,22 +47,22 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /**
-   * Builds this cube using the base_cuboid of another DataCube
-   */
+    * Builds this cube using the base_cuboid of another DataCube
+    */
   def buildFrom(that: DataCube): Unit = {
     val full_cube = that.cuboids.last
     build(full_cube)
   }
 
   /** build each cuboid from a smallest that subsumes it -- using
-   * MaterializationScheme.create_build_plan().
-   * has to be called explicitly, otherwise no data is created.
-   * In the end, the full_cube is at position cuboids.last (this is consistent
-   * with the order in m.projections).
-   *
-   * @param full_cube is integrated into the data cube as is and not copied.
-   */
-  def build(full_cube: Cuboid, cb : CubeBuilder = SimpleCubeBuilderMT) {
+    * MaterializationScheme.create_build_plan().
+    * has to be called explicitly, otherwise no data is created.
+    * In the end, the full_cube is at position cuboids.last (this is consistent
+    * with the order in m.projections).
+    *
+    * @param full_cube is integrated into the data cube as is and not copied.
+    */
+  def build(full_cube: Cuboid, cb: CubeBuilder = SimpleCubeBuilderMT) {
     assert(full_cube.n_bits == m.n_bits)
     cuboids = cb.build(full_cube, m, showProgress).toArray
 
@@ -73,12 +75,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** load the cuboids from files. Do not call this directly, but call
-   * the load method of the companion object instead.
-   *
-   * @param l a list of (isSparseCuboid, n_bits, size) triples, one list
-   *          entry for each cuboid to load.
-   * @deprecated Use load2 for multiple cuboids from a single file
-   */
+    * the load method of the companion object instead.
+    *
+    * @param l a list of (isSparseCuboid, n_bits, size) triples, one list
+    *          entry for each cuboid to load.
+    * @deprecated Use load2 for multiple cuboids from a single file
+    */
   protected def load(backend: Backend[Payload], l: List[(Boolean, Int, BigInt)], name_prefix: String) {
     cuboids = (l.zipWithIndex.map {
       case ((sparse, n_bits, size), id) =>
@@ -87,12 +89,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /**
-   * Loads cuboids from files. Do not call this directly, but invoke the load2 method of the companion object.
-   *
-   * @param be                Backend
-   * @param multicuboidLayout List of layout information, one per file. For each  file, we have
-   *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
-   */
+    * Loads cuboids from files. Do not call this directly, but invoke the load2 method of the companion object.
+    *
+    * @param be                Backend
+    * @param multicuboidLayout List of layout information, one per file. For each  file, we have
+    *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
+    */
   def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](m.projections.length)
     implicit val ec = ExecutionContext.global
@@ -110,9 +112,9 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** write the DataCube's metadata and cuboid data to a file.
-   *
-   * @param filename is the filename used for the metadata.
-   */
+    *
+    * @param filename is the filename used for the metadata.
+    */
   def save(filename: String) {
     val be = cuboids(0).backend
     val file = new File("cubedata/" + filename + "/" + filename + ".dc")
@@ -178,7 +180,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
 
   /** This is the only place where we transfer data from C into Scala.
-   */
+    */
   def fetch(pms: Seq[ProjectionMetaData]): Array[Payload] = {
     if (cuboids.length == 0) throw new Exception("Need to build first!")
 
@@ -195,18 +197,18 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /** Gets rid of the Payload box. */
   def fetch2[T](pms: Seq[ProjectionMetaData]
                )(implicit num: Fractional[T]): Seq[T] = {
-    fetch(pms).map(p =>Util.fromLong(p.smLong))
+    fetch(pms).map(p => Util.fromLong(p.smLong))
   }
 
   /** returns a solver for a given query. One needs to explicitly compute
-   * and extract bounds from it. (See the code of DataCube.online_agg() for
-   * an example.)
-   */
+    * and extract bounds from it. (See the code of DataCube.online_agg() for
+    * an example.)
+    */
   def solver[T](query: List[Int], max_fetch_dim: Int
                )(implicit num: Fractional[T]): SparseSolver[T] = {
 
     val l = Profiler("SolverPrepare") {
-     Preparer.default.prepareBatch(m, query, max_fetch_dim)
+      Preparer.default.prepareBatch(m, query, max_fetch_dim)
     }
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
@@ -219,44 +221,37 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** lets us provide a callback function that is called for increasing
-   * bit depths of relevant projections (as provided by
-   * MaterializationScheme.prepare_online_agg()).
-   *
-   * @param cheap_size is the number of dimensions up to which cuboids
-   *                   can be prepared for the initial iteration. cheap_size refers
-   *                   to the actual dimensionality of the cuboid, not to their
-   *                   dimensionality after projection to dimensions occurring in the
-   *                   query.
-   *
-   *                   Example:
-   * {{{
-   *import frontend.experiments.Tools._
-   *import core._
-   *import RationalTools._
-   *
-   *class CB {
-   *var bounds : Option[collection.mutable.ArrayBuffer[Interval[Rational]]] =
-   *None
-   *
-   *def callback(s: SparseSolver[Rational]) = {
-   *println(s.bounds)
-   *bounds = Some(s.bounds)
-   *true
-   *}
-   *}
-   *
-   *val dc = mkDC(10, 1, 2, 10)
-   *val cb = new CB
-   *dc.online_agg[Rational](List(0,1,2), 2, cb.callback)
-   *val final_result = cb.bounds.get
-   * }}}
-   */
+    bit depths of relevant projections (as provided by
+    MaterializationScheme.prepare_online_agg()).
+
+    @param cheap_size is the number of dimensions up to which cuboids
+    can be prepared for the initial iteration. cheap_size refers
+    to the actual dimensionality of the cuboid, not to their
+    dimensionality after projection to dimensions occurring in the
+    query.
+
+    @example {{{
+    import frontend.experiments.Tools._
+    import core._
+    import RationalTools._
+
+    class CB {
+    var bounds : Option[collection.mutable.ArrayBuffer[Interval[Rational]]] = None
+
+    def callback(s: SparseSolver[Rational]) = {
+    println(s.bounds)
+    bounds = Some(s.bounds)
+    true
+    }
+    }
+    }}}
+    */
   def online_agg[T](
-                     query: List[Int],
-                     cheap_size: Int,
-                     callback: SparseSolver[T] => Boolean, // returns whether to continue
-                     sliceFunc: Int => Boolean = _ => true // determines what variables to filter
-                   )(implicit num: Fractional[T]) {
+    query: List[Int],
+    cheap_size: Int,
+    callback: SparseSolver[T] => Boolean, // returns whether to continue
+    sliceFunc: Int => Boolean = _ => true // determines what variables to filter
+  )(implicit num: Fractional[T]) {
 
     var l = Preparer.default.prepareOnline(m, query, cheap_size, m.n_bits)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
@@ -295,8 +290,8 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** fetches the smallest subsuming cuboid and projects away columns not in
-   * the query. Does not involve a solver.
-   */
+    * the query. Does not involve a solver.
+    */
   def naive_eval(query: Seq[Int]): Array[Double] = {
     val l = Profiler("NaivePrepare") {
       Preparer.default.prepareBatch(m, query, m.n_bits)
@@ -351,13 +346,13 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 } // end DataCube
 
 /**
- * DataCube that builds projections from another data cube that contains only the full cuboid.
- * Does not materialize the full cuboid again.
- * Several PartialDataCubes can share the same full cuboid.
- *
- * @param m        Materialization Scheme
- * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
- */
+  * DataCube that builds projections from another data cube that contains only the full cuboid.
+  * Does not materialize the full cuboid again.
+  * Several PartialDataCubes can share the same full cuboid.
+  *
+  * @param m        Materialization Scheme
+  * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
+  */
 class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCube(m) {
   val base = DataCube.load2(basename)
 
@@ -426,17 +421,15 @@ class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCu
 
 object DataCube {
   /** creates and loads a DataCube.
-   *
-   * @param filename is the name of the metadata file.
-   *
-   *                 Example:
-   * {{{
-   *val dc = frontend.experiments.Tools.mkDC(10, 0.5, 1.8, 100,
-   *backend.ScalaBackend)
-   *dc.save("hello")
-   *core.DataCube.load("hello", backend.ScalaBackend)
-   * }}}
-   */
+     @param filename is the name of the metadata file.
+
+     @example{{{
+        val dc = frontend.experiments.Tools.mkDC(10, 0.5, 1.8, 100,
+        backend.ScalaBackend)
+        dc.save("hello")
+        core.DataCube.load("hello", backend.ScalaBackend)
+     }}}
+    */
   def load(filename: String, be: Backend[Payload] = CBackend.b): DataCube = {
     val file = new File("cubedata/" + filename + "/" + filename + ".dc")
     val ois = new ObjectInputStream(new FileInputStream(file))

@@ -1,7 +1,7 @@
 package core.prepare
 
+import core.ds.settrie.SetTrie
 import core.materialization.MaterializationScheme
-import core.solver.SetTrie
 import planning.ProjectionMetaData
 import util.{Bits, Profiler, Util}
 import util.Util.{intersect, intersect_intval3}
@@ -27,7 +27,7 @@ object SetTrieBatchPrepareWithInt extends Preparer {
 
     m.projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
-        val (ab0, ab0_i) = intersect_intval3(qL, p)
+        val (ab0, ab0_i) = intersect_intval3(qL, p.toList)
         val res = hm.get(ab0_i)
         val s = p.size
 

@@ -1,7 +1,7 @@
 package core.prepare
 
+import core.ds.settrie.SetTrieForPrepare
 import core.materialization.MaterializationScheme
-import core.solver.SetTrieOnline
 import planning.ProjectionMetaData
 import util.{Bits, Util}
 import util.Util.intersect
@@ -32,7 +32,7 @@ object SetTrieOnlinePrepareNoInt extends Preparer {
 
     m.projections.zipWithIndex.foreach { case (p, id) =>
       if (p.size <= max_fetch_dim) {
-        val ab0 = intersect(qL, p)
+        val ab0 = intersect(qL, p.toList)
         val res = hm.get(ab0)
         val s = p.size
 
@@ -45,15 +45,16 @@ object SetTrieOnlinePrepareNoInt extends Preparer {
       }
     }
 
-    val trie = new SetTrieOnline()
+    val trie = new SetTrieForPrepare(query.length * (1 << query.length))
     var projs = List[ProjectionMetaData]()
     //decreasing order of projection size
     hm.toList.sortBy(x => -x._1.size).foreach { case (ab0, (c, id, p)) =>
-      if (!trie.existsCheaperOrCheapSuperSet(ab0, c, cheap_size)) {
-        val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+      val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
+      val abInt = Bits.toInt(ab)
+      if (!trie.existsCheapSuperSetInt(abInt, c max cheap_size)) {
         val mask = Bits.mk_list_mask(p, qBS)
         projs = ProjectionMetaData(ab, ab0, mask, id) :: projs
-        trie.insert(ab0, c)
+        trie.insertInt(abInt, c)
       }
     }
     projs.sortBy(-_.accessible_bits.size)

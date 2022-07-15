@@ -3,7 +3,9 @@ package examples
 import backend._
 import breeze.linalg.DenseMatrix
 import core._
+import core.ds.settrie.SetTrieForMoments
 import core.materialization._
+import core.solver.RationalTools._
 import core.solver.SolverTools.error
 import core.solver._
 import core.solver.moment.Strategy._
@@ -15,7 +17,7 @@ import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
-import RationalTools._
+
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -27,7 +29,7 @@ object DemoTxt {
     import CBackend.b.{DenseCuboid => DC}
     val trie = new SetTrieForMoments()
 
-    def process(cidcol: (List[Int], Int)) = {
+    def process(cidcol: (IndexedSeq[Int], Int)) = {
       val cols = cidcol._1
       val cid = cidcol._2
       val n = cols.length
@@ -399,7 +401,7 @@ object DemoTxt {
     //backend_naive()
     //loadtest()
     //ssb_demo()
-    cooking_demo()
+    //cooking_demo()
     //trieCube()
     //toTrie()
   }

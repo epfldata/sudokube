@@ -20,7 +20,7 @@ trait BinarySearchPlan {
     val pi = new ProgressIndicator(ps.tail.length, "Create BST build plan", showProgress)
 
     ps.tail.foreach {
-      case ((l: List[Int]), (i: Int)) =>
+      case ((l: IndexedSeq[Int]), (i: Int)) =>
         val s = BitSet(l: _*)
         // binary search for good parent. Not always the best parent
         var idxB = build_plan.size - 1

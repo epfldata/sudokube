@@ -46,17 +46,17 @@ case class OldRandomizedMaterializationScheme(
 
   println("Creating materialization scheme...")
 
-  val projections: IndexedSeq[List[Int]] = {
+  val projections = {
     val r = (for (d <- 0 to n_bits - 1) yield {
       val n_proj = n_proj_d(d)
 
       print(n_proj + "/")
 
-      Util.collect_n[List[Int]](n_proj, () =>
+      Util.collect_n[IndexedSeq[Int]](n_proj, () =>
         Util.collect_n[Int](d, () =>
-          scala.util.Random.nextInt(n_bits)).sorted)
+          scala.util.Random.nextInt(n_bits)).toIndexedSeq.sorted)
     }
-      ).flatten ++ Vector((0 to n_bits - 1).toList)
+      ).flatten ++ Vector((0 to n_bits - 1))
     println("1")
     r
   }

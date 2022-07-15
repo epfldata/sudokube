@@ -1,5 +1,5 @@
+import core.ds.settrie.{SetTrie, SetTrieForMoments}
 import core.solver.moment.Moment1Transformer
-import core.solver.{SetTrie, SetTrieForMoments}
 import org.scalatest.{FlatSpec, Matchers}
 import util.{BigBinary, Bits, Util}
 
@@ -68,8 +68,8 @@ class SetTrieSpec extends FlatSpec with Matchers {
       val cs = Bits.fromInt(i).sorted
       trie.insert(cs, (i+1).toDouble)
     }
-    assert(trie.count == N)
-    def query(q: List[Int]) = {
+    assert(trie.nodeCount == N)
+    def query(q: IndexedSeq[Int]) = {
       val moments = trie.getNormalizedSubsetMoments(q).toMap
       val N = (1 << q.length)
       assert(moments.size == N)
@@ -79,22 +79,22 @@ class SetTrieSpec extends FlatSpec with Matchers {
       }
     }
 
-    query(List())
-    query((0 until nbits).toList)
-    query(List(5, 7, 9))
-    query(List(2, 5, 6))
-    query(List(0, 5, 6, 7))
-    query(List(0, 2, 3, 4, 8))
-    query(List(1, 3, 4))
+    query(Vector())
+    query((0 until nbits))
+    query(Vector(5, 7, 9))
+    query(Vector(2, 5, 6))
+    query(Vector(0, 5, 6, 7))
+    query(Vector(0, 2, 3, 4, 8))
+    query(Vector(1, 3, 4))
   }
 
   "SetTrie" should "return subset moments from cuboids for query " in {
     val trie = new SetTrieForMoments()
     def ms[T:ClassTag:Fractional](vs : Array[T]) = Moment1Transformer[T]().getMoments(vs)
-    trie.insertAll(List(0, 1), ms(Array(7, 3, 6, 1)))
-    trie.insertAll(List(1, 2), ms(Array(1, 4, 9, 3)))
-    trie.insertAll(List(0, 2), ms(Array(3, 2, 10, 2)))
-    assert(trie.count == 7)
+    trie.insertAll(Vector(0, 1), ms(Array(7, 3, 6, 1)))
+    trie.insertAll(Vector(1, 2), ms(Array(1, 4, 9, 3)))
+    trie.insertAll(Vector(0, 2), ms(Array(3, 2, 10, 2)))
+    assert(trie.nodeCount == 7)
     val filename = "triemoment"
     val file = new File("cubedata/" + filename + "/" + filename + ".trie")
     if(!file.exists())
@@ -105,8 +105,8 @@ class SetTrieSpec extends FlatSpec with Matchers {
 
     val ois = new ObjectInputStream(new FileInputStream(file))
     val trie2 = ois.readObject().asInstanceOf[SetTrieForMoments]
-    assert(trie2.count == 7)
-    val q = List(0, 1, 2)
+    assert(trie2.nodeCount == 7)
+    val q = Vector(0, 1, 2)
     val moments = trie2.getNormalizedSubsetMoments(q).sortBy(_._1)
     val actual = List(17, 4, 7, 1, 12, 2, 3).zipWithIndex.map{case (m, i) => (i, m.toDouble)}
     assert(moments.sameElements(actual))

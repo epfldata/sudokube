@@ -35,7 +35,7 @@ trait SimpleBuildPlan {
     val pi = new ProgressIndicator(ps.tail.length, "Create Simple Build Plan", showProgress)
 
     ps.tail.foreach {
-      case ((l: List[Int]), (i: Int)) => {
+      case ((l: IndexedSeq[Int]), (i: Int)) => {
         val s = l.toSet
 
         // first match is cheapest

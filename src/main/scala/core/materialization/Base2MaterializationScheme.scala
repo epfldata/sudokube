@@ -21,9 +21,9 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
     if (n < c) n.toInt else c.toInt
   } else 0
 
-  def getCuboidsForD(d: Int): Vector[List[Int]]
+  def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]]
 
-  override val projections: IndexedSeq[List[Int]] = {
+  override val projections = {
     val cubD = (0 until n_bits).flatMap { d =>
       if (d >= minD && d <= maxD) {
         val res = getCuboidsForD(d)
@@ -35,7 +35,7 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
       }
     }
     println("1") //for base cuboid
-    cubD ++ Vector((0 until n_bits).toList)
+    cubD ++ Vector((0 until n_bits))
   }
   println("Total =" + projections.length)
 }
@@ -44,9 +44,9 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
 @SerialVersionUID(4L)
 class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
   def this(sch: Schema2, logN: Double, minD: Int) = this(sch, logN, minD, (minD + logN - 1).toInt)
-  override def getCuboidsForD(d: Int): Vector[List[Int]] = {
+  override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
     val n_proj = n_proj_d(d)
-    (0 until n_proj).map { i => sch.root.samplePrefix(d).toList.sorted }.distinct.toVector
+    (0 until n_proj).map { i => sch.root.samplePrefix(d).toIndexedSeq.sorted }.distinct.toVector
   }
 }
 
@@ -56,10 +56,10 @@ class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, ma
 @SerialVersionUID(5L)
 class RandomizedMaterializationScheme(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {
   def this(n_bits: Int, logN: Double, minD: Int) = this(n_bits, logN, minD, (minD + logN - 1).toInt)
-  override def getCuboidsForD(d: Int): Vector[List[Int]] = {
+  override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
     val n_proj = n_proj_d(d)
-    Util.collect_n[List[Int]](n_proj, () =>
+    Util.collect_n[IndexedSeq[Int]](n_proj, () =>
       Util.collect_n[Int](d, () =>
-        scala.util.Random.nextInt(n_bits)).sorted).toVector
+        scala.util.Random.nextInt(n_bits)).toIndexedSeq.sorted).toVector
   }
 }

@@ -6,20 +6,7 @@ import util.Bits
 
 object ClassicPreparer extends Preparer {
 
-  /** Projection without filtering.
-   * Renormalizes: for each element of the result, .accessible_bits is
-   * a subset of the query, so we can now act as if the query was
-   * (0 to q.length - 1).
-   * We shift bits because otherwise the solver/optimizers can't handle them.
-   * This id is the index in projections. Assuming that the same ordering
-   * is used for the cuboids, it can be used to look up cuboids in the
-   * data cube.
-   *
-   * This returns as many elements as there are in projections.
-   * {{{
-   *    assert(qproject(q).length == projections.length)
-   * }}}
-   */
+
 
   def qproject(m: MaterializationScheme, q: Seq[Int]): Seq[ProjectionMetaData] = {
     val PI = m.projections.zipWithIndex

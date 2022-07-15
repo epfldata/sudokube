@@ -6,24 +6,24 @@ import util._
 @SerialVersionUID(2L)
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   /** the metadata describing each projection in this scheme. */
-  val projections: IndexedSeq[List[Int]]
+  val projections: IndexedSeq[IndexedSeq[Int]]
 
 }
 
 
 object MaterializationScheme {
   def only_base_cuboid(n_bits: Int) = new MaterializationScheme(n_bits) {
-    override val projections: IndexedSeq[List[Int]] = Vector((0 until n_bits).toList)
+    override val projections = Vector(0 until n_bits)
   }
 
   def all_cuboids(n_bits: Int) = new MaterializationScheme(n_bits) {
-    override val projections: IndexedSeq[List[Int]] = (0 until 1 << n_bits).map(i => Bits.fromInt(i).sorted)
+    override val projections = (0 until 1 << n_bits).map(i => Bits.fromInt(i).toIndexedSeq.sorted)
   }
 
   def all_subsetsOf(n_bits: Int, q: Seq[Int]) = new MaterializationScheme(n_bits) {
-    override val projections: IndexedSeq[List[Int]] = {
+    override val projections = {
       val idxes = q.toIndexedSeq
-      (0 until 1 << q.length).map(i => Bits.fromInt(i).map(idxes).sorted) :+ (0 until n_bits).toList
+      (0 until 1 << q.length).map(i => Bits.fromInt(i).map(idxes).toIndexedSeq.sorted) :+ (0 until n_bits)
     }
   }
 }
@@ -33,7 +33,7 @@ object MaterializationScheme {
  */
 case class PresetMaterializationScheme(
                                         _n_bits: Int,
-                                        val projections: IndexedSeq[List[Int]]
+                                        val projections: IndexedSeq[IndexedSeq[Int]]
                                       ) extends MaterializationScheme(_n_bits)
 
 
