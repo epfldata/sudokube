@@ -30,7 +30,7 @@ class PrimaryMomentsSpec extends FlatSpec with Matchers {
     dc.primaryMoments = (t1, m1)
     dc.savePrimaryMoments(cubename)
 
-    val dc2 = new core.DataCube(dc.m)
+    val dc2 = new core.DataCube()
     dc2.loadPrimaryMoments(cubename)
     val (t3, m3) = dc2.primaryMoments
 

@@ -5,10 +5,12 @@ import core.materialization.MaterializationScheme
 import planning.NewProjectionMetaData
 import util.Profiler
 
+import java.io.{ObjectInputStream, ObjectOutputStream}
 import scala.collection.mutable.ArrayBuffer
 
-class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq[IndexedSeq[Int]]) extends CuboidIndex {
-  override def saveToFile(path: String): Unit = ???
+class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
+  override val typeName: String = "SetTrie"
+  override protected def saveToOOS(oos: ObjectOutputStream): Unit = ???
   override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = Profiler("STCI qP"){
     val hm = collection.mutable.HashMap[Int, NewProjectionMetaData]()
     val queryLength = query.length
@@ -71,7 +73,7 @@ object SetTrieCuboidIndexFactory extends CuboidIndexFactory {
     val minD = m.projections.head.length
     val trie = new SetTrieIntersect(m.projections.length * 2 * minD)
     m.projections.zipWithIndex.sortBy(res => res._1.size).foreach{res => trie.insert(res._1, res._1.size, res._2, res._1)}
-    new SetTrieCuboidIndex(trie, m.projections)
+    new SetTrieCuboidIndex(trie, m.projections, m.n_bits)
   }
-  override def loadFromFile(path: String): CuboidIndex = ???
+  override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = ???
 }

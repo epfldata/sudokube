@@ -4,9 +4,14 @@ import core.materialization.MaterializationScheme
 import planning.{NewProjectionMetaData, ProjectionMetaData}
 import util.{Bits, Profiler}
 
-class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]]) extends CuboidIndex {
-  override def saveToFile(path: String): Unit = ???
+import java.io.{ObjectInputStream, ObjectOutputStream}
 
+class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
+  override val typeName: String = "Array"
+  override protected def saveToOOS(oos: ObjectOutputStream): Unit = {
+    oos.writeInt(n_bits)
+    oos.writeObject(projections)
+  }
   override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = Profiler("ACI qP"){
     val qBS = query.toSet
     val qIS = query.toIndexedSeq
@@ -35,6 +40,11 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]]) extends Cub
 }
 
 object ArrayCuboidIndexFactory extends CuboidIndexFactory {
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new ArrayCuboidIndex(m.projections)
-  override def loadFromFile(path: String): CuboidIndex = ???
+  override def buildFrom(m: MaterializationScheme): CuboidIndex = new ArrayCuboidIndex(m.projections, m.n_bits)
+  override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = {
+    val nbits = ois.readInt()
+    val projections = ois.readObject().asInstanceOf[IndexedSeq[IndexedSeq[Int]]]
+    new ArrayCuboidIndex(projections, nbits)
+  }
+
 }

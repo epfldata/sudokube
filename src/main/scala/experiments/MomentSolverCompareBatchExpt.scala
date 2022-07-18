@@ -95,7 +95,7 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
   def solve(dc: DataCube, strategy: Strategy, q: IndexedSeq[Int], sliceValues: IndexedSeq[Int] = Vector()) = {
     type T = Double
     val (l, pm) = Profiler(strategy + "Moment Prepare") {
-      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+      dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.cuboidCost
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)

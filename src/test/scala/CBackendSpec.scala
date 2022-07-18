@@ -175,8 +175,8 @@ class CBackendSpec extends FlatSpec with Matchers {
     val full_cube = be.map(_.mkAll(n_bits, R))
     val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
     val dcs = full_cube.map { fc =>
-      val dc = new DataCube(m)
-      dc.build(fc)
+      val dc = new DataCube()
+      dc.build(fc, m)
       dc
     }
     val queries = (3 to qmax).flatMap{ s => (1 to 100).map(i => Tools.rand_q(n_bits, s))}

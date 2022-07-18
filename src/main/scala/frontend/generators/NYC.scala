@@ -112,11 +112,13 @@ object NYC extends CubeGenerator("NYC") {
       (15, 6), (15, 10), (15, 14)
     ).map { case (logN, minD) =>
       val maxD = 30 // >15+14, so never passes threshold
-      val dc2 = new PartialDataCube(new RandomizedMaterializationScheme(sch.n_bits, logN, minD), cg.inputname + "_base")
-      dc2.build()
+      val rms = new RandomizedMaterializationScheme(sch.n_bits, logN, minD)
+      val dc2 = new PartialDataCube(cg.inputname + "_base")
+      dc2.buildPartial(rms)
       dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
-      val dc3 = new PartialDataCube(new SchemaBasedMaterializationScheme(sch, logN, minD), cg.inputname + "_base")
-      dc3.build()
+      val sms = new SchemaBasedMaterializationScheme(sch, logN, minD)
+      val dc3 = new PartialDataCube(cg.inputname + "_base")
+      dc3.buildPartial(sms)
       dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
     }
 

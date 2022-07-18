@@ -18,7 +18,7 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
 
   def lp_solve(dc: DataCube, q: IndexedSeq[Int]) = {
     val l = Profiler("LPSolve Prepare") {
-      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) //fetch most dominating cuboids other than full
+      dc.index.prepareBatch(q) //fetch most dominating cuboids other than full
     }
     val prepareMaxDim = l.last.cuboidCost
     //println("Prepare over. #Cuboids to fetch = "+l.size + "  Last cuboid size =" + prepareMaxDim)
@@ -60,7 +60,7 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
 
     val (naiveRes, naiveMaxDim) = Profiler("Naive Full") {
       val l = Profiler("NaivePrepare") {
-        dc.index.prepare(q, dc.m.n_bits, dc.m.n_bits)
+        dc.index.prepareNaive(q)
       }
       val maxDim = l.head.cuboidCost
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)

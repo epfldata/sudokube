@@ -12,6 +12,9 @@ trait CubeBuilder {
   def build(base: Cuboid, m: MaterializationScheme, showProgress: Boolean = false): IndexedSeq[Cuboid]
 }
 
+object CubeBuilder {
+  var default: CubeBuilder = TrieCubeBuilderMT
+}
 trait SingleThreadedCubeBuilder extends CubeBuilder {
   def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): Seq[(Set[Int], Int, Int)]
 

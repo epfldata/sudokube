@@ -39,7 +39,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     val prepareList = Profiler("Prepare") {
       //if (containsAllCuboids)
       //  FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 2, dc.m.n_bits)
-      dc.index.prepare(q, 2, dc.m.n_bits)
+      dc.index.prepareOnline(q, 2)
     }
     val totalsize = prepareList.length
     //println("Prepare over. #Cuboids to fetch = " + totalsize)

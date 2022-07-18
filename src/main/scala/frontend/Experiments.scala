@@ -8,8 +8,8 @@ import util._
 import backend._
 import core.cube.ArrayCuboidIndexFactory
 import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
-import core.solver.{Rational, RationalTools}
-import core.solver.lpp.Interval
+import core.solver.{Rational, RationalTools, SolverTools}
+import core.solver.lpp.{Interval, SliceSparseSolver}
 import generators._
 
 import scala.util.Random
@@ -44,8 +44,8 @@ object Tools {
   class JailBrokenDataCube(
     m: MaterializationScheme,
     fc: Cuboid
-  ) extends DataCube(m) with Serializable {
-    build(fc)
+  ) extends DataCube with Serializable {
+    build(fc, m)
 
     /// here one can access the cuboids directly
     def getCuboids = cuboids
@@ -65,8 +65,8 @@ object Tools {
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
     val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
-    val dc = new DataCube(m);
-    Profiler("Projections"){dc.build(fc)}
+    val dc = new DataCube();
+    Profiler("Projections"){dc.build(fc, m)}
     //    val dc = new JailBrokenDataCube(m, fc)
     //    assert(dc.getCuboids.last == fc)
     dc
@@ -98,7 +98,7 @@ object minus1_adv {
       val m = OldRandomizedMaterializationScheme(nbits, rf, base)
 
       //SBJ: Changed parameters for this calculation
-      val a = ArrayCuboidIndexFactory.buildFrom(m).prepare(q, nbits - 1, nbits - 1).groupBy(ps => Bits.hwZeroOne(ps.queryIntersection, qsize)._1)
+      val a = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q).groupBy(ps => Bits.hwZeroOne(ps.queryIntersection, qsize)._1)
       val full_cost = cost(a(q.length).head.cuboidCost)
       accum_full_cost += full_cost
 
@@ -194,7 +194,7 @@ object exp_e_df {
     import backend.Payload
     val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
     val q = (0 to qsize-1)
-    val l = ArrayCuboidIndexFactory.buildFrom(m).prepare(q, max_fetch_dim, max_fetch_dim).map(_.queryIntersection)
+    val l = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q, max_fetch_dim).map(_.queryIntersection)
 
 /*
     val n_vval = l.map(x => Big.pow2(x.length)).sum
@@ -255,7 +255,13 @@ object exp_error_bounds {
           val d = d5 * 5
           println("\nIt: " + i + ":" + j + " Query = " + q + "; " + d + " dims")
 
-          val s = dc.solver[Rational](q, d)
+          //TODO: SBJ: The parameter to dc.solver is in terms of original cuboid size. Check if d here is the size before or after projection
+          val l = Profiler("SolverPrepare") { dc.index.prepareBatch(q, d) }
+          val bounds = SolverTools.mk_all_non_neg[Rational](1 << q.length)
+          val data = Profiler("SolverFetch") { dc.fetch2(l) }
+          val s = Profiler("SolverConstructor") { new SliceSparseSolver[Rational](q.length, bounds, l.map(_.queryIntersection), data) }
+
+
           s.compute_bounds
 
           best_df = s.df

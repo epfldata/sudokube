@@ -2,7 +2,7 @@
 package core
 
 import backend._
-import core.cube.{CuboidIndex, OptimizedArrayCuboidIndexFactory}
+import core.cube.{CuboidIndex, CuboidIndexFactory}
 import core.ds.settrie.SetTrieForMoments
 import core.materialization.MaterializationScheme
 import core.materialization.builder._
@@ -30,21 +30,21 @@ import scala.reflect.ClassTag
   * to the data held in the backend.
   */
 @SerialVersionUID(2L)
-class DataCube(val m: MaterializationScheme) extends Serializable {
+class DataCube() extends Serializable {
 
   /* protected */
   var cuboids = Array[Cuboid]()
   var primaryMoments: (Long, Array[Long]) = null
-  var index: CuboidIndex = OptimizedArrayCuboidIndexFactory.buildFrom(m)
-  def showProgress = m.n_bits > 25
+  var index: CuboidIndex = null
+
 
 
   /**
     * Builds this cube using the base_cuboid of another DataCube
     */
-  def buildFrom(that: DataCube): Unit = {
+  def buildFrom(that: DataCube, m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default): Unit = {
     val full_cube = that.cuboids.last
-    build(full_cube)
+    build(full_cube, m, indexFactory, cb)
   }
 
   /** build each cuboid from a smallest that subsumes it -- using
@@ -55,8 +55,10 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     *
     * @param full_cube is integrated into the data cube as is and not copied.
     */
-  def build(full_cube: Cuboid, cb: CubeBuilder = SimpleCubeBuilderMT) {
+  def build(full_cube: Cuboid, m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) {
     assert(full_cube.n_bits == m.n_bits)
+    val showProgress = m.n_bits > 25
+    index = indexFactory.buildFrom(m)
     cuboids = cb.build(full_cube, m, showProgress).toArray
 
     val real_size = cuboids.map(c => c.size).sum
@@ -89,7 +91,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
     */
   def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
-    cuboids = new Array[Cuboid](m.projections.length)
+    cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
 
@@ -104,34 +106,11 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     Await.result(Future.sequence(futures), Duration.Inf)
   }
 
-  /** write the DataCube's metadata and cuboid data to a file.
-    *
-    * @param filename is the filename used for the metadata.
-    */
-  def save(filename: String) {
-    val be = cuboids(0).backend
-    val file = new File("cubedata/" + filename + "/" + filename + ".dc")
-    if (!file.exists())
-      file.getParentFile.mkdirs()
-    val l: List[(Boolean, Int, BigInt)] = (cuboids.zipWithIndex.map {
-      case (c, id) => {
-        val sparse = c.isInstanceOf[be.SparseCuboid];
-        be.writeCuboid(id, c, file.getParent); // this actually goes to the backend.
-        (sparse, c.n_bits, c.size)
-      }
-    }).toList
-
-    val oos = new ObjectOutputStream(new FileOutputStream(file))
-    oos.writeObject(m)
-    oos.writeObject(l)
-    oos.close
-  }
-
   final val threshold = 1000 * 1000 * 200
 
   def save2(filename: String) {
     val be = cuboids(0).backend
-    val file = new File("cubedata/" + filename + "/" + filename + ".dc2")
+    val file = new File("cubedata/" + filename + "/" + filename + ".mcl")
     if (!file.exists())
       file.getParentFile.mkdirs()
 
@@ -154,11 +133,11 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }
 
     val oos = new ObjectOutputStream(new FileOutputStream(file))
-    oos.writeObject(m)
     val multiCuboidLayoutData = multiCuboids.map(extractCuboidData)
     oos.writeObject(multiCuboidLayoutData)
     oos.close
 
+    index.saveToFile(filename)
     implicit val ec = ExecutionContext.global
     println(s"Writing cuboids to disk")
     val threadTasks = multiCuboids.zipWithIndex.map { case (mc, mcid) =>
@@ -200,7 +179,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   def solver[T:ClassTag](query: IndexedSeq[Int], max_fetch_dim: Int
                )(implicit num: Fractional[T]): SparseSolver[T] = {
     val l = Profiler("SolverPrepare") {
-      index.prepare(query, max_fetch_dim, max_fetch_dim)
+      index.prepareBatch(query)
     }
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
@@ -245,7 +224,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     sliceFunc: Int => Boolean = _ => true // determines what variables to filter
   )(implicit num: Fractional[T]) {
 
-    var prepareList = index.prepare(query, cheap_size, m.n_bits)
+    var prepareList = index.prepareOnline(query, cheap_size)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
     val s = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df = s.df
@@ -269,7 +248,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   def online_agg_moment(query: IndexedSeq[Int], cheap_size: Int, callback: MomentSolverAll[Double] => Boolean) = {
     val s = new MomentSolverAll[Double](query.size, CoMoment3)
-    val prepareList = index.prepare(query, cheap_size, m.n_bits)
+    val prepareList = index.prepareOnline(query, cheap_size)
     val iter = prepareList.iterator
     var cont = true
     while (iter.hasNext && cont) {
@@ -287,11 +266,11 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     */
   def naive_eval(query: IndexedSeq[Int]): Array[Double] = {
     val l = Profiler("NaivePrepare") {
-      index.prepare(query, m.n_bits, m.n_bits)
+      index.prepareNaive(query)
     }
     //println("Naive query "+l.head.mask.sum + "  fetch = " + l.head.mask.length)
     Profiler("NaiveFetch") {
-      fetch(l).map(p => p.sm.toDouble)
+      fetch(l).map(p => p.sm)
     }
   }
 
@@ -311,7 +290,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     val maxsize = 1L << 30
     val dim = 25
     val be = cuboids.head.backend
-    val cubs = m.projections.zipWithIndex.filter(_._1.length <= dim).map { case (cols, cid) =>
+    val cubs = index.zipWithIndex.filter(_._1.length <= dim).map { case (cols, cid) =>
       val n = cols.length
       val cuboid = cuboids(cid)
       assert(cuboid.n_bits == n)
@@ -346,13 +325,13 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   * @param m        Materialization Scheme
   * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
   */
-class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCube(m) {
+class PartialDataCube(basename: String) extends DataCube() {
   val base = DataCube.load2(basename)
 
-  def build() = buildFrom(base)
+   def buildPartial(m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
 
   override def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
-    cuboids = new Array[Cuboid](m.projections.length)
+    cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
     val tasks = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
@@ -371,7 +350,7 @@ class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCu
 
   override def save2(filename: String): Unit = {
     val be = cuboids(0).backend
-    val file = new File("cubedata/" + filename + "_partial/" + filename + ".pdc")
+    val file = new File("cubedata/" + filename + "_partial/" + filename + ".pmcl")
     if (!file.exists())
       file.getParentFile.mkdirs()
 
@@ -394,11 +373,11 @@ class PartialDataCube(m: MaterializationScheme, basename: String) extends DataCu
     }
 
     val oos = new ObjectOutputStream(new FileOutputStream(file))
-    oos.writeObject(m)
     val multiCuboidLayoutData = multiCuboids.map(extractCuboidData)
     oos.writeObject(multiCuboidLayoutData)
     oos.close
 
+    index.saveToFile(filename)
     implicit val ec = ExecutionContext.global
     println(s"Writing cuboids to disk")
     val threadTasks = multiCuboids.zipWithIndex.map { case (mc, mcid) =>
@@ -423,28 +402,16 @@ object DataCube {
         core.DataCube.load("hello", backend.ScalaBackend)
      }}}
     */
-  def load(filename: String, be: Backend[Payload] = CBackend.b): DataCube = {
-    val file = new File("cubedata/" + filename + "/" + filename + ".dc")
-    val ois = new ObjectInputStream(new FileInputStream(file))
-    val m = ois.readObject.asInstanceOf[MaterializationScheme]
-    val l = ois.readObject.asInstanceOf[List[(Boolean, Int, BigInt)]]
-    ois.close
-
-    val dc = new DataCube(m)
-    dc.load(be, l, file.getParent)
-
-    dc
-  }
 
   def load2(filename: String, be: Backend[Payload] = CBackend.b): DataCube = {
-    val file = new File("cubedata/" + filename + "/" + filename + ".dc2")
+    val file = new File("cubedata/" + filename + "/" + filename + ".mcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
-    val m = ois.readObject.asInstanceOf[MaterializationScheme]
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new DataCube(m)
+    val dc = new DataCube()
+    dc.index = CuboidIndexFactory.loadFromFile(filename)
     dc.load2(be, multiCuboidLayoutData, file.getParent)
 
     dc
@@ -455,12 +422,12 @@ object PartialDataCube {
   def load2(filename: String, basename: String, be: Backend[Payload] = CBackend.b) = {
     val file = new File("cubedata/" + filename + "_partial/" + filename + ".pdc")
     val ois = new ObjectInputStream(new FileInputStream(file))
-    val m = ois.readObject.asInstanceOf[MaterializationScheme]
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new PartialDataCube(m, basename)
+    val dc = new PartialDataCube(basename)
+    dc.index = CuboidIndexFactory.loadFromFile(filename)
     dc.load2(be, multiCuboidLayoutData, file.getParent)
     dc
   }

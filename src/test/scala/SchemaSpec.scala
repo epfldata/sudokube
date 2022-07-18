@@ -40,8 +40,8 @@ class SchemaSpec extends FreeSpec with Matchers {
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
     val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
-    val dc = new DataCube(matscheme)
-    dc.build(basecuboid)
+    val dc = new DataCube()
+    dc.build(basecuboid, matscheme)
 
     def perm_func(query: IndexedSeq[Int]) = {
       val query_sorted = query.sorted

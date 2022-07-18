@@ -56,8 +56,8 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
     val m = MaterializationScheme.only_base_cuboid(n_bits)
-    val dc1 = new DataCube(m)
-    dc1.build(full_cube)
+    val dc1 = new DataCube()
+    dc1.build(full_cube, m)
 
     dc1.save2(name)
 
@@ -82,8 +82,8 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
     val m = OldRandomizedMaterializationScheme(schema.n_bits, 1, 1)
-    val dc1 = new DataCube(m)
-    dc1.build(full_cube)
+    val dc1 = new DataCube()
+    dc1.build(full_cube, m)
     val name = "MultiCuboidTest1"
     dc1.save2(name)
 
@@ -121,8 +121,8 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
     val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
-    val dc1 = new DataCube(m)
-    dc1.build(full_cube)
+    val dc1 = new DataCube()
+    dc1.build(full_cube, m)
     dc1.save2(name)
 
     val dc2 = DataCube.load2(name)

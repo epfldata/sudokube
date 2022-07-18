@@ -16,7 +16,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
   def moment_solve(dc: DataCube, q: IndexedSeq[Int]): (CoMoment4Solver[Double], Int) = {
     val (l, pm) = Profiler("Moment Prepare") {
-      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.cuboidCost
     val fetched = Profiler("Moment Fetch") {
@@ -45,7 +45,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
 
   def ipf_solve(dc: DataCube, q: IndexedSeq[Int]): (VanillaIPFSolver, Int) = {
     val (l, _) = Profiler("Vanilla IPF Prepare") { // Same as moment for the moment
-      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.cuboidCost
     val fetched = Profiler("Vanilla IPF Fetch") { // Same as moment for the moment

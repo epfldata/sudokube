@@ -4,13 +4,15 @@ import core.materialization.MaterializationScheme
 import planning.{NewProjectionMetaData, ProjectionMetaData}
 import util.Bits
 
+import java.io.{ObjectInputStream, ObjectOutputStream}
 import scala.collection.mutable.ListBuffer
 
 /**
  * A directed acyclic graph representation of the projections, root is the full dimension projection. Has an edge from A to B if A.contains(B)
  */
-class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[IndexedSeq[Int]]) extends CuboidIndex {
-  override def saveToFile(path: String): Unit = ???
+class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
+  override val typeName: String = "DAG"
+  override protected def saveToOOS(oos: ObjectOutputStream): Unit = ???
   override def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
     val hm_cheap = collection.mutable.HashMap[Seq[Int], DagVertex]()
     val qSet = query.toSet
@@ -192,6 +194,6 @@ object DAGCuboidIndexFactory extends CuboidIndexFactory {
     }
     root
   }
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new DAGCuboidIndex(buildDag(m.projections.zipWithIndex.sortBy(-_._1.length)), m.projections)
-  override def loadFromFile(path: String): CuboidIndex = ???
+  override def buildFrom(m: MaterializationScheme): CuboidIndex = new DAGCuboidIndex(buildDag(m.projections.zipWithIndex.sortBy(-_._1.length)), m.projections, m.n_bits)
+  override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = ???
 }

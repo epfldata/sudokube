@@ -23,9 +23,9 @@ class DataCubeSpec extends FlatSpec with Matchers {
       c.asInstanceOf[mybackend.DenseCuboid].fetch.toList.map(
         _.asInstanceOf[Payload].sm.toInt)
 
-    for(i <- 0 to dc.m.projections.length - 1) {
-      val mask = Bits.mk_list_bitpos(dc.m.projections.last,
-                                        dc.m.projections(i).toSet).toArray
+    for(i <- 0 to dc.index.length - 1) {
+      val mask = Bits.mk_list_bitpos(dc.index.last,
+                                        dc.index(i).toSet).toArray
 
       val c       = dc.cuboids(i) //dc.getCuboids(i)
       val all    = 0 until c.n_bits

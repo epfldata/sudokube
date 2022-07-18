@@ -31,7 +31,7 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
     dcwarm.loadPrimaryMoments("warmup")
     val qs = (0 to nw).map { i =>
       val s = Random.nextInt(4) + 4
-      Tools.rand_q(dcwarm.m.n_bits, s)
+      Tools.rand_q(dcwarm.index.n_bits, s)
     }
 
     qs.foreach(q => run(dcwarm, "warmup", q, null, false, sliceValues = Vector()))

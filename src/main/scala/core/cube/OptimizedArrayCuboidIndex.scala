@@ -4,7 +4,11 @@ import core.materialization.MaterializationScheme
 import planning.NewProjectionMetaData
 import util.Profiler
 
-class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[Int]]) extends ArrayCuboidIndex(projections) {
+import java.io.ObjectInputStream
+
+
+class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends ArrayCuboidIndex(projections, n_bits) {
+  override val typeName: String = "OptimizedArray"
   def intersect(x: IndexedSeq[Int], y: IndexedSeq[Int]): (Int, IndexedSeq[Int]) = {
     var xid = 0
     var yid = 0
@@ -56,6 +60,10 @@ class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[
 }
 
 object OptimizedArrayCuboidIndexFactory extends CuboidIndexFactory {
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new OptimizedArrayCuboidIndex(m.projections)
-  override def loadFromFile(path: String): CuboidIndex = ???
+  override def buildFrom(m: MaterializationScheme): CuboidIndex = new OptimizedArrayCuboidIndex(m.projections, m. n_bits)
+  override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = {
+    val nbits = ois.readInt()
+    val projections = ois.readObject().asInstanceOf[IndexedSeq[IndexedSeq[Int]]]
+    new OptimizedArrayCuboidIndex(projections, nbits)
+  }
 }

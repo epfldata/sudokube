@@ -48,7 +48,7 @@ object Experimenter {
       val logN = names(2).toInt
       val minD = names(3).toInt
       val dc = PartialDataCube.load2(n, cg.inputname + "_base")
-      val projMap = dc.m.projections.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
+      val projMap = dc.index.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
       fileout.println(s"${logN}_${minD}," + projs)
       dc.cuboids.head.backend.reset
@@ -230,7 +230,7 @@ object Experimenter {
 
     def momentSolve(q: IndexedSeq[Int]) = {
       val (l, pm) = Profiler("Moment Prepare") {
-        dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+        dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
       }
       val maxDimFetch = l.last.cuboidCost
       //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
@@ -414,8 +414,10 @@ object Experimenter {
         println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+        val dc = new DataCube()
+        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
         expt.run(dc, fullname, q, null, sliceValues = Vector())
@@ -436,8 +438,10 @@ object Experimenter {
         println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+        val dc = new DataCube()
+        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
@@ -459,8 +463,10 @@ object Experimenter {
         println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+        val dc = new DataCube()
+        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
@@ -481,8 +487,10 @@ object Experimenter {
         println(s"Trial $i/$numIters")
         val (sch, r_its) = cg.generate2()
         sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
+        val dc = new DataCube()
+        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
         val q = 0 until cg.n_bits
@@ -534,7 +542,7 @@ object Experimenter {
 
         def solverRes(trans: MomentTransformer[T]) = {
 
-          val l = dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+          val l = dc.index.prepareBatch(q)
           val fetched = l.map(pm => (pm.queryIntersection, dc.fetch2[T](List(pm))))
           val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
           val s = new CoMoment4Solver[T](qu.size, true, trans, primaryMoments)
@@ -574,127 +582,6 @@ object Experimenter {
     }
   }
 
-  def solverScaling(batch: Boolean = true)(implicit numIters: Int) = {
-    List(15, 16, 17).foreach { nb =>
-      println("\n\nMicrobenchmark for Dimensionality = " + nb)
-      val cg = MicroBench(nb, 100000, 0.5, 0.25)
-      val fullname = cg.inputname + "_all"
-      Profiler.resetAll()
-      (1 to numIters).foreach { i =>
-        //println(s"Trial $i/$numIters")
-        val (sch, r_its) = cg.generate2()
-        sch.initBeforeEncode()
-        val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-        dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-        val moments = SolverTools.primaryMoments(dc, false)
-        val q = 0 until cg.n_bits
-        val pm2 = SolverTools.preparePrimaryMomentsForQuery[Double](q, moments)
-        val s0 = Profiler.profile("s0 Construct") {
-          new MomentSolverAll[Double](nb, CoMoment3)
-        }
-        val s1 = Profiler.profile("s1 Construct") {
-          new MomentSolverAll[Double](nb, CoMoment4)
-        }
-        val s2 = Profiler.profile("s2 Construct") {
-          new CoMoment4Solver[Double](nb, true, Moment1Transformer(), pm2)
-        }
-        val s3 = Profiler.profile("s3 Construct") {
-          new CoMoment4Solver[Double](nb, false, Moment1Transformer(), pm2)
-        }
-        val prepareList = dc.index.prepare(q, nb -1, nb - 1)
-        val iter = prepareList.iterator
-        while (iter.hasNext) {
-          val current = iter.next()
-          val fetched = dc.fetch2[Double](List(current))
-          val bits = current.queryIntersection
-          Profiler.profile("s0 Add") {
-            s0.add(bits, fetched)
-          }
-          Profiler.profile("s1 Add") {
-            s1.add(bits, fetched)
-          }
-          Profiler.profile("s2 Add") {
-            s2.add(bits, fetched)
-          }
-          Profiler.profile("s3 Add") {
-            s3.add(bits, fetched)
-          }
-
-          if (!batch) {
-            Profiler.profile("s0 FillMiss") {
-              s0.fillMissing()
-            }
-            Profiler.profile("s0 Solve") {
-              s0.fastSolve()
-            }
-
-            Profiler.profile("s1 FillMiss") {
-              s1.fillMissing()
-            }
-            Profiler.profile("s1 Solve") {
-              s1.fastSolve()
-            }
-
-            Profiler.profile("s2 FillMiss") {
-              s2.fillMissing()
-            }
-            Profiler.profile("s2 Solve") {
-              s2.solve()
-            }
-
-            Profiler.profile("s3 FillMiss") {
-              s3.fillMissing()
-            }
-            Profiler.profile("s3 Solve") {
-              s3.solve()
-            }
-          }
-        }
-
-        if (batch) {
-          Profiler.profile("s0 FillMiss") {
-            s0.fillMissing()
-          }
-          Profiler.profile("s0 Solve") {
-            s0.fastSolve()
-          }
-
-          Profiler.profile("s1 FillMiss") {
-            s1.fillMissing()
-          }
-          Profiler.profile("s1 Solve") {
-            s1.fastSolve()
-          }
-
-          Profiler.profile("s2 FillMiss") {
-            s2.fillMissing()
-          }
-          Profiler.profile("s2 Solve") {
-            s2.solve()
-          }
-
-          Profiler.profile("s3 FillMiss") {
-            s3.fillMissing()
-          }
-          Profiler.profile("s3 Solve") {
-            s3.solve()
-          }
-        }
-        import Tools.round
-        //println("Diff = ")
-        s1.sumValues.indices.foreach { i =>
-          val m0 = round(s0.sumValues(i), 8)
-          val m1 = round(s1.sumValues(i), 8)
-          val m2 = round(s2.moments(i), 8)
-          val m3 = round(s3.moments(i), 8)
-          if (m0 != m1 || m0 != m2 || m0 != m3)
-            println(s"$i ::: $m0 $m1 $m2 $m3")
-        }
-        dc.cuboids.head.backend.reset
-      }
-      Profiler.print()
-    }
-  }
 
   def manualSSB(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg = SSB(100)
@@ -888,7 +775,6 @@ object Experimenter {
       case "Fig12" | "manual" =>
         manualSSB(strategy, true)
         manualNYC(strategy, true)
-      case "scaling" => solverScaling(false)
       case _ => trieExpt[Rational]()
     }
   }

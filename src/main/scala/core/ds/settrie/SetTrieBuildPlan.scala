@@ -1,7 +1,5 @@
 package core.ds.settrie
 
-import scala.collection.mutable.SortedSet
-
 class SetTrieBuildPlan(var capacity: Int = 16) {
   val numFields = 5 //key, firstChild, nextSibling, cost, id
   var nodes = new Array[Int](capacity * numFields)

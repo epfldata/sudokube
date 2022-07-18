@@ -33,9 +33,9 @@ class PrepareSpec extends FlatSpec with Matchers {
     (0 until nq).foreach { i =>
       val q = Tools.rand_q(nbits, qs)
       print(i + " ")
-      val idx1po = Profiler("ArrayCuboidIndex PrepareOnline") { idx1.prepare(q, cheap, maxFetch) }
-      val idx2po = Profiler("OptimizedArrayCuboidIndex PrepareOnline") { idx2.prepare(q, cheap, maxFetch) }
-      val idx3po = Profiler("SetTrieCuboidIndex PrepareOnline") { idx3.prepare(q, cheap, maxFetch) }
+      val idx1po = Profiler("ArrayCuboidIndex PrepareOnline") { idx1.prepareOnline(q, cheap, maxFetch) }
+      val idx2po = Profiler("OptimizedArrayCuboidIndex PrepareOnline") { idx2.prepareOnline(q, cheap, maxFetch) }
+      val idx3po = Profiler("SetTrieCuboidIndex PrepareOnline") { idx3.prepareOnline(q, cheap, maxFetch) }
 
       isSameAs(idx1po, idx2po)
       isSameAs(idx1po, idx3po)
@@ -59,9 +59,9 @@ class PrepareSpec extends FlatSpec with Matchers {
     (0 until nq).foreach { i =>
       val q = Tools.rand_q(nbits, qs).toIndexedSeq
       print(i + " ")
-      val idx2pb = Profiler("OptimizedArrayCuboidIndex PrepareBatch") { idx2.prepare(q, maxFetch, maxFetch) }
-      val idx1pb = Profiler("ArrayCuboidIndex PrepareBatch") { idx1.prepare(q, maxFetch, maxFetch) }
-      val idx3pb = Profiler("SetTrieCuboidIndex PrepareBatch") { idx3.prepare(q, maxFetch, maxFetch) }
+      val idx2pb = Profiler("OptimizedArrayCuboidIndex PrepareBatch") { idx2.prepareBatch(q, maxFetch) }
+      val idx1pb = Profiler("ArrayCuboidIndex PrepareBatch") { idx1.prepareBatch(q, maxFetch) }
+      val idx3pb = Profiler("SetTrieCuboidIndex PrepareBatch") { idx3.prepareBatch(q, maxFetch) }
 
       isSameAs(idx2pb, idx1pb)
       isSameAs(idx3pb, idx1pb)

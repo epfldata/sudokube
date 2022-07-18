@@ -229,10 +229,10 @@ trait Schema extends Serializable {
     threadWrite.stopRunning()
     threadWrite.join()
     val matscheme = new RandomizedMaterializationScheme(n_bits, 8, 4)
-    val dc = new DataCube(matscheme)
+    val dc = new DataCube()
     //converts the partial cuboid into a cuboid
     sc = CBackend.b.finalisePartial(sc)
-    dc.build(sc)
+    dc.build(sc, matscheme)
     dc
  }
 

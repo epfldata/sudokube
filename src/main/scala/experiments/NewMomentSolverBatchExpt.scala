@@ -18,7 +18,7 @@ import util._
   def moment_solve(dc: DataCube, q: IndexedSeq[Int]) = {
 
     val (l, pm) = Profiler("Moment Prepare") {
-      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
     val maxDimFetch = l.last.cuboidCost
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
@@ -51,7 +51,7 @@ import util._
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Total") {
       val l = Profiler("Naive Prepare") {
-        dc.index.prepare(q, dc.m.n_bits, dc.m.n_bits)
+        dc.index.prepareNaive(q)
       }
       val maxDim = l.head.cuboidCost
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)

@@ -3,6 +3,7 @@ package examples
 import backend._
 import breeze.linalg.DenseMatrix
 import core._
+import core.cube.OptimizedArrayCuboidIndex
 import core.ds.settrie.SetTrieForMoments
 import core.materialization._
 import core.solver.RationalTools._
@@ -25,7 +26,7 @@ object DemoTxt {
 
   def trieCube(): Unit = {
     val dc = PartialDataCube.load2("SSB-sf100_sms3_15_14_30", "SSB-sf100_base")
-    val cids = dc.m.projections.zipWithIndex.groupBy(_._1.length).mapValues(_.head).values.toList.sortBy(_._1.length)
+    val cids = dc.index.asInstanceOf[OptimizedArrayCuboidIndex].zipWithIndex.groupBy(_._1.length).mapValues(_.head).values.toList.sortBy(_._1.length)
     import CBackend.b.{DenseCuboid => DC}
     val trie = new SetTrieForMoments()
 
@@ -100,69 +101,6 @@ object DemoTxt {
 
   }
 
-  def test() = {
-    val data = (0 to 15).map(i => BigBinary(i) -> i.toLong)
-    val nbits = 10
-    val dc = new DataCube(OldRandomizedMaterializationScheme(nbits, 1, 1))
-    dc.build(CBackend.b.mk(nbits, data.toIterator))
-    dc.save("test")
-  }
-
-  def loadtest(): Unit = {
-    val dc = core.DataCube.load("test")
-    println(dc.naive_eval(Vector(3, 4, 5, 6)).mkString("  "))
-  }
-
-  def solve(dc: DataCube)(qsize: Int) = {
-    Profiler.resetAll()
-
-    val q = Tools.rand_q(dc.m.n_bits, qsize)
-    println("Query =" + q)
-
-    val solver = Profiler("Solver") {
-      val s = Profiler("SolverInit") {
-        dc.solver[Rational](q, qsize - 1)
-      }
-      Profiler("SolverCB") {
-        s.compute_bounds
-      }
-      s
-    }
-    val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
-    val res2 = Profiler("Naive") {
-      dc.naive_eval(q)
-    }.mkString(" ")
-    println(res1)
-    println(res2)
-    println("DF = " + solver.df)
-    Profiler.print()
-  }
-
-
-
-  def solve2(dc: DataCube)(q: IndexedSeq[Int]) = {
-    Profiler.resetAll()
-
-    println("Query =" + q)
-
-    val solver = Profiler("Solver") {
-      val s = Profiler("SolverInit") {
-        dc.solver[Rational](q, q.size - 1)
-      }
-      Profiler("SolverCB") {
-        s.compute_bounds
-      }
-      s
-    }
-    val res1 = solver.bounds.map(i => i.lb.get + ":" + i.ub.get).mkString(" ")
-    val res2 = Profiler("Naive") {
-      dc.naive_eval(q)
-    }.mkString(" ")
-    println(res1)
-    println(res2)
-    println("DF = " + solver.df)
-    Profiler.print()
-  }
 
 
   def investment(): Unit = {
@@ -175,8 +113,8 @@ object DemoTxt {
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
     val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
-    val dc = new DataCube(matscheme)
-    dc.build(basecuboid)
+    val dc = new DataCube()
+    dc.build(basecuboid, matscheme)
 
     /*
     Exploration.col_names(sch)
@@ -289,62 +227,6 @@ object DemoTxt {
   }
 
 
-  def feature() = {
-
-    val n_cols = 3
-    val n_bits_per_col = 20
-    val n_bits = n_cols * n_bits_per_col
-    val n_rows = 100 * (1 << n_bits_per_col) + 10 //60 * 1000 * 1000
-
-    val time = new LD2("Time", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
-    val prod = new LD2("Product", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
-    val loc = new LD2("Location", new StaticNatCol(0, (1 << n_bits_per_col) - 2, StaticNatCol.defaultToInt))
-    val sch2 = new StaticSchema2(Vector(time, prod, loc))
-    //val columnMap = Map(0 -> "Time", "1" ->)
-    //val sch = schema.StaticSchema.mk(n_cols, n_bits_per_col, Map(0 -> "Time", 1 -> "Product", 2 -> "Location"))
-
-    def prefix(c: Int, n: Int) = {
-      val res = offset(c, 0 until n)
-      println(s"prefix($c $n) = $res")
-      res
-    }
-
-    def offset(c: Int, vs: Seq[Int]) = vs.reverse.map(n_bits_per_col * (c + 1) - 1 - _).toList
-
-    //--------------CUBE DATA GENERATION-------------
-    val vgs = collection.mutable.ArrayBuffer[ValueGenerator]()
-    vgs += ConstantValueGenerator(100)
-    vgs += RandomValueGenerator(10)
-    //vgs += SinValueGenerator(List(0, 1, 2, 3), List(5).map(x => n_bits_per_col + x) ++ List(1).map(x => 2*n_bits_per_col + x), 0, 1, 2)
-    vgs += SinValueGenerator(offset(0, List(2, 4, 6)), prefix(1, 1) ++ prefix(2, 1), 0, 1, 50)
-    //vgs += SinValueGenerator(List(1, 5, 7), List(11, 12), 0, 1, 8)
-    //vgs += SinValueGenerator(List(1, 2, 5), List(20, 22), 0, 1, 8)
-
-    vgs += TrendValueGenerator(prefix(0, 4), prefix(1, 3) ++ prefix(2, 5), 147, 1, 15 * 256 * 1)
-    vgs += TrendValueGenerator(prefix(0, 2), prefix(1, 2), 3, -1, 100)
-    //  //vgs += TrendValueGenerator( List(4, 5, 6, 7), List(), 0, 1, 10)
-    // vgs += TrendValueGenerator( prefix(0, 2), prefix(1, 3), 5, 1, 1*3)
-    //vgs += TrendValueGenerator(List(2, 3, 4, 5, 6, 7), List(15), 0, -1, 30)
-    val vg = SumValueGenerator(vgs)
-
-    val R = ParallelTupleGenerator2(sch2, n_rows, 1000, Sampling.f1, vg).data
-    println("mkDC: Creating maximum-granularity cuboid...")
-    val fc = CBackend.b.mkParallel(n_bits, R)
-    println("...done")
-    //val m = RandomizedMaterializationScheme2(n_bits, 13,math.min(20, (math.log(n_rows)/math.log(2)-1).toInt))
-    val m = MaterializationScheme.only_base_cuboid(n_bits)
-    val dcw = new DataCube(m);
-    dcw.build(fc)
-    dcw.save2("trend")
-    // ----------------- END CUBE DATA GENERATION ----------
-
-    val dc = core.DataCube.load2("trend")
-    println("Materialization Schema" + dc.m)
-
-    val display = FeatureFrame(sch2, dc, 50)
-
-  }
-
   def backend_naive() = {
     val n_bits = 10
     val n_rows = 40
@@ -354,8 +236,9 @@ object DemoTxt {
     val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
     val fullcub = CBackend.b.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
-    val dc = new DataCube(new RandomizedMaterializationScheme(n_bits, 6, 2))
-    dc.build(fullcub)
+    val dc = new DataCube()
+    val m = new RandomizedMaterializationScheme(n_bits, 6, 2)
+    dc.build(fullcub, m)
     (0 until n_queries).map { i =>
       val q = Tools.rand_q(n_bits, query_size)
       println("\nQuery =" + q)

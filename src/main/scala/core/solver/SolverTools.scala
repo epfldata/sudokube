@@ -7,12 +7,12 @@ import util.{ProgressIndicator, Util}
 
 object SolverTools {
   def primaryMoments(dc: DataCube, showProgress: Boolean = true): (Long, Array[Long]) = {
-    val nbits = dc.m.n_bits
+    val nbits = dc.index.n_bits
     var total = 0L
     val moments1D = Array.fill(nbits)(0L)
     val pi = new ProgressIndicator(nbits, "Primary Moment Computation", showProgress)
     moments1D.indices.foreach { i =>
-      val l = dc.index.prepare(Vector(i), nbits, nbits)
+      val l = dc.index.prepareNaive(Vector(i))
       val fetched = dc.fetch(l).map(_.smLong)
       if (i == 0)
         total = fetched.sum
