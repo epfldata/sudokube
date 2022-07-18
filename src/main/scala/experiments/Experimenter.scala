@@ -4,10 +4,9 @@ import backend.CBackend
 import combinatorics.Combinatorics
 import core._
 import core.materialization.MaterializationScheme
-import core.prepare.Preparer
 import core.solver.moment.Strategy._
-import core.solver.{Rational, SolverTools, RationalTools}
 import core.solver.moment._
+import core.solver.{Rational, RationalTools, SolverTools}
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
 import frontend.schema.encoders._
@@ -229,15 +228,15 @@ object Experimenter {
     CBackend.b.loadTrie(trie_filename)
     val sch = cg.schema()
 
-    def momentSolve(q: List[Int]) = {
+    def momentSolve(q: IndexedSeq[Int]) = {
       val (l, pm) = Profiler("Moment Prepare") {
-        Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+        dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
       }
-      val maxDimFetch = l.last.mask.length
+      val maxDimFetch = l.last.cuboidCost
       //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
       val fetched = Profiler("Moment Fetch") {
         l.map { pm =>
-          (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
+          (pm.queryIntersection, dc.fetch2[T](List(pm)))
         }
       }
       val result = Profiler(s"Moment Solve") {
@@ -260,7 +259,7 @@ object Experimenter {
       result
     }
 
-    def trieSolve(q: List[Int]) = {
+    def trieSolve(q: IndexedSeq[Int]) = {
       val pm = Profiler("Trie Prepare pm") {
         SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
       }
@@ -296,7 +295,7 @@ object Experimenter {
     qss.foreach { qs =>
       Profiler.resetAll()
       //val queries = mq.loadQueries(qs).take(1)
-      val queries = List(List(165, 181, 182, 183, 184, 185, 186))
+      val queries = List(Vector(165, 181, 182, 183, 184, 185, 186))
       println(s"Moment Solver  Trie Experiment for MS = $ms Query Dimensionality = $qs")
       val ql = queries.length
 
@@ -534,8 +533,9 @@ object Experimenter {
         val naiveRes = mq.loadQueryResult(qs, qid)
 
         def solverRes(trans: MomentTransformer[T]) = {
-          val l = Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1)
-          val fetched = l.map(pm => (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray))
+
+          val l = dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1)
+          val fetched = l.map(pm => (pm.queryIntersection, dc.fetch2[T](List(pm))))
           val primaryMoments = SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
           val s = new CoMoment4Solver[T](qu.size, true, trans, primaryMoments)
           fetched.foreach { case (bits, array) => s.add(bits, array) }
@@ -601,21 +601,23 @@ object Experimenter {
         val s3 = Profiler.profile("s3 Construct") {
           new CoMoment4Solver[Double](nb, false, Moment1Transformer(), pm2)
         }
-        var l = Preparer.default.prepareBatch(dc.m, q, nb - 1)
-        while (!(l.isEmpty)) {
-          val fetched = dc.fetch2[Double](List(l.head))
-          val bits = l.head.accessible_bits
+        val prepareList = dc.index.prepare(q, nb -1, nb - 1)
+        val iter = prepareList.iterator
+        while (iter.hasNext) {
+          val current = iter.next()
+          val fetched = dc.fetch2[Double](List(current))
+          val bits = current.queryIntersection
           Profiler.profile("s0 Add") {
-            s0.add(bits, fetched.toArray)
+            s0.add(bits, fetched)
           }
           Profiler.profile("s1 Add") {
-            s1.add(bits, fetched.toArray)
+            s1.add(bits, fetched)
           }
           Profiler.profile("s2 Add") {
-            s2.add(bits, fetched.toArray)
+            s2.add(bits, fetched)
           }
           Profiler.profile("s3 Add") {
-            s3.add(bits, fetched.toArray)
+            s3.add(bits, fetched)
           }
 
           if (!batch) {
@@ -647,8 +649,6 @@ object Experimenter {
               s3.solve()
             }
           }
-
-          l = l.tail
         }
 
         if (batch) {
@@ -716,12 +716,12 @@ object Experimenter {
     val ccity = encMap("cust_city").asInstanceOf[LazyMemCol].bits
     val mfgr = encMap("mfgr").asInstanceOf[LazyMemCol].bits
 
-    val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
-    queries += List(year, discount, qty) -> "d_year;lo_discount;lo_quantity"
-    queries += List(year, brand) -> "d_year;p_brand1"
-    queries += List(year, snation, cnation) -> "d_year;s_nation;c_nation"
-    queries += List(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year/2;c_city/4;s_city/4"
-    queries += List(year, snation, category) -> "d_year;s_nation;p_category"
+    val queries = collection.mutable.ArrayBuffer[(Vector[IndexedSeq[Int]], String)]()
+    queries += Vector(year, discount, qty) -> "d_year;lo_discount;lo_quantity"
+    queries += Vector(year, brand) -> "d_year;p_brand1"
+    queries += Vector(year, snation, cnation) -> "d_year;s_nation;c_nation"
+    queries += Vector(year.drop(1), ccity.drop(2), scity.drop(2)) -> "d_year/2;c_city/4;s_city/4"
+    queries += Vector(year, snation, category) -> "d_year;s_nation;p_category"
 
     val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
@@ -760,12 +760,12 @@ object Experimenter {
     val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
     val lawsect = encMap("Law Section").asInstanceOf[LazyMemCol].bits
 
-    val queries = collection.mutable.ArrayBuffer[(List[Seq[Int]], String)]()
-    queries += List(year, month) -> "issue_date_year;issue_date_month"
-    queries += List(year.drop(1), state) -> "issue_date_year/2;registration_state"
-    queries += List(ptype.drop(2), color.drop(5)) -> "plate_type/4;vehicle_color/32"
-    queries += List(make.drop(6), lawsect) -> "vehicle_make/64;law_section"
-    queries += List(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
+    val queries = collection.mutable.ArrayBuffer[(Vector[IndexedSeq[Int]], String)]()
+    queries += Vector(year, month) -> "issue_date_year;issue_date_month"
+    queries += Vector(year.drop(1), state) -> "issue_date_year/2;registration_state"
+    queries += Vector(ptype.drop(2), color.drop(5)) -> "plate_type/4;vehicle_color/32"
+    queries += Vector(make.drop(6), lawsect) -> "vehicle_make/64;law_section"
+    queries += Vector(year.drop(2), precinct.drop(3)) -> "issue_date_year/4;violation_precinct/8"
 
     val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
@@ -801,7 +801,7 @@ object Experimenter {
     val sch = cg.schema()
     //val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355)
     //val q2 = List(116, 117, 118, 119, 120, 129, 130, 131, 137, 138, 139, 155, 172, 180, 192)
-    val q = List(141, 142, 143, 144, 152, 153, 154, 155, 165, 171, 172, 180, 185, 186, 192)
+    val q = Vector(141, 142, 143, 144, 152, 153, 154, 155, 165, 171, 172, 180, 185, 186, 192)
     //val queries = (0 to 4).map(i => Tools.rand_q(429, 10))
     ////val numQs = sch.root.numPrefixUpto(15)
     ////(0 until 15).map(i => println(s"$i => " + numQs(i)))

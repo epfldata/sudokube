@@ -55,7 +55,7 @@ case class FeatureFrame(sch: Schema2, dc: DataCube, cheap_size: Int) {
   case class DimensionPanel(dimname: String, low: Int, high: Int, isColX: Boolean = false) extends GridBagPanel {
     var cur = if (isColX) high-1 else high + 1
 
-    def colsList = (cur to high).toList
+    def colsList = (cur to high)
 
     val plusButton = new Button("+")
     val minusButton = new Button("-")

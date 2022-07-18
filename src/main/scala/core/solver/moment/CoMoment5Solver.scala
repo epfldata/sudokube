@@ -27,9 +27,9 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
   override def fillMissing(): Unit = if (batchmode) fillMissingBatch() else fillMissingOnline()
 
 
-  override def add(cols: Seq[Int], values: Array[T]) {
-    val eqnColSet = Bits.toInt(cols)
-    val n0 = 1 << cols.length
+  override def add(eqnColSet: Int, values: Array[T]) : Unit =  {
+    val colsLength = Bits.hwZeroOne(eqnColSet, qsize)._1
+    val n0 = 1 << colsLength
 
     val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).
       filter({ case (i0, i) => !knownSet.contains(i) })
@@ -40,7 +40,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
     }
     else {
       //need more than log(n0) moments -- do moment transform and filter
-      val projectedMomentProduct =  (0 until cols.length).map{ case b =>
+      val projectedMomentProduct =  (0 until colsLength).map{ case b =>
         val i0 = 1 << b
         val i = Bits.unproject(i0, eqnColSet)
         i0 -> pmMap(i)

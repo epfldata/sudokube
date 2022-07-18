@@ -61,7 +61,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   @tailrec
   final def accCorrespondingBits(field: String, thresh: Int, acc: List[Int], n: Int = sch.n_bits-1): List[Int] = {
     if (n >= 0  && acc.size < thresh) {
-      if (sch.decode_dim(List(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
+      if (sch.decode_dim(Vector(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
         accCorrespondingBits(field, thresh, n :: acc, n-1)
       } else {
         accCorrespondingBits(field, thresh, acc, n-1)
@@ -84,9 +84,9 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    *                 and comparison operators prepended at the beginning to numerical values (<, >, <= and >=)
    * @return reconstructed matrix, with headers
    */
-  def query(qV: List[(String, Int, List[String])], qH: List[(String, Int, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM): Any = {
-    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, Nil))
-    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, Nil))
+  def query(qV: IndexedSeq[(String, Int, List[String])], qH: IndexedSeq[(String, Int, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM): Any = {
+    val queryBitsV = qV.map(x => accCorrespondingBits(x._1, x._2, Nil).toIndexedSeq)
+    val queryBitsH = qH.map(x => accCorrespondingBits(x._1, x._2, Nil).toIndexedSeq)
     val q_sorted = (queryBitsV.flatten ++ queryBitsH.flatten).sorted
     var resultArray: Array[Any] = Array.empty
     method match {
@@ -105,7 +105,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
     }
   }
 
-  def queryAlt(qV: List[(String, List[String])], qH: List[(String, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM = TUPLES_PREFIX): Any = {
+  def queryAlt(qV: IndexedSeq[(String, List[String])], qH: IndexedSeq[(String, List[String])], operator: OPERATOR = AND, method: METHOD = MOMENT, resultForm: RESULT_FORM = TUPLES_PREFIX): Any = {
     val result = query(qV.map(x => (x._1, sch.n_bits, x._2)), qH.map(x => (x._1, sch.n_bits, x._2)), operator, method, resultForm)
     result match {
       case array: Array[(String, Double)] => array.filter(_._2 != 0)
@@ -125,14 +125,15 @@ class UserCube(val cube: DataCube, val sch: Schema) {
   def queryDimension(q: (String, Int, List[String]), aggregateDim: String, method: METHOD, groupByMethod: String => String = (x => x)): Seq[(String, Double)] = {
     var res: Map[String, Double] = null
     if (aggregateDim == null) { //in this case simply take the fact
-      val resultArrayTuple = query(List(q), Nil, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]]
+      val resultArrayTuple = query(Vector(q), IndexedSeq.empty, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]]
         .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
       res = resultArrayTuple.map(x => (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), x._2)).groupBy(x => x._1)
         .map(value => (value._1, value._2.foldLeft(0.0)((acc, x) =>
           acc + x._2.toString.toDouble
         )))
     } else {
-      val resultArrayTuple = query(q :: List((aggregateDim, sch.n_bits, Nil)), Nil, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]] //refactor the aggregateDim param to be able to use the query function
+      //TODO: SBJ : Naively converted List to vector. Check if q can be added at the end
+      val resultArrayTuple = query(q +: Vector((aggregateDim, sch.n_bits, Nil)), IndexedSeq.empty, AND, method, TUPLES_PREFIX).asInstanceOf[Array[Any]] //refactor the aggregateDim param to be able to use the query function
         .map(x => x.asInstanceOf[(String, Any)]).filter(x => x._2 != "0.0")
       res = resultArrayTuple.map(x => (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false))).
         groupBy(x => x._1).map(value =>
@@ -174,7 +175,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param q_sorted bits of query, sorted
    * @return array of result, raw
    */
-  def momentMethod(q_sorted: List[Int]): Array[Any] = {
+  def momentMethod(q_sorted: IndexedSeq[Int]): Array[Any] = {
     var moment_method_result: Array[Double] = Array.empty
 
     def callback(s: MomentSolverAll[Double]) = {
@@ -193,7 +194,7 @@ class UserCube(val cube: DataCube, val sch: Schema) {
    * @param src source array, to transform in matrix
    * @return DenseMatrix concatenated with top and left headers
    */
-  def createResultMatrix(sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: OPERATOR, src: Array[Any]): DenseMatrix[String] = {
+  def createResultMatrix(sliceV: IndexedSeq[(String, List[String])], sliceH: IndexedSeq[(String, List[String])], qV: IndexedSeq[IndexedSeq[Int]], qH: IndexedSeq[IndexedSeq[Int]], op: OPERATOR, src: Array[Any]): DenseMatrix[String] = {
     val bH = qH.flatten.size
     val bV = qV.flatten.size
 

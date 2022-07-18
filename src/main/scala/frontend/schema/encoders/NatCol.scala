@@ -20,7 +20,7 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
     case s: String if Try(s.toInt).isSuccess => encode(s.toInt)
     case _ => BigBinary(0)
   }
-  override def queries(): Set[Seq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet //bits are stored in highest to lowest order
+  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet //bits are stored in highest to lowest order
   def encode_locally(v: Int): Int = {
     assert(v >= 0)
     register.registerIdx(v); v
@@ -34,7 +34,7 @@ class StaticNatCol(min_value: Int, max_value: Int, map_f : Any => Option[Int]) e
   override def decode_locally(i: Int): Int = i + min_value - 1
   override def encode_any(v: Any): BigBinary = map_f(v).map(x => encode(x)).getOrElse(BigBinary(0))
   override def maxIdx: Int = if(max_value >= min_value) max_value - min_value + 1 else 0
-  override def queries(): Set[Seq[Int]] = (0 to bits.length).map(l => bits.takeRight(l)).toSet  //storing bits in lowest to highest order
+  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.takeRight(l)).toSet  //storing bits in lowest to highest order
   override def n_bits: Int = if(max_value < min_value) 0 else math.ceil(math.log(max_value-min_value + 1)/math.log(2)).toInt
 }
 object StaticNatCol {
@@ -62,7 +62,7 @@ class FixedPointCol(decimal: Int = 2, max_val: Double = 0.0)(implicit bitPosRegi
   val multiplier = Math.pow(10, decimal)
   register.registerIdx((max_val* multiplier).toInt)
 
-  override def queries(): Set[Seq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet
+  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet
 
   override def encode_any(v: Any): BigBinary = v match {
     case i: Int => encode(i)

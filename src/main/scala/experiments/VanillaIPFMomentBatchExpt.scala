@@ -1,9 +1,8 @@
 package experiments
 
-import core.solver.SolverTools.error
-import core.prepare.Preparer
 import core.DataCube
 import core.solver.SolverTools
+import core.solver.SolverTools.error
 import core.solver.iterativeProportionalFittingSolver.VanillaIPFSolver
 import core.solver.moment.{CoMoment4Solver, Moment1Transformer}
 import util.Profiler
@@ -15,14 +14,14 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
       "IPFTotalTime(us), IPFPrepareTime(us), IPFFetchTime(us), IPFMaxDimFetched, IPFSolveTime(us), IPFErr"
   )
 
-  def moment_solve(dc: DataCube, q: Seq[Int]): (CoMoment4Solver[Double], Int) = {
+  def moment_solve(dc: DataCube, q: IndexedSeq[Int]): (CoMoment4Solver[Double], Int) = {
     val (l, pm) = Profiler("Moment Prepare") {
-      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
-    val maxDimFetch = l.last.mask.length
+    val maxDimFetch = l.last.cuboidCost
     val fetched = Profiler("Moment Fetch") {
       l.map { pm =>
-        (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
+        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
       }
     }
 
@@ -44,14 +43,14 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     (result, maxDimFetch)
   }
 
-  def ipf_solve(dc: DataCube, q: Seq[Int]): (VanillaIPFSolver, Int) = {
+  def ipf_solve(dc: DataCube, q: IndexedSeq[Int]): (VanillaIPFSolver, Int) = {
     val (l, _) = Profiler("Vanilla IPF Prepare") { // Same as moment for the moment
-      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
-    val maxDimFetch = l.last.mask.length
+    val maxDimFetch = l.last.cuboidCost
     val fetched = Profiler("Vanilla IPF Fetch") { // Same as moment for the moment
       l.map { pm =>
-        (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
+        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
       }
     }
 
@@ -70,7 +69,7 @@ class VanillaIPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Bool
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
 
     Profiler.resetAll()

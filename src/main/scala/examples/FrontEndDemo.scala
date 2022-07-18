@@ -25,13 +25,13 @@ object FrontEndDemo {
   def query_tuples(userCube: UserCube) = {
     //can query for array of tuples with bit format
     //query for Type, 2 bits, and price, 2 bits
-    var array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
+    var array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 
     //can query for array of tuples with prefix format
     //query for Type, 2 bits, and price, 2 bits
-    array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
   }
@@ -43,7 +43,7 @@ object FrontEndDemo {
   def query_array(userCube: UserCube) = {
     //can query for an array, return top/left/values
     //query for Region, 2 bits (qV) and time, 2 bits (qH)
-    val tuple = userCube.query(List(("Region", 2, Nil)), List(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
+    val tuple = userCube.query(Vector(("Region", 2, Nil)), Vector(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
       Array[Any], Array[Any])]
     println(tuple._1.mkString("top header\n(", ", ", ")\n"))
     println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
@@ -58,11 +58,11 @@ object FrontEndDemo {
    */
   def query_matrix(userCube: UserCube) = {
     //query for price, 1 bit (qV) and time, 3 bits (qH)
-    var matrix = userCube.query(List(("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    var matrix = userCube.query(Vector(("price", 1, Nil)), Vector(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
     //query for price, 1 bit, Region, 2 bits (qV) and time, 3 bits (qH)
-    matrix = userCube.query(List(("Region", 2, Nil), ("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    matrix = userCube.query(Vector(("Region", 2, Nil), ("price", 1, Nil)), Vector(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
   }
 
@@ -74,12 +74,12 @@ object FrontEndDemo {
    */
   def slice_and_dice(userCube: UserCube) = {
     //can slice and dice: select (Type = Dish || Type = Side) && price = cheap
-    var array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    var array = userCube.query(Vector(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Vector(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 
     //select (Type = Dish || Type = Side) || price = cheap
-    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Vector(), OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
     //delete zero tuples
@@ -94,7 +94,7 @@ object FrontEndDemo {
    * Note that this 'applyBinary' function only works with Tuples prefix query format
    */
   def query_binary(userCube: UserCube) = {
-    var array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    var array = userCube.query(Vector(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Vector(), OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     //delete zero tuples
     array = ArrayFunctions.deleteZeroColumns(array)
@@ -158,7 +158,7 @@ object FrontEndDemo {
    * Note that the gap specifies the size of the window
    */
   def check_aggregate(userCube: UserCube) = {
-    val res = userCube.query(List(("Region", 1, Nil), ("time", 4, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX)
+    val res = userCube.query(Vector(("Region", 1, Nil), ("time", 4, Nil)), Vector(), OR, MOMENT, TUPLES_PREFIX)
       .asInstanceOf[Array[Any]]
 
     var result = ArrayFunctions.windowAggregate(res, "time", 3, NUM_ROWS)

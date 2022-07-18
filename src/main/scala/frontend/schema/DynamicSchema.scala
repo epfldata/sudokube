@@ -71,7 +71,7 @@ class DynamicSchema extends Schema {
   implicit val bitPosRegistry = new BitPosRegistry
   val columns = collection.mutable.Map[String, ColEncoder[_]]()
   /* protected */
-  def columnList = columns.toList
+  def columnList = columns.toIndexedSeq
 
   /** stores integers efficiently using NatCol and a sign bit;
       everything else is represented by MemCol[Option[String]].

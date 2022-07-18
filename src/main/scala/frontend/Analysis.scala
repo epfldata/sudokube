@@ -4,7 +4,7 @@ import frontend.schema.TimeSeriesSchema
 
 class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
 
-    var list : List[String] = sch.columnList.filter(x => x._1 != "Time").map(x => x._1)
+    var list : IndexedSeq[String] = sch.columnList.filter(x => x._1 != "Time").map(x => x._1)
     var initList : List[String] = Nil
 
     /**
@@ -21,12 +21,12 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
          * @param qV : the other column we want consider
          * @return a list of (Int, List[Possibility]), Int corresponds to the Time (Number of line) and the list corresponds of all possibilities of change can happens
          */
-        def divideSub(i : Int, l : List[String], qV : List[(String, Int, List[String])]) : List[(Int, List[List[Possibility]])] = {
-            if(sch.columns("Time").bits.toList.length == i){
+        def divideSub(i : Int, l : List[String], qV : IndexedSeq[(String, Int, List[String])]) : List[(Int, List[List[Possibility]])] = {
+            if(sch.columns("Time").bits.length == i){
                 return Nil
             }
 
-            val r : Array[Any] = uc.query(List(("Time", i, l)) ++ qV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
+            val r : Array[Any] = uc.query(Vector(("Time", i, l)) ++ qV, IndexedSeq.empty, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case x : Array[Any] => x
                 case _ => Array[Any]()
             }
@@ -42,12 +42,12 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
                 val split : (List[String], List[String]) = splitArray(l)
                 val prev : Int = split._1(split._1.length - 1).toInt
                 val next : Int = split._2(0).toInt
-                val newQV : List[(String, Int, List[String])] = ignoreColumn(hasC, qV)
+                val newQV : IndexedSeq[(String, Int, List[String])] = ignoreColumn(hasC, qV)
                 list = newQV.map(x => x._1)
-                val change : List[(Int, List[List[Possibility]])] = detectedChange(uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(prev.toString))) ++ newQV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
+                val change : List[(Int, List[List[Possibility]])] = detectedChange(uc.query(Vector(("Time", sch.columns("Time").bits.toList.length, List(prev.toString))) ++ newQV, Vector(), AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case p : Array[Any] => p
                 case _ => Array[Any]()
-            }, uc.query(List(("Time", sch.columns("Time").bits.toList.length, List(next.toString))) ++ newQV, Nil, AND, MOMENT, resultForm = TUPLES_PREFIX) match {
+            }, uc.query(Vector(("Time", sch.columns("Time").bits.toList.length, List(next.toString))) ++ newQV, Vector(), AND, MOMENT, resultForm = TUPLES_PREFIX) match {
                 case p : Array[Any] => p
                 case _ => Array[Any]()
             }, prev, next)
@@ -58,7 +58,7 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
         }
         val max : Int = (Math.pow(2, sch.columns("Time").bits.toList.length).toInt - 1)
         initList = Range.inclusive(0, max).toList.map(_.toString)
-        val qV : List[(String, Int, List[String])] = list.map(x => (x, 1, Nil))
+        val qV : IndexedSeq[(String, Int, List[String])] = list.map(x => (x, 1, Nil))
         return divideSub(0, Nil, qV).sortBy(_._1)
   }
 
@@ -124,15 +124,16 @@ class Analysis(uc : UserCube, sch : TimeSeriesSchema) {
    * @param qV : list of the column to filter
    * @return list of column to consider (in the list we have only the column changing in the filter query)
    */
-  private def ignoreColumn(query : Array[String], qV : List[(String, Int, List[String])]) : List[(String, Int, List[String])] = {
+  private def ignoreColumn(query : Array[String], qV : IndexedSeq[(String, Int, List[String])]) : IndexedSeq[(String, Int, List[String])] = {
     if(qV.isEmpty){
-        return Nil
+        return IndexedSeq.empty
     }
     val inter : Array[String] = query.filter(_.contains(qV.head._1 + "=NULL"))
     if(inter.length == query.length){
         return ignoreColumn(query, qV.tail)
     }
-    return List(qV.head) ++ ignoreColumn(query, qV.tail)
+    //TODO: Converted List to Vector naively. Check if can be added at the end
+    return Vector(qV.head) ++ ignoreColumn(query, qV.tail)
   }
 
   /**

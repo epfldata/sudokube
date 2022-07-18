@@ -52,6 +52,7 @@ object DemoTxt {
   def momentSolver(): Unit = {
     val solver = new MomentSolverAll[Rational](3, Avg2)
     val actual = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
+    implicit def listToInt = Bits.toInt(_)
     solver.add(List(0, 1), Array(6, 4, 2, 3).map(Rational(_, 1)))
     solver.add(List(1, 2), Array(4, 3, 6, 2).map(Rational(_, 1)))
     solver.add(List(0, 2), Array(3, 4, 5, 3).map(Rational(_, 1)))
@@ -86,6 +87,7 @@ object DemoTxt {
     val solver = new CoMoment5SliceSolver[T](total ,slice,true, Moment1Transformer(), pm)
     //val solver = new CoMoment5Solver[T](total ,true, Moment1Transformer(), pm)
     val actual = Util.slice(Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble), slice)
+    implicit def listToInt = Bits.toInt(_)
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(x => num.fromInt(x)))
     solver.add(List(1, 2), Array(1, 4, 9, 3).map(x => num.fromInt(x)))
     solver.add(List(0, 2), Array(3, 2, 10, 2).map(x => num.fromInt(x)))
@@ -108,7 +110,7 @@ object DemoTxt {
 
   def loadtest(): Unit = {
     val dc = core.DataCube.load("test")
-    println(dc.naive_eval(List(3, 4, 5, 6)).mkString("  "))
+    println(dc.naive_eval(Vector(3, 4, 5, 6)).mkString("  "))
   }
 
   def solve(dc: DataCube)(qsize: Int) = {
@@ -138,7 +140,7 @@ object DemoTxt {
 
 
 
-  def solve2(dc: DataCube)(q: List[Int]) = {
+  def solve2(dc: DataCube)(q: IndexedSeq[Int]) = {
     Profiler.resetAll()
 
     println("Query =" + q)
@@ -191,8 +193,8 @@ object DemoTxt {
       x => (x._1(0) >= 1996) && (x._1(0) < 2020))
   */
 
-    val qV = List(0, 12) //Company
-    val qH = List(1) //even or odd years
+    val qV = Vector(0, 12) //Company
+    val qH = Vector(1) //even or odd years
 
     //FIXME: Replace query as Set[Int] instead of Seq[Int]. Until then, we assume query is sorted in increasing order of bits
     val q = (qV ++ qH).sorted
@@ -220,44 +222,44 @@ object DemoTxt {
     val userCube = UserCube.load("demoCube")
 
     //can query for a matrix
-    var matrix = userCube.query(List(("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    var matrix = userCube.query(Vector(("price", 1, Nil)), Vector(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
     // can add several dimensions, internal sorting
-    matrix = userCube.query(List(("Region", 2, Nil), ("price", 1, Nil)), List(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
+    matrix = userCube.query(Vector(("Region", 2, Nil), ("price", 1, Nil)), Vector(("time", 3, Nil)), AND, MOMENT, MATRIX).asInstanceOf[DenseMatrix[String]]
     println(matrix.toString(Int.MaxValue, Int.MaxValue) + "\n \n")
 
     //can query for an array, return top/left/values
-    val tuple = userCube.query(List(("Region", 2, Nil)), List(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
+    val tuple = userCube.query(Vector(("Region", 2, Nil)), Vector(("time", 2, Nil)), AND, MOMENT, ARRAY).asInstanceOf[(Array[Any],
       Array[Any], Array[Any])]
     println(tuple._1.mkString("top header\n(", ", ", ")\n"))
     println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
     println(tuple._3.mkString("values\n(", ", ", ")\n \n"))
 
   //can query for array of tuples with bit format
-    var array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
+    var array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 
     //can query for array of tuples with prefix format
-    array = userCube.query(List(("Type", 2, Nil), ("price", 2, Nil)), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 
     //can slice and dice: select (Type = Dish || Type = Side) && price = cheap
-    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Vector(), AND, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 
     //select (Type = Dish || Type = Side) || price = cheap
-    array = userCube.query(List(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 2, List("Dish", "Side")), ("price", 2, List("cheap"))), Vector(), OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
     //delete zero tuples
     array = ArrayFunctions.deleteZeroColumns(array)
     println(array.mkString("(", "\n ", ")\n \n"))
 
-    array = userCube.query(List(("Type", 0, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
+    array = userCube.query(Vector(("Type", 0, Nil)), Vector(), OR, MOMENT, TUPLES_PREFIX).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
 

@@ -5,7 +5,7 @@ import planning.NewProjectionMetaData
 import util.Profiler
 
 class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[Int]]) extends ArrayCuboidIndex(projections) {
-  def intersect(x: IndexedSeq[Int], y: IndexedSeq[Int]): (Int, Seq[Int]) = {
+  def intersect(x: IndexedSeq[Int], y: IndexedSeq[Int]): (Int, IndexedSeq[Int]) = {
     var xid = 0
     var yid = 0
 

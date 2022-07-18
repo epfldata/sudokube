@@ -1,9 +1,8 @@
 package experiments
 
-import core.prepare.Preparer
-import core.solver.lpp.SliceSparseSolver
 import core.DataCube
 import core.solver.SolverTools
+import core.solver.lpp.SliceSparseSolver
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 
 import scala.reflect.ClassTag
@@ -13,7 +12,7 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
   //println("LP Solver of type " + implicitly[ClassTag[T]])
 
   var queryCounter = 0
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     val qstr = qu.mkString(":")
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -29,28 +28,29 @@ class LPSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "")(impl
     val solver = new SliceSparseSolver[T](q.length, b1, Nil, Nil)
     var maxDimFetched = 0
     stg.task = () => (maxDimFetched, solver.getStats)
-    var l = Profiler("Prepare") {
-      Preparer.default.prepareOnline(dc.m, q, 30, dc.m.n_bits)
+    val prepareList = Profiler("Prepare") {
+      dc.index.prepare(q, 30, dc.m.n_bits)
     }
-    val totalsize = l.size
+    val iter = prepareList.iterator
+    val totalsize = prepareList.size
     //println("Prepare over. #Cuboids to fetch = " + totalsize)
     //Profiler.print()
-    val pi = new ProgressIndicator(l.size)
+    val pi = new ProgressIndicator(totalsize)
 
-    while (!(l.isEmpty) && solver.df > 0) {
-      val bits = l.head.accessible_bits
+    while (iter.hasNext && solver.df > 0) {
+      val current = iter.next()
+      val bits = current.queryIntersection
       if (solver.shouldFetch(bits)) {
-        val masklen = l.head.mask.length
+        val masklen = current.cuboidCost
         if (masklen > maxDimFetched)
           maxDimFetched = masklen
-        val fetched = dc.fetch2(List(l.head))
+        val fetched = dc.fetch2(List(current))
         solver.add2(List(bits), fetched)
         solver.gauss(solver.det_vars)
         solver.compute_bounds
         stg.record()
         if (output)
           pi.step
-        l = l.tail
       }
       stg.finish()
     }

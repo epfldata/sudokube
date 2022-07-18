@@ -23,7 +23,7 @@ object DataCubeOnlineAgg {
 
     val dc = mkDC(10, 1, 2, 10)
     val cb = new CB
-    dc.online_agg[Rational](List(0, 1, 2), 2, cb.callback)
+    dc.online_agg[Rational](Vector(0, 1, 2), 2, cb.callback)
     val final_result = cb.bounds.get
 
   }

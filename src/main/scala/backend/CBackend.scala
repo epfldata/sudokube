@@ -62,7 +62,7 @@ class CBackend extends Backend[Payload] {
 
   override def saveAsTrie(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long): Unit = saveAsTrie0(cuboids, filename, maxSize)
   override def loadTrie(filename: String): Unit = loadTrie0(filename)
-  override def prepareFromTrie(query: List[Int]): Seq[(Int, Long)] = prepareFromTrie0(query.sorted.toArray).toSeq
+  override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = prepareFromTrie0(query.sorted.toArray).toSeq
 
   override def reset: Unit = reset0()
 
@@ -178,29 +178,24 @@ class CBackend extends Backend[Payload] {
   // inherited methods seem to add some invisible args that break JNI,
   // so we have yet another indirection.
 
-  protected def hybridRehash(s_id: Int, mask: Array[Int]): Int = {
-    val pos = mask.indices.filter(i => mask(i) == 1).toArray
-    shhash(s_id, pos)
+  protected def hybridRehash(s_id: Int, bitpos: IndexedSeq[Int]): Int = {
+    shhash(s_id, bitpos.toArray)
   }
 
-  protected def sRehash(s_id: Int, mask: Array[Int]): Int = {
-    val pos = mask.indices.filter(i => mask(i) == 1).toArray
-    sRehash0(s_id, pos)
+  protected def sRehash(s_id: Int, bitpos: IndexedSeq[Int]): Int = {
+    sRehash0(s_id, bitpos.toArray)
   }
 
-  protected def d2sRehash(n_bits: Int, d_id: Int, mask: Array[Int]): Int = {
-    val pos = mask.indices.filter(i => mask(i) == 1).toArray
-    d2sRehash0(d_id, pos)
+  protected def d2sRehash(n_bits: Int, d_id: Int, bitpos: IndexedSeq[Int]): Int = {
+    d2sRehash0(d_id, bitpos.toArray)
   }
 
-  protected def s2dRehash(s_id: Int, d_bits: Int, mask: Array[Int]): Int = {
-    val pos = mask.indices.filter(i => mask(i) == 1).toArray
-    s2dRehash0(s_id, pos)
+  protected def s2dRehash(s_id: Int, d_bits: Int, bitpos: IndexedSeq[Int]): Int = {
+    s2dRehash0(s_id, bitpos.toArray)
   }
 
-  protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, mask: Array[Int]): Int = {
-    val pos = mask.indices.filter(i => mask(i) == 1).toArray
-    dRehash0(d_id, pos)
+  protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, bitpos: IndexedSeq[Int]): Int = {
+    dRehash0(d_id, bitpos.toArray)
   }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] =

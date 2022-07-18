@@ -1,7 +1,6 @@
 //package ch.epfl.data.sudokube
 package core.solver
 import core.DataCube
-import core.prepare.Preparer
 import core.solver.lpp.Interval
 import util.{ProgressIndicator, Util}
 
@@ -13,7 +12,7 @@ object SolverTools {
     val moments1D = Array.fill(nbits)(0L)
     val pi = new ProgressIndicator(nbits, "Primary Moment Computation", showProgress)
     moments1D.indices.foreach { i =>
-      val l = Preparer.default.prepareBatch(dc.m, List(i), nbits)
+      val l = dc.index.prepare(Vector(i), nbits, nbits)
       val fetched = dc.fetch(l).map(_.smLong)
       if (i == 0)
         total = fetched.sum
@@ -93,9 +92,9 @@ object SolverTools {
    */
   def mk_constraints[PayloadT](
                                 n_bits: Int,
-                                projections: Seq[Seq[Int]],
+                                projections: Seq[Int],
                                 v: Seq[PayloadT]): Seq[(Seq[Int], PayloadT)] =
-    projections.map(util.Bits.group_values(_, 0 to (n_bits - 1)).map(
+    projections.map(util.Bits.group_values_Int(_, n_bits).map(
       x => x.map(_.toInt))).flatten.zip(v)
 } // end SolverTools
 

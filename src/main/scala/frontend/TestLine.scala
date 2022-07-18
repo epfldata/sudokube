@@ -10,7 +10,7 @@ case object TestLine {
    * @param q_unsorted the slice query, with each of the form (prefix, List(slice_value_1, slice_value_2...))
    * @return true if the slice condition is not fulfilled, false otherwise
    */
-  def testLineOp(op: OPERATOR, splitString: Array[String], q_unsorted: List[(String, List[String])]): Boolean = {
+  def testLineOp(op: OPERATOR, splitString: Array[String], q_unsorted: IndexedSeq[(String, List[String])]): Boolean = {
     if (q_unsorted.isEmpty) { //return false if the slice operation is empty
       return false
     }
@@ -26,7 +26,7 @@ case object TestLine {
    * @param n           index of field considered
    * @return true <=> all the conditions are not fulfilled
    */
-  private def testLine(splitString: Array[String], q_sorted: List[(String, List[String])], n: Int, op : OPERATOR): Boolean = {
+  private def testLine(splitString: Array[String], q_sorted: IndexedSeq[(String, List[String])], n: Int, op : OPERATOR): Boolean = {
     if (q_sorted.flatMap(x => x._2).isEmpty) {
       return false
     }

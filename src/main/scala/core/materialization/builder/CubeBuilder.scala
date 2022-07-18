@@ -27,8 +27,8 @@ trait SingleThreadedCubeBuilder extends CubeBuilder {
     build_plan.foreach {
       case (_, id, -1) => ab(id) = full_cube
       case (s, id, parent_id) => {
-        val mask = Bits.mk_list_mask(m.projections(parent_id), s).toArray
-        ab(id) = ab(parent_id).rehash(mask)
+        val bitpos = Bits.mk_list_bitpos(m.projections(parent_id), s)
+        ab(id) = ab(parent_id).rehash(bitpos)
 
         // completion status updates
         if (showProgress) {
@@ -52,9 +52,9 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
     build_plan.foreach {
       case (_, id, -1) => cuboidFutures(id) = Future {full_cube}
       case (s, id, parent_id) =>
-        val mask = Bits.mk_list_mask(m.projections(parent_id), s).toArray
+        val bitpos = Bits.mk_list_bitpos(m.projections(parent_id), s)
         cuboidFutures(id) = cuboidFutures(parent_id).map { oldcub =>
-          val newcub = oldcub.rehash(mask)
+          val newcub = oldcub.rehash(bitpos)
             pi.step
           newcub
         }

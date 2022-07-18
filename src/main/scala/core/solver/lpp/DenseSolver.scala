@@ -10,7 +10,7 @@ import core.solver.SolverTools
 
     @param n_bits       the length of the query. The query consists of
                         the bits 0 ... n_bits - 1.
-    @param projections  subsets of q
+    @param projections  subsets of q encoded using Int
     @param v0           is the values read from the cuboids for these
                         projections, in the same order as in the list
                         projections.
@@ -18,7 +18,7 @@ import core.solver.SolverTools
 case class DenseSolver(
   n_bits: Int,
   bounds: collection.mutable.ArrayBuffer[Interval[Double]],
-  projections: Seq[Seq[Int]],
+  projections: Seq[Int],
   v: Array[Payload]
 ) {
   assert(n_bits < 31)

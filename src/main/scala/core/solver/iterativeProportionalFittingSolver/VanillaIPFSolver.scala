@@ -19,8 +19,8 @@ class VanillaIPFSolver(val numDimensionsQueried: Int) {
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
-    clusters = Cluster(Bits.toInt(marginalVariables), marginalDistribution) :: clusters
+  def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
+    clusters = Cluster(marginalVariables, marginalDistribution) :: clusters
   }
 
   /**

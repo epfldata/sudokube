@@ -21,8 +21,8 @@ class CBackendSpec extends FlatSpec with Matchers {
       CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
-    val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
-    val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
+    val d = c.rehash_to_sparse(Array(0, 1)) // keep both dimensions
+    val e = d.rehash_to_dense(Array(0))  // project down to the 1st dimension
     assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
   }
 
@@ -36,7 +36,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     assert(c.size == 20)
     assert(c.numBytes == 420)
-    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).filter { i => pos.contains(i)}
 
     val m0 = Set(0, 1, 2, 3, 4)
     val m1 = m0 ++ Set(20, 21, 22, 23, 24)
@@ -92,8 +92,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     val c = my_mk(100, (1 to 20).map(i => (i, i)))
 
-    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
-
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).filter(i => pos.contains(i))
     val c1 = c.rehash(toMask(100, Set(0,2,3)))
     assert(c1.isInstanceOf[CBackend.b.DenseCuboid])
     val c2_ = c.rehash(toMask(100, Set(0, 2, 3, 20, 30)))
@@ -121,15 +120,15 @@ class CBackendSpec extends FlatSpec with Matchers {
     def my_mk(d: Int, l: List[(Int, Int)]) =
       ScalaBackend.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
-    val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
-    val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
+    val d = c.rehash_to_sparse(Array(0, 1)) // keep both dimensions
+    val e = d.rehash_to_dense(Array(0))  // project down to the 1st dimension
     assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
   }
 
   "CBackend first projecting to an intermediate query and then down to a lower-dimensional query in three different ways" should "always yield the same result as directly projecting down to the lower-dimensional query" in {
 
-    def mk_mask(d: Int, l: List[Int]) =
-      Bits.mk_list_mask(0 to d - 1, l.toSet).toArray
+    def mk_mask(d: Int, l: IndexedSeq[Int]) =
+      Bits.mk_list_bitpos(0 to d - 1, l.toSet).toArray
 
     val n_bits = 70
     val schema = StaticSchema.mk(n_bits)
@@ -137,8 +136,8 @@ class CBackendSpec extends FlatSpec with Matchers {
     for(it <- 1 to 50) {
       val R   = TupleGenerator(schema, 100, Sampling.f1).toList
       val c   = CBackend.b.mkAll(n_bits, R)
-      val q1  = Util.rnd_choose(n_bits,    6)
-      val q2  = Util.rnd_choose(q1.length, 3)
+      val q1  = Util.rnd_choose(n_bits,    6).toIndexedSeq
+      val q2  = Util.rnd_choose(q1.length, 3).toIndexedSeq
       val qmask = mk_mask(n_bits, q2.map(q1(_)))
 
       val r1 =  c.rehash_to_dense( qmask).fetch.toList
@@ -226,15 +225,15 @@ class CBackendSpec extends FlatSpec with Matchers {
     data.foreach{case (BigBinary(k), v) => dataArray(k.toInt) += v }
 
     val base = CBackend.b.mk(nbits, data.toIterator)
-    val allOne = Array.fill(nbits)(1)
-    val densecub = base.rehash_to_dense(allOne)
+    val all = 0 until nbits
+    val densecub = base.rehash_to_dense(all)
     val densearray = densecub.fetch.map(_.sm )
     assert(densearray.sameElements(dataArray))
 
     val denseMoments = Moment1Transformer[Double]().getMoments(densearray)
 
     CBackend.b.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
-    val trieResult  = CBackend.b.prepareFromTrie((0 until nbits).toList)
+    val trieResult  = CBackend.b.prepareFromTrie((0 until nbits))
     val trieMomentArray = Array.fill(N)(0.0)
     trieResult.foreach{case (k, v) => trieMomentArray(k) += v.toDouble }
     val total = dataArray.sum

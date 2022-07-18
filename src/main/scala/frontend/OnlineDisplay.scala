@@ -29,7 +29,7 @@ case class OnlineDisplay(schema: Schema, dc: DataCube,
   protected var ex = false // set to true to exit from thread
 
   /** runs in the main thread */
-  def l_run(q: List[Int], cheap_size: Int) = {
+  def l_run(q: IndexedSeq[Int], cheap_size: Int) = {
     import RationalTools._
 
     def callback(s: SparseSolver[Rational]) = {
@@ -43,7 +43,7 @@ case class OnlineDisplay(schema: Schema, dc: DataCube,
   }
 
   /** runs in a separate thread */
-  def t_run(q: List[Int], cheap_size: Int) {
+  def t_run(q: IndexedSeq[Int], cheap_size: Int) {
     ex = false
     (new Thread { override def run { l_run(q, cheap_size) } }).start
   }

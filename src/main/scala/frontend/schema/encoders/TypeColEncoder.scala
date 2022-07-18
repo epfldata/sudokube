@@ -25,7 +25,7 @@ class TypeColEncoder[T](init_size: Int = 1
     
     def decode_locally(i: Int): T = decode_map(i).asInstanceOf[T]
     
-    override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+    override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
 
     /** returns index in collection vals. */
     def encode_locally(v: T): Int = {

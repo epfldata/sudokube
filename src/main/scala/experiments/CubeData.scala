@@ -1,9 +1,8 @@
 package experiments
 
 import core.DataCube
-import core.prepare.Preparer
 import core.solver.lpp.SparseSolver
-import core.solver.{Rational, SolverTools, RationalTools}
+import core.solver.{Rational, RationalTools, SolverTools}
 import frontend._
 import frontend.experiments._
 import util.{AutoStatsGatherer, Profiler}
@@ -77,18 +76,19 @@ object CubeData {
 
         val naiveRes = Profiler("Naive") {
           val naivePlan = Profiler("NaiveInit") {
-            Preparer.default.prepareBatch(dc.m, query, n_bits)
+            dc.index.prepare(query, n_bits, n_bits)
           }
-          naiveDimFetched = naivePlan.head.mask.length
+          naiveDimFetched = naivePlan.head.cuboidCost
           Profiler("NaiveFetch") {
             dc.fetch2(naivePlan)
           }
         }
 
         val stg = Profiler("Solver") {
-          var l = Profiler("Init") {
-            Preparer.default.prepareOnline(dc.m, query, cheap_size, dc.m.n_bits)
+          val prepareList = Profiler("Init") {
+            dc.index.prepare(query, cheap_size, dc.m.n_bits)
           }
+          val iter = prepareList.iterator
           val bounds = Profiler("Init") {
             SolverTools.mk_all_non_neg[Rational](1 << query.length)
           }
@@ -99,20 +99,18 @@ object CubeData {
 
           val statsGatherer = new AutoStatsGatherer(s.getStats)
           statsGatherer.start()
-
-          while (!(l.isEmpty) && (df > 0)) {
-
-            if (s.shouldFetch(l.head.accessible_bits)) {
+          while (iter.hasNext && (df > 0)) {
+            val current = iter.next()
+            if (s.shouldFetch(current.queryIntersection)) {
               solverRounds += 1
-              if (l.head.mask.length > solverDimFetched)
-                solverDimFetched = l.head.mask.length
+              if (current.cuboidCost > solverDimFetched)
+                solverDimFetched = current.cuboidCost
 
-              println(l.head.accessible_bits)
               val fetched = Profiler("Fetch") {
-                dc.fetch2(List(l.head))
+                dc.fetch2(List(current))
               }
               Profiler("SolverAdd") {
-                s.add2(List(l.head.accessible_bits), fetched)
+                s.add2(List(current.queryIntersection), fetched)
               }
               //TODO: Probably gauss not required if newly added variables are first rewritten in terms of non-basic
 
@@ -125,12 +123,10 @@ object CubeData {
               df = s.df
 
             } else {
-              println(s"Preemptively skipping fetch of cuboid ${l.head.accessible_bits}")
+              println(s"Preemptively skipping fetch of cuboid ${current.queryIntersection}")
             }
-            l = l.tail
             Profiler.print()
           }
-          println("Remaining cuboids = " + l.size)
           statsGatherer.finish()
           statsGatherer
         }
@@ -215,7 +211,7 @@ object CubeData {
 
     mkCube(15)
     //loadDC(15)
-    val q = List(63, 62, 61, 60).sorted
+    val q = Vector(63, 62, 61, 60).sorted
     val s = dc.solver[Rational](q, 3)
     s.compute_bounds
     println("DF = " + s.df)

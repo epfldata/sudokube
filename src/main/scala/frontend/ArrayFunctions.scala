@@ -17,7 +17,7 @@ object ArrayFunctions {
    * @return a full decomposition of the bits for a single cell
    */
   @tailrec
-  private def decomposeBits(src: Array[Char], q_sorted: List[Int], acc: List[String]): List[String] = {
+  private def decomposeBits(src: Array[Char], q_sorted: IndexedSeq[Int], acc: List[String]): List[String] = {
     src match {
       case Array() => acc
       case _ => decomposeBits(src.tail, q_sorted.tail, acc ::: List("b%d=%s".format(q_sorted.head, src.head)))
@@ -44,8 +44,8 @@ object ArrayFunctions {
    * @param src source array, from cuboid query
    * @return array in form of (b1=0;b2=1;b7=0,fact) (String, Any)
    */
-  def createTuplesBit(sch: Schema, sliceV: List[(String, List[String])],
-                      qV: List[List[Int]], op: OPERATOR,
+  def createTuplesBit(sch: Schema, sliceV: IndexedSeq[(String, List[String])],
+                      qV: IndexedSeq[IndexedSeq[Int]], op: OPERATOR,
                       src: Array[Any]): Array[Any] = {
     val rows = 1 << qV.flatten.size
     val q_sorted = (qV.flatten).sorted
@@ -55,7 +55,7 @@ object ArrayFunctions {
       val charArray = asNdigitBinary(i, rows.toBinaryString.length - 1).toCharArray //assign to each elem of the src array a binary digit
       srcWithIndexes(i) = (decomposeBits(charArray, q_sorted, Nil), src(i))
     }
-    val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, srcWithIndexes)
+    val res = createResultArray(sch, sliceV, IndexedSeq.empty, qV, IndexedSeq.empty, op, srcWithIndexes)
     res._3
   }
 
@@ -68,8 +68,8 @@ object ArrayFunctions {
    * @param src source data from query
    * @return array in form (prefix1=x1;prefix2=x2;prefix7=(x1, x2),fact) (STring, Any)
    */
-  def createTuplesPrefix(sch: Schema, sliceV: List[(String, List[String])], qV: List[List[Int]], op: OPERATOR, src: Array[Any]): Array[Any] = {
-    val res = createResultArray(sch, sliceV, Nil, qV, Nil, op, src)
+  def createTuplesPrefix(sch: Schema, sliceV: IndexedSeq[(String, List[String])], qV: IndexedSeq[IndexedSeq[Int]], op: OPERATOR, src: Array[Any]): Array[Any] = {
+    val res = createResultArray(sch, sliceV, IndexedSeq.empty, qV, IndexedSeq.empty, op, src)
     val cols = res._1.length
     val rows = res._2.length
     for (i <- 0 until rows) {
@@ -89,7 +89,7 @@ object ArrayFunctions {
    * @param src source array, to transform in matrix
    * @return dense matrix decomposed, in form (array for the top header, array of the left header, values for cells)
    */
-  def createResultArray(sch: Schema, sliceV: List[(String, List[String])], sliceH: List[(String, List[String])], qV: List[List[Int]], qH: List[List[Int]], op: OPERATOR, src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
+  def createResultArray(sch: Schema, sliceV: IndexedSeq[(String, List[String])], sliceH: IndexedSeq[(String, List[String])], qV: IndexedSeq[IndexedSeq[Int]], qH: IndexedSeq[IndexedSeq[Int]], op: OPERATOR, src: Array[Any]): (Array[String], Array[String], Array[Any]) = {
     val cols = 1 << qH.flatten.size
     val rows = 1 << qV.flatten.size
 

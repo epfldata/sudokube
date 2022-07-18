@@ -13,8 +13,8 @@ object PrettyPrinter {
 
   def formatPivotTable(
     sch: Schema,
-    qV: List[Int],
-    qH: List[Int])(
+    qV: IndexedSeq[Int],
+    qH: IndexedSeq[Int])(
     bou: Seq[Interval[Rational]]
   ) = {
 
@@ -91,8 +91,8 @@ object PrettyPrinter {
     temp
   }
 
-  def printRelTable(sch: Schema, q: List[Int], bou: Seq[Interval[Rational]]) {
-    val result = bou.toList.map(_.lb.get)
+  def printRelTable(sch: Schema, q: IndexedSeq[Int], bou: Seq[Interval[Rational]]) {
+    val result = bou.map(_.lb.get)
     val R2 = sch.decode_dim(q).zip(result)
     R2.foreach{ case (l, v) => println((l,v)) }
   }

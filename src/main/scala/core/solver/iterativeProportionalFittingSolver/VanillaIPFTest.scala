@@ -15,7 +15,7 @@ import scala.util.Random
  */
 class VanillaIPFTest {
   private val eps = 1e-3
-
+  implicit def listToInt = Bits.toInt(_)
   @Test
   def testAdd(): Unit = {
     val solver = new VanillaIPFSolver(3)
@@ -200,8 +200,8 @@ class VanillaIPFTest {
         }
       }
 
-      vanillaIPFSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
-      momentSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
+      vanillaIPFSolver.add(marginalVariables, marginalDistribution)
+      momentSolver.add(marginalVariables, marginalDistribution)
     }
 
     momentSolver.fillMissing()

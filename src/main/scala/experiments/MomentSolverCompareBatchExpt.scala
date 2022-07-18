@@ -1,11 +1,10 @@
 package experiments
 
-import core.solver.moment.Strategy._
-import core.solver._
 import core.DataCube
+import core.solver._
+import core.solver.moment.Strategy._
+import core.solver.moment.{Strategy => _, _}
 import util.{Profiler, Util}
-import core.prepare.Preparer
-import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, CoMoment5SliceSolver, CoMoment5SliceSolver2, CoMoment5Solver, Moment1Transformer}
 
 class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"momentcompare-batch", ename2) {
   {
@@ -15,7 +14,7 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
   }
 
 
-  override def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult0: Array[Double], output: Boolean, qname: String, sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult0: Array[Double], output: Boolean, qname: String, sliceValues: IndexedSeq[Int]): Unit = {
     val qs = qu.size
     val q = qu.sorted
     val aggN = 1 << (qs - sliceValues.length)
@@ -93,17 +92,17 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
 
   }
 
-  def solve(dc: DataCube, strategy: Strategy, q: Seq[Int], sliceValues: IndexedSeq[Int] = Vector()) = {
+  def solve(dc: DataCube, strategy: Strategy, q: IndexedSeq[Int], sliceValues: IndexedSeq[Int] = Vector()) = {
     type T = Double
     val (l, pm) = Profiler(strategy + "Moment Prepare") {
-      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
+      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[T](q, dc.primaryMoments)
     }
-    val maxDimFetch = l.last.mask.length
+    val maxDimFetch = l.last.cuboidCost
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
     val fetched = Profiler(strategy + "Moment Fetch") {
       l.map {
         pm =>
-          (pm.accessible_bits, dc.fetch2[T](List(pm)).toArray)
+          (pm.queryIntersection, dc.fetch2[T](List(pm)).toArray)
       }
     }
     val result = Profiler(strategy + s"Moment Solve") {

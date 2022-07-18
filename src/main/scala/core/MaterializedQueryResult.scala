@@ -14,7 +14,7 @@ class MaterializedQueryResult(cg: CubeGenerator) {
 
   def generateAndSaveQueries(nq: Int, qs: Int) = {
     println(s"Generating $nq queries of length $qs for ${cg.inputname} dataset")
-    val queries = (0 until nq).map { i => sch.root.samplePrefix(qs).toList.sorted }.distinct.toVector
+    val queries = (0 until nq).map { i => sch.root.samplePrefix(qs).sorted.toVector }.distinct.toVector
     val queryFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/queries.bin")
     if (!queryFile.exists())
       queryFile.getParentFile.mkdirs()
@@ -39,7 +39,7 @@ class MaterializedQueryResult(cg: CubeGenerator) {
   def loadQueries(qs: Int) = {
     val queryFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/queries.bin")
     val queryIn = new ObjectInputStream(new FileInputStream(queryFile))
-    queryIn.readObject().asInstanceOf[Vector[List[Int]]]
+    queryIn.readObject().asInstanceOf[Vector[Vector[Int]]]
   }
 
   def loadQueryResult(qs: Int, queryIdx: Int) = {

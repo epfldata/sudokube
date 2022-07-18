@@ -24,13 +24,13 @@ class DataCubeSpec extends FlatSpec with Matchers {
         _.asInstanceOf[Payload].sm.toInt)
 
     for(i <- 0 to dc.m.projections.length - 1) {
-      val mask = Bits.mk_list_mask(dc.m.projections.last,
+      val mask = Bits.mk_list_bitpos(dc.m.projections.last,
                                         dc.m.projections(i).toSet).toArray
 
       val c       = dc.cuboids(i) //dc.getCuboids(i)
-      val ones    = (1 to c.n_bits).map(_ => 1).toArray
+      val all    = 0 until c.n_bits
       val correct = toLi(fc.rehash_to_dense(mask))
-      val readout = toLi( c.rehash_to_dense(ones))
+      val readout = toLi( c.rehash_to_dense(all))
       assert(correct == readout)
     }
   }

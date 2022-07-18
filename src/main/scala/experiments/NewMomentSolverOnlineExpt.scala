@@ -5,7 +5,6 @@ import core.solver.SolverTools._
 import core.solver._
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
 import core.solver.moment.Strategy._
-import core.prepare.{FullLatticeOnlinePreparer, Preparer}
 import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer, MomentSolver}
 
 class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
@@ -27,7 +26,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -37,26 +36,26 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments))
     var maxDimFetched = 0
     stg.task = () => ((maxDimFetched, s.getStats))
-    var l = Profiler("Prepare") {
-      if (containsAllCuboids)
-        FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 2, dc.m.n_bits)
-      else
-        Preparer.default.prepareOnline(dc.m, q, 2, dc.m.n_bits)
+    val prepareList = Profiler("Prepare") {
+      //if (containsAllCuboids)
+      //  FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 2, dc.m.n_bits)
+      dc.index.prepare(q, 2, dc.m.n_bits)
     }
-    val totalsize = l.size
+    val totalsize = prepareList.length
     //println("Prepare over. #Cuboids to fetch = " + totalsize)
     //Profiler.print()
-    val pi = new ProgressIndicator(l.size, "Online aggregation", false)
-    //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
-    while (!(l.isEmpty)) {
+    val pi = new ProgressIndicator(totalsize, "Online aggregation", false)
+    val iter = prepareList.iterator
+    while (iter.hasNext) {
+      val current = iter.next()
       val fetched = Profiler.noprofile("Fetch") {
-        dc.fetch2[Double](List(l.head))
+        dc.fetch2[Double](List(current))
       }
-      val bits = l.head.accessible_bits
-      if (l.head.mask.length > maxDimFetched)
-        maxDimFetched = l.head.mask.length
+
+      if (current.cuboidCost > maxDimFetched)
+        maxDimFetched = current.cuboidCost
       Profiler.noprofile("Add") {
-        s.add(bits, fetched.toArray)
+        s.add(current.queryIntersection, fetched)
       }
       Profiler.noprofile("FillMiss") {
         s.fillMissing()
@@ -66,7 +65,6 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
       }
       stg.record()
       pi.step
-      l = l.tail
     }
     stg.finish()
 

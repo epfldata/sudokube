@@ -19,9 +19,9 @@ class PrimaryMomentsSpec extends FlatSpec with Matchers {
     val (t1, m1) = SolverTools.primaryMoments(dc)
 
     val m2 = Array.fill(nbits)(0L)
-    val t2 = dc.naive_eval(List(1)).sum.toLong
+    val t2 = dc.naive_eval(Vector(1)).sum.toLong
 
-    m2.indices.foreach(i => m2(i) = dc.naive_eval(List(i))(1).toLong)
+    m2.indices.foreach(i => m2(i) = dc.naive_eval(Vector(i))(1).toLong)
     assert(t1 == t2)
     assert(m1.sameElements(m2))
     val cubename = "testprimarymoment"

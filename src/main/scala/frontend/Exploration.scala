@@ -7,13 +7,13 @@ import schema._
 
 
 object Exploration {
-  def col_names(sch: Schema) : List[String] = sch.columnList.map(_._1)
+  def col_names(sch: Schema) : IndexedSeq[String] = sch.columnList.map(_._1)
 
   /** distribution of values for column coln. */
   def dist(sch: Schema, dc: DataCube, coln: String
   ) : Seq[(String, Rational)] = {
 
-    val q = sch.columnList.toMap.apply(coln).bits.toList
+    val q = sch.columnList.toMap.apply(coln).bits
 
 /*
     val s = dc.solver[Rational](q, dc.m.n_bits)

@@ -43,13 +43,13 @@ class SchemaSpec extends FreeSpec with Matchers {
     val dc = new DataCube(matscheme)
     dc.build(basecuboid)
 
-    def perm_func(query: Seq[Int]) = {
+    def perm_func(query: IndexedSeq[Int]) = {
       val query_sorted = query.sorted
       val perm = query.map(b => query_sorted.indexOf(b)).toArray
       Bits.permute_bits(query.size, perm)
     }
 
-    def permuted_result(query: Seq[Int]) = {
+    def permuted_result(query: IndexedSeq[Int]) = {
       val permf = perm_func(query)
       val result0 = dc.naive_eval(query.sorted)
       val result1 = new Array[Int](result0.size)

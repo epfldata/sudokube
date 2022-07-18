@@ -6,8 +6,8 @@ import core._
 import combinatorics._
 import util._
 import backend._
+import core.cube.ArrayCuboidIndexFactory
 import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
-import core.prepare.ClassicPreparer
 import core.solver.{Rational, RationalTools}
 import core.solver.lpp.Interval
 import generators._
@@ -32,8 +32,8 @@ object Tools {
     (logx, logy)
   }
 
-  def qq(qsize: Int) = (0 to qsize - 1).toList
-  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize).sorted
+  def qq(qsize: Int) = (0 to qsize - 1)
+  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toVector).take(qsize).sorted
 
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
@@ -98,19 +98,19 @@ object minus1_adv {
       val m = OldRandomizedMaterializationScheme(nbits, rf, base)
 
       //SBJ: Changed parameters for this calculation
-      val a = ClassicPreparer.prepareBatch(m, q, nbits - 1).groupBy(_.accessible_bits.length)
-      val full_cost = cost(a(q.length).head.mask.length)
+      val a = ArrayCuboidIndexFactory.buildFrom(m).prepare(q, nbits - 1, nbits - 1).groupBy(ps => Bits.hwZeroOne(ps.queryIntersection, qsize)._1)
+      val full_cost = cost(a(q.length).head.cuboidCost)
       accum_full_cost += full_cost
 
       a.get(q.length - 1) match {
         case Some(m1) => {
-          val df = DF.compute_df0(q.length, m1.map(_.accessible_bits))
+          val df = DF.compute_df0(q.length, m1.map(_.queryIntersection))
           val detsize = (1 << q.length) - df
 
-          val worst_proj_cost = cost(m1.map(_.mask.length).max)
-          val avg_proj_cost = cost((m1.map(_.mask.length).sum.toDouble/m1.length).toInt)
+          val worst_proj_cost = cost(m1.map(_.cuboidCost).max)
+          val avg_proj_cost = cost((m1.map(_.cuboidCost).sum.toDouble/m1.length).toInt)
           val sum_proj_cost = cost((avg_proj_cost + Math.log(m1.length)/Math.log(2)).toInt)
-          val  best_proj_cost = cost(m1.map(_.mask.length).min)
+          val  best_proj_cost = cost(m1.map(_.cuboidCost).min)
 
          //val n = Math.log(df.toDouble)/Math.log(2)
           val m = Math.log(detsize.toDouble)/Math.log(2)
@@ -193,8 +193,8 @@ object exp_e_df {
   ) = {
     import backend.Payload
     val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
-    val q = (0 to qsize-1).toList
-    val l = ClassicPreparer.prepareBatch(m, q, max_fetch_dim).map(_.accessible_bits)
+    val q = (0 to qsize-1)
+    val l = ArrayCuboidIndexFactory.buildFrom(m).prepare(q, max_fetch_dim, max_fetch_dim).map(_.queryIntersection)
 
 /*
     val n_vval = l.map(x => Big.pow2(x.length)).sum
@@ -247,7 +247,7 @@ object exp_error_bounds {
     last_dc = Some(dc)
 
     for(j <- 1 to 10) {
-      var q = Util.rnd_choose(n_bits, qsize)
+      var q = Util.rnd_choose(n_bits, qsize).toIndexedSeq
 
       var best_df = 1
       for(d5 <- 1 to 20) {

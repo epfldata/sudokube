@@ -21,7 +21,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
   val minCol = new NatCol(if(allocateMin) 60 else 0)
   val secCol = new NatCol(if(allocateSec) 60 else 0)
 
-  override def bits: Seq[Int] = yCol.bits ++ mCol.bits ++ dCol.bits ++ hrCol.bits ++ minCol.bits ++ secCol.bits
+  override def bits: IndexedSeq[Int] = yCol.bits ++ mCol.bits ++ dCol.bits ++ hrCol.bits ++ minCol.bits ++ secCol.bits
 
   override def bitsMin: Int = ???
 
@@ -29,7 +29,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
 
   override def maxIdx: Int = ???
 
-  override def queries(): Set[Seq[Int]] = {
+  override def queries(): Set[IndexedSeq[Int]] = {
     val ybits = yCol.bits
     val ymbits = mCol.bits ++ ybits
     val ymdbits = dCol.bits ++ ymbits
@@ -160,7 +160,7 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   override def decode_locally(i: Int): Date = ???
   override def maxIdx: Int = ???
 
-  def queries(): Set[Seq[Int]] = {
+  def queries(): Set[IndexedSeq[Int]] = {
     val ybits = yearCol.bits
     val ymbits = monthCol.bits ++ ybits
     val ymdbits = dayCol.bits ++ ymbits
@@ -177,7 +177,7 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
     yQ union qQ union mQ union dQ union hrQ union minQ union secQ
   }
   lazy val myqueries = queries().groupBy(_.size).withDefaultValue(Set())
-  override def samplePrefix(size: Int): Seq[Int] = {
+  override def samplePrefix(size: Int): IndexedSeq[Int] = {
     val size1 = myqueries.keys.filter(_ >= size).min
     val qs = myqueries(size1).toVector
     val idx = Random.nextInt(qs.size)

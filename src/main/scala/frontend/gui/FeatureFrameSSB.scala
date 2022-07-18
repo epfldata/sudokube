@@ -46,7 +46,7 @@ case class FeatureFrameSSB(sf: Int, dc: DataCube, cheap_size: Int) {
     (lmc.bits, lmc.decode_map)
 
   }
-  val (nilB, nilV) = (List[Int](), Vector[String]())
+  val (nilB, nilV) = (Vector[Int](), Vector[String]())
 
   val (ccityB, ccityV) = getBV(11)
   val (cnatB, cnatV) = getBV(12)
@@ -90,10 +90,10 @@ case class FeatureFrameSSB(sf: Int, dc: DataCube, cheap_size: Int) {
     chart
   }
 
-  case class DimensionPanel(dimname: String, queryLevels: Vector[Seq[Int]], levelNames: Vector[String], decodeMap: Vector[IndexedSeq[String]], isColX: Boolean = false) extends GridBagPanel {
+  case class DimensionPanel(dimname: String, queryLevels: Vector[IndexedSeq[Int]], levelNames: Vector[String], decodeMap: Vector[IndexedSeq[String]], isColX: Boolean = false) extends GridBagPanel {
     var cur = 0
 
-    def colsList = queryLevels(cur).toList
+    def colsList = queryLevels(cur)
 
     val plusButton = new Button("+")
     val minusButton = new Button("-")

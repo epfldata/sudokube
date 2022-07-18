@@ -1,6 +1,5 @@
 package experiments
 
-import core.prepare.Preparer
 import core.solver.RationalTools._
 import core.solver.lpp.{SliceSparseSolver, SparseSolver}
 import core.solver.{Rational, SolverTools}
@@ -10,8 +9,8 @@ import java.io.PrintStream
 
 object SolverExpt {
 
-  val aggcols = (0 to 1).toList
-  val filtcols = List(13, 14, 15, 16, 17, 18, 19, 20)
+  val aggcols = (0 to 1)
+  val filtcols = Vector(13, 14, 15, 16, 17, 18, 19, 20)
   val filtvalue = 0
   var readOnlyFullCuboid = false
   var writeSolToFile = false
@@ -47,16 +46,17 @@ object SolverExpt {
    */
   def run(s: SparseSolver[Rational]): Long = {
     val dc = core.DataCube.load("trend.dc")
-    var l = Preparer.default.prepareOnline(dc.m, query, cheap, dc.m.n_bits)
-
+    val prepareListAll = dc.index.prepare(query, cheap, dc.m.n_bits)
+    val prepareList = if(readOnlyFullCuboid) prepareListAll.takeRight(1) else prepareListAll
+    val iter = prepareList.iterator
     var df = s.df
     var cont = true
     val startTime = System.nanoTime()
-    if(readOnlyFullCuboid) l = List(l.last)
-    while ((!l.isEmpty) && (df > 0) && cont) {
-      println(l.head.accessible_bits)
 
-      Profiler.noprofile("Add2"){s.add2(List(l.head.accessible_bits), dc.fetch2(List(l.head)))}
+    while (iter.hasNext && (df > 0) && cont) {
+      val current = iter.next()
+
+      Profiler.noprofile("Add2"){s.add2(List(current.queryIntersection), dc.fetch2[Rational](List(current)))}
 
       if (df != s.df) { // something added
         val p1 = Profiler.noprofile("GAUSS DET VAR") {
@@ -69,7 +69,6 @@ object SolverExpt {
         cont = callback(s)
         df = s.df
       }
-      l = l.tail
       Profiler.print()
       Profiler.resetAll()
     }

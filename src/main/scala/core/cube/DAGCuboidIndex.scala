@@ -14,7 +14,7 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
   override def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
     val hm_cheap = collection.mutable.HashMap[Seq[Int], DagVertex]()
     val qSet = query.toSet
-    val ret = new ListBuffer[ProjectionMetaData]()
+    val ret = new ListBuffer[NewProjectionMetaData]()
     val queue = collection.mutable.Queue[(DagVertex, Seq[Int])]()
     queue.enqueue((projectionsDAGroot, query))
     projectionsDAGroot.hasBeenDone = 1
@@ -84,23 +84,21 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
         if (good_children == 0) {
           val ab0 = intersect_deq.toList
           val ab = query.indices.filter(i => ab0.contains(query(i)))
-          val mask = Bits.mk_list_mask(vert_deq.p.toList, qSet)
-          ret += ProjectionMetaData(ab, ab0, mask, vert_deq.id)
+          val bitpos = Bits.mk_list_bitpos(vert_deq.p, qSet)
+          val abInt = Bits.toInt(ab)
+          ret += NewProjectionMetaData(abInt, vert_deq.id, vert_deq.p.length, bitpos)
         }
       }
     }
     //Add all cheap projs to ret
     hm_cheap.foreach({ case (ab0, dv) =>
       val ab = query.indices.filter(i => ab0.contains(query(i)))
-      val mask = Bits.mk_list_mask(dv.p.toList, qSet)
-      ret += ProjectionMetaData(ab, ab0, mask, dv.id)
+      val abInt = Bits.toInt(ab)
+      val bitpos = Bits.mk_list_bitpos(dv.p, qSet)
+      ret += NewProjectionMetaData(abInt, dv.id, dv.p.length, bitpos)
     })
     resetDag(projectionsDAGroot)
-    ret.map { case ProjectionMetaData(ab, ab0, mask, id) =>
-      val abInt = Bits.toInt(ab)
-      val maskpos = mask.indices.filter(i => mask(i) == 1)
-      NewProjectionMetaData(abInt, id, mask.length, maskpos)
-    }
+    ret
   }
 
   override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = ???
@@ -135,7 +133,7 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
  * @param p_length Its length
  * @param id       Its id (index in sequence of projections)
  */
-class DagVertex(val p: Seq[Int], val p_length: Int, val id: Int) {
+class DagVertex(val p: IndexedSeq[Int], val p_length: Int, val id: Int) {
   var children = new ListBuffer[(DagVertex, Seq[Int])]()
   var hasBeenDone = 0
 

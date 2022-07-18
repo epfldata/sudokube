@@ -14,20 +14,17 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]]) extends Cub
       val p = projections(id)
       val ab0 = p.toSet.intersect(qBS) // unnormalized
       val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
-      val mask = Bits.mk_list_mask(p, qBS)
-      ProjectionMetaData(ab, ab0, mask, id)
-    }.filter(_.mask.length <= max_fetch_dim)
+      val abInt = Bits.toInt(ab)
+      val bitpos = Bits.mk_list_bitpos(p, qBS)
+      NewProjectionMetaData(abInt, id, p.length, bitpos)
+    }.filter(_.cuboidCost <= max_fetch_dim)
 
-    val qp1: Seq[ProjectionMetaData] =
-      qp0.groupBy(_.accessible_bits).mapValues(l =>
-        l.sortBy(_.mask.length).head // find cheapest: min mask.length
+    val qp1: Seq[NewProjectionMetaData] =
+      qp0.groupBy(_.queryIntersection).mapValues(l =>
+        l.sortBy(_.cuboidCost).head // find cheapest: min mask.length
       ).toSeq.map(_._2)
 
-    qp1.map { case ProjectionMetaData(accessible_bits, accessible_bits0, mask, id) =>
-      val qposInt = Bits.toInt(accessible_bits)
-      val maskpos = mask.indices.filter(i => mask(i) == 1)
-      NewProjectionMetaData(qposInt, id, mask.length, maskpos)
-    }
+    qp1
   }
 
   override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = Profiler("ACI eR"){

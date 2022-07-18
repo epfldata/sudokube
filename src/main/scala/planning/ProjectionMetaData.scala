@@ -18,7 +18,11 @@ case class ProjectionMetaData(
 ) {
   //assert(accessible_bits.length == mask.filter(_ == 1).length)
   lazy val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
-
+  implicit def toNewProjectiobMetaData() = {
+    val abInt = Bits.toInt(accessible_bits)
+    val maskpos = mask.indices.filter(i => mask(i) == 1)
+    NewProjectionMetaData(abInt, id, mask.length, maskpos)
+  }
 
   lazy val n_inaccessible_bits = mask.filter(_ == 0).length
   lazy val cost_factor = Big.pow2(n_inaccessible_bits)

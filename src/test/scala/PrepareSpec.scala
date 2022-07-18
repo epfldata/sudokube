@@ -1,6 +1,5 @@
-import core.cube.{ArrayCuboidIndexFactory, OptimizedArrayCuboidIndexFactory, SetTrieCuboidIndex, SetTrieCuboidIndexFactory}
+import core.cube.{ArrayCuboidIndexFactory, OptimizedArrayCuboidIndexFactory, SetTrieCuboidIndexFactory}
 import core.materialization._
-import core.prepare._
 import frontend.experiments.Tools
 import org.scalatest.{FlatSpec, Matchers}
 import planning.{NewProjectionMetaData, ProjectionMetaData}
@@ -23,49 +22,34 @@ class PrepareSpec extends FlatSpec with Matchers {
       assert(xp.cuboidCost == yp.cuboidCost)
     }
   }
-  def RMS(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
-    Profiler.resetAll()
-    (0 until nq).foreach { i =>
-      val q = Tools.rand_q(nbits, qs)
-      val newpo = Profiler("NewPrepareOnline") { Preparer.default.prepareOnline(m, q, cheap, maxFetch) }
-      val oldpo = Profiler("OldPrepareOnline") { ClassicPreparer.prepareOnline(m, q, cheap, maxFetch) }
-      isSameAs(oldpo, newpo)
-      val oldpb = Profiler("OldPrepareBatch") { ClassicPreparer.prepareBatch(m, q, maxFetch) }
-      val newpb = Profiler("NewPrepareBatch") { Preparer.default.prepareBatch(m, q, maxFetch) }
-      isSameAs(oldpb, newpb)
-    }
-    println("Time for RMS")
-    Profiler.print()
-  }
 
-  def RMS_online_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
+
+  def RMS_online_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
     val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
     val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
     val idx3 = SetTrieCuboidIndexFactory.buildFrom(m)
     Profiler.resetAll()
     (0 until nq).foreach { i =>
-      val q = Tools.rand_q(nbits, qs).toIndexedSeq
+      val q = Tools.rand_q(nbits, qs)
       print(i + " ")
-      val oldpo = Profiler("OldPrepareOnline") { ClassicPreparer.prepareOnline(m, q, cheap, maxFetch) }.sortBy(x => Bits.toInt(x.accessible_bits))
-      val newpo = Profiler("NewPrepareOnline") { SetTrieOnlinePrepareNoInt.prepareOnline(m, q, cheap, maxFetch) }.sortBy(x => Bits.toInt(x.accessible_bits))
-      val newpo_int = Profiler("NewPrepareOnlineWithInt") { SetTrieOnlinePrepareWithInt.prepareOnline(m, q, cheap, maxFetch) }.sortBy(x => Bits.toInt(x.accessible_bits))
-      val idx1po = Profiler("Idx1PrepareOnline") { idx1.prepare(q, cheap, maxFetch) }
-      val idx2po = Profiler("Idx2PrepareOnline") { idx2.prepare(q, cheap, maxFetch) }
-      val idx3po = Profiler("Idx3PrepareOnline") { idx3.prepare(q, cheap, maxFetch) }
-      isSameAs(oldpo, newpo)
-      isSameAs(newpo, newpo_int)
-      isSameAs(oldpo, idx1po)
+      val idx1po = Profiler("ArrayCuboidIndex PrepareOnline") { idx1.prepare(q, cheap, maxFetch) }
+      val idx2po = Profiler("OptimizedArrayCuboidIndex PrepareOnline") { idx2.prepare(q, cheap, maxFetch) }
+      val idx3po = Profiler("SetTrieCuboidIndex PrepareOnline") { idx3.prepare(q, cheap, maxFetch) }
+
       isSameAs(idx1po, idx2po)
       isSameAs(idx1po, idx3po)
+
+      //Check if subsets before supersets
+      assert(idx1po.sortBy(ps => ps.queryIntersection) sameElements idx1po)
+      assert(idx2po.sortBy(ps => ps.queryIntersection) sameElements idx2po)
+      assert(idx3po.sortBy(ps => ps.queryIntersection) sameElements idx3po)
     }
-    println("\nTime for RMS")
+    println("\nTime for Online")
     Profiler.print()
   }
 
-  def RMS_batch_correctness(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    scala.util.Random.setSeed(0)
+  def RMS_batch_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, maxFetch: Int): Unit = {
     val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
     val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
     val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
@@ -75,40 +59,25 @@ class PrepareSpec extends FlatSpec with Matchers {
     (0 until nq).foreach { i =>
       val q = Tools.rand_q(nbits, qs).toIndexedSeq
       print(i + " ")
-      val oldpb = Profiler("OldPrepareBatch") { SetTrieBatchPrepare1.prepareBatch(m, q, maxFetch)}.sortBy(x => -Bits.toInt(x.accessible_bits))
-      val newpb = Profiler("NewPrepareBatchWithInt") { SetTrieBatchPrepareWithInt.prepareBatch(m, q, maxFetch) }.sortBy(x => -Bits.toInt(x.accessible_bits))
-      val idx2pb = Profiler("OACI total") { idx2.prepare(q, cheap, maxFetch) }
-      val idx1pb = Profiler("ACI total") { idx1.prepare(q, cheap, maxFetch) }
-      val idx3pb = Profiler("STCI total") { idx3.prepare(q, cheap, maxFetch) }
-      isSameAs(oldpb, newpb)
-      isSameAs(oldpb, idx1pb)
+      val idx2pb = Profiler("OptimizedArrayCuboidIndex PrepareBatch") { idx2.prepare(q, maxFetch, maxFetch) }
+      val idx1pb = Profiler("ArrayCuboidIndex PrepareBatch") { idx1.prepare(q, maxFetch, maxFetch) }
+      val idx3pb = Profiler("SetTrieCuboidIndex PrepareBatch") { idx3.prepare(q, maxFetch, maxFetch) }
+
       isSameAs(idx2pb, idx1pb)
       isSameAs(idx3pb, idx1pb)
+
+      //Check if supersets before subsets
+      assert(idx1pb.sortBy(ps => -ps.queryIntersection) sameElements idx1pb)
+      assert(idx2pb.sortBy(ps => -ps.queryIntersection) sameElements idx2pb)
+      assert(idx3pb.sortBy(ps => -ps.queryIntersection) sameElements idx3pb)
+
     }
-    println("\nTime for RMS")
+    println("\nTime for Batch")
     Profiler.print()
   }
 
-  def RMS_performance(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
-    Profiler.resetAll()
-    (0 until nq).foreach { i =>
-      val q = Tools.rand_q(nbits, qs)
-      print(i + " ")
-      val oldpo = Profiler("OldPrepareOnline") { ClassicPreparer.prepareOnline(m, q, cheap, maxFetch) }
-      val onlinepo_int = Profiler("NewPrepareOnlineWithInt") { SetTrieOnlinePrepareWithInt.prepareOnline(m, q, cheap, maxFetch) }
-      val oldpb = Profiler("OldPrepareBatch") { SetTrieBatchPrepare1.prepareBatch(m, q, maxFetch) }
-      val newpb = Profiler("NewPrepareBatchWithInt") { SetTrieBatchPrepareWithInt.prepareBatch(m, q, maxFetch) }
-      isSameAs(oldpo, onlinepo_int)
-      isSameAs(oldpb, newpb)
-    }
-    println("\nTime for RMS")
-    Profiler.print()
-  }
 
-  //"Old and New Prepare " should " match " in RMS(200, 15, 15, 100, 10, 40, 40)
-  "Old, online_new and online_new_int Prepare " should " match " in RMS_online_correctness(100, 15, 15, 100, 10, 0, 40)
-  "New and Batch New Prepare" should " match " in RMS_batch_correctness(100, 15, 15, 100, 18, 40, 40)
-  //"Old and online, new and batch" should " match " in RMS_performance(100, 15, 15, 100, 10, 40, 40)
+  "All cuboid indexes " should " give the same result for Online Prepare " in RMS_online_test(100, 15, 15, 100, 10, 0, 40)
+  "All cuboid indexes" should " give the same result for Batch Prepare  " in RMS_batch_test(100, 15, 15, 100, 18, 40)
 
 }

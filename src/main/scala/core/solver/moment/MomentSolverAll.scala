@@ -493,12 +493,12 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
   }
 
   /** Adds a cuboid data to solver */
-  def add(cols: Seq[Int], values: Array[T]) = {
-    val eqnColSet = Bits.toInt(cols)
+  def add(eqnColSet: Int, values: Array[T]): Unit = {
+
     fetchedCuboids = (eqnColSet -> values.map(num.toDouble(_))) :: fetchedCuboids
     //println(s"Fetch $eqnColSet")
     //println(values.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
-    val length = cols.length
+    val length = Bits.hwZeroOne(eqnColSet, qsize)._1
 
     //calculate any previously unknown moments from the cuboid
     (0 until 1 << length).foreach { i0 =>

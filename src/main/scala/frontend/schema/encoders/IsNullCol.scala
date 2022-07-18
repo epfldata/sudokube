@@ -23,7 +23,7 @@ class IsNullColEncoder[T](init_size: Int = 1
             
     }
     
-    override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+    override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
     /**
      * Encode the value
      * @param v : value to encode

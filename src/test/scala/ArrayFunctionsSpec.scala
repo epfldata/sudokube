@@ -20,7 +20,7 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
   }
 
   it should "perform window_aggregates" in {
-    val res = fixture.userCube.query(List(("Region", 2, Nil), ("difficulty", 6, Nil)), Nil, OR, MOMENT, TUPLES_PREFIX)
+    val res = fixture.userCube.query(Vector(("Region", 2, Nil), ("difficulty", 6, Nil)), Vector(), OR, MOMENT, TUPLES_PREFIX)
       .asInstanceOf[Array[Any]]
     var result = ArrayFunctions.windowAggregate(res, "difficulty", 3, NUM_ROWS)
     assert(result(1)._2 == result(2)._2 && result(2)._2 == result(3)._2)
@@ -31,12 +31,12 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
   }
 
   it should "apply binary function to query" in {
-    var array = fixture.userCube.query(List(("Region", 2, List("India", "Italy")), ("spicy", 2, List(">=0"))), Nil, AND, MOMENT, TUPLES_PREFIX)
+    var array = fixture.userCube.query(Vector(("Region", 2, List("India", "Italy")), ("spicy", 2, List(">=0"))), Vector(), AND, MOMENT, TUPLES_PREFIX)
       .asInstanceOf[Array[Any]].map(x => x.asInstanceOf[(String, Any)])
     assert(ArrayFunctions.applyBinary(array, binaryFunction, ("Region", "spicy"), EXIST))
     assert(!ArrayFunctions.applyBinary(array, binaryFunction, ("Region", "spicy"), FORALL))
     assert(!ArrayFunctions.applyBinary(array, binaryFunction, ("not_defined", "spicy"), EXIST))
-    array = fixture.userCube.query(List(("Region", 2, List("India")), ("spicy", 2, List(">0"))), Nil, AND, MOMENT, TUPLES_PREFIX)
+    array = fixture.userCube.query(Vector(("Region", 2, List("India")), ("spicy", 2, List(">0"))), Vector(), AND, MOMENT, TUPLES_PREFIX)
       .asInstanceOf[Array[Any]].map(x => x.asInstanceOf[(String, Any)])
     assert(ArrayFunctions.applyBinary(array, binaryFunction, ("Region", "spicy"), EXIST))
     assert(ArrayFunctions.applyBinary(array, binaryFunction, ("Region", "spicy"), FORALL))
@@ -48,101 +48,101 @@ class ArrayFunctionsSpec extends FlatSpec with Matchers{
 
   "testLine" should "works for and" in {
     var array = Array("spicy=45", "Region=(India, China)")
-    var query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    var query = Vector(("Region", List("India")), ("spicy", Nil)) //select Region = India
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("China")), ("spicy", Nil)) //select Region = China
+    query = Vector(("Region", List("China")), ("spicy", Nil)) //select Region = China
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
+    query = Vector(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("China", "India")), ("spicy", List("45"))) //select (Region = China || Region = India) && spicy = 45
+    query = Vector(("Region", List("China", "India")), ("spicy", List("45"))) //select (Region = China || Region = India) && spicy = 45
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) && spicy = 43
+    query = Vector(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) && spicy = 43
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
+    query = Vector(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", Nil), ("spicy", Nil)) //select All
+    query = Vector(("Region", Nil), ("spicy", Nil)) //select All
     assert(!TestLine.testLineOp(AND, array, query))
     array = Array("spicy=45", "Region=(AmerIndia, China)")
-    query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    query = Vector(("Region", List("India")), ("spicy", Nil)) //select Region = India
     assert(TestLine.testLineOp(AND, array, query))
     info("works for simple equality")
 
-    query = List(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) && spicy = 45
+    query = Vector(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) && spicy = 45
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("!India")), ("spicy", List("45"))) //select Region != India && spicy = 45
+    query = Vector(("Region", List("!India")), ("spicy", List("45"))) //select Region != India && spicy = 45
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India && spicy != 45
+    query = Vector(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India && spicy != 45
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) && spicy = 45
+    query = Vector(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) && spicy = 45
     assert(TestLine.testLineOp(AND, array, query))
     info("works for not equality")
 
     array = Array("spicy=(42,45,67)", "Region=(India, China)")
-    query = List(("Region", List("India")), ("spicy", List("<45"))) //select Region = India && spicy < 45
+    query = Vector(("Region", List("India")), ("spicy", List("<45"))) //select Region = India && spicy < 45
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List("<42"))) //select Region = India && spicy < 42
+    query = Vector(("Region", List("India")), ("spicy", List("<42"))) //select Region = India && spicy < 42
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List(">42"))) //select Region = India && spicy > 42
+    query = Vector(("Region", List("India")), ("spicy", List(">42"))) //select Region = India && spicy > 42
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List(">67"))) //select Region = India && spicy > 67
+    query = Vector(("Region", List("India")), ("spicy", List(">67"))) //select Region = India && spicy > 67
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List(">=67"))) //select Region = India && spicy >= 67
+    query = Vector(("Region", List("India")), ("spicy", List(">=67"))) //select Region = India && spicy >= 67
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List(">=68"))) //select Region = India && spicy >= 68
+    query = Vector(("Region", List("India")), ("spicy", List(">=68"))) //select Region = India && spicy >= 68
     assert(TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List("<=42"))) //select Region = India && spicy <= 42
+    query = Vector(("Region", List("India")), ("spicy", List("<=42"))) //select Region = India && spicy <= 42
     assert(!TestLine.testLineOp(AND, array, query))
-    query = List(("Region", List("India")), ("spicy", List("<=41"))) //select Region = India && spicy <= 41
+    query = Vector(("Region", List("India")), ("spicy", List("<=41"))) //select Region = India && spicy <= 41
     assert(TestLine.testLineOp(AND, array, query))
     info("works for comparison")
   }
 
   "testLine" should "works for or" in {
     var array = Array("spicy=45", "Region=(India, China)")
-    var query = List(("Region", List("India")), ("spicy", Nil)) //select Region = India
+    var query = Vector(("Region", List("India")), ("spicy", Nil)) //select Region = India
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("China")), ("spicy", Nil)) //select Region = China
+    query = Vector(("Region", List("China")), ("spicy", Nil)) //select Region = China
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
+    query = Vector(("Region", List("China", "India")), ("spicy", Nil)) //select Region = China || Region = China
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) || spicy = 45
+    query = Vector(("Region", List("China", "India")), ("spicy", List("43"))) //select (Region = China || Region = India) || spicy = 45
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("Vietnam")), ("spicy", List("43"))) //select Region = Vietnam || spicy = 43
+    query = Vector(("Region", List("Vietnam")), ("spicy", List("43"))) //select Region = Vietnam || spicy = 43
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("Vietnam")), ("spicy", List("45"))) //select Region = Vietnam || spicy = 43
+    query = Vector(("Region", List("Vietnam")), ("spicy", List("45"))) //select Region = Vietnam || spicy = 43
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
+    query = Vector(("Region", List("Switzerland")), ("spicy", Nil)) //select Region = Switzerland
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", Nil)) //select All
+    query = Vector(("Region", Nil), ("spicy", Nil)) //select All
     assert(!TestLine.testLineOp(OR, array, query))
     info("works for simple equality")
 
-    query = List(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) || spicy = 45
+    query = Vector(("Region", List("China", "!India")), ("spicy", List("45"))) //select (Region = China || Region != India) || spicy = 45
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("!India")), ("spicy", List("45"))) //select Region != India || spicy = 45
+    query = Vector(("Region", List("!India")), ("spicy", List("45"))) //select Region != India || spicy = 45
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India || spicy != 45
+    query = Vector(("Region", List("!India")), ("spicy", List("!45"))) //select Region != India || spicy != 45
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) || spicy = 45
+    query = Vector(("Region", List("!India", "!China")), ("spicy", List("45"))) //select (Region != China || Region != India) || spicy = 45
     assert(!TestLine.testLineOp(OR, array, query))
     info("works for not equality")
 
     array = Array("spicy=(42,45,67)", "Region=(India, China)")
-    query = List(("Region", Nil), ("spicy", List("<45"))) //select spicy < 45
+    query = Vector(("Region", Nil), ("spicy", List("<45"))) //select spicy < 45
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List("<42"))) //select spicy < 42
+    query = Vector(("Region", Nil), ("spicy", List("<42"))) //select spicy < 42
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List(">42"))) //select spicy > 42
+    query = Vector(("Region", Nil), ("spicy", List(">42"))) //select spicy > 42
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List(">67"))) //select spicy > 67
+    query = Vector(("Region", Nil), ("spicy", List(">67"))) //select spicy > 67
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List(">=67"))) //select spicy >= 67
+    query = Vector(("Region", Nil), ("spicy", List(">=67"))) //select spicy >= 67
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List(">=68"))) //select spicy >= 68
+    query = Vector(("Region", Nil), ("spicy", List(">=68"))) //select spicy >= 68
     assert(TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List("<=42"))) //select spicy <= 42
+    query = Vector(("Region", Nil), ("spicy", List("<=42"))) //select spicy <= 42
     assert(!TestLine.testLineOp(OR, array, query))
-    query = List(("Region", Nil), ("spicy", List("<=41"))) //select spicy <= 41
+    query = Vector(("Region", Nil), ("spicy", List("<=41"))) //select spicy <= 41
     assert(TestLine.testLineOp(OR, array, query))
     info("works for comparison")
   }

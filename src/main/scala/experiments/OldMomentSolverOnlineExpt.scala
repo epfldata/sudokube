@@ -2,7 +2,6 @@ package experiments
 
 import core.DataCube
 import core.solver.SolverTools._
-import core.prepare.{FullLatticeOnlinePreparer, Preparer}
 import core.solver.moment.Strategy.CoMoment3
 import core.solver.moment.MomentSolverAll
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
@@ -24,7 +23,7 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
@@ -34,26 +33,22 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
     val s = new MomentSolverAll(q.size, CoMoment3)
     var maxDimFetched = 0
     stg.task = () => (maxDimFetched, s.getStats)
-    var l = Profiler("Prepare") {
-      if (containsAllCuboids)
-        FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 1, dc.m.n_bits)
-      else
-        Preparer.default.prepareOnline(dc.m, q, 1, dc.m.n_bits)
-    }
-    val totalsize = l.size
+    val prepareList = Profiler("Prepare") { dc.index.prepare(q, 1, dc.m.n_bits) }
+    val totalsize = prepareList.size
+    val iter = prepareList.iterator
     //println("Prepare over. #Cuboids to fetch = " + totalsize)
     //Profiler.print()
-    val pi = new ProgressIndicator(l.size)
+    val pi = new ProgressIndicator(totalsize)
     //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
-    while (!(l.isEmpty)) {
+    while (iter.hasNext) {
+      val current = iter.next()
       val fetched = Profiler.noprofile("Fetch") {
-        dc.fetch2(List(l.head))
+        dc.fetch2(List(current))
       }
-      val bits = l.head.accessible_bits
-      if (l.head.mask.length > maxDimFetched)
-        maxDimFetched = l.head.mask.length
+      if (current.cuboidCost > maxDimFetched)
+        maxDimFetched = current.cuboidCost
       Profiler.noprofile("Add") {
-        s.add(bits, fetched.toArray)
+        s.add(current.queryIntersection, fetched)
       }
       Profiler.noprofile("FillMiss") {
         s.fillMissing()
@@ -64,7 +59,6 @@ class OldMomentSolverOnlineExpt[T: Fractional : ClassTag](val ename2: String = "
       stg.record()
       if (output)
         pi.step
-      l = l.tail
     }
     stg.finish()
 

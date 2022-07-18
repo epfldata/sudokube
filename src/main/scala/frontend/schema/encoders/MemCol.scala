@@ -10,7 +10,7 @@ import scala.io.Source
 
 class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends StaticColEncoder[T] {
 
-  override def queries(): Set[Seq[Int]] = ???
+  override def queries(): Set[IndexedSeq[Int]] = ???
 
   private val encode_map: Map[T, Int] =
     vals.zipWithIndex.map{ case (k, i) => (k, i) }.toMap
@@ -47,9 +47,9 @@ class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf
 
   override def encode_locally(v: T): Int = encode_map(v)
   override def decode_locally(i: Int): T = decode_map(i)
-  override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
 
-  override def prefixUpto(size: Int): Set[Seq[Int]] = {
+  override def prefixUpto(size: Int): Set[IndexedSeq[Int]] = {
     val min = math.min(size, bits.size)
     (0 to min).map{i => bits.takeRight(i)}.toSet
   }
@@ -63,7 +63,7 @@ class MemCol[T](init_size: Int = 8
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 
 
-  override def queries(): Set[Seq[Int]] = Set(Nil, bits)
+  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
 
   /* protected */
   var encode_map = new mutable.HashMap[T, Int]
@@ -98,7 +98,7 @@ class NestedMemCol[T](partition: T => (T, T), initvalues:Seq[T])(implicit bitPos
   val c1 = new MemCol[T](initvalues.map(x => partition(x)._1).distinct)
   val c2 = new MemCol[T](initvalues.map(x => partition(x)._2).distinct)
 
-  override def queries(): Set[Seq[Int]] = Set(Nil, c1.bits.toList, (c1.bits.toList ++ c2.bits.toList))
+  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), c1.bits, (c1.bits ++ c2.bits))
 
   override def encode(v: T): BigBinary = {
     val (v1, v2) = partition(v)
@@ -110,7 +110,7 @@ class NestedMemCol[T](partition: T => (T, T), initvalues:Seq[T])(implicit bitPos
   override def isRange: Boolean = ???
   override def maxIdx: Int = ???
 
-  override def bits: Seq[Int] = c1.bits ++ c2.bits
+  override def bits: IndexedSeq[Int] = c1.bits ++ c2.bits
 
   override def encode_locally(v: T): Int = ???
 

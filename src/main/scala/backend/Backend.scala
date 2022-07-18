@@ -6,16 +6,16 @@ import util.BigBinary
 
 /** this is a proxy. */
 abstract class Cuboid {
-  type MASK_T = Array[Int]
+  type BITPOS_T = IndexedSeq[Int]
   val n_bits : Int
   def size: BigInt
   def numBytes: Long
   def gc: Unit
-  def rehash_to_sparse(mask: MASK_T): Cuboid
-  def rehash_to_dense( mask: MASK_T): Cuboid
+  def rehash_to_sparse(bitpos: BITPOS_T): Cuboid
+  def rehash_to_dense( bitopos : BITPOS_T): Cuboid
 
   /** smart rehash */
-  def rehash(mask: MASK_T): Cuboid
+  def rehash(bitpos: BITPOS_T): Cuboid
 
   def backend: Backend[_]
 }
@@ -25,7 +25,7 @@ abstract class Backend[MEASURES_T] {
   protected type HYBRID_T
   protected type SPARSE_T
   protected type DENSE_T
-  type MASK_T = Array[Int]
+  type BITPOS_T = IndexedSeq[Int]
 
   def reset: Unit
   def isDense(h: HYBRID_T): Boolean
@@ -34,7 +34,7 @@ abstract class Backend[MEASURES_T] {
   def sparseToHybrid(s: SPARSE_T): HYBRID_T
   def denseToHybrid(d: DENSE_T): HYBRID_T
 
-  def allones(n: Int): MASK_T = Array.fill(n)(1)
+
   protected val be_this = this
 
   case class SparseCuboid(
@@ -48,23 +48,21 @@ abstract class Backend[MEASURES_T] {
     override def gc = {
       cuboidGC(sparseToHybrid(data))
     }
-    override def rehash(mask: MASK_T): Cuboid = {
-      val h = hybridRehash(data, mask)
+    override def rehash(bitpos: BITPOS_T): Cuboid = {
+      val h = hybridRehash(data, bitpos)
       if(isDense(h))
-        DenseCuboid(mask.sum, extractDense(h))
+        DenseCuboid(bitpos.length, extractDense(h))
       else
-        SparseCuboid(mask.sum, extractSparse(h))
+        SparseCuboid(bitpos.length, extractSparse(h))
     }
 
-    def rehash_to_dense(mask: MASK_T) = {
-      assert(mask.length == n_bits)
-      val res_n_bits = mask.sum
-      DenseCuboid(res_n_bits, s2dRehash(data, mask.sum, mask))
+    def rehash_to_dense(bitpos: BITPOS_T) = {
+      val res_n_bits = bitpos.length
+      DenseCuboid(res_n_bits, s2dRehash(data, res_n_bits, bitpos))
     }
 
-    def rehash_to_sparse(mask: MASK_T) = {
-      assert(mask.length == n_bits)
-      SparseCuboid(mask.filter(_ == 1).length, sRehash(data, mask))
+    def rehash_to_sparse(bitpos: BITPOS_T) = {
+      SparseCuboid(bitpos.length, sRehash(data, bitpos))
     }
 
     def backend = be_this
@@ -79,17 +77,15 @@ abstract class Backend[MEASURES_T] {
     override def numBytes: Long = (size * 8).toLong
 
     /** smart rehash */
-    override def rehash(mask: MASK_T): Cuboid = rehash_to_dense(mask)
+    override def rehash(bitpos: BITPOS_T): Cuboid = rehash_to_dense(bitpos)
 
-    def rehash_to_dense(mask: MASK_T) = {
-      assert(mask.length == n_bits)
-      val res_n_bits = mask.sum
-      DenseCuboid(res_n_bits, dRehash(n_bits, data, mask.sum, mask))
+    def rehash_to_dense(bitpos: BITPOS_T) = {
+      val res_n_bits = bitpos.length
+      DenseCuboid(res_n_bits, dRehash(n_bits, data, res_n_bits, bitpos))
     }
 
-    def rehash_to_sparse(mask: MASK_T) = {
-      assert(mask.length == n_bits)
-      SparseCuboid(mask.filter(_ == 1).length, d2sRehash(n_bits, data, mask))
+    def rehash_to_sparse(bitpos: BITPOS_T) = {
+      SparseCuboid(bitpos.length, d2sRehash(n_bits, data, bitpos))
     }
 
     /** only in DenseCuboid */
@@ -106,7 +102,7 @@ abstract class Backend[MEASURES_T] {
 
   def saveAsTrie(cuboids: Array[(Array[Int], HYBRID_T)], filename: String, maxSize: Long): Unit
   def loadTrie(filename: String): Unit
-  def prepareFromTrie(query: List[Int]) : Seq[(Int, Long)]
+  def prepareFromTrie(query: IndexedSeq[Int]) : Seq[(Int, Long)]
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]) : SparseCuboid
   def mkAll(n_bits: Int, it: Seq[(BigBinary, Long)]) : SparseCuboid
@@ -120,12 +116,12 @@ abstract class Backend[MEASURES_T] {
   protected def sSize(data: SPARSE_T) : BigInt
   protected def sNumBytes(data: SPARSE_T) : Long
 
-  protected def hybridRehash(a: SPARSE_T,  mask: MASK_T ) : HYBRID_T
-  protected def d2sRehash(n_bits: Int, a: DENSE_T,  mask: MASK_T) : SPARSE_T
-  protected def s2dRehash(a: SPARSE_T, p_bits: Int, mask: MASK_T) : DENSE_T
-  protected def   sRehash(a: SPARSE_T,              mask: MASK_T) : SPARSE_T
+  protected def hybridRehash(a: SPARSE_T,  bitpos: BITPOS_T ) : HYBRID_T
+  protected def d2sRehash(n_bits: Int, a: DENSE_T,  bitpos: BITPOS_T) : SPARSE_T
+  protected def s2dRehash(a: SPARSE_T, p_bits: Int, bitpos: BITPOS_T) : DENSE_T
+  protected def   sRehash(a: SPARSE_T,              bitpos: BITPOS_T) : SPARSE_T
   protected def   dRehash(n_bits: Int, a: DENSE_T, p_bits: Int,
-                                                    mask: MASK_T) : DENSE_T
+                          bitpos: BITPOS_T) : DENSE_T
 }
 
 

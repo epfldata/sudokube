@@ -1,6 +1,10 @@
 package planning
 
-case class NewProjectionMetaData(queryIntersection: Int, cuboidID: Int, cuboidCost: Int, cuboidIntersection: Seq[Int]) {
+import util.Bits
+
+case class NewProjectionMetaData(queryIntersection: Int, cuboidID: Int, cuboidCost: Int, cuboidIntersection: IndexedSeq[Int]) {
+  //TODO: Include hamming weight of queryIntersection
+  //def accessible_bits = Bits.fromInt(queryIntersection)
   def dominates(other: NewProjectionMetaData, cheap: Int = -1) = {
     (!(this eq other)) &&
       ((this.cuboidCost <= other.cuboidCost) ||

@@ -1,12 +1,10 @@
 package experiments
 
-import core.solver.SolverTools._
 import core._
 import core.solver._
-import util._
 import core.solver.moment.Strategy._
-import core.prepare.Preparer
 import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer, MomentSolver}
+import util._
 
  class NewMomentSolverBatchExpt(strategy: Strategy, ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"newmoment-batch", ename2) {
 
@@ -17,16 +15,16 @@ import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer,
     case CoMoment4 => new CoMoment4Solver(qsize, true, Moment1Transformer(), pm)
   }
 
-  def moment_solve(dc: DataCube, q: Seq[Int]) = {
+  def moment_solve(dc: DataCube, q: IndexedSeq[Int]) = {
 
     val (l, pm) = Profiler("Moment Prepare") {
-      Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+      dc.index.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
-    val maxDimFetch = l.last.mask.length
+    val maxDimFetch = l.last.cuboidCost
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
     val fetched = Profiler("Moment Fetch") {
       l.map { pm =>
-        (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray)
+        (pm.queryIntersection, dc.fetch2[Double](List(pm)).toArray)
       }
     }
     val result = Profiler(s"Moment Solve") {
@@ -47,16 +45,15 @@ import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer,
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
-    import frontend.experiments.Tools.round
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
     val (naiveRes, naiveMaxDim) = Profiler("Naive Total") {
       val l = Profiler("Naive Prepare") {
-        Preparer.default.prepareBatch(dc.m, q, dc.m.n_bits)
+        dc.index.prepare(q, dc.m.n_bits, dc.m.n_bits)
       }
-      val maxDim = l.head.mask.length
+      val maxDim = l.head.cuboidCost
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
       val res = Profiler("Naive Fetch") {
         dc.fetch(l).map(p => p.sm.toDouble)

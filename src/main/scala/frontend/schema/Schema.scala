@@ -18,7 +18,7 @@ trait Schema extends Serializable {
   // abstract members
   def n_bits: Int
 
-  def columnList: List[(String, ColEncoder[_])]
+  def columnList: IndexedSeq[(String, ColEncoder[_])]
   protected def encode_column(key: String, v: Any) : BigBinary
 
   def encode_tuple(t: Seq[(String, Any)]): BigBinary = {
@@ -70,7 +70,7 @@ trait Schema extends Serializable {
     oos.close()
   }
 
-  def decode_dim(q_bits: List[Int]): Seq[Seq[String]] = {
+  def decode_dim(q_bits: IndexedSeq[Int]): Seq[Seq[String]] = {
     val relevant_cols = columnList.filter(_._2.bits.intersect(q_bits).nonEmpty)
     val universe = relevant_cols.flatMap {
       case (_, c) => c.bits

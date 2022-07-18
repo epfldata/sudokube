@@ -62,7 +62,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     dc1.save2(name)
 
     val dc2 = DataCube.load2(name)
-    val actual = dc2.naive_eval(List(0))
+    val actual = dc2.naive_eval(Vector(0))
     // 2 (N/2) * (N/2 + 1)/2
     val evenSum = (N.toDouble / 2) * (N.toDouble / 2 + 1)
 

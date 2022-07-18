@@ -4,9 +4,10 @@ import org.scalatest._
 import IntervalTools._
 import core.solver.RationalTools._
 import core.solver.lpp.SparseMatrixImplicits._
-import util.Util
+import util.{Bits, Util}
 class SimplexAlgoSpec extends FlatSpec with Matchers {
-
+  implicit def listToInt = Bits.toInt(_)
+  implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
 
   "SimplexAlgo" should "not crash when there are no constraints" in {
     val qsize = 1
@@ -224,7 +225,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
     val qsize = 1
     val bounds = SolverTools.mk_all_non_neg[Rational](1 << qsize)
     val v = List[Rational]()
-    val l = List[List[Int]]()
+    val l = List[Int]()
     val s = SparseSolver[Rational](qsize, bounds, l, v)
     s.propagate_bounds(0 to (1 << qsize) - 1)
     s.my_bounds(0 to (1 << qsize) - 1)

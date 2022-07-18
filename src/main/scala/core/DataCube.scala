@@ -2,23 +2,21 @@
 package core
 
 import backend._
+import core.cube.{CuboidIndex, OptimizedArrayCuboidIndexFactory}
 import core.ds.settrie.SetTrieForMoments
 import core.materialization.MaterializationScheme
 import core.materialization.builder._
-import core.prepare.Preparer
-import core.cube.CuboidIndex
+import core.solver._
 import core.solver.lpp.{SliceSparseSolver, SparseSolver}
 import core.solver.moment.Strategy._
 import core.solver.moment._
-import planning.ProjectionMetaData
+import planning.NewProjectionMetaData
 import util._
 
 import java.io._
-import solver._
-
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, future}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.reflect.ClassTag
 
 /** To create a DataCube, must either
   * (1) call DataCube.build(full_cube) or
@@ -37,14 +35,9 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   /* protected */
   var cuboids = Array[Cuboid]()
   var primaryMoments: (Long, Array[Long]) = null
-  var index: CuboidIndex = null
+  var index: CuboidIndex = OptimizedArrayCuboidIndexFactory.buildFrom(m)
   def showProgress = m.n_bits > 25
 
-  /** this is too slow. */
-  def simple_build(full_cube: Cuboid) {
-    cuboids = m.projections.map(bits => full_cube.rehash_to_sparse(
-      Bits.mk_list_mask((0 to m.n_bits - 1), bits.toSet).toArray)).toArray
-  }
 
   /**
     * Builds this cube using the base_cuboid of another DataCube
@@ -181,13 +174,12 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
 
   /** This is the only place where we transfer data from C into Scala.
     */
-  def fetch(pms: Seq[ProjectionMetaData]): Array[Payload] = {
+  def fetch(pms: Seq[NewProjectionMetaData]): Array[Payload] = {
     if (cuboids.length == 0) throw new Exception("Need to build first!")
-
     val backend = cuboids(0).backend
 
     (for (pm <- pms) yield {
-      val c = cuboids(pm.id).rehash_to_dense(pm.mask.toArray)
+      val c = cuboids(pm.cuboidID).rehash_to_dense(pm.cuboidIntersection)
       //val maskString = pm.mask.mkString("")
       //println(s"Fetch mask=$maskString  maskLen = ${pm.mask.length}  origSize=${cuboids(pm.id).size}  newSize=${c.size}")
       c.asInstanceOf[backend.DenseCuboid].fetch.asInstanceOf[Array[Payload]]
@@ -195,20 +187,20 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
   }
 
   /** Gets rid of the Payload box. */
-  def fetch2[T](pms: Seq[ProjectionMetaData]
-               )(implicit num: Fractional[T]): Seq[T] = {
-    fetch(pms).map(p => Util.fromLong(p.smLong))
+  def fetch2[T:ClassTag](pms: Seq[NewProjectionMetaData]
+               )(implicit num: Fractional[T]): Array[T] = {
+    val f1 = fetch(pms)
+      f1.map(p => Util.fromLong(p.smLong))
   }
 
   /** returns a solver for a given query. One needs to explicitly compute
     * and extract bounds from it. (See the code of DataCube.online_agg() for
     * an example.)
     */
-  def solver[T](query: List[Int], max_fetch_dim: Int
+  def solver[T:ClassTag](query: IndexedSeq[Int], max_fetch_dim: Int
                )(implicit num: Fractional[T]): SparseSolver[T] = {
-
     val l = Profiler("SolverPrepare") {
-      Preparer.default.prepareBatch(m, query, max_fetch_dim)
+      index.prepare(query, max_fetch_dim, max_fetch_dim)
     }
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
 
@@ -216,7 +208,7 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
       fetch2(l)
     }
     Profiler("SolverConstructor") {
-      new SliceSparseSolver[T](query.length, bounds, l.map(_.accessible_bits), data)
+      new SliceSparseSolver[T](query.length, bounds, l.map(_.queryIntersection), data)
     }
   }
 
@@ -246,55 +238,56 @@ class DataCube(val m: MaterializationScheme) extends Serializable {
     }
     }}}
     */
-  def online_agg[T](
-    query: List[Int],
+  def online_agg[T:ClassTag](
+    query: IndexedSeq[Int],
     cheap_size: Int,
     callback: SparseSolver[T] => Boolean, // returns whether to continue
     sliceFunc: Int => Boolean = _ => true // determines what variables to filter
   )(implicit num: Fractional[T]) {
 
-    var l = Preparer.default.prepareOnline(m, query, cheap_size, m.n_bits)
+    var prepareList = index.prepare(query, cheap_size, m.n_bits)
     val bounds = SolverTools.mk_all_non_neg[T](1 << query.length)
     val s = new SliceSparseSolver[T](query.length, bounds, List(), List(), sliceFunc)
     var df = s.df
     var cont = true
     println("START ONLINE AGGREGATION")
-    while ((!l.isEmpty) && (df > 0) && cont) {
-      if (s.shouldFetch(l.head.accessible_bits)) { // something can be added
-        println(l.head.accessible_bits)
+    val iter = prepareList.iterator
+    while (iter.hasNext && (df > 0) && cont) {
+      val current = iter.next()
+      if (s.shouldFetch(current.queryIntersection)) { // something can be added
+        println(current.queryIntersection)
 
-        s.add2(List(l.head.accessible_bits), fetch2(List(l.head)))
+        s.add2(List(current.queryIntersection), fetch2[T](List(current)))
         //TODO: Probably gauss not required if newly added varibales are first rewritten in terms of non-basic
         s.gauss(s.det_vars)
         s.compute_bounds
         cont = callback(s)
         df = s.df
       }
-      l = l.tail
     }
   }
 
-  def online_agg_moment(query: List[Int], cheap_size: Int, callback: MomentSolverAll[Double] => Boolean) = {
+  def online_agg_moment(query: IndexedSeq[Int], cheap_size: Int, callback: MomentSolverAll[Double] => Boolean) = {
     val s = new MomentSolverAll[Double](query.size, CoMoment3)
-    var l = Preparer.default.prepareOnline(m, query, cheap_size, m.n_bits)
+    val prepareList = index.prepare(query, cheap_size, m.n_bits)
+    val iter = prepareList.iterator
     var cont = true
-    while (!(l.isEmpty) && cont) {
-      val fetched = fetch2[Double](List(l.head))
-      val bits = l.head.accessible_bits
-      s.add(bits, fetched.toArray)
+    while (iter.hasNext && cont) {
+      val current = iter.next()
+      val fetched = fetch2[Double](List(current))
+      s.add(current.queryIntersection, fetched)
       s.fillMissing()
       s.fastSolve()
       cont = callback(s)
-      l = l.tail
     }
   }
 
   /** fetches the smallest subsuming cuboid and projects away columns not in
     * the query. Does not involve a solver.
     */
-  def naive_eval(query: Seq[Int]): Array[Double] = {
+  def naive_eval(query: IndexedSeq[Int]): Array[Double] = {
     val l = Profiler("NaivePrepare") {
-      Preparer.default.prepareBatch(m, query, m.n_bits)
+      index.prepare(query, m.n_bits, m.n_bits)
     }
     //println("Naive query "+l.head.mask.sum + "  fetch = " + l.head.mask.length)
     Profiler("NaiveFetch") {

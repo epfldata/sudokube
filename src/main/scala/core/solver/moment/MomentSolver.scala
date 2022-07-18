@@ -74,14 +74,14 @@ abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transfo
     }
   }
 
-  def add(cols: Seq[Int], values: Array[T]) = {
-    val eqnColSet = Bits.toInt(cols)
-    val n0 = 1 << cols.length
+  def add(eqnColSet: Int, values: Array[T]): Unit = {
+    val colsLength = Bits.hwZeroOne(eqnColSet, qsize)._1
+    val n0 =  1 << colsLength
 
     val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).
       filter({ case (i0, i) => !knownSet.contains(i) })
 
-    if (newMomentIndices.size < cols.length) {
+    if (newMomentIndices.size < colsLength) {
       // need less than log(n0) moments -- find individually
       newMomentIndices.foreach { case (i0, i) =>
         momentsToAdd += i -> transformer.getMoment(i0, values)

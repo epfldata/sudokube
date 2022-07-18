@@ -14,7 +14,7 @@ abstract class TimeSeriesSchema extends Schema {
     implicit val bitPosRegistry = new BitPosRegistry
     val columns = collection.mutable.Map[String, ColEncoder[_]]()
     val columnTimeLabel : String = "Time"
-    def columnList = columns.toList
+    def columnList = columns.toIndexedSeq
 
     /**
      * Read the file (dataset) and encode it and we add the new column not in the file, the time column corresponding to the line number of the file (0 until size-1)
