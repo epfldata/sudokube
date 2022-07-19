@@ -7,6 +7,7 @@ object Profiler {
   def noprofile[T](name: String)(func: => T): T = func
   def profile[T](name: String)(func: => T): T = {
     val startTime = System.nanoTime()
+    startTimers += (name -> startTime)
     val res = func
     val endTime = System.nanoTime()
     val curDur = durations(name)
