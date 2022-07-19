@@ -20,7 +20,7 @@ object Experimenter {
 
   def schemas(): Unit = {
     List(NYC, SSB(100)).foreach { cg =>
-      val sch = cg.schema()
+      val sch = cg.schemaInstance
       println(cg.inputname)
       sch.columnVector.map(c => c.name + ", " + c.encoder.bits.size).foreach(println)
       println("\n\n")
@@ -47,7 +47,7 @@ object Experimenter {
       println(s"Getting cuboid distribution for $n")
       val logN = names(2).toInt
       val minD = names(3).toInt
-      val dc = PartialDataCube.load(n, cg.inputname + "_base")
+      val dc = PartialDataCube.load(n, cg.baseName)
       val projMap = dc.index.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
       fileout.println(s"${logN}_${minD}," + projs)
@@ -130,7 +130,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     val sch = cg.schema()
 
 
@@ -161,7 +161,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val mq = new MaterializedQueryResult(cg)
@@ -187,7 +187,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val mq = new MaterializedQueryResult(cg)
@@ -221,7 +221,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
@@ -333,7 +333,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val sch = cg.schema()
 
@@ -383,7 +383,7 @@ object Experimenter {
 
     params.foreach { p =>
       val fullname = s"${cg.inputname}_${ms}_${p._1}_${p._2}_$maxD"
-      val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+      val dc = PartialDataCube.load(fullname, cg.baseName)
       dc.loadPrimaryMoments(cg.inputname + "_base")
       println(s"Moment Solver Materialization Parameters Experiment for $fullname")
       val ql = queries.length
@@ -412,7 +412,8 @@ object Experimenter {
 
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val (sch, r_its) = cg.generate2()
+        val r_its = cg.generate2()
+        val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationScheme.all_cuboids(cg.n_bits)
@@ -436,7 +437,8 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val (sch, r_its) = cg.generate2()
+        val r_its = cg.generate2()
+        val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationScheme.all_cuboids(cg.n_bits)
@@ -461,7 +463,8 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val (sch, r_its) = cg.generate2()
+        val r_its = cg.generate2()
+        val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationScheme.all_cuboids(cg.n_bits)
@@ -485,7 +488,8 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val (sch, r_its) = cg.generate2()
+        val r_its = cg.generate2()
+        val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationScheme.all_cuboids(cg.n_bits)
@@ -525,7 +529,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
 
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
@@ -614,7 +618,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"manual-ssb-$ms"
@@ -658,7 +662,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"manual-nyc-$ms"
@@ -683,7 +687,7 @@ object Experimenter {
     val param = "15_14"
     val name = (if (isSMS) "_sms_" else "_rms_") + param
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val sch = cg.schema()
     //val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355)

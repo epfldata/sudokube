@@ -9,7 +9,7 @@ object IPFExperimenter {
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"query-dim-$ms"

@@ -166,9 +166,9 @@ object DemoTxt {
     val logN = 15
     val minD = 14
     val maxD = 30
-    val cubename =  s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}"
+
     /** WARNING: This cube must have been built already. See [[frontend.generators.SSBGen]] **/
-    val dc = PartialDataCube.load(cubename, cg.inputname + "_base")
+    val dc = cg.loadSMS(logN, minD, maxD)
     val display = FeatureFrameSSB(sf, dc, 50)
   }
 

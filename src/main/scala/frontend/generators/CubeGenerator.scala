@@ -1,72 +1,63 @@
 package frontend.generators
 import backend.CBackend
-import core.materialization.{MaterializationScheme, OldRandomizedMaterializationScheme}
+import core.materialization.{MaterializationScheme, OldRandomizedMaterializationScheme, RandomizedMaterializationScheme, SchemaBasedMaterializationScheme}
+import core.solver.SolverTools
 import core.{DataCube, PartialDataCube}
 import frontend.schema.{Schema2, StructuredDynamicSchema}
 import util.BigBinary
 
 abstract class CubeGenerator(val inputname: String) {
-
+  lazy val schemaInstance = schema()
   def generate() : (StructuredDynamicSchema, Seq[(BigBinary, Long)])
-  def generate2() : (Schema2, IndexedSeq[(Int, Iterator[(BigBinary, Long)])]) = ???
+  def generate2(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = ???
 
   val baseName = inputname + "_base"
   def saveBase() = {
-    val (sch, r_its) = generate2()
-    sch.initBeforeEncode()
+    val r_its = generate2()
+    schemaInstance.initBeforeEncode()
     //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
-    val m = MaterializationScheme.only_base_cuboid(sch.n_bits)
+    val m = MaterializationScheme.only_base_cuboid(schemaInstance.n_bits)
     val dc = new DataCube(baseName)
     //sch.save(inputname)
-    val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+    val baseCuboid = CBackend.b.mkParallel(schemaInstance.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.save()
-    (sch, dc)
+    dc.primaryMoments = SolverTools.primaryMoments(dc)
+    dc.savePrimaryMoments(baseName)
+    dc
   }
-
   def loadBase() = {
-    val sch = schema()
-    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    //println("Total = "+sch.n_bits)
-    //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
-    val dc = DataCube.load(baseName)
-    (sch, dc)
+    DataCube.load(baseName)
   }
-  def load(cubename: String) = {
-    val sch = schema()
-    val fullname = inputname + "_" + cubename
-    val dc = DataCube.load(fullname)
-    (sch, dc)
-  }
-  def loadPartial(cubename: String) = {
-    val sch = schema
-    val fullname = inputname + "_" + cubename
-    val dc = PartialDataCube.load(fullname, baseName)
-    (sch, dc)
+  def saveRMS(logN: Int, minD: Int, maxD: Int) = {
+    val rms = new RandomizedMaterializationScheme(schemaInstance.n_bits, logN, minD)
+    val rmsname = s"${inputname}_rms3_${logN}_${minD}_${maxD}"
+    val dc2 = new PartialDataCube(rmsname, baseName)
+    println(s"Building DataCube $rmsname")
+    dc2.buildPartial(rms)
+    println(s"Saving DataCube $rmsname")
+    dc2.save()
   }
 
-  def multiload(params: Seq[(Double, Double)]) = {
-    val sch = StructuredDynamicSchema.load(inputname)
-    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dcs = params.map{p => p -> loadDC(p._1, p._2)}
-    (sch, dcs)
-  }
-  def load2() = {
-    val sch = StructuredDynamicSchema.load(inputname)
-    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load(s"${inputname}_sch")
-    (sch, dc)
-  }
-  def load(lrf: Double, lbase: Double) = {
-    val sch = StructuredDynamicSchema.load(inputname)
-    //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    //println("Total = "+sch.n_bits)
-    val dc = DataCube.load(s"${inputname}_${lrf}_${lbase}")
-    (sch, dc)
+  def loadRMS(logN: Int, minD: Int, maxD: Int) = {
+    val rmsname = s"${inputname}_rms3_${logN}_${minD}_${maxD}"
+    PartialDataCube.load(rmsname, baseName)
   }
 
-  def schema(): Schema2 = ???
-  def loadDC(lrf: Double, lbase: Double) = {
-    DataCube.load(s"${inputname}_${lrf}_${lbase}")
+  def saveSMS(logN: Int, minD: Int, maxD: Int) = {
+    val sms = new SchemaBasedMaterializationScheme(schemaInstance, logN, minD)
+    val smsname = s"${inputname}_sms3_${logN}_${minD}_${maxD}"
+    val dc3 = new PartialDataCube(smsname, baseName)
+    println(s"Building DataCube $smsname")
+    dc3.buildPartial(sms)
+    println(s"Saving DataCube $smsname")
+    dc3.save()
   }
+
+  def loadSMS(logN: Int, minD: Int, maxD: Int) = {
+    val smsname = s"${inputname}_sms3_${logN}_${minD}_${maxD}"
+    PartialDataCube.load(smsname, baseName)
+  }
+  protected def schema(): Schema2 = ???
+
 }

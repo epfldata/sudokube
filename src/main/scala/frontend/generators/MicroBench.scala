@@ -22,11 +22,10 @@ case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double) ex
 
   override def generate(): (StructuredDynamicSchema, Seq[(BigBinary, Long)]) = ???
 
-  override def generate2(): (Schema2, IndexedSeq[(Int, Iterator[(BigBinary, Long)])]) = {
-    val sch = schema()
+  override def generate2(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val keys = (0 until 1 << n_bits)
     val kv = keys.map(k => BigBinary(k) -> sampleValue(k).toLong)
-    sch -> Vector((kv.size, kv.iterator))
+    Vector((kv.size, kv.iterator))
   }
 
   def sampleValue(k: Int): Int = {

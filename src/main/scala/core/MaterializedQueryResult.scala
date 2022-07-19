@@ -6,11 +6,11 @@ import frontend.generators.{CubeGenerator, NYC, SSB}
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
 class MaterializedQueryResult(cg: CubeGenerator) {
-  val sch = cg.schema()
+  val sch = cg.schemaInstance
   var baseCube: DataCube = null
 
   def ensureLoadBase() = if (baseCube == null)
-    baseCube = DataCube.load(cg.inputname + "_base")
+    baseCube = cg.loadBase()
 
   def generateAndSaveQueries(nq: Int, qs: Int) = {
     println(s"Generating $nq queries of length $qs for ${cg.inputname} dataset")

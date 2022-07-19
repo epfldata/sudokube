@@ -105,6 +105,7 @@ class CBackend extends Backend[Payload] {
   def mkParallel(n_bits: Int, its: IndexedSeq[(Int, Iterator[(BigBinary, Long)])]): SparseCuboid  = {
 
     val sizes = its.map(_._1)
+    val pi = new ProgressIndicator(its.size, "Building Base Cuboid", n_bits > 25)
     val totalSize = sizes.sum
     val offsets = Array.fill(its.size)(0)
     (1 until its.size).foreach { i =>  offsets(i) = offsets(i-1) + sizes(i-1)}
@@ -120,6 +121,7 @@ class CBackend extends Backend[Payload] {
         add_i(count + offset, data, n_bits, ia_key, x._2)
         count += 1
       }
+      pi.step
       //println(" P"+i+s" from $offset to ${offset + count}")
       //collection.immutable.BitSet((offset until offset + count):_*)
     })

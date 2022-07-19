@@ -130,7 +130,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d.tail).toMap
     val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d.tail).toMap
 
-    val sch = schema()
+    val sch = schemaInstance
 
     def joinFunc(r: IndexedSeq[String]) = {
       val oid = r(0)
@@ -171,33 +171,21 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     //println("LO Parts  = " + los.size)
     val jos = los.map{ case (n, it) => n -> it.map(joinFunc)}
 
-    (sch, jos)
+    jos
   }
 }
 
 object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
-    val sch = cg.schema()
 
-    //val dcbase = cg.saveBase._2
-    //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
-    //dcbase.savePrimaryMoments(cg.inputname + "_base")
-
+    cg.saveBase()
+    val maxD = 30 // >15+14, so never passes threshold
     List(
       (15, 14)
     ).map { case (logN, minD) =>
-      val maxD = 30 // >15+14, so never passes threshold
-      val rms = new RandomizedMaterializationScheme(sch.n_bits, logN, minD)
-      val rmsname = s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}"
-      val dc2 = new PartialDataCube(rmsname, cg.baseName)
-      dc2.buildPartial(rms)
-      dc2.save()
-      val sms = new SchemaBasedMaterializationScheme(sch, logN, minD)
-      val smsname = s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}"
-      val dc3 = new PartialDataCube(smsname, cg.baseName)
-      dc3.buildPartial(sms)
-      dc3.save()
+      cg.saveRMS(logN, minD, maxD)
+      cg.saveSMS(logN, minD, maxD)
     }
 
   }
