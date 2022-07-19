@@ -30,7 +30,7 @@ class CoMoment5SliceSolver2[T: ClassTag : Fractional](totalsize: Int, slicevalue
   }
 
   override def add(eqnColSet: Int, values: Array[T]) {
-    val colsLength = Bits.hwZeroOne(eqnColSet, totalsize)._1
+    val colsLength = Bits.sizeOfSet(eqnColSet)
     val n0 = 1 << colsLength
 
     val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).

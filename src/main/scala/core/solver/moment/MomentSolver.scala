@@ -75,7 +75,7 @@ abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transfo
   }
 
   def add(eqnColSet: Int, values: Array[T]): Unit = {
-    val colsLength = Bits.hwZeroOne(eqnColSet, qsize)._1
+    val colsLength = Bits.sizeOfSet(eqnColSet)
     val n0 =  1 << colsLength
 
     val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).

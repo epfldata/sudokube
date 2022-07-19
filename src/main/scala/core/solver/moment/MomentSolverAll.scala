@@ -498,7 +498,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
     fetchedCuboids = (eqnColSet -> values.map(num.toDouble(_))) :: fetchedCuboids
     //println(s"Fetch $eqnColSet")
     //println(values.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
-    val length = Bits.hwZeroOne(eqnColSet, qsize)._1
+    val length = Bits.sizeOfSet(eqnColSet)
 
     //calculate any previously unknown moments from the cuboid
     (0 until 1 << length).foreach { i0 =>

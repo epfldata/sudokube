@@ -93,7 +93,7 @@ object Bits {
     val universeInt = (1 << universeLength) - 1
 
     val bits2 = universeInt - bits //complement
-    val bitsLength = Bits.hwZeroOne(bits, universeLength)._1
+    val bitsLength = Bits.sizeOfSet(bits)
     val n_vals1 = 1 << bitsLength
     val n_vals2 = 1 << (universeLength - bitsLength)
 
@@ -111,7 +111,7 @@ object Bits {
     val universeInt = (1 << universeLength) - 1
 
     val bits2 = universeInt - bits //complement
-    val bitsLength = Bits.hwZeroOne(bits, universeLength)._1
+    val bitsLength = Bits.sizeOfSet(bits)
     val n_vals1 = 1 << bitsLength
     val n_vals2 = 1 << (universeLength - bitsLength)
     val jj = Bits.unproject(n_vals2 - 1, bits2)
@@ -192,7 +192,17 @@ object Bits {
     }
     result
   }
-
+  /** Returns the hamming weight of a set encoded as Int */
+  def sizeOfSet(i: Int) = {
+    var hw = 0
+    var i2 = i
+    while(i2 > 0) {
+      if ((i2 & 1) != 0)
+        hw += 1
+      i2 >>= 1
+    }
+    hw
+  }
   //Returns the hamming weight, positions of 0 and positions of i from bits 0 --- maxb-1
   def hwZeroOne(i: Int, maxb: Int) = {
     var i2 = i

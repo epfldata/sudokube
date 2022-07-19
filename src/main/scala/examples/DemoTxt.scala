@@ -9,6 +9,7 @@ import core.materialization._
 import core.solver.RationalTools._
 import core.solver.SolverTools.error
 import core.solver._
+import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, IPFUtils, VanillaIPFSolver}
 import core.solver.moment.Strategy._
 import core.solver.moment._
 import frontend._
@@ -59,6 +60,85 @@ object DemoTxt {
     val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result))
+  }
+
+  def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
+    val actual = Array(0, 1, 1, 1, 1, 0, 0, 0).map(_.toDouble)
+    val solver = new VanillaIPFSolver(3, true, actual)
+    solver.add(List(0, 1), Array(1, 1, 1, 1).map(_.toDouble))
+    solver.add(List(1, 2), Array(1, 2, 1, 0).map(_.toDouble))
+    solver.add(List(0, 2), Array(1, 2, 1, 0).map(_.toDouble))
+    val result = solver.solve()
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def effectiveIPFSolver(): Unit = { // Decomposable
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new EffectiveIPFSolver(6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution)
+    }
+
+    val result = solver.solve()
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def vanillaIPFSolver2(): Unit = { // Decomposable, just for comparison
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new VanillaIPFSolver(6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution)
+    }
+
+    val result = solver.solve()
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
+  }
+
+  def momentSolver3(): Unit = { // Decomposable, just for comparison
+    val randomGenerator = new Random()
+    val actual: Array[Double] = Array.fill(1 << 6)(0)
+    (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
+
+    val solver = new MomentSolverAll[Rational](6)
+    val marginalDistributions: Map[Seq[Int], Array[Double]] =
+      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+      ).toMap
+    implicit def listToInt = Bits.toInt(_)
+    marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
+      solver.add(marginalVariables, clustersDistribution.map(n => Rational(BigInt(n.toInt), 1)))
+    }
+    solver.fillMissing()
+
+    val result = solver.fastSolve().map(_.toDouble)
+    println(actual.mkString(" "))
+    println(result.mkString(" "))
+    println("Error = " + error(actual, result))
+    solver.verifySolution()
   }
 
   /** Demo for frontend stuff */
@@ -177,5 +257,9 @@ object DemoTxt {
     //backend_naive()
     //ssb_demo()
     //cooking_demo()
+    //vanillaIPFSolver()
+    //effectiveIPFSolver()
+    //vanillaIPFSolver2()
+    //momentSolver3()
   }
 }
