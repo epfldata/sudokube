@@ -10,12 +10,12 @@ jni_include=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(osname)
 lib_src=src/main/cpp/CBackend.cpp src/main/cpp/CubeArrays.cpp
 $(info osname is $(osname))
 ifeq ($(osname), darwin)
-	lib=libCBackend.dylib
+lib=libCBackend.dylib
 else
-	lib=libCBackend.so
+lib=libCBackend.so
 endif
 ifeq ($(JAVA_HOME),)
-	$(error JAVA_HOME is not set)
+$(error JAVA_HOME is not set)
 endif
 libCBackend: $(lib)
 backend_CBackend.h: src/main/scala/backend/CBackend.scala
