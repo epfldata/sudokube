@@ -2,9 +2,12 @@ package core.ds.settrie
 
 import util.Bits
 
-//we assume every node has moment stored
+/**
+ * Variant of [[SetTrie]] used for storing and looking up moments associated with subsets
+ */
 @SerialVersionUID(1L)
 class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
+  //Not optimized like other variants due to Double
   val nodes = Array.fill(maxSize)(new SetTrieForMomentsNode(-1, Double.NaN, -1, -1))
   var nodeCount = 0
 
@@ -18,22 +21,32 @@ class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
     }
   }
 
+  /**
+   * Returns all subsets of q (encoded using Int relative to q) and the associated moments
+   */
   def getNormalizedSubsetMoments(q: IndexedSeq[Int]): List[(Int, Double)] = {
     val qarray = q
 
-    def rec(n: SetTrieForMomentsNode, qidx: Int, branch: Int): List[(Int, Double)] = {
-      var result = List[(Int, Double)](branch -> n.moment)
+    def rec(n: SetTrieForMomentsNode, qidx: Int, queryIntersection: Int): List[(Int, Double)] = {
+      var result = List[(Int, Double)](queryIntersection -> n.moment)
 
       var childId = n.firstChild
       var i = qidx
 
+      //Traverse children
       while (childId != -1 && i < qarray.length) {
-        val qb = qarray(i)
+        val qkey = qarray(i)
         val child = nodes(childId)
-        if (child.b == qb) {
-          result = result ++ rec(child, i + 1, branch + (1 << i))
+        /** Recursively process children. 3 cases
+         *  child.key < qkey : find subsets of the same set in the subtree rooted at child
+         *  child.key == qkey: find subsets of the set without the first element in the subtree rooted at child
+         *      Also increment qIdx and update the queryIntersection to include the first element
+         *  child.key > qkey : increment qIdx and retry the same child
+         * */
+        if (child.key == qkey) {
+          result = result ++ rec(child, i + 1, queryIntersection + (1 << i))
           childId = child.nextSibling
-        } else if (child.b < qb) {
+        } else if (child.key < qkey) {
           childId = child.nextSibling
         } else {
           i = i + 1
@@ -43,7 +56,7 @@ class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
     }
     rec(nodes(0), 0, 0)
   }
-
+  /** Adds a new set to the trie along with its associated moment */
   def insert(s: Iterable[Int], moment: Double): Unit = {
     if(nodeCount == 0 && s.isEmpty) {
       nodes(0).moment = moment
@@ -59,21 +72,25 @@ class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
     }
   }
 
-  def findOrElseInsert(n: SetTrieForMomentsNode, v: Int, moment: Double) = {
+  /**
+   * Looks for a child with key [[k]] in the node represented by [[n]]. If no such child is found, a child is added
+   * at the appropriate position among all children of n in the sorted order of keys.
+   */
+  def findOrElseInsert(n: SetTrieForMomentsNode, k: Int, moment: Double) = {
     var cur = n.firstChild
     var child = if (cur != -1) nodes(cur) else null
     var prev: SetTrieForMomentsNode = null
 
-    while (cur != -1 && child.b < v) {
+    while (cur != -1 && child.key < k) {
       prev = child
       cur = child.nextSibling
       child = if (cur != -1) nodes(cur) else null
     }
-    if (child != null && child.b == v) {
+    if (child != null && child.key == k) {
       child
     } else {
       val newnode = nodes(nodeCount)
-      newnode.set(v, moment, cur)
+      newnode.set(k, moment, cur)
       if (prev == null)
         n.firstChild = nodeCount
       else
@@ -85,9 +102,9 @@ class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
 }
 
 @SerialVersionUID(2L)
-class SetTrieForMomentsNode(var b: Int, var moment: Double, var firstChild: Int, var nextSibling: Int) extends Serializable {
+class SetTrieForMomentsNode(var key: Int, var moment: Double, var firstChild: Int, var nextSibling: Int) extends Serializable {
   def set(bval: Int, mval: Double, sibVal: Int) = {
-    b = bval
+    key = bval
     moment = mval
     nextSibling = sibVal
   }

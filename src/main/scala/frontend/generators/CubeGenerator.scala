@@ -16,11 +16,11 @@ abstract class CubeGenerator(val inputname: String) {
     sch.initBeforeEncode()
     //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
     val m = MaterializationScheme.only_base_cuboid(sch.n_bits)
-    val dc = new DataCube()
+    val dc = new DataCube(baseName)
     //sch.save(inputname)
     val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
     dc.build(baseCuboid, m)
-    dc.save2(baseName)
+    dc.save()
     (sch, dc)
   }
 
@@ -29,19 +29,19 @@ abstract class CubeGenerator(val inputname: String) {
     //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
     //println("Total = "+sch.n_bits)
     //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
-    val dc = DataCube.load2(baseName)
+    val dc = DataCube.load(baseName)
     (sch, dc)
   }
   def load(cubename: String) = {
     val sch = schema()
     val fullname = inputname + "_" + cubename
-    val dc = DataCube.load2(fullname)
+    val dc = DataCube.load(fullname)
     (sch, dc)
   }
   def loadPartial(cubename: String) = {
     val sch = schema
     val fullname = inputname + "_" + cubename
-    val dc = PartialDataCube.load2(fullname, baseName)
+    val dc = PartialDataCube.load(fullname, baseName)
     (sch, dc)
   }
 
@@ -54,19 +54,19 @@ abstract class CubeGenerator(val inputname: String) {
   def load2() = {
     val sch = StructuredDynamicSchema.load(inputname)
     //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load2(s"${inputname}_sch")
+    val dc = DataCube.load(s"${inputname}_sch")
     (sch, dc)
   }
   def load(lrf: Double, lbase: Double) = {
     val sch = StructuredDynamicSchema.load(inputname)
     //sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
     //println("Total = "+sch.n_bits)
-    val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
+    val dc = DataCube.load(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }
 
   def schema(): Schema2 = ???
   def loadDC(lrf: Double, lbase: Double) = {
-    DataCube.load2(s"${inputname}_${lrf}_${lbase}")
+    DataCube.load(s"${inputname}_${lrf}_${lbase}")
   }
 }

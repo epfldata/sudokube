@@ -42,6 +42,10 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
 
 
 @SerialVersionUID(4L)
+/**
+ * Concrete subclass of [[Base2MaterializationScheme]] that picks cuboids of a given dimensionality as prefixes of bits
+ * from cosmetic dimensions in the schema
+ */
 class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
   def this(sch: Schema2, logN: Double, minD: Int) = this(sch, logN, minD, (minD + logN - 1).toInt)
   override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
@@ -51,7 +55,7 @@ class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, ma
 }
 
 /**
- * Same idea as Randomized Materialization Scheme, but parameters are different
+ * Concrete subclass of [[Base2MaterializationScheme]] that picks cuboids of a given dimensionality randomly
  */
 @SerialVersionUID(5L)
 class RandomizedMaterializationScheme(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {

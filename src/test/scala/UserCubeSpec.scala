@@ -4,7 +4,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class UserCubeSpec extends FlatSpec with Matchers{
   def fixture = new {
-    val userCube = UserCube.createFromJson("example-data/testing_database.json", "rating")
+    val userCube = UserCube.createFromJson("example-data/testing_database.json", "rating", "testUserCube")
   }
 
   it should "return right bits for cosmetic dimensions" in {
@@ -55,8 +55,8 @@ class UserCubeSpec extends FlatSpec with Matchers{
 
   it should "be able to load and save cubes" in {
     val userCube = fixture.userCube
-    userCube.save("test")
-    val loaded = UserCube.load("test")
+    userCube.save()
+    val loaded = UserCube.load("testUserCube")
     assert(loaded.cube.naive_eval(Vector(0)).sameElements(userCube.cube.naive_eval(Vector(0))))
     assert(loaded.sch.n_bits == userCube.sch.n_bits)
   }

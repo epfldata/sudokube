@@ -4,6 +4,10 @@ package core.materialization
 import util._
 
 @SerialVersionUID(2L)
+/**
+ * Describes what projections are materialized from a base cuboid containing n_bits dimensions
+ * @param n_bits
+ */
 abstract class MaterializationScheme(val n_bits: Int) extends Serializable {
   /** the metadata describing each projection in this scheme. */
   val projections: IndexedSeq[IndexedSeq[Int]]

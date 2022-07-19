@@ -10,7 +10,7 @@ class MaterializedQueryResult(cg: CubeGenerator) {
   var baseCube: DataCube = null
 
   def ensureLoadBase() = if (baseCube == null)
-    baseCube = DataCube.load2(cg.inputname + "_base")
+    baseCube = DataCube.load(cg.inputname + "_base")
 
   def generateAndSaveQueries(nq: Int, qs: Int) = {
     println(s"Generating $nq queries of length $qs for ${cg.inputname} dataset")

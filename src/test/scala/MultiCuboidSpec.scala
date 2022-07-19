@@ -56,12 +56,12 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
     val m = MaterializationScheme.only_base_cuboid(n_bits)
-    val dc1 = new DataCube()
+    val dc1 = new DataCube(name)
     dc1.build(full_cube, m)
 
-    dc1.save2(name)
+    dc1.save()
 
-    val dc2 = DataCube.load2(name)
+    val dc2 = DataCube.load(name)
     val actual = dc2.naive_eval(Vector(0))
     // 2 (N/2) * (N/2 + 1)/2
     val evenSum = (N.toDouble / 2) * (N.toDouble / 2 + 1)
@@ -82,12 +82,13 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
     val m = OldRandomizedMaterializationScheme(schema.n_bits, 1, 1)
-    val dc1 = new DataCube()
-    dc1.build(full_cube, m)
-    val name = "MultiCuboidTest1"
-    dc1.save2(name)
 
-    val dc2 = DataCube.load2(name)
+    val name = "MultiCuboidTest1"
+    val dc1 = new DataCube(name)
+    dc1.build(full_cube, m)
+    dc1.save()
+
+    val dc2 = DataCube.load(name)
 
     assert(dc1.cuboids.length == dc2.cuboids.length)
     (0 until dc1.cuboids.length).foreach { i =>
@@ -121,11 +122,11 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
     val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
-    val dc1 = new DataCube()
+    val dc1 = new DataCube(name)
     dc1.build(full_cube, m)
-    dc1.save2(name)
+    dc1.save()
 
-    val dc2 = DataCube.load2(name)
+    val dc2 = DataCube.load(name)
 
     assert(dc1.cuboids.length == dc2.cuboids.length)
     (0 until dc1.cuboids.length).foreach { i =>

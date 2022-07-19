@@ -71,7 +71,7 @@ object Util {
 
   //Displays storage statistics per cuboid size
   def stats(dcname: String, basename: String) = {
-    val dc = PartialDataCube.load2(dcname, basename)
+    val dc = PartialDataCube.load(dcname, basename)
     dc.cuboids.map { c => (c.n_bits, c.numBytes) }.groupBy(_._1).mapValues { cs =>
       val count = cs.length
       val sum = cs.map(_._2).sum * math.pow(10, -9) //in GB

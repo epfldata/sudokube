@@ -5,7 +5,7 @@ import backend.Payload
 import core.solver.SolverTools
 
 
-/** The main solver; uses Gaussian elimination and linear programming.
+/** uses Gaussian elimination and linear programming.
     These two algos can be found in DenseSolverTools.
 
     @param n_bits       the length of the query. The query consists of

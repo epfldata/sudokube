@@ -19,21 +19,24 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 
 /** To create a DataCube, must either
-  * (1) call DataCube.build(full_cube) or
+  * (1) call DataCube.build(full_cube, matscheme) or
   * (2) call (companion object) DataCube.load(..)
   * before use.
   *
-  * An instance of the DataCube class has an associated MaterializationScheme
-  * that holds the metadata -- the decisions on which cuboids to materialize.
+  * An instance of the DataCube class has a [[CuboidIndex]]
+  * that stores what cuboids are materialized and tells us which ones to fetch for a given query
   *
   * The DataCube instance itself stores the Cuboids -- the data or proxies
   * to the data held in the backend.
   */
 @SerialVersionUID(2L)
-class DataCube() extends Serializable {
+class DataCube(var cubeName: String = "") extends Serializable {
 
   /* protected */
   var cuboids = Array[Cuboid]()
+  /** Cached moments for 0D and 1D cuboids.
+      Needs to be explicitly loaded using [[DataCube.loadPrimaryMoments]]
+   */
   var primaryMoments: (Long, Array[Long]) = null
   var index: CuboidIndex = null
 
@@ -48,10 +51,10 @@ class DataCube() extends Serializable {
   }
 
   /** build each cuboid from a smallest that subsumes it -- using
-    * MaterializationScheme.create_build_plan().
+    * CubeBuilder.create_build_plan().
     * has to be called explicitly, otherwise no data is created.
     * In the end, the full_cube is at position cuboids.last (this is consistent
-    * with the order in m.projections).
+    * with the order in [[DataCube.index]]).
     *
     * @param full_cube is integrated into the data cube as is and not copied.
     */
@@ -69,28 +72,15 @@ class DataCube() extends Serializable {
     }
   }
 
-  /** load the cuboids from files. Do not call this directly, but call
-    * the load method of the companion object instead.
-    *
-    * @param l a list of (isSparseCuboid, n_bits, size) triples, one list
-    *          entry for each cuboid to load.
-    * @deprecated Use load2 for multiple cuboids from a single file
-    */
-  protected def load(backend: Backend[Payload], l: List[(Boolean, Int, BigInt)], name_prefix: String) {
-    cuboids = (l.zipWithIndex.map {
-      case ((sparse, n_bits, size), id) =>
-        backend.readCuboid(id, sparse, n_bits, size, name_prefix)
-    }).toArray
-  }
 
   /**
-    * Loads cuboids from files. Do not call this directly, but invoke the load2 method of the companion object.
+    * Loads cuboids from files. Do not call this directly, but invoke the load method of the companion object.
     *
     * @param be                Backend
     * @param multicuboidLayout List of layout information, one per file. For each  file, we have
     *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
     */
-  def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
+  def load(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
@@ -106,15 +96,27 @@ class DataCube() extends Serializable {
     Await.result(Future.sequence(futures), Duration.Inf)
   }
 
+  /**
+   * Threshold size for combining several cuboids to form a multicuboid
+   */
   final val threshold = 1000 * 1000 * 200
 
-  def save2(filename: String) {
+  /**
+   * Save data cube to disk. It involves 3 separate stages
+   * Write CuboidIndex that contains projection metadata
+   * Create a multicuboid layout that combines several cuboids to form files of sizes [[DataCube.threshold]] and write
+   * this layout to another file
+   * Instruct the backend to write the cuboids following the multicuboid layout
+   */
+  def save() {
+    val filename = cubeName
+    assert(!filename.isEmpty)
     val be = cuboids(0).backend
     val file = new File("cubedata/" + filename + "/" + filename + ".mcl")
     if (!file.exists())
       file.getParentFile.mkdirs()
 
-    //pack cuboids upto 10 MB into a single file
+    //pack cuboids upto 200 MB into a single file
     val multiCuboids = cuboids.zipWithIndex.foldLeft((Map[Int, Cuboid]() :: Nil) -> BigInt(0)) {
       case ((list, total), (cub, id)) => if ((total + cub.numBytes) < threshold) {
         ((list.head + (id -> cub)) :: list.tail) -> (total + cub.numBytes)
@@ -175,6 +177,7 @@ class DataCube() extends Serializable {
   /** returns a solver for a given query. One needs to explicitly compute
     * and extract bounds from it. (See the code of DataCube.online_agg() for
     * an example.)
+   * TODO: Generalize for all solvers
     */
   def solver[T:ClassTag](query: IndexedSeq[Int], max_fetch_dim: Int
                )(implicit num: Fractional[T]): SparseSolver[T] = {
@@ -200,6 +203,8 @@ class DataCube() extends Serializable {
     to the actual dimensionality of the cuboid, not to their
     dimensionality after projection to dimensions occurring in the
     query.
+
+   TODO: Generalize to all solvers
 
     @example {{{
     import frontend.experiments.Tools._
@@ -274,15 +279,21 @@ class DataCube() extends Serializable {
     }
   }
 
-  def loadTrie(cubename: String) = {
-    val filename = s"cubedata/${cubename}_trie/${cubename}.trie"
+  /**
+   * Loads a set trie storing the moments of this data cube from disk
+   * Experimental feature
+   */
+
+  def loadTrie() = {
+    val filename = s"cubedata/${cubeName}_trie/${cubeName}.trie"
     val file = new File(filename)
     val in = new ObjectInputStream(new FileInputStream(file))
     in.readObject().asInstanceOf[SetTrieForMoments]
   }
 
-  def saveAsTrie(cubename: String) = {
-    val filename = s"cubedata/${cubename}_trie/${cubename}.ctrie"
+  /** Saves the moments of this data cube in a trie data structure */
+  def saveAsTrie() = {
+    val filename = s"cubedata/${cubeName}_trie/${cubeName}.ctrie"
     val file = new File(filename)
     if (!file.exists())
       file.getParentFile.mkdirs()
@@ -304,14 +315,16 @@ class DataCube() extends Serializable {
     be.saveAsTrie(cubs, filename, maxsize)
   }
 
-  def savePrimaryMoments(cubename: String) = {
-    val filename = s"cubedata/$cubename/${cubename}.m1s"
+  //TODO: FIX primary moments not necessarily saved under the same name as this cuboid
+  def savePrimaryMoments(otherCubeName: String) = {
+    val filename = s"cubedata/$otherCubeName/${otherCubeName}.m1s"
     val out = new ObjectOutputStream(new FileOutputStream(filename))
     out.writeObject(primaryMoments)
   }
 
-  def loadPrimaryMoments(cubename: String) = {
-    val filename = s"cubedata/$cubename/${cubename}.m1s"
+  //TODO: FIX primary moments not necessarily saved under the same name as this cuboid
+  def loadPrimaryMoments(otherCubeName: String) = {
+    val filename = s"cubedata/$otherCubeName/${otherCubeName}.m1s"
     val in = new ObjectInputStream(new FileInputStream(filename))
     primaryMoments = in.readObject().asInstanceOf[(Long, Array[Long])]
   }
@@ -322,15 +335,15 @@ class DataCube() extends Serializable {
   * Does not materialize the full cuboid again.
   * Several PartialDataCubes can share the same full cuboid.
   *
-  * @param m        Materialization Scheme
+    @param cubeName the name for this data cube
   * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
   */
-class PartialDataCube(basename: String) extends DataCube() {
-  val base = DataCube.load2(basename)
+class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
+  val base = DataCube.load(basename)
 
    def buildPartial(m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
 
-  override def load2(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
+  override def load(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
@@ -344,11 +357,13 @@ class PartialDataCube(basename: String) extends DataCube() {
     }
     val last = cuboids.indices.last
     assert(cuboids(last) == null)
-    cuboids(last) = DataCube.load2(basename).cuboids.last
+    cuboids(last) = DataCube.load(basename).cuboids.last
     Await.result(Future.sequence(tasks), Duration.Inf)
   }
 
-  override def save2(filename: String): Unit = {
+  override def save(): Unit = {
+    val filename = cubeName
+    assert(!filename.isEmpty)
     val be = cuboids(0).backend
     val file = new File("cubedata/" + filename + "_partial/" + filename + ".pmcl")
     if (!file.exists())
@@ -393,42 +408,35 @@ class PartialDataCube(basename: String) extends DataCube() {
 
 object DataCube {
   /** creates and loads a DataCube.
-     @param filename is the name of the metadata file.
-
-     @example{{{
-        val dc = frontend.experiments.Tools.mkDC(10, 0.5, 1.8, 100,
-        backend.ScalaBackend)
-        dc.save("hello")
-        core.DataCube.load("hello", backend.ScalaBackend)
-     }}}
+     @param cubeName is the name of the metadata file.
     */
 
-  def load2(filename: String, be: Backend[Payload] = CBackend.b): DataCube = {
-    val file = new File("cubedata/" + filename + "/" + filename + ".mcl")
+  def load(cubeName: String, be: Backend[Payload] = CBackend.b): DataCube = {
+    val file = new File("cubedata/" + cubeName + "/" + cubeName + ".mcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new DataCube()
-    dc.index = CuboidIndexFactory.loadFromFile(filename)
-    dc.load2(be, multiCuboidLayoutData, file.getParent)
+    val dc = new DataCube(cubeName)
+    dc.index = CuboidIndexFactory.loadFromFile(cubeName)
+    dc.load(be, multiCuboidLayoutData, file.getParent)
 
     dc
   }
 }
 
 object PartialDataCube {
-  def load2(filename: String, basename: String, be: Backend[Payload] = CBackend.b) = {
-    val file = new File("cubedata/" + filename + "_partial/" + filename + ".pdc")
+  def load(cubeName: String, basename: String, be: Backend[Payload] = CBackend.b) = {
+    val file = new File("cubedata/" + cubeName + "_partial/" + cubeName + ".pdc")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new PartialDataCube(basename)
-    dc.index = CuboidIndexFactory.loadFromFile(filename)
-    dc.load2(be, multiCuboidLayoutData, file.getParent)
+    val dc = new PartialDataCube(cubeName, basename)
+    dc.index = CuboidIndexFactory.loadFromFile(cubeName)
+    dc.load(be, multiCuboidLayoutData, file.getParent)
     dc
   }
 }

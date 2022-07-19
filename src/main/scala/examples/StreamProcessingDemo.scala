@@ -43,7 +43,7 @@ object StreamProcessingDemo {
     val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
     val dc = new DataCube()
     dc.build(basecuboid, matscheme)
-    val cube = new UserCube(dc, sch)
+    val cube = new UserCube("StreamDemo", dc, sch)
     val analyse = new Analysis(cube, sch)
     //val r :  List[(Int, List[(String, String, String)])] = analyse.divideV2()
     /*r.foreach(x => {

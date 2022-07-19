@@ -41,38 +41,6 @@ JNIEXPORT void JNICALL Java_backend_CBackend_reset0(JNIEnv *env, jobject obj) {
     reset();
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
-        (JNIEnv *env, jobject obj, jstring filename, jint n_bits, jint size) {
-    const char *str = env->GetStringUTFChars(filename, 0);
-    //Note: Conversion from Int to size_t
-    int result = readSCuboid(str, n_bits, size);
-    env->ReleaseStringUTFChars(filename, str);
-    return result;
-}
-
-JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
-        (JNIEnv *env, jobject obj, jstring filename, jint n_bits, jint size) {
-    const char *str = env->GetStringUTFChars(filename, 0);
-    //Note: Conversion from Int to size_t
-    int result = readDCuboid(str, n_bits, size);
-    env->ReleaseStringUTFChars(filename, str);
-    return result;
-}
-
-JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
-        (JNIEnv *env, jobject obj, jstring filename, jint s_id) {
-    const char *str = env->GetStringUTFChars(filename, 0);
-    writeSCuboid(str, s_id);
-    env->ReleaseStringUTFChars(filename, str);
-}
-
-JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
-        (JNIEnv *env, jobject obj, jstring filename, jint d_id) {
-    const char *str = env->GetStringUTFChars(filename, 0);
-    writeDCuboid(str, d_id);
-    env->ReleaseStringUTFChars(filename, str);
-}
-
 JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
         (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JnbitsArray,
          jintArray JsizeArray) {

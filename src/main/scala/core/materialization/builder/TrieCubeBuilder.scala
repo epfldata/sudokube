@@ -3,6 +3,9 @@ import core.ds.settrie.SetTrieBuildPlan
 import core.materialization.MaterializationScheme
 import util.{Profiler, ProgressIndicator}
 
+/**
+ *  Uses a trie data structure to determine the best superset from which a given cuboid is to be projected
+ */
 trait TrieBuildPlan  {
    def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): Seq[(Set[Int], Int, Int)]  = {
     val ps = m.projections.zipWithIndex.reverse

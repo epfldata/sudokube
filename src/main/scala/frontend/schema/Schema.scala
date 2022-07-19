@@ -196,7 +196,7 @@ trait Schema extends Serializable {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
-                        sc = CBackend.b.mkPartial(n_bits, r.toIterator, sc)
+                        sc = CBackend.b.addPartial(n_bits, r.toIterator, sc)
                     }
                 }
             }

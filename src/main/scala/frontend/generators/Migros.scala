@@ -117,7 +117,7 @@ object Migros {
     val inputname = "brazil"
     val sch = StructuredDynamicSchema.load(inputname)
     sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
+    val dc = DataCube.load(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }
 

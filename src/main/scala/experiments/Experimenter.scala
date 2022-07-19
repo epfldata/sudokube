@@ -47,7 +47,7 @@ object Experimenter {
       println(s"Getting cuboid distribution for $n")
       val logN = names(2).toInt
       val minD = names(3).toInt
-      val dc = PartialDataCube.load2(n, cg.inputname + "_base")
+      val dc = PartialDataCube.load(n, cg.inputname + "_base")
       val projMap = dc.index.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
       fileout.println(s"${logN}_${minD}," + projs)
@@ -94,14 +94,14 @@ object Experimenter {
       val smsname = cgname + "_sms3_" + cubename
 
       println(s"Getting storage overhead for $rmsname")
-      val dcrms = PartialDataCube.load2(rmsname, cgname + "_base")
+      val dcrms = PartialDataCube.load(rmsname, cgname + "_base")
       val basesize = dcrms.cuboids.last.numBytes
       val baseGB = Tools.round(basesize / math.pow(10, 9), 2)
       val rmsovrhead = Tools.round(dcrms.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0, 4)
       dcrms.cuboids.head.backend.reset
 
       println(s"Getting storage overhead for $smsname")
-      val dcsms = PartialDataCube.load2(smsname, cgname + "_base")
+      val dcsms = PartialDataCube.load(smsname, cgname + "_base")
       val smsvrhead = Tools.round(dcsms.cuboids.map(_.numBytes).sum / basesize.toDouble - 1.0, 4)
       dcsms.cuboids.head.backend.reset
 
@@ -130,7 +130,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     val sch = cg.schema()
 
 
@@ -161,7 +161,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val mq = new MaterializedQueryResult(cg)
@@ -187,7 +187,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val mq = new MaterializedQueryResult(cg)
@@ -221,7 +221,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
@@ -333,7 +333,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val sch = cg.schema()
 
@@ -383,7 +383,7 @@ object Experimenter {
 
     params.foreach { p =>
       val fullname = s"${cg.inputname}_${ms}_${p._1}_${p._2}_$maxD"
-      val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+      val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
       dc.loadPrimaryMoments(cg.inputname + "_base")
       println(s"Moment Solver Materialization Parameters Experiment for $fullname")
       val ql = queries.length
@@ -525,7 +525,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
 
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val fileout = new PrintStream(s"expdata/moment01_$ms.csv")
@@ -614,7 +614,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"manual-ssb-$ms"
@@ -658,7 +658,7 @@ object Experimenter {
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
 
     val expname2 = s"manual-nyc-$ms"
@@ -683,7 +683,7 @@ object Experimenter {
     val param = "15_14"
     val name = (if (isSMS) "_sms_" else "_rms_") + param
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.inputname + "_base")
     dc.loadPrimaryMoments(cg.inputname + "_base")
     val sch = cg.schema()
     //val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355)

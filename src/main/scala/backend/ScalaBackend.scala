@@ -60,12 +60,12 @@ object ScalaBackend extends Backend[Payload] {
   override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = ???
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = mkAll(n_bits, it.toSeq)
-  def mkAll(n_bits: Int, vs: Seq[(BigBinary, Long)]) : SparseCuboid = {
-    val a : SPARSE_T = vs.map(x => (x._1, Payload.mk(x._2)))
+  def mkAll(n_bits: Int, kvs: Seq[(BigBinary, Long)]) : SparseCuboid = {
+    val a : SPARSE_T = kvs.map(x => (x._1, Payload.mk(x._2)))
     val bitpos = (0 until n_bits) // pick all bits for deduplication
     SparseCuboid(n_bits, sRehash(a, bitpos))
   }
-  def mkPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid = {
+  def addPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid = {
       val a : SPARSE_T = it.toSeq.map(x => (x._1, Payload.mk(x._2)))
       val bitpos = (0 until n_bits)
       SparseCuboid(n_bits, sRehashPartial(a, bitpos, sc.data))

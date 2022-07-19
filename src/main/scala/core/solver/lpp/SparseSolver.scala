@@ -4,7 +4,7 @@ package core.solver.lpp
 import core.solver.SolverTools
 
 
-/** Differently from Solver, SparseSolver uses our own sparse matrix
+/** Differently from DenseSolver, SparseSolver uses our own sparse matrix
 representation SparseMatrix[T], rather than the breeze dense matrix
 implementation. T can be Rational, so we have full precision.
 

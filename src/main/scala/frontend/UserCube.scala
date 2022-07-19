@@ -36,16 +36,16 @@ case object VALUES_ROWS extends WINDOW
 
 
 
-class UserCube(val cube: DataCube, val sch: Schema) {
+class UserCube(val cubeName: String, val cube: DataCube, val sch: Schema) {
 
   /**
    * saves the datacube into a file
    *
    * @param filename : the file to save into
    */
-  def save(filename: String): Unit = {
-    cube.save2(filename)
-    sch.save(filename)
+  def save(): Unit = {
+    cube.save()
+    sch.save(cubeName)
   }
 
 
@@ -277,13 +277,13 @@ object UserCube {
   /**
    * create a UserCube from a saved file
    *
-   * @param filename name of the file to load from
+   * @param cubeName name of the file to load from
    * @return a new UserCube
    */
-  def load(filename: String): UserCube = {
-    val cube = DataCube.load2(filename)
-    val schema = Schema.load(filename)
-    new UserCube(cube, schema)
+  def load(cubeName: String): UserCube = {
+    val cube = DataCube.load(cubeName)
+    val schema = Schema.load(cubeName)
+    new UserCube(cubeName, cube, schema)
   }
 
   /**
@@ -293,13 +293,13 @@ object UserCube {
    * @param fieldToConsider field to consider as aggregate value
    * @return a new UserCube
    */
-  def createFromJson(filename: String, fieldToConsider: String): UserCube = {
+  def createFromJson(filename: String, fieldToConsider: String, cubeName: String): UserCube = {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
     val matScheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
-    val dc = new DataCube()
+    val dc = new DataCube(cubeName)
     val baseCuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
     dc.build(baseCuboid, matScheme)
-    new UserCube(dc, sch)
+    new UserCube(cubeName, dc, sch)
   }
 }

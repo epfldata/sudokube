@@ -6,7 +6,10 @@ import util.Profiler
 
 import java.io.ObjectInputStream
 
-
+/**
+ * Stores all projections in an array. Uses an optimized algorithm for intersection in [[qproject]]
+ * @param n_bits Number of dimensions of the base cuboid and therefore, the data cube
+ */
 class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends ArrayCuboidIndex(projections, n_bits) {
   override val typeName: String = "OptimizedArray"
   def intersect(x: IndexedSeq[Int], y: IndexedSeq[Int]): (Int, IndexedSeq[Int]) = {

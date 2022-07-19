@@ -1,13 +1,15 @@
 package core.materialization.builder
 
-import backend.Cuboid
 import core.materialization.MaterializationScheme
-import util.{Bits, Profiler, ProgressIndicator, Util}
+import util.ProgressIndicator
 
 import scala.collection.immutable.BitSet
-
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * Uses binary search within the available projection to find a good superset. Fast, but does not give the best
+ * superset. Works well when most cuboids are to be projected from the base cuboid
+ */
 trait BinarySearchPlan {
   def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): Seq[(Set[Int], Int, Int)] = {
     val ps = m.projections.zipWithIndex.sortBy(_._1.length).reverse.toList
@@ -37,10 +39,12 @@ trait BinarySearchPlan {
           }
         }
         var newiter = mid
+        //move right as much as possible
         while (s.subsetOf(cub._1) && newiter < build_plan.size - 1) {
           newiter = newiter + 1
           cub = build_plan(newiter)
         }
+        //move left as much as possible
         while (!s.subsetOf(cub._1)) {
           newiter = newiter - 1
           cub = build_plan(newiter)

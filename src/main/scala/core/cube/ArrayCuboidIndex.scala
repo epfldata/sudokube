@@ -6,6 +6,10 @@ import util.{Bits, Profiler}
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
+/**
+ * Stores all projections in an array. Uses a naive algorithm for intersection in [[qproject]]
+ * @param n_bits Number of dimensions of the base cuboid and therefore, the data cube
+ */
 class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
   override val typeName: String = "Array"
   override protected def saveToOOS(oos: ObjectOutputStream): Unit = {
@@ -24,6 +28,7 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override va
       NewProjectionMetaData(abInt, id, p.length, bitpos)
     }.filter(_.cuboidCost <= max_fetch_dim)
 
+    //Find cheapest cuboid for every query projections
     val qp1: Seq[NewProjectionMetaData] =
       qp0.groupBy(_.queryIntersection).mapValues(l =>
         l.sortBy(_.cuboidCost).head // find cheapest: min mask.length

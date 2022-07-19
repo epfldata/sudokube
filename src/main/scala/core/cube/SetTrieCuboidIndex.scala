@@ -8,6 +8,11 @@ import util.Profiler
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * Stores all projections in a SetTrie data structure. Uses the trie traversal for intersection in [[qproject]] as well
+ * as to check for redundant cuboids in [[eliminateRedundant]]
+ * @param n_bits Number of dimensions of the base cuboid and therefore, the data cube
+ */
 class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
   override val typeName: String = "SetTrie"
   override protected def saveToOOS(oos: ObjectOutputStream): Unit = ???
@@ -56,7 +61,9 @@ class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq
   override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = Profiler("STCI eR"){
     val result = new ArrayBuffer[NewProjectionMetaData]()
     val trie = new SetTrieForPrepare(cubs.length * cubs.head.cuboidCost)
+    //cubs must processed in the order supersets first and then subsets
     cubs.foreach { p =>
+      //Add to result if there does not exist a cheap super set.
       if (!trie.existsCheapSuperSetInt(p.queryIntersection, p.cuboidCost max cheap_size)) {
         trie.insertInt(p.queryIntersection, p.cuboidCost)
         result += p
@@ -72,7 +79,7 @@ object SetTrieCuboidIndexFactory extends CuboidIndexFactory {
   override def buildFrom(m: MaterializationScheme): CuboidIndex = {
     val minD = m.projections.head.length
     val trie = new SetTrieIntersect(m.projections.length * 2 * minD)
-    m.projections.zipWithIndex.sortBy(res => res._1.size).foreach{res => trie.insert(res._1, res._1.size, res._2, res._1)}
+    m.projections.zipWithIndex.sortBy(res => res._1.size).foreach{res => trie.insert(res._1, res._1.size, res._2)}
     new SetTrieCuboidIndex(trie, m.projections, m.n_bits)
   }
   override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = ???

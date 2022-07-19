@@ -161,38 +161,6 @@ JNIEXPORT void JNICALL Java_backend_CBackend_freeze
 
 /*
  * Class:     backend_CBackend
- * Method:    readSCuboid0
- * Signature: (Ljava/lang/String;II)I
- */
-JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
-  (JNIEnv *, jobject, jstring, jint, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    readDCuboid0
- * Signature: (Ljava/lang/String;II)I
- */
-JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
-  (JNIEnv *, jobject, jstring, jint, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    writeSCuboid0
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
-  (JNIEnv *, jobject, jstring, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    writeDCuboid0
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
-  (JNIEnv *, jobject, jstring, jint);
-
-/*
- * Class:     backend_CBackend
  * Method:    readMultiCuboid0
  * Signature: (Ljava/lang/String;[Z[I[I)[I
  */

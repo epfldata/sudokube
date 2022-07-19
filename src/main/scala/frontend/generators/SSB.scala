@@ -184,19 +184,20 @@ object SSBGen {
     //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
     //dcbase.savePrimaryMoments(cg.inputname + "_base")
 
-
     List(
       (15, 14)
     ).map { case (logN, minD) =>
       val maxD = 30 // >15+14, so never passes threshold
       val rms = new RandomizedMaterializationScheme(sch.n_bits, logN, minD)
-      val dc2 = new PartialDataCube(cg.inputname + "_base")
+      val rmsname = s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}"
+      val dc2 = new PartialDataCube(rmsname, cg.baseName)
       dc2.buildPartial(rms)
-      dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
+      dc2.save()
       val sms = new SchemaBasedMaterializationScheme(sch, logN, minD)
-      val dc3 = new PartialDataCube( cg.inputname + "_base")
+      val smsname = s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}"
+      val dc3 = new PartialDataCube(smsname, cg.baseName)
       dc3.buildPartial(sms)
-      dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
+      dc3.save()
     }
 
   }

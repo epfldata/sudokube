@@ -12,8 +12,8 @@ object FrontEndDemo {
    * It is stored in 2 files, one for the schema and one for the datacube itself, and can be loaded thereafter
    */
   def save_load(cube: UserCube): UserCube = {
-    cube.save("demoCube")
-    UserCube.load("demoCube")
+    cube.save()
+    UserCube.load(cube.cubeName)
   }
 
   /**
@@ -169,7 +169,7 @@ object FrontEndDemo {
   }
 
   def main(args: Array[String]): Unit = {
-    val cube = UserCube.createFromJson("example-data/demo_recipes.json", "rating") //create a UserCube from a csv or a json file
+    val cube = UserCube.createFromJson("example-data/demo_recipes.json", "rating", "demoCube") //create a UserCube from a csv or a json file
     val userCube = save_load(cube)
 
     query_matrix(userCube)

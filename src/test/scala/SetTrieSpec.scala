@@ -10,7 +10,7 @@ import scala.util.Random
 class SetTrieSpec extends FlatSpec with Matchers {
 
   "ExistsSuperSet " should " work " in {
-    val trie = new SetTrie()
+    val trie = new SetTrie(1024)
     trie.insert(List(1, 2, 3, 4, 5))
     trie.insert(List(10, 12, 15, 21, 25, 26))
     trie.insert(List(11, 12, 16, 18, 30, 31))
@@ -35,7 +35,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
   }
 
   def randomTest(ns: Int, ss: Int, max: Int, nq: Int, sq: Int)  = {
-    val trie = new SetTrie()
+    val trie = new SetTrie(ss * max)
     val sets = collection.mutable.ArrayBuffer[Set[Int]]()
     (0 until ns).foreach { i =>
       val s = Util.collect_n(ss,  () => Random.nextInt(max))
