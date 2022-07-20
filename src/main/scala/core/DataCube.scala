@@ -365,7 +365,7 @@ class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
     val filename = cubeName
     assert(!filename.isEmpty)
     val be = cuboids(0).backend
-    val file = new File("cubedata/" + filename + "_partial/" + filename + ".pmcl")
+    val file = new File("cubedata/" + filename + "/" + filename + ".pmcl")
     if (!file.exists())
       file.getParentFile.mkdirs()
 
@@ -428,7 +428,7 @@ object DataCube {
 
 object PartialDataCube {
   def load(cubeName: String, basename: String, be: Backend[Payload] = CBackend.b) = {
-    val file = new File("cubedata/" + cubeName + "_partial/" + cubeName + ".pdc")
+    val file = new File("cubedata/" + cubeName + "/" + cubeName + ".pmcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]

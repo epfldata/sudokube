@@ -5,16 +5,16 @@ hostname="iccluster$2"
 
 case "$nickname" in
 "kube1")
-  line=8
+  line=9
   ;;
 "kube2")
-  line=15
+  line=17
   ;;
 "kube3")
-  line=22
+  line=25
   ;;
 "kube4")
-  line=29
+  line=33
   ;;
 *)
   echo "First argument must be kube1 or kube2"

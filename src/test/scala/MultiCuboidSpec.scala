@@ -151,19 +151,83 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     removeCuboid(name)
   }
 
+  def randomTestPartial(n_bits: Int, n_rows: Int, rf: Double, base: Double, name: String) = {
+
+    val schema = StaticSchema.mk(n_bits)
+
+    val R = TupleGenerator(schema, n_rows, Sampling.f1)
+    val be: Backend[Payload] = CBackend.b
+    val full_cube = be.mk(n_bits, R)
+    val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
+
+    val basename = name + "_base"
+    val dcbase = new DataCube(basename)
+    val m0 = MaterializationScheme.only_base_cuboid(n_bits)
+    dcbase.build(full_cube, m)
+    dcbase.save()
+
+    val dc1 = new PartialDataCube(name,  basename)
+    dc1.build(full_cube, m)
+    dc1.save()
+
+    val dc2 = PartialDataCube.load(name, basename)
+
+    assert(dc1.cuboids.length == dc2.cuboids.length)
+    assert(dc1.index.length == dc2.index.length)
+    (0 until dc1.cuboids.length).foreach { i =>
+      val cub1 = dc1.cuboids(i)
+      val cub2 = dc2.cuboids(i)
+      val proj1 = dc1.index(i)
+      val proj2 = dc2.index(i)
+      assert(proj1 sameElements proj2)
+      assert(cub1.n_bits == cub2.n_bits)
+      if (cub1.isInstanceOf[be.SparseCuboid]) {
+        assert(cub2.isInstanceOf[be.SparseCuboid])
+        assert(cub1.asInstanceOf[be.SparseCuboid].data != cub2.asInstanceOf[be.SparseCuboid].data) //not the same cuboid in backend
+      } else {
+        assert(cub2.isInstanceOf[be.DenseCuboid])
+        val dcub1 = cub1.asInstanceOf[be.DenseCuboid]
+        val dcub2 = cub2.asInstanceOf[be.DenseCuboid]
+        assert(dcub1.data != dcub2.data)
+        val data1 = dcub1.fetch
+        val data2 = dcub2.fetch
+        assert(data1.sameElements(data2))
+      }
+      assert(cub1.size == cub2.size)
+    }
+    removeCuboid(name)
+    removeCuboid(basename)
+  }
+
   "MultiCuboid save and load " should " work for medium data medium cuboids " in {
     randomTest(70, 10000, 0.1, 1.1, "MultiCubeTestMM")
+  }
+
+  "Partial MultiCuboid save and load " should " work for medium data medium cuboids " in {
+    randomTestPartial(70, 10000, 0.1, 1.1, "PMultiCubeTestMM")
   }
 
   "MultiCuboid save and load " should " work for medium data large cuboids" in {
     randomTest(70, 10000, 0.1, 1.19, "MultiCubeTestML")
   }
 
+  "Partial MultiCuboid save and load " should " work for medium data large cuboids" in {
+    randomTestPartial(70, 10000, 0.1, 1.19, "PMultiCubeTestML")
+  }
+
   "MultiCuboid save and load " should " work for large data medium cuboids" in {
     randomTest(70, 1000000, 0.1, 1.1, "MultiCubeTestLM")
   }
 
+  "Partial MultiCuboid save and load " should " work for large data medium cuboids" in {
+    randomTestPartial(70, 1000000, 0.1, 1.1, "PMultiCubeTestLM")
+  }
+
   "MultiCuboid save and load " should " work for large data dense cuboids" in {
     randomTest(15, 100000, 1, 100, "MultiCubeTestMD")
+  }
+
+  "Partial MultiCuboid save and load " should " work for large data dense cuboids" in {
+    randomTestPartial(15, 100000, 1, 100, "PMultiCubeTestMD")
   }
 }
