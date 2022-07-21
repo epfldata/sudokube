@@ -1,6 +1,6 @@
 package core.ds.settrie
 
-import util.Bits
+import util.BitUtils
 
 /**
  * Variant of [[SetTrie]] used for storing and looking up moments associated with subsets
@@ -15,7 +15,7 @@ class SetTrieForMoments(maxSize: Int = 1024) extends Serializable {
   def insertAll(cuboid: IndexedSeq[Int], moments: Array[Double]) = {
     val cArray = cuboid.sorted
     moments.indices.foreach { i =>
-      val ls = Bits.fromInt(i).map(x => cArray(x)).sorted
+      val ls = BitUtils.IntToSet(i).map(x => cArray(x)).sorted
       //println(s"Insert $i@$ls = ${moments(i)} ")
       if (nodeCount < maxSize) insert(ls, moments(i))
     }

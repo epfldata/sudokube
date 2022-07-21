@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.Bits
+import util.BitUtils
 
 /**
  * Some helper methods useful for IPF solvers.
@@ -116,7 +116,7 @@ object IPFUtils {
   def encodeAllVariablesValues(totalNumVariables: Int, marginalVariables: Int,
                                marginalVariablesValues: Int, nonMarginalVariablesValues: Int): Int = {
     val nonMarginalVariables = ((1 << totalNumVariables) - 1) ^ marginalVariables
-    Bits.unproject(marginalVariablesValues, marginalVariables) | Bits.unproject(nonMarginalVariablesValues, nonMarginalVariables)
+    BitUtils.unprojectIntWithInt(marginalVariablesValues, marginalVariables) | BitUtils.unprojectIntWithInt(nonMarginalVariablesValues, nonMarginalVariables)
   }
 
 

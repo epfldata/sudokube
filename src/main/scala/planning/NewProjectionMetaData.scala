@@ -1,6 +1,5 @@
 package planning
 
-import util.Bits
 
 case class NewProjectionMetaData(queryIntersection: Int, cuboidID: Int, cuboidCost: Int, cuboidIntersection: IndexedSeq[Int]) {
   //TODO: Include hamming weight of queryIntersection

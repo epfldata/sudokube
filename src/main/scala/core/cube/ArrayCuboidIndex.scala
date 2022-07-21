@@ -2,8 +2,8 @@ package core.cube
 
 import core.materialization.MaterializationScheme
 import planning.{NewProjectionMetaData, ProjectionMetaData}
-import util.{Bits, Profiler}
-
+import util.{BitUtils, Profiler}
+import BitUtils._
 import java.io.{ObjectInputStream, ObjectOutputStream}
 
 /**
@@ -23,8 +23,8 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override va
       val p = projections(id)
       val ab0 = p.toSet.intersect(qBS) // unnormalized
       val ab = qIS.indices.filter(i => ab0.contains(qIS(i))) // normalized
-      val abInt = Bits.toInt(ab)
-      val bitpos = Bits.mk_list_bitpos(p, qBS)
+      val abInt = SetToInt(ab)
+      val bitpos = mk_list_bitpos(p, qBS)
       NewProjectionMetaData(abInt, id, p.length, bitpos)
     }.filter(_.cuboidCost <= max_fetch_dim)
 

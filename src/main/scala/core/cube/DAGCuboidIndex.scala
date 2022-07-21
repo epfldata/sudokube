@@ -2,7 +2,7 @@ package core.cube
 
 import core.materialization.MaterializationScheme
 import planning.{NewProjectionMetaData, ProjectionMetaData}
-import util.Bits
+import util.BitUtils
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import scala.collection.mutable.ListBuffer
@@ -86,8 +86,8 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
         if (good_children == 0) {
           val ab0 = intersect_deq.toList
           val ab = query.indices.filter(i => ab0.contains(query(i)))
-          val bitpos = Bits.mk_list_bitpos(vert_deq.p, qSet)
-          val abInt = Bits.toInt(ab)
+          val bitpos = BitUtils.mk_list_bitpos(vert_deq.p, qSet)
+          val abInt = BitUtils.SetToInt(ab)
           ret += NewProjectionMetaData(abInt, vert_deq.id, vert_deq.p.length, bitpos)
         }
       }
@@ -95,8 +95,8 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
     //Add all cheap projs to ret
     hm_cheap.foreach({ case (ab0, dv) =>
       val ab = query.indices.filter(i => ab0.contains(query(i)))
-      val abInt = Bits.toInt(ab)
-      val bitpos = Bits.mk_list_bitpos(dv.p, qSet)
+      val abInt = BitUtils.SetToInt(ab)
+      val bitpos = BitUtils.mk_list_bitpos(dv.p, qSet)
       ret += NewProjectionMetaData(abInt, dv.id, dv.p.length, bitpos)
     })
     resetDag(projectionsDAGroot)

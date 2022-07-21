@@ -98,7 +98,7 @@ object minus1_adv {
       val m = OldRandomizedMaterializationScheme(nbits, rf, base)
 
       //SBJ: Changed parameters for this calculation
-      val a = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q).groupBy(ps => Bits.sizeOfSet(ps.queryIntersection))
+      val a = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q).groupBy(ps => BitUtils.sizeOfSet(ps.queryIntersection))
       val full_cost = cost(a(q.length).head.cuboidCost)
       accum_full_cost += full_cost
 

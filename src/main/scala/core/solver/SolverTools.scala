@@ -94,7 +94,7 @@ object SolverTools {
                                 n_bits: Int,
                                 projections: Seq[Int],
                                 v: Seq[PayloadT]): Seq[(Seq[Int], PayloadT)] =
-    projections.map(util.Bits.group_values_Int(_, n_bits).map(
+    projections.map(util.BitUtils.group_values_Int(_, n_bits).map(
       x => x.map(_.toInt))).flatten.zip(v)
 } // end SolverTools
 

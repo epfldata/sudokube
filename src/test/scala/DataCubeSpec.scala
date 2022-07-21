@@ -24,7 +24,7 @@ class DataCubeSpec extends FlatSpec with Matchers {
         _.asInstanceOf[Payload].sm.toInt)
 
     for(i <- 0 to dc.index.length - 1) {
-      val mask = Bits.mk_list_bitpos(dc.index.last,
+      val mask = BitUtils.mk_list_bitpos(dc.index.last,
                                         dc.index(i).toSet).toArray
 
       val c       = dc.cuboids(i) //dc.getCuboids(i)

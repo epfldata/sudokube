@@ -4,10 +4,10 @@ import core.solver.RationalTools._
 import core.solver.moment.Strategy._
 import core.solver._
 import core.solver.moment.{CoMoment4Solver, Moment1Transformer, MomentSolverAll}
-import util.Bits
+import util.BitUtils
 
 class MomentSolverAllSpec extends FlatSpec with Matchers {
-  implicit def listToInt = Bits.toInt(_)
+  implicit def listToInt = BitUtils.SetToInt(_)
   "MomentSolver " should " work when full cuboid is known using fast solve " in {
     val cuboid = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     val solver = new MomentSolverAll[Double](3)

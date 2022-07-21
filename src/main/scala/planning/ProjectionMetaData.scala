@@ -19,7 +19,7 @@ case class ProjectionMetaData(
   //assert(accessible_bits.length == mask.filter(_ == 1).length)
   lazy val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
   implicit def toNewProjectiobMetaData() = {
-    val abInt = Bits.toInt(accessible_bits)
+    val abInt = BitUtils.SetToInt(accessible_bits)
     val maskpos = mask.indices.filter(i => mask(i) == 1)
     NewProjectionMetaData(abInt, id, mask.length, maskpos)
   }

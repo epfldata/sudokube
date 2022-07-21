@@ -3,13 +3,13 @@ import core.materialization._
 import frontend.experiments.Tools
 import org.scalatest.{FlatSpec, Matchers}
 import planning.{NewProjectionMetaData, ProjectionMetaData}
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 class PrepareSpec extends FlatSpec with Matchers {
 
 
   implicit def toNewProjectionMetaData(os: Seq[ProjectionMetaData]) = os.map { o =>
-    val abInt = Bits.toInt(o.accessible_bits)
+    val abInt = BitUtils.SetToInt(o.accessible_bits)
     val maskpos = o.mask.indices.filter(i => o.mask(i) == 1)
     NewProjectionMetaData(abInt, o.id, o.mask.length, maskpos)
   }

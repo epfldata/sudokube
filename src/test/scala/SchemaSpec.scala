@@ -3,7 +3,7 @@ import core.DataCube
 import core.materialization.RandomizedMaterializationScheme
 import frontend.schema.DynamicSchema
 import org.scalatest.{FreeSpec, Matchers}
-import util.Bits
+import util.BitUtils
 
 class SchemaSpec extends FreeSpec with Matchers {
 
@@ -46,7 +46,7 @@ class SchemaSpec extends FreeSpec with Matchers {
     def perm_func(query: IndexedSeq[Int]) = {
       val query_sorted = query.sorted
       val perm = query.map(b => query_sorted.indexOf(b)).toArray
-      Bits.permute_bits(query.size, perm)
+      BitUtils.permute_bits(query.size, perm)
     }
 
     def permuted_result(query: IndexedSeq[Int]) = {

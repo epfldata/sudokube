@@ -1,6 +1,6 @@
 package core.ds.settrie
 
-import util.Bits
+import util.BitUtils
 
 import scala.collection.mutable.SortedSet
 

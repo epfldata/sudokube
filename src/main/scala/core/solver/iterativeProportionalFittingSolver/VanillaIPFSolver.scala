@@ -1,7 +1,7 @@
 package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.SolverTools.error
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import java.io.PrintStream
 
@@ -70,7 +70,7 @@ class VanillaIPFSolver(override val querySize: Int,
 
     clusters.foreach { case Cluster(marginalVariables: Int, expectedMarginalDistribution: Array[Double]) =>
       totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution)
-      println(s"\t\t\tUpdating ${Bits.fromInt(marginalVariables).mkString(":")}")
+      println(s"\t\t\tUpdating ${BitUtils.IntToSet(marginalVariables).mkString(":")}")
 //      clusters.foreach(cluster => {
 //        print(s"${error(cluster.distribution, IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables))}, ")
 //        println(s"Expected ${cluster.distribution.mkString(",")}, got ${IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables).mkString(",")}")

@@ -2,7 +2,7 @@ package core.solver.moment
 
 import combinatorics.Combinatorics
 import core.solver.moment.Strategy.{CoMoment, Strategy}
-import util.{BigBinary, Bits, Profiler}
+import util.{BigBinary, BitUtils, Profiler}
 
 import scala.reflect.ClassTag
 
@@ -62,7 +62,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
     fetchedCuboids.foreach {
       case (cols, values) =>
         //println("Checking cuboid " + cols)
-        val projection = (0 until solution.length).groupBy(i => Bits.project(i, cols)).mapValues {
+        val projection = (0 until solution.length).groupBy(i => BitUtils.projectIntWithInt(i, cols)).mapValues {
           idxes => idxes.map(solution(_)).sum
         }.toSeq.sortBy(_._1).map(_._2)
         values.zip(projection).zipWithIndex.foreach { case ((v, p), i) => if (Math.abs(v - p) > 0.0001) println(s"$i :: $v != $p") }
@@ -102,21 +102,21 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
   //Lower Frechet bound on the value of some moment. Not tight
   def lowerBound(row: Int) = {
     val n = BigBinary(row).hamming_weight
-    val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).sum
+    val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => BitUtils.unprojectIntWithInt(i.toInt, row)).map(sumValues(_)).sum
     num.max(num.zero, num.plus(num.times(num.fromInt(1 - n), sumValues(0)), combSum))
   }
 
   //Upper Frechet  bound on the value of some moment. No moment should be higher than moments of its subsets
   def upperBound(row: Int) = {
     val n = BigBinary(row).hamming_weight
-    val combMin = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).min
+    val combMin = Combinatorics.mk_comb_bi(n, n - 1).map(i => BitUtils.unprojectIntWithInt(i.toInt, row)).map(sumValues(_)).min
     combMin
   }
 
   //Sets the default value of a moment to be equal to average of its immediate predecessors.
   def getDefaultValueAvg(row: Int) = {
     val n = BigBinary(row).hamming_weight
-    val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => Bits.unproject(i.toInt, row)).map(sumValues(_)).sum
+    val combSum = Combinatorics.mk_comb_bi(n, n - 1).map(i => BitUtils.unprojectIntWithInt(i.toInt, row)).map(sumValues(_)).sum
     num.div(combSum, num.fromInt(2 * n))
   }
 
@@ -124,7 +124,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
   def getDefaultValueAvg2(row: Int) = {
     val n = BigBinary(row).hamming_weight
     val dimSums = (0 until n).map{ k =>
-      val combSum = Combinatorics.mk_comb_bi(n, k).map(i => Bits.unproject(i, row)).map(sumValues(_)).sum
+      val combSum = Combinatorics.mk_comb_bi(n, k).map(i => BitUtils.unprojectIntWithInt(i, row)).map(sumValues(_)).sum
       val div =  (1 << (n-k))
       num.div(combSum, num.fromInt(div))
     }.sum
@@ -152,7 +152,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
       }
     }
 
-    val colSet = Bits.fromInt(row)
+    val colSet = BitUtils.IntToSet(row)
     val partitions = allParts(colSet)
     val sum = partitions.map {
       case parts if parts.length > 1 =>
@@ -299,7 +299,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
             Combinatorics.comb2(n, k)
           }
           val combs = Profiler(s"unproject Comb $strategy") {
-            projcombs.map(i => Bits.unproject(i, row))
+            projcombs.map(i => BitUtils.unprojectIntWithInt(i, row))
           }
           val sign = if ((k % 2) == 1) num.one else num.negate(num.one)
           //println(s"$sign * ${combs.map{ i => s"sv[${row-i}] * mp[$i]"}.mkString("[", " + ", "]")}")
@@ -323,7 +323,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
     val array = new Array[T](N1)
     array.indices.foreach { i =>
       array(i) = if (i == array.indices.last) num.zero else {
-        val j = Bits.unproject(i, row)
+        val j = BitUtils.unprojectIntWithInt(i, row)
         sumValues(j)
       }
     }
@@ -475,7 +475,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
   }
   def fillMissingComoment4() = {
     (0 until N).foreach{i =>
-      val bits = Bits.fromInt(i)
+      val bits = BitUtils.IntToSet(i)
       val w = bits.length
       val parents = bits.map(b => i - (1<<b))
       if(!knownSums(i)) {
@@ -498,11 +498,11 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
     fetchedCuboids = (eqnColSet -> values.map(num.toDouble(_))) :: fetchedCuboids
     //println(s"Fetch $eqnColSet")
     //println(values.map(_.asInstanceOf[Double].toLong).mkString("", " ", "\n"))
-    val length = Bits.sizeOfSet(eqnColSet)
+    val length = BitUtils.sizeOfSet(eqnColSet)
 
     //calculate any previously unknown moments from the cuboid
     (0 until 1 << length).foreach { i0 =>
-      val i = Bits.unproject(i0, eqnColSet)
+      val i = BitUtils.unprojectIntWithInt(i0, eqnColSet)
       if (!knownSums.contains(i)) {
         val rowsToSum = (0 until 1 << length).filter(i2 => (i2 & i0) == i0)
         val rowsSum = rowsToSum.map(values(_)).sum

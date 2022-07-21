@@ -1,6 +1,6 @@
 import core.solver.iterativeProportionalFittingSolver.{Cluster, EffectiveIPFSolver, IPFUtils, JunctionGraph}
 import org.junit.Test
-import util.Bits
+import util.BitUtils
 
 import scala.collection.mutable
 import scala.util.Random
@@ -40,7 +40,7 @@ class EffectiveIPFTest {
     solver.add(Seq(2, 3), Array(0.5, 0.5))
     solver.add(Seq(3, 5), Array(0.5, 0.5))
     solver.junctionGraph.constructCliquesFromGraph(solver.graphicalModel)
-    println(solver.junctionGraph.cliques.map(clique => Bits.fromInt(clique.variables)))
+    println(solver.junctionGraph.cliques.map(clique => BitUtils.IntToSet(clique.variables)))
   }
 
   @Test
@@ -100,7 +100,7 @@ class EffectiveIPFTest {
     val solver = new EffectiveIPFSolver(9)
     val randomGenerator = new Random()
     for (_ <- 0 until 5) {
-      val variables: Seq[Int] = Bits.fromInt(randomGenerator.nextInt(1 << 9)).reverse
+      val variables: Seq[Int] = BitUtils.IntToSet(randomGenerator.nextInt(1 << 9)).reverse
       println(variables)
       solver.add(variables, Array.fill(variables.size)(1.0 / variables.size))
     }
@@ -201,7 +201,7 @@ class EffectiveIPFTest {
     val solver = new EffectiveIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size, BitUtils.SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
@@ -214,7 +214,7 @@ class EffectiveIPFTest {
       marginalDistribution.indices.foreach(marginalVariablesValues => {
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(6, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(6, solver.totalDistribution, BitUtils.SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
         )
         println()
       })

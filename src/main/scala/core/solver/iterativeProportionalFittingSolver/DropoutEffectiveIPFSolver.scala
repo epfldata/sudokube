@@ -1,7 +1,7 @@
 package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.getNumOnesInBinary
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.util.Random
 import scala.util.control.Breaks.{break, breakable}
@@ -19,7 +19,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
    */
   override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
   }
 
@@ -31,7 +31,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
   override def solve(): Array[Double] = {
     dropOutLowDimensionalClusters()
 
-    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(Bits.fromInt(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
+    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
 
     Profiler("Dropout Effective IPF Junction Tree Construction") {
       constructJunctionTree()
@@ -81,7 +81,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
       if (reducedCoverage >= coverage * 0.3 || coverage - reducedCoverage < querySize * 3) {
         break
       }
-      println(s"\t\t\tDropping out ${Bits.fromInt(droppedCluster.variables).mkString(":")}")
+      println(s"\t\t\tDropping out ${BitUtils.IntToSet(droppedCluster.variables).mkString(":")}")
       clusters = clusters.filter(_ != droppedCluster)
     } }
   }

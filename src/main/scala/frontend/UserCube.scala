@@ -5,7 +5,7 @@ import core.DataCube
 import TestLine.testLineOp
 import core.materialization.RandomizedMaterializationScheme
 import frontend.schema.Schema
-import util.Bits
+import util.BitUtils.permute_bits
 
 import scala.annotation.tailrec
 import breeze.linalg.{Axis, DenseMatrix}
@@ -202,13 +202,13 @@ class UserCube(val cubeName: String, val cube: DataCube, val sch: Schema) {
     val q_unsorted = (qV.flatten ++ qH.flatten)
     val q_sorted = q_unsorted.sorted
     val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
-    val permf = Bits.permute_bits(q_unsorted.size, perm)
+    val permf = permute_bits(q_unsorted.size, perm)
 
     //then permute the headers for vertical and horizontal
     val permBackqV = qV.flatten.sorted.map(b => qV.flatten.indexOf(b)).toArray
-    val permfBackqV = Bits.permute_bits(qV.flatten.size, permBackqV)
+    val permfBackqV = permute_bits(qV.flatten.size, permBackqV)
     val permBackqH = qH.flatten.sorted.map(b => qH.flatten.indexOf(b)).toArray
-    val permfBackqH = Bits.permute_bits(qH.flatten.size, permBackqH)
+    val permfBackqH = permute_bits(qH.flatten.size, permBackqH)
     var M = new DenseMatrix[String](1 << bV, 1 << bH)
     for (i <- 0 until M.rows) {
       for (j <- 0 until M.cols) {

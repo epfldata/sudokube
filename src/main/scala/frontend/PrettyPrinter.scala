@@ -5,7 +5,7 @@ import breeze.linalg._
 import core.solver.Rational
 import core.solver.lpp.Interval
 import schema._
-import util.Bits
+import util.BitUtils.permute_bits
 
 
 // TODO: let the user choose which dimensions to put where.
@@ -28,12 +28,12 @@ object PrettyPrinter {
     val q_unsorted = (qV ++ qH)
     val q_sorted = q_unsorted.sorted
     val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
-    val permf = Bits.permute_bits(q_unsorted.size, perm)
+    val permf = permute_bits(q_unsorted.size, perm)
 
     val permBackqV= qV.sorted.map(b => qV.indexOf(b)).toArray
-    val permfBackqV = Bits.permute_bits(qV.size, permBackqV)
+    val permfBackqV = permute_bits(qV.size, permBackqV)
     val permBackqH= qH.sorted.map(b => qH.indexOf(b)).toArray
-    val permfBackqH = Bits.permute_bits(qH.size, permBackqH)
+    val permfBackqH = permute_bits(qH.size, permBackqH)
 
     var M = new DenseMatrix[String](1 << bV, 1 << bH)
     for (i<- 0 until M.rows) {

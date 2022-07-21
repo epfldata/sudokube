@@ -1,6 +1,6 @@
 package core.solver.moment
 
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.reflect.ClassTag
 
@@ -28,10 +28,10 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
 
 
   override def add(eqnColSet: Int, values: Array[T]) : Unit =  {
-    val colsLength = Bits.sizeOfSet(eqnColSet)
+    val colsLength = BitUtils.sizeOfSet(eqnColSet)
     val n0 = 1 << colsLength
 
-    val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).
+    val newMomentIndices = (0 until n0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet)).
       filter({ case (i0, i) => !knownSet.contains(i) })
 
     if (false) {
@@ -42,7 +42,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
       //need more than log(n0) moments -- do moment transform and filter
       val projectedMomentProduct =  (0 until colsLength).map{ case b =>
         val i0 = 1 << b
-        val i = Bits.unproject(i0, eqnColSet)
+        val i = BitUtils.unprojectIntWithInt(i0, eqnColSet)
         i0 -> pmMap(i)
       }.toMap + (0 -> pmMap(0))
       val cuboid_moments = transformer.getCoMoments(values, projectedMomentProduct)

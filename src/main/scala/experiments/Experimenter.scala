@@ -10,7 +10,7 @@ import core.solver.{Rational, RationalTools, SolverTools}
 import frontend.experiments.Tools
 import frontend.generators.{MicroBench, NYC, SSB}
 import frontend.schema.encoders._
-import util.{Bits, Profiler, Util}
+import util.{BitUtils, Profiler, Util}
 
 import java.io.PrintStream
 import scala.reflect.ClassTag
@@ -204,7 +204,7 @@ object Experimenter {
       val trueResult = mq.loadQueryResult(qs, i)
       sss.foreach { ss =>
         val svs = if(ss == 0) Vector()  else {
-          Bits.intToMask(ss, Random.nextInt(1 << ss))
+          BitUtils.intToMask(ss, Random.nextInt(1 << ss))
         }
         println(s" Slice Dimensionality = $ss  slice=${svs.mkString(":")}")
         expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)

@@ -21,13 +21,13 @@ object MaterializationScheme {
   }
 
   def all_cuboids(n_bits: Int) = new MaterializationScheme(n_bits) {
-    override val projections = (0 until 1 << n_bits).map(i => Bits.fromInt(i).toIndexedSeq.sorted)
+    override val projections = (0 until 1 << n_bits).map(i => BitUtils.IntToSet(i).toIndexedSeq.sorted)
   }
 
   def all_subsetsOf(n_bits: Int, q: Seq[Int]) = new MaterializationScheme(n_bits) {
     override val projections = {
       val idxes = q.toIndexedSeq
-      (0 until 1 << q.length).map(i => Bits.fromInt(i).map(idxes).toIndexedSeq.sorted) :+ (0 until n_bits)
+      (0 until 1 << q.length).map(i => BitUtils.IntToSet(i).map(idxes).toIndexedSeq.sorted) :+ (0 until n_bits)
     }
   }
 }

@@ -19,7 +19,7 @@ import frontend.gui.{FeatureFrame, FeatureFrameSSB}
 import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, StaticSchema2}
 import util._
-
+import BitUtils._
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -40,7 +40,7 @@ object DemoTxt {
 
     //true result
     val actual = Util.slice(Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble), slice)
-    implicit def listToInt = Bits.toInt(_)
+    implicit def listToInt = SetToInt(_)
 
     //Add 2D cuboid containing bits 0,1 to solver
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(x => num.fromInt(x)))
@@ -82,7 +82,7 @@ object DemoTxt {
     val solver = new EffectiveIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
@@ -104,7 +104,7 @@ object DemoTxt {
     val solver = new VanillaIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
@@ -126,9 +126,9 @@ object DemoTxt {
     val solver = new MomentSolverAll[Rational](6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
-    implicit def listToInt = Bits.toInt(_)
+    implicit def listToInt =SetToInt(_)
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
       solver.add(marginalVariables, clustersDistribution.map(n => Rational(BigInt(n.toInt), 1)))
     }

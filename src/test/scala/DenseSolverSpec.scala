@@ -3,11 +3,11 @@ import core.solver.lpp.{DenseSolver, DenseSolverTools, Interval}
 import core.solver.{SolverTools, lpp}
 import org.scalatest._
 import planning.{NewProjectionMetaData, ProjectionMetaData}
-import util.Bits
+import util.BitUtils
 
 
 class SolverSpec extends FlatSpec with Matchers {
-  implicit def listToInt = Bits.toInt(_)
+  implicit def listToInt = BitUtils.SetToInt(_)
   implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
   val v = Array(2,2,2,2,2,2,2,2).map(x => new Payload(x, None))
 

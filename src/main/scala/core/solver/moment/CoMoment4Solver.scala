@@ -1,6 +1,6 @@
 package core.solver.moment
 
-import util.{BigBinary, Bits, Profiler}
+import util.{BigBinary, BitUtils, Profiler}
 
 import scala.reflect.ClassTag
 
@@ -21,7 +21,7 @@ class CoMoment4Solver[T:ClassTag:Fractional](qsize: Int, batchmode: Boolean, tra
         }
       }
       (0 until N).foreach { i =>
-        val bits = Bits.fromInt(i)
+        val bits = BitUtils.IntToSet(i)
         val w = bits.length
         val parents = bits.map(b => i - (1 << b))
         Profiler("part1") {
@@ -72,7 +72,7 @@ class CoMoment4Solver[T:ClassTag:Fractional](qsize: Int, batchmode: Boolean, tra
           //val (w, i) = toProcess.dequeue()
 
           //println(s"Process $i  ${Bits.fromInt(i).mkString("{", ",", "}")} with size $w")
-          val (_, set0, set1) = Bits.hwZeroOne(i, qsize)
+          val (_, set0, set1) = BitUtils.hwZeroOne(i, qsize)
           val deltamom = if (knownSet(i)) {
             num.minus(newmoments(i), moments(i))
           } else {

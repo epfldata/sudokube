@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.collection.mutable
 
@@ -24,10 +24,10 @@ abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver
   def getTotalDistribution: Array[Double] = {
     (0 until 1 << querySize).foreach(allVariablesValues => {
       val cliquesProduct = junctionGraph.cliques.foldLeft(1.0)((acc, clique) => {
-        acc * clique.distribution(Bits.project(allVariablesValues, clique.variables))
+        acc * clique.distribution(BitUtils.projectIntWithInt(allVariablesValues, clique.variables))
       })
       val separatorsProduct = junctionGraph.separators.foldLeft(1.0)((acc, separator) => {
-        acc * separator.distribution(Bits.project(allVariablesValues, separator.variables))
+        acc * separator.distribution(BitUtils.projectIntWithInt(allVariablesValues, separator.variables))
       })
       totalDistribution(allVariablesValues) = if (separatorsProduct.abs == 0) 0 else cliquesProduct / separatorsProduct
     })

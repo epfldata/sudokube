@@ -2,7 +2,7 @@
 package util
 
 
-object Bits {
+object BitUtils {
   /**
    * @param perm a permutation of (0 to bits - 1).
    *             0 is the least significant bit.
@@ -93,13 +93,13 @@ object Bits {
     val universeInt = (1 << universeLength) - 1
 
     val bits2 = universeInt - bits //complement
-    val bitsLength = Bits.sizeOfSet(bits)
+    val bitsLength = sizeOfSet(bits)
     val n_vals1 = 1 << bitsLength
     val n_vals2 = 1 << (universeLength - bitsLength)
 
     for (i <- 0 to n_vals1 - 1) yield {
-      val ii =  Bits.unproject(i, bits)
-      for (j <- 0 to n_vals2 - 1) yield BigBinary(ii + Bits.unproject(j, bits2))
+      val ii =  unprojectIntWithInt(i, bits)
+      for (j <- 0 to n_vals2 - 1) yield BigBinary(ii + unprojectIntWithInt(j, bits2))
     }
   }
 
@@ -111,14 +111,14 @@ object Bits {
     val universeInt = (1 << universeLength) - 1
 
     val bits2 = universeInt - bits //complement
-    val bitsLength = Bits.sizeOfSet(bits)
+    val bitsLength = sizeOfSet(bits)
     val n_vals1 = 1 << bitsLength
     val n_vals2 = 1 << (universeLength - bitsLength)
-    val jj = Bits.unproject(n_vals2 - 1, bits2)
+    val jj = unprojectIntWithInt(n_vals2 - 1, bits2)
     //all ones
 
     for (i <- 0 to n_vals1 - 1) yield {
-      val ii = Bits.unproject(i, bits)
+      val ii = unprojectIntWithInt(i, bits)
       (ii + jj)
     }
   }
@@ -172,7 +172,7 @@ object Bits {
    * Converts sequence of ints representing bit positions to a (Big)Int.
    * TODO: Use BigInt
    * */
-  def toInt(bits: Seq[Int]) = {
+  def SetToInt(bits: Seq[Int]) = {
     bits.foldLeft(0) { (acc, cur) => acc + (1 << cur)
     }
   }
@@ -180,7 +180,7 @@ object Bits {
   /**
    * Extract bit positions that are set in the binary representation of i
    */
-  def fromInt(i: Int) = {
+  def IntToSet(i: Int) = {
     var i2 = i
     var result = List[Int]()
     var pos = 0
@@ -224,7 +224,7 @@ object Bits {
     (hw, result0, result1)
   }
 
-  def project(i: Int, idxes: Int): Int = {
+  def projectIntWithInt(i: Int, idxes: Int): Int = {
     var idx2 = idxes
     var result = 0
     var i2 = i
@@ -242,7 +242,7 @@ object Bits {
   }
 
   //un-projects the number i to bits represented by idxes. Choosing idxes = 2^i - 1 should have no effect.
-  def unproject(i: Int, idxes: Int) = {
+  def unprojectIntWithInt(i: Int, idxes: Int) = {
     var i2 = i
     var idx2 = idxes
     var shift = 0

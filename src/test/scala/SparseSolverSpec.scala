@@ -3,11 +3,11 @@ import core.solver.lpp.{Interval, IntervalTools, SparseSolver}
 import core.solver.{Rational, SolverTools, lpp}
 import org.scalatest._
 import planning.{NewProjectionMetaData, ProjectionMetaData}
-import util.Bits
+import util.BitUtils
 
 
 class SparseSolverSpec extends FlatSpec with Matchers {
-  implicit def listToInt = Bits.toInt(_)
+  implicit def listToInt = BitUtils.SetToInt(_)
   implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
 
   // the solution is: Array(1,7,3,0,10,2,4,20)

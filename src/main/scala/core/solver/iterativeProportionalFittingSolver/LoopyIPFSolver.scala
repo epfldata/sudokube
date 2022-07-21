@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.collection.mutable
 
@@ -21,7 +21,7 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
    */
   def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
     graphicalModel.connectNodesCompletely(marginalVariables.map(graphicalModel.nodes(_)).toSet, cluster)
   }
@@ -152,11 +152,11 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
     (0 until 1 << querySize).foreach(allVariablesValues => {
       val calculatedValue = totalDistribution(allVariablesValues)
       junctionGraph.separators.foreach(separator => assertApprox(
-        IPFUtils.getMarginalProbability(separator.clique1.numVariables, separator.clique1.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique1.variables), Bits.project(allVariablesValues, separator.variables)),
-        IPFUtils.getMarginalProbability(separator.clique2.numVariables, separator.clique2.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique2.variables), Bits.project(allVariablesValues, separator.variables))
+        IPFUtils.getMarginalProbability(separator.clique1.numVariables, separator.clique1.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique1.variables), BitUtils.projectIntWithInt(allVariablesValues, separator.variables)),
+        IPFUtils.getMarginalProbability(separator.clique2.numVariables, separator.clique2.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique2.variables), BitUtils.projectIntWithInt(allVariablesValues, separator.variables))
       ))
-      val presumedNumerator = junctionGraph.cliques.foldLeft(1.0)((acc, clique) => acc * clique.distribution(Bits.project(allVariablesValues, clique.variables)))
-      val presumedDenominator = junctionGraph.separators.foldLeft(1.0)((acc, separator) => acc * IPFUtils.getMarginalProbability(separator.clique1.numVariables, separator.clique1.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique1.variables), Bits.project(allVariablesValues, separator.variables)))
+      val presumedNumerator = junctionGraph.cliques.foldLeft(1.0)((acc, clique) => acc * clique.distribution(BitUtils.projectIntWithInt(allVariablesValues, clique.variables)))
+      val presumedDenominator = junctionGraph.separators.foldLeft(1.0)((acc, separator) => acc * IPFUtils.getMarginalProbability(separator.clique1.numVariables, separator.clique1.distribution, IPFUtils.getVariableIndicesWithinVariableSubset(separator.variables, separator.clique1.variables), BitUtils.projectIntWithInt(allVariablesValues, separator.variables)))
       val presumedValue = if (presumedDenominator == 0) {
         assert(presumedNumerator < 1e-10)
         0

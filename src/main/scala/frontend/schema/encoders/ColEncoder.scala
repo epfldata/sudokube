@@ -100,7 +100,7 @@ abstract class ColEncoder[T] extends Serializable {
     val relevant_bits = bits.intersect(q_bits)
     val idxs = relevant_bits.map(x => bits.indexWhere(x == _))
 
-    Bits.group_values(idxs, 0 to (bits.length - 1)).map(
+    BitUtils.group_values(idxs, 0 to (bits.length - 1)).map(
       x => x.map(y => {
         try { Some(decode_locally(y.toInt)) }
         catch { case (e: Exception) => None }

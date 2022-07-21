@@ -1,7 +1,7 @@
 package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.isVariablesContained
-import util.Bits
+import util.BitUtils
 
 import scala.collection.mutable
 import scala.util.control.Breaks.{break, breakable}
@@ -72,7 +72,7 @@ class JunctionGraph {
       // min-neighbours — greedy criteria for node elimination ordering
       val clique = constructCliqueFromNode(nextNode)
       cliques += clique
-      graphicalModel.connectNodesCompletely(Bits.fromInt(clique.variables).map(graphicalModel.nodes).toSet - nextNode)
+      graphicalModel.connectNodesCompletely(BitUtils.IntToSet(clique.variables).map(graphicalModel.nodes).toSet - nextNode)
       graphicalModel.deleteNode(nextNode)
     }
   }
@@ -84,7 +84,7 @@ class JunctionGraph {
    * @return The clique constructed.
    */
   def constructCliqueFromNode(node: IPFGraphicalModel.Node): JunctionGraph.Clique = {
-    val variables = Bits.toInt((node.adjacencyList.keySet.map(_.variable) + node.variable).toSeq)
+    val variables = BitUtils.SetToInt((node.adjacencyList.keySet.map(_.variable) + node.variable).toSeq)
     val clusters =
       node.adjacencyList.map { case (_, edge) => // all clusters in all edges
         edge.clusters.filter(cluster => IPFUtils.isVariablesContained(cluster.variables, variables)) // fully contained in clique
@@ -235,12 +235,12 @@ class JunctionGraph {
     println(s"\t\t\t${cliques.size} cliques, ${separators.size} separators")
     println("\t\t\tCliques:")
     cliques.foreach(clique =>
-      println(s"\t\t\t\t${clique.numVariables} variables: ${Bits.fromInt(clique.variables).mkString(":")}, "
-        + s"${clique.clusters.size} clusters: ${clique.clusters.map(cluster => Bits.fromInt(cluster.variables).mkString(":")).mkString(", ")}")
+      println(s"\t\t\t\t${clique.numVariables} variables: ${BitUtils.IntToSet(clique.variables).mkString(":")}, "
+        + s"${clique.clusters.size} clusters: ${clique.clusters.map(cluster => BitUtils.IntToSet(cluster.variables).mkString(":")).mkString(", ")}")
     )
     println("\t\t\tSeparators:")
     separators.foreach(separator =>
-      println(s"\t\t\t\t${Bits.fromInt(separator.clique1.variables).mkString(":")} <--> ${Bits.fromInt(separator.clique2.variables).mkString(":")}: ${separator.numVariables} variables: ${Bits.fromInt(separator.variables).mkString(":")}")
+      println(s"\t\t\t\t${BitUtils.IntToSet(separator.clique1.variables).mkString(":")} <--> ${BitUtils.IntToSet(separator.clique2.variables).mkString(":")}: ${separator.numVariables} variables: ${BitUtils.IntToSet(separator.variables).mkString(":")}")
     )
   }
 }

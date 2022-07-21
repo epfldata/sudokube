@@ -126,7 +126,7 @@ class SliceSparseSolver[T](
    * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
    * */
   override def shouldFetch(dims: Int): Boolean = {
-    val new_basis_vars = Bits.max_group_values_Int(dims, n_bits)
+    val new_basis_vars = BitUtils.max_group_values_Int(dims, n_bits)
     new_basis_vars.foldLeft(false)((acc, cur) => acc || !maxFetchedVars.contains(cur)) //at least one new basis var
   }
 

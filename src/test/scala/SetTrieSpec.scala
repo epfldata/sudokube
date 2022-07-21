@@ -1,7 +1,7 @@
 import core.ds.settrie.{SetTrie, SetTrieForMoments}
 import core.solver.moment.Moment1Transformer
 import org.scalatest.{FlatSpec, Matchers}
-import util.{BigBinary, Bits, Util}
+import util.{BigBinary, BitUtils, Util}
 
 import java.io._
 import scala.reflect.ClassTag
@@ -65,7 +65,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
     val nbits = 10
     val N = (1 << nbits)
     (0 until N).foreach { i =>
-      val cs = Bits.fromInt(i).sorted
+      val cs = BitUtils.IntToSet(i).sorted
       trie.insert(cs, (i+1).toDouble)
     }
     assert(trie.nodeCount == N)

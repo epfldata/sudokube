@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 /**
  * Effective iterative proportional fitting, based on junction tree (or clique tree).
@@ -18,7 +18,7 @@ class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver
    */
   def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
     graphicalModel.connectNodesCompletely(marginalVariables.map(graphicalModel.nodes(_)).toSet, cluster)
   }

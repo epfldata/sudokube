@@ -57,7 +57,7 @@ object SloppyFractionalInt {
 
 object Util {
   def slice[T](a: Array[T], sliceValues: IndexedSeq[Int]) = {
-    val start = Bits.maskToInt(sliceValues)
+    val start = BitUtils.maskToInt(sliceValues)
     val aggN = a.length >> sliceValues.length
     a.slice(aggN * start, aggN * (start + 1))
   }

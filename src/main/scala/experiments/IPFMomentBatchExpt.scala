@@ -5,8 +5,8 @@ import core.solver.SolverTools
 import core.solver.SolverTools.error
 import core.solver.iterativeProportionalFittingSolver._
 import core.solver.moment.{CoMoment4Solver, Moment1Transformer}
-import util.{Bits, Profiler}
-
+import util.{BitUtils, Profiler}
+import BitUtils.sizeOfSet
 import java.io.{File, PrintStream}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -98,7 +98,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
     }
 
-    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes: ${ fetched.map{ case (bits, _) => Bits.sizeOfSet(bits) }.mkString(":")}")
+    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes: ${ fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }.mkString(":")}")
 
     val result = Profiler("Vanilla IPF Constructor + Add + Solve") {
       val solver = Profiler("Vanilla IPF Constructor") {
@@ -112,7 +112,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => Bits.sizeOfSet(bits) })
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
   /**
@@ -147,7 +147,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => Bits.sizeOfSet(bits) })
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
   /**
@@ -182,7 +182,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => Bits.sizeOfSet(bits) })
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
   /**
@@ -217,7 +217,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => Bits.sizeOfSet(bits)})
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits)})
   }
 
   /**
@@ -252,7 +252,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => Bits.sizeOfSet(bits) })
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {

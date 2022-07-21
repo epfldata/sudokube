@@ -2,7 +2,7 @@ package core.materialization.builder
 
 import backend.Cuboid
 import core.materialization.MaterializationScheme
-import util.{Bits, ProgressIndicator, Util}
+import util.{BitUtils, ProgressIndicator, Util}
 
 
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -53,7 +53,7 @@ trait SingleThreadedCubeBuilder extends CubeBuilder {
     build_plan.foreach {
       case (_, id, -1) => ab(id) = full_cube
       case (s, id, parent_id) => {
-        val bitpos = Bits.mk_list_bitpos(m.projections(parent_id), s)
+        val bitpos = BitUtils.mk_list_bitpos(m.projections(parent_id), s)
         ab(id) = ab(parent_id).rehash(bitpos)
 
         // completion status updates
@@ -77,7 +77,7 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
     build_plan.foreach {
       case (_, id, -1) => cuboidFutures(id) = Future {full_cube}
       case (s, id, parent_id) =>
-        val bitpos = Bits.mk_list_bitpos(m.projections(parent_id), s)
+        val bitpos = BitUtils.mk_list_bitpos(m.projections(parent_id), s)
         cuboidFutures(id) = cuboidFutures(parent_id).map { oldcub =>
           val newcub = oldcub.rehash(bitpos)
             pi.step

@@ -76,7 +76,7 @@ trait Schema extends Serializable {
       case (_, c) => c.bits
     }.sorted
 
-    Bits.group_values(q_bits, universe).map(
+    BitUtils.group_values(q_bits, universe).map(
       x => relevant_cols.map {
         case (key, c) => {
           val l = x.flatMap(y =>

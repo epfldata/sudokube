@@ -1,6 +1,6 @@
 package core.solver.moment
 
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
@@ -75,10 +75,10 @@ abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transfo
   }
 
   def add(eqnColSet: Int, values: Array[T]): Unit = {
-    val colsLength = Bits.sizeOfSet(eqnColSet)
+    val colsLength = BitUtils.sizeOfSet(eqnColSet)
     val n0 =  1 << colsLength
 
-    val newMomentIndices = (0 until n0).map(i0 => i0 -> Bits.unproject(i0, eqnColSet)).
+    val newMomentIndices = (0 until n0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet)).
       filter({ case (i0, i) => !knownSet.contains(i) })
 
     if (newMomentIndices.size < colsLength) {

@@ -135,7 +135,7 @@ case class SparseSolver[T](
    * Pre-emptively checks if there is any new independent equation by fetching projection with bits dims
    * */
   def shouldFetch(dims: Int) = {
-    val new_basis_vars = util.Bits.max_group_values_Int(dims, n_bits)
+    val new_basis_vars = util.BitUtils.max_group_values_Int(dims, n_bits)
     new_basis_vars.foldLeft(false)((acc, cur) => acc || M.data(cur) == None) //at least one new basis var
   }
 

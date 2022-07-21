@@ -4,9 +4,9 @@ import org.scalatest._
 import IntervalTools._
 import core.solver.RationalTools._
 import core.solver.lpp.SparseMatrixImplicits._
-import util.{Bits, Util}
+import util.{BitUtils, Util}
 class SimplexAlgoSpec extends FlatSpec with Matchers {
-  implicit def listToInt = Bits.toInt(_)
+  implicit def listToInt = BitUtils.SetToInt(_)
   implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
 
   "SimplexAlgo" should "not crash when there are no constraints" in {

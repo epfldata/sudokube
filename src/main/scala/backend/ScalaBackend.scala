@@ -2,7 +2,7 @@
 package backend
 import combinatorics.Big
 import util._
-
+import BitUtils._
 import java.io._
 
 
@@ -73,7 +73,7 @@ object ScalaBackend extends Backend[Payload] {
   }
 
   protected def sRehashPartial(a: SPARSE_T, bitpos: BITPOS_T, prev : SPARSE_T) : SPARSE_T = {
-    val hash_f: BigBinary => BigBinary = Bits.mk_project_bitpos_f(bitpos)
+    val hash_f: BigBinary => BigBinary = mk_project_bitpos_f(bitpos)
 
     def dedup(b: SPARSE_T) : SPARSE_T = b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList
 
@@ -108,7 +108,7 @@ object ScalaBackend extends Backend[Payload] {
 
   protected def s2dRehash(a: SPARSE_T, p_bits: Int, bitpos: BITPOS_T) : DENSE_T = {
     val hash_f: BigBinary => Int =
-      (x: BigBinary) => Bits.mk_project_bitpos_f(bitpos)(x).toInt
+      (x: BigBinary) => mk_project_bitpos_f(bitpos)(x).toInt
 
     val a2 = Util.mkAB[Payload](1 << p_bits, _ => Payload.none)
     a.foreach { case(i, v) => a2(hash_f(i)).merge_in(v) }
@@ -116,7 +116,7 @@ object ScalaBackend extends Backend[Payload] {
   }
 
   protected def sRehash(a: SPARSE_T, bitspos: BITPOS_T) : SPARSE_T = {
-    val hash_f: BigBinary => BigBinary = Bits.mk_project_bitpos_f(bitspos)
+    val hash_f: BigBinary => BigBinary = mk_project_bitpos_f(bitspos)
 
     def dedup(b: SPARSE_T) : SPARSE_T =
        b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList

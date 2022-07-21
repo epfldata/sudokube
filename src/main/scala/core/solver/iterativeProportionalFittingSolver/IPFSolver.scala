@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.Bits
+import util.BitUtils
 
 /**
  * Abstract definition of a iterative proportional fitting solver.
@@ -23,7 +23,7 @@ abstract class IPFSolver(val querySize: Int) {
 
   //TODO: Change the other add method to directly accept Int instead of overloading
   def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
-    val bitList = Bits.fromInt(marginalVariables).reverse
+    val bitList = BitUtils.IntToSet(marginalVariables).reverse
     add(bitList, marginalDistribution)
   }
   /**
@@ -47,10 +47,10 @@ abstract class IPFSolver(val querySize: Int) {
     getSolution
     clusters.foreach {
       case Cluster(variables, distribution) =>
-        val projection = solution.indices.groupBy(i => Bits.project(i, variables)).mapValues {
+        val projection = solution.indices.groupBy(i => BitUtils.projectIntWithInt(i, variables)).mapValues {
           idxes => idxes.map(solution(_)).sum
         }.toSeq.sortBy(_._1).map(_._2)
-        println(s"Verifying cuboid ${Bits.fromInt(variables).mkString(":")}")
+        println(s"Verifying cuboid ${BitUtils.IntToSet(variables).mkString(":")}")
         distribution.map(_ * normalizationFactor).zip(projection).zipWithIndex.foreach { case ((v, p), i) => if (Math.abs(v - p) > 0.0001) println(s"$i :: $v != $p") }
 //        assert(distribution.map(_ * normalizationFactor).zip(projection).map { case (v, p) => Math.abs(v - p) <= 0.0001 }.reduce(_ && _))
     }

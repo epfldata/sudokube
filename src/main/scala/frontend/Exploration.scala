@@ -37,7 +37,7 @@ object Exploration {
   def nat_decode_dim(sch: DynamicSchema, coln: String, drop_bits: Int) : Seq[Range] = {
     val n_bits = sch.columns(coln).bits.length
     val q_bits = (0 to n_bits - 1).drop(drop_bits)
-    util.Bits.group_values(q_bits, 0 to n_bits - 1).map(l => { 
+    util.BitUtils.group_values(q_bits, 0 to n_bits - 1).map(l => {
       val l2 = l.map(_.toInt)
       l2.min to (l2.max)
     })
