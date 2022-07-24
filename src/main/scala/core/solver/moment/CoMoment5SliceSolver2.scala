@@ -7,7 +7,42 @@ import scala.reflect.ClassTag
 class CoMoment5SliceSolver2[T: ClassTag : Fractional](totalsize: Int, slicevalue: IndexedSeq[Int], batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver(totalsize - slicevalue.length, batchmode, transformer, primaryMoments) {
   val solverName = "Comoment5Slice2"
   var pmMap: Map[Int, T] = null
+  val sliceMP = collection.mutable.HashMap[Int, T]()
 
+  def getSliceMP(slice0: Int): T = {
+    if (sliceMP.isDefinedAt(slice0)) {
+      sliceMP(slice0)
+    } else {
+      var slice = slice0
+      var h = N
+      var result = num.one
+      /* multiply by entry in matrix
+        b=0   b=1
+sv=0     1-p  -1
+sv=1      p    1
+*/
+      slicevalue.foreach { sv =>
+        val b = (slice & 1)
+        if (b == 0) {
+          val p = pmMap(h)
+          if( sv == 0) {
+            val oneminusp = num.minus(num.one, p)
+            result = num.times(result, oneminusp)
+          } else {
+            result = num.times(result, p)
+          }
+        } else {
+          if(sv == 0) {
+            result = num.negate(result)
+          }
+        }
+        slice >>= 1
+        h <<= 1
+      }
+      sliceMP += slice0 -> result
+      result
+    }
+  }
   override def init(): Unit = {}
 
   init2()
@@ -57,43 +92,12 @@ class CoMoment5SliceSolver2[T: ClassTag : Fractional](totalsize: Int, slicevalue
 
   def fillMissing() = {
 
-    val M = 1 << slicevalue.length
-    val sliceMomentProduct = Array.fill[T](M)(num.one)
-    Profiler("BuildSliceProduct") {
-      var h = 1
-      var h2 = N
-      slicevalue.foreach { sv => //while (h < M)
-        /* multiply by entry in matrix
-                j   j + h
-       sv=0     1-p  -1
-       sv=1      p    1
-       */
-        val p = pmMap(h2)
-        val oneminusp = num.minus(num.one, p)
-        if (sv == 0) {
-          (0 until M by h * 2).foreach { i =>
-            (i until i + h).foreach { j =>
-              sliceMomentProduct(j) = num.times(sliceMomentProduct(j), oneminusp)
-              sliceMomentProduct(j + h) = num.negate(sliceMomentProduct(j + h))
-            }
-          }
-        } else {
-          (0 until M by h * 2).foreach { i =>
-            (i until i + h).foreach { j =>
-              sliceMomentProduct(j) = num.times(sliceMomentProduct(j), p)
-            }
-          }
-        }
-        h <<= 1
-        h2 <<= 1
-      }
-    }
     val logN = (totalsize - slicevalue.length)
     Profiler("SliceMomentsAdd") {
       momentsToAdd.foreach { case (i, m) =>
         val x = i & (N - 1) //agg index
         val y = i >> logN //slice index
-        val p = sliceMomentProduct(y)
+        val p = getSliceMP(y)
         moments(x) = num.plus(moments(x), num.times(p, m))
       }
     }

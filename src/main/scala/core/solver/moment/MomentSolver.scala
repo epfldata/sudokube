@@ -7,7 +7,8 @@ import scala.reflect.ClassTag
 
 //primary moments are calculated assuming transformer is Moment1
 abstract class MomentSolver[T: ClassTag](qsize: Int, batchMode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)])(implicit val num: Fractional[T]) {
-  val N = 1 << qsize
+  val logN = qsize
+  val N = 1 << logN
   val solverName: String
   lazy val name = solverName + transformer.name
 

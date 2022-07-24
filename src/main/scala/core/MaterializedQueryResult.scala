@@ -6,7 +6,7 @@ import frontend.generators.{CubeGenerator, NYC, SSB}
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
 class MaterializedQueryResult(cg: CubeGenerator) {
-  val sch = cg.schemaInstance
+  lazy val sch = cg.schemaInstance
   var baseCube: DataCube = null
 
   def ensureLoadBase() = if (baseCube == null)
@@ -52,15 +52,16 @@ class MaterializedQueryResult(cg: CubeGenerator) {
 
 object MaterializedQueryResult {
   def main(args: Array[String]): Unit = {
-    val SSBQueries = new MaterializedQueryResult(SSB(100))
-    val nycQueries = new MaterializedQueryResult(NYC)
     val nq = 100
     val qss = List(6, 9, 12, 15, 18, 21, 24)
 
+    val SSBQueries = new MaterializedQueryResult(SSB(100))
     qss.foreach { qs =>
       SSBQueries.generateAndSaveQueries(nq, qs)
     }
     CBackend.b.reset
+
+    val nycQueries = new MaterializedQueryResult(NYC)
     qss.foreach { qs =>
       nycQueries.generateAndSaveQueries(nq, qs)
     }
