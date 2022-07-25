@@ -367,7 +367,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
             byte *buffer = (byte *) malloc(byte_size);
             size_t readBytes = fread(buffer, 1, byte_size, fp);
             if (readBytes != byte_size)
-                fprintf(stderr, "size = %lu ,recSize=%u  -- %lu bytes read instead of %lu bytes because %s \n", size,
+                fprintf(stderr, "File %s  :: size = %lu, recSize=%u  -- %lu bytes read instead of %lu bytes because %s \n", filename, size,
                         recSize, readBytes, byte_size, strerror(errno));
             assert(readBytes == byte_size);
             buffer_array[i] = buffer;
@@ -386,7 +386,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
             byte *buffer = (byte *) malloc(byte_size);
             size_t readBytes = fread(buffer, 1, byte_size, fp);
             if (readBytes != byte_size)
-                fprintf(stderr, "%lu bytes read instead of %lu bytes because %s \n", readBytes, byte_size,
+                fprintf(stderr, "File %s  :: %lu bytes read instead of %lu bytes because %s \n", filename, readBytes, byte_size,
                         strerror(errno));
             assert(readBytes == byte_size);
             buffer_array[i] = buffer;

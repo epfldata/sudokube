@@ -5,7 +5,7 @@ import core.materialization.RandomizedMaterializationScheme
 import core.solver.SolverTools
 
 object Warmup {
-  def main(): Unit = {
+  def main(args: Array[String]): Unit = {
     val nbits = 10
     val cg = MicroBench(nbits, 100000, 0.5, 0.25)
     val r_its = cg.generate2()
@@ -17,7 +17,7 @@ object Warmup {
     val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.primaryMoments = SolverTools.primaryMoments(dc, false)
-    dc.savePrimaryMoments(name)
     dc.save()
+    dc.savePrimaryMoments(name)
   }
 }
