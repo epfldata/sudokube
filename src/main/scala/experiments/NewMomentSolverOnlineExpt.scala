@@ -16,13 +16,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
     case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer(), pm)
   }
 
-  override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
-    //Cannot use default warmup because of "containsAllCuboid" set to true
-    val dcwarm = DataCube.load("warmupall")
-    dcwarm.loadPrimaryMoments("warmupall")
-    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, null, false, sliceValues = Vector()))
-    println("Warmup Complete")
-  }
+
 
   var queryCounter = 0
 

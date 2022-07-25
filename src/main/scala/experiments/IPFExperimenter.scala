@@ -11,7 +11,7 @@ object IPFExperimenter {
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load(fullname, cg.baseName)
-    dc.loadPrimaryMoments(cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.baseName)
 
     val expname2 = s"query-dim-$cubeGenerator-$ms"
     val exptfull = new IPFMomentBatchExpt(expname2)

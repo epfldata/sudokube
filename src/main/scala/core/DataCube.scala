@@ -339,7 +339,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
   * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
   */
 class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
-  val base = DataCube.load(basename)
+  lazy val base = DataCube.load(basename)
 
    def buildPartial(m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
 
@@ -357,7 +357,7 @@ class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
     }
     val last = cuboids.indices.last
     assert(cuboids(last) == null)
-    cuboids(last) = DataCube.load(basename).cuboids.last
+    cuboids(last) = base.cuboids.last
     Await.result(Future.sequence(tasks), Duration.Inf)
   }
 

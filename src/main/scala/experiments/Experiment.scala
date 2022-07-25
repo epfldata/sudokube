@@ -27,14 +27,15 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: IndexedSeq[Int]): Unit
 
   def warmup(nw: Int = 10) = {
-    val dcwarm = DataCube.load("warmup")
-    dcwarm.loadPrimaryMoments("warmup")
+    val name = "Warmup"
+    val dcwarm = DataCube.load(name)
+    dcwarm.loadPrimaryMoments(name)
     val qs = (0 to nw).map { i =>
       val s = Random.nextInt(4) + 4
       Tools.rand_q(dcwarm.index.n_bits, s)
     }
 
-    qs.foreach(q => run(dcwarm, "warmup", q, null, false, sliceValues = Vector()))
+    qs.foreach(q => run(dcwarm, name, q, null, false, sliceValues = Vector()))
     println("Warmup Complete")
   }
 }

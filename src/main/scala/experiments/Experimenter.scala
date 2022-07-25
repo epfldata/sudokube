@@ -166,7 +166,7 @@ object Experimenter {
 
     val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt("fixedslice")
-    //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
+    //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
     val qss = List(9, 12, 15, 18, 21, 24)
     qss.foreach { qs =>
       println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Slice for MS = $ms Query Dimensionality = $qs")
@@ -188,7 +188,7 @@ object Experimenter {
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load(fullname, cg.baseName)
-    dc.loadPrimaryMoments(cg.inputname + "_base")
+    dc.loadPrimaryMoments(cg.baseName)
 
     val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt("fixedtotal")
@@ -681,70 +681,7 @@ object Experimenter {
   }
 
   def debug(): Unit = {
-    implicit val shouldRecord = false
-    val cg = SSB(100)
-    val isSMS = false
-    val param = "15_14"
-    val name = (if (isSMS) "_sms_" else "_rms_") + param
-    val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName)
-    dc.loadPrimaryMoments(cg.inputname + "_base")
-    val sch = cg.schema()
-    //val q1 = Vector(75, 134, 168, 178, 188, 219, 237, 276, 315, 355)
-    //val q2 = List(116, 117, 118, 119, 120, 129, 130, 131, 137, 138, 139, 155, 172, 180, 192)
-    val q = Vector(141, 142, 143, 144, 152, 153, 154, 155, 165, 171, 172, 180, 185, 186, 192)
-    //val queries = (0 to 4).map(i => Tools.rand_q(429, 10))
-    ////val numQs = sch.root.numPrefixUpto(15)
-    ////(0 until 15).map(i => println(s"$i => " + numQs(i)))
-    //
 
-    //val expt = new UniformSolverFullExpt[Double](fullname)
-    //import RationalTools._
-    //val expt = new LPSolverFullExpt[Rational](dc, fullname)
-    //expt.warmup(10)
-
-
-    //val sample = Exponential
-    //val cg = MBSimple(12)
-
-    //val fullname = cg.inputname + "_all"
-    //val dc = DataCube.load2(fullname)
-
-    //val (sch, r_its) = cg.generate2()
-    //sch.initBeforeEncode()
-    //val dc = new DataCube(MaterializationScheme.all_cuboids(cg.n_bits))
-    //dc.build(CBackend.b.mkParallel(sch.n_bits, r_its))
-
-    //val q = 0 until 12
-    //val q = sch.root.samplePrefix(15)
-    //val res = dc.naive_eval(q)
-    //val zeroes = res.filter(_ == 0.0).length
-    //val sparse = zeroes.toDouble / res.length
-    //val tot = res.sum
-    //val naiveM = SolverTools.fastMoments(res).map(x => (x * 10000 / tot).toInt)
-    //naiveM.zipWithIndex.sortBy(-_._1).take(15).foreach(println)
-    //println("Sparsity = " + sparse)
-    //val resMax = res.max.toInt
-    //val step = math.max(resMax/1000,1)
-    //res.groupBy(x => (x.toInt/step) * step).mapValues(_.length).toList.sortBy(_._1).foreach(println)
-    //val fullname = "NYC_sms_16_10"
-
-    //List("NYC_rms_16_10" -> "NYC_base", "SSB-sf100_rms_15_14" -> "SSB-sf100_base").foreach { case (fullname, basename) =>
-    //  val dc = PartialDataCube.load2(fullname, basename)
-    //  dc.primaryMoments = SolverTools.primaryMoments(dc)
-    //  dc.savePrimaryMoments(basename)
-    //}
-    //List("warmup", "warmupall").foreach{n =>
-    //  val dc = DataCube.load2(n)
-    //  dc.primaryMoments = SolverTools.primaryMoments(dc)
-    //  dc.savePrimaryMoments(n)
-    //}
-    //val m2 =new EfficientMaterializationScheme(dc.m)
-    //val expt = new MomentSolverBatchExpt[Double](fullname)
-    val expt = new NewMomentSolverBatchExpt(CoMoment3, fullname)
-    (0 until 10).foreach { x => expt.run(dc, fullname, q, null, sliceValues = Vector()) }
-    //val expt = new UniformSolverOnlineExpt[Double](fullname, true)
-    //queries.foreach { q1 => dc.m.prepare(q1, 50, 400) }
   }
 
   def main(args: Array[String]) {
@@ -779,7 +716,8 @@ object Experimenter {
       case "Fig12" | "manual" =>
         manualSSB(strategy, true)
         manualNYC(strategy, true)
-      case _ => trieExpt[Rational]()
+      case expt =>
+        throw new IllegalArgumentException("Unknown experiment name "+ expt)
     }
   }
 }
