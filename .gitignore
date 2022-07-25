@@ -6,6 +6,8 @@ target
 libCBackend.*
 expdata/*
 cubedata/*
-tabledata/*
+tabledata/**/*.tbl
+tabledata/**/*.uniq
+tabledata/**/*.tsv
 data/*
 figs/*
