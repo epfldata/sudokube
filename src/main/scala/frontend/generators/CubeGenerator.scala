@@ -9,11 +9,11 @@ import util.BigBinary
 abstract class CubeGenerator(val inputname: String) {
   lazy val schemaInstance = schema()
   def generate() : (StructuredDynamicSchema, Seq[(BigBinary, Long)])
-  def generate2(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = ???
+  def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = ???
 
   val baseName = inputname + "_base"
   def saveBase() = {
-    val r_its = generate2()
+    val r_its = generatePartitions()
     schemaInstance.initBeforeEncode()
     //println("Recommended (log) parameters for Materialization schema " + sch.recommended_cube)
     val m = MaterializationScheme.only_base_cuboid(schemaInstance.n_bits)

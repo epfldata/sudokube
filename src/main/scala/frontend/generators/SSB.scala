@@ -1,8 +1,6 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.PartialDataCube
-import core.materialization.{RandomizedMaterializationScheme, SchemaBasedMaterializationScheme}
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
 import util.Profiler
@@ -122,7 +120,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   }
 
   def generate( ) = ???
-  override def generate2() = {
+  override def generatePartitions() = {
 
     //val date = readTbl("date", Vector(0, 2)).map(d => d.head -> Vector(sdf.parse(d(0)), d(1))).toMap
 

@@ -8,7 +8,7 @@ object Warmup {
   def main(args: Array[String]): Unit = {
     val nbits = 10
     val cg = MicroBench(nbits, 100000, 0.5, 0.25)
-    val r_its = cg.generate2()
+    val r_its = cg.generatePartitions()
     val sch = cg.schemaInstance
     sch.initBeforeEncode()
     val name = "Warmup"

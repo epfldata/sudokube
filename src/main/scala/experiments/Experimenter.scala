@@ -412,7 +412,7 @@ object Experimenter {
 
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val r_its = cg.generate2()
+        val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
@@ -437,7 +437,7 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val r_its = cg.generate2()
+        val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
@@ -463,7 +463,7 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val r_its = cg.generate2()
+        val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
@@ -488,7 +488,7 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
         println(s"Trial $i/$numIters")
-        val r_its = cg.generate2()
+        val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()

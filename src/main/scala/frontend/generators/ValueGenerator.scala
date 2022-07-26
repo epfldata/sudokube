@@ -21,7 +21,7 @@ case class ConstantValueGenerator(n: Long) extends ValueGenerator {
 
 case class RandomValueGenerator(n: Long) extends ValueGenerator {
   val r = new scala.util.Random()
-  override def apply(k: BigBinary): Long = (r.nextDouble()* n).toLong
+  override def apply(k: BigBinary): Long = (r.nextDouble()* n + 0.5).toLong
 }
 
 /**

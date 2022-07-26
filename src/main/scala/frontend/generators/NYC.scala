@@ -12,7 +12,7 @@ import scala.io.Source
 object NYC extends CubeGenerator("NYC") {
 
   override def generate() = ???
-  override def generate2(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
+  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
       val n2 = "all.part" + num + ".tsv"
