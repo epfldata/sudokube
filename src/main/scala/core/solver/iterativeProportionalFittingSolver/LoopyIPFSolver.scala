@@ -19,11 +19,11 @@ class LoopyIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(que
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+  def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
-    graphicalModel.connectNodesCompletely(marginalVariables.map(graphicalModel.nodes(_)).toSet, cluster)
+    graphicalModel.connectNodesCompletely(BitUtils.IntToSet(marginalVariables).map(graphicalModel.nodes(_)).toSet, cluster)
   }
 
   /**

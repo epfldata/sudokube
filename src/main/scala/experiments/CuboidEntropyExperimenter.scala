@@ -1,8 +1,9 @@
 package experiments
 
-import core.SolverTools.entropy
-import core.{MaterializedQueryResult, PartialDataCube, SolverTools}
+import core.solver.SolverTools
+import core.{MaterializedQueryResult, PartialDataCube}
 import frontend.generators.{CubeGenerator, NYC, SSB}
+import util.BitUtils
 
 import java.io.{File, PrintStream}
 import java.time.LocalDateTime
@@ -19,8 +20,8 @@ object CuboidEntropyExperimenter {
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
-    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
+    dc.loadPrimaryMoments(cg.baseName)
 
     val materializedQueries = new MaterializedQueryResult(cg)
     val qss = List(6, 9, 12, 15, 18, 21)
@@ -50,15 +51,15 @@ object CuboidEntropyExperimenter {
 
         val q = qu.sorted
 
-        val (l, _) = dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) -> SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
-        val fetched = l.map { pm => (pm.accessible_bits, dc.fetch2[Double](List(pm)).toArray) }
+        val (l, _) = dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
+        val fetched = l.map { pm => (pm.queryIntersection, dc.fetch2[Double](List(pm))) }
 
         fetched.foreach { case (bits, array) =>
-          val numDimensions = bits.size
-          val cuboidEntropy = entropy(array)
+          val numDimensions = BitUtils.sizeOfSet(bits)
+          val cuboidEntropy = SolverTools.entropy(array)
           val maxEntropy = -math.log(1.0 / (1 << numDimensions))
           val relativeEntropy = cuboidEntropy / maxEntropy
-          fileout.println(s"$numDimensions, ${bits.mkString(":")}, $cuboidEntropy, $maxEntropy, $relativeEntropy")
+          fileout.println(s"$numDimensions, ${BitUtils.IntToSet(bits).mkString(":")}, $cuboidEntropy, $maxEntropy, $relativeEntropy")
         }
 
       }

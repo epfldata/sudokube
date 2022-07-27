@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import core.SolverTools.entropy
+import core.solver.SolverTools.entropy
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.{getNumOnesInBinary, isVariablesContained}
 import util.{BitUtils, Profiler}
 
@@ -19,9 +19,9 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
   }
 

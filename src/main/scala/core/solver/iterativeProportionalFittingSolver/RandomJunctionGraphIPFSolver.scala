@@ -2,7 +2,7 @@ package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.existsIntersectingVariables
 import core.solver.iterativeProportionalFittingSolver.JunctionGraph.Clique
-import util.{BitUtils, Profiler}
+import util.Profiler
 
 import scala.util.Random
 
@@ -27,9 +27,9 @@ class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPF
    * @param marginalVariables    Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val clusterVariables = BitUtils.SetToInt(marginalVariables)
+    val clusterVariables = marginalVariables
     val cluster = Cluster(clusterVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
     val clique = Random.shuffle(junctionGraph.cliques.filter(clique => existsIntersectingVariables(clique.variables, clusterVariables)).toList).head

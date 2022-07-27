@@ -9,7 +9,7 @@ class LoopyIPFTest {
   @Test
   def testConstructJunctionGraph(): Unit = {
     val solver = new LoopyIPFSolver(5)
-    Seq(Seq(0, 1), Seq(0, 2), Seq(0, 3), Seq(0, 4), Seq(2, 3)).foreach(variables => solver.add(variables, Array.fill(variables.size)(1.0 / variables.size)))
+    Seq(Seq(0, 1), Seq(0, 2), Seq(0, 3), Seq(0, 4), Seq(2, 3)).foreach(variables => solver.add(SetToInt(variables), Array.fill(variables.size)(1.0 / variables.size)))
     solver.constructJunctionGraph()
     solver.junctionGraph.cliques.foreach(clique => println(IntToSet(clique.variables)))
     solver.junctionGraph.separators.foreach(separator => println(s"${IntToSet(separator.clique1.variables)} <--[${BitUtils.IntToSet(separator.variables)}]--> ${BitUtils.IntToSet(separator.clique2.variables)}"))
@@ -33,7 +33,7 @@ class LoopyIPFTest {
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(SetToInt(marginalVariables), clustersDistribution)
     }
 
     solver.solve()
@@ -66,7 +66,7 @@ class LoopyIPFTest {
       }).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(SetToInt(marginalVariables), clustersDistribution)
     }
 
     solver.solve()
@@ -97,7 +97,7 @@ class LoopyIPFTest {
       }).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(SetToInt(marginalVariables), clustersDistribution)
     }
 
     solver.solve()
@@ -123,7 +123,7 @@ class LoopyIPFTest {
       }).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(SetToInt(marginalVariables), clustersDistribution)
     }
 
     solver.solve()

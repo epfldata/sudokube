@@ -23,10 +23,10 @@ class VanillaIPFSolver(override val querySize: Int,
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
-    clusters = Cluster(marginalVariables, marginalDistribution) :: clusters
+    normalizationFactor = marginalDistribution.sum
+    clusters = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor)) :: clusters
   }
 
-  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = ???
   /**
    * Obtain the solution, un-normalized
    * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)

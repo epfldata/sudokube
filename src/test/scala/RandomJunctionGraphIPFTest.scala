@@ -20,7 +20,7 @@ class RandomJunctionGraphIPFTest {
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(BitUtils.SetToInt(marginalVariables), clustersDistribution)
     }
 
     solver.solve()

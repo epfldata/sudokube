@@ -288,7 +288,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       }
       solver
     }
-    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => bits.size })
+    (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {

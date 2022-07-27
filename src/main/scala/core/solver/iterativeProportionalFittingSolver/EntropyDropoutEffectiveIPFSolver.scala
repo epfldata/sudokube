@@ -1,8 +1,8 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import core.SolverTools.entropy
+import core.solver.SolverTools.entropy
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.isVariablesContained
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.collection.mutable
 import scala.util.control.Breaks.{break, breakable}
@@ -20,9 +20,9 @@ class EntropyDropoutEffectiveIPFSolver(override val querySize: Int) extends Effe
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
   }
 
@@ -34,7 +34,7 @@ class EntropyDropoutEffectiveIPFSolver(override val querySize: Int) extends Effe
   override def solve(): Array[Double] = {
     selectiveDropout()
 
-    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(Bits.fromInt(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
+    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
 
     Profiler("Entropy-Based Dropout Effective IPF Junction Tree Construction") {
       constructJunctionTree()
@@ -91,7 +91,7 @@ class EntropyDropoutEffectiveIPFSolver(override val querySize: Int) extends Effe
         break
       }
       val cluster = clustersQueue.dequeue()
-      if (Bits.fromInt(cluster.variables).forall(variable => (clusters.toSet - cluster).exists(cluster => isVariablesContained(1 << variable, cluster.variables)))) {
+      if (BitUtils.IntToSet(cluster.variables).forall(variable => (clusters.toSet - cluster).exists(cluster => isVariablesContained(1 << variable, cluster.variables)))) {
         if (coverage - cluster.numVariables < querySize * (querySize - 1)) {
           break
         }

@@ -16,17 +16,17 @@ class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+  def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
-    graphicalModel.connectNodesCompletely(marginalVariables.map(graphicalModel.nodes(_)).toSet, cluster)
+    graphicalModel.connectNodesCompletely(BitUtils.IntToSet(marginalVariables).map(graphicalModel.nodes(_)).toSet, cluster)
   }
 
   /**
-   * Solve for the total distribution
+   * Solve for the total distribution.
    * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
-   * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
+   * @return Solution (un-normalized) as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double] = {
     Profiler("Effective IPF Junction Tree Construction") {

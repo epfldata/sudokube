@@ -21,21 +21,26 @@ abstract class IPFSolver(val querySize: Int) {
   /* private */ val convergenceThreshold: Double = 1e-5
   /* private */ var normalizationFactor: Double = 1.0 // sum of all elements, can be obtained from any marginal distribution
 
-  //TODO: Change the other add method to directly accept Int instead of overloading
-  def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
-    val bitList = BitUtils.IntToSet(marginalVariables).reverse
-    add(bitList, marginalDistribution)
-  }
   /**
    * Add a new known marginal distribution as a cluster.
+   * @param marginalVariables Marginal variables encoded in binary as a single integer.
+   * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
+   */
+  def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit
+
+  /**
+   * Helper function to add a new known marginal distribution,
+   * with variables as a sequence instead of one single integer.
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit
+  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
+    add(BitUtils.SetToInt(marginalVariables), marginalDistribution)
+  }
 
   /**
-   * Obtain the total distribution
-   * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
+   * Solve for the total distribution
+   * @return Solution (un-normalized) as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double]
 
