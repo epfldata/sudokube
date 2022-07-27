@@ -93,11 +93,11 @@ object DemoTxt {
   }
 
   def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
-    val actual = Array(0, 1, 1, 1, 1, 0, 0, 0).map(_.toDouble)
+    val actual = Array(1, 1000, 1000, 1000, 1000, 1000, 1000, 1).map(_.toDouble)
     val solver = new VanillaIPFSolver(3, true, actual)
-    solver.add(List(0, 1), Array(1, 1, 1, 1))
-    solver.add(List(1, 2), Array(1, 2, 1, 0))
-    solver.add(List(0, 2), Array(1, 2, 1, 0))
+    solver.add(List(0, 1), Array(1001, 2000, 2000, 1001))
+    solver.add(List(1, 2), Array(1001, 2000, 2000, 1001))
+    solver.add(List(0, 2), Array(1001, 2000, 2000, 1001))
     val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result))
