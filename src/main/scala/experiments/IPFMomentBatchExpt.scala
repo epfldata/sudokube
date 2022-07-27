@@ -2,11 +2,12 @@ package experiments
 
 import core.DataCube
 import core.solver.SolverTools
-import core.solver.SolverTools.error
+import core.solver.SolverTools.{entropy, error}
 import core.solver.iterativeProportionalFittingSolver._
 import core.solver.moment.{CoMoment4Solver, Moment1Transformer}
 import util.{BitUtils, Profiler}
 import BitUtils.sizeOfSet
+
 import java.io.{File, PrintStream}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -21,7 +22,10 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, MEntropy, " +
       "VIPFTotalTime(us), VIPFPrepareTime(us), VIPFFetchTime(us), VIPFMaxDimFetched, VIPFSolveTime(us), VIPFErr, VIPFEntropy, " +
       "EIPFTotalTime(us), EIPFPrepareTime(us), EIPFFetchTime(us), EIPFMaxDimFetched, EIPFSolveTime(us), EIPFErr, EIPFEntropy, " +
+      "DBDEIPFTotalTime(us), DBDEIPFPrepareTime(us), DBDEIPFFetchTime(us), DBDEIPFMaxDimFetched, DBDEIPFSolveTime(us), DBDEIPFErr, DBDEIPFEntropy, " +
+      "EBDEIPFTotalTime(us), EBDEIPFPrepareTime(us), EBDEIPFFetchTime(us), EBDEIPFMaxDimFetched, EBDEIPFSolveTime(us), EBDEIPFErr, EBDEIPFEntropy, " +
       "LIPFTotalTime(us), LIPFPrepareTime(us), LIPFFetchTime(us), LIPFMaxDimFetched, LIPFSolveTime(us), LIPFErr, LIPFEntropy, " +
+      "RJGIPFTotalTime(us), RJGIPFPrepareTime(us), RJGIPFFetchTime(us), RJGIPFMaxDimFetched, RJGIPFSolveTime(us), RJGIPFErr, RJGIPFEntropy, " +
       "Difference_vanillaIPF_vs_moment,MaxDifference_vanillaIPF_vs_moment, " +
       "Difference_effectiveIPF_vs_vanillaIPF,MaxDifference_effectiveIPF_vs_vanillaIPF, " +
       "Difference_loopyIPF_vs_vanillaIPF,MaxDifference_loopyIPF_vs_vanillaIPF"
@@ -81,6 +85,25 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
   }
 
   /**
+   * Prepare and fetch of the moment solver.
+   * @param solverName The name of the concrete solver, to be used in entries in the profiler.
+   * @param dc DataCube object.
+   * @param q Sequence of queried dimensions.
+   * @return The fetched cuboids and the maximum dimensionality.
+   */
+  def momentPrepareFetch(solverName: String, dc: DataCube, q: IndexedSeq[Int]): (List[(Int, Array[Double])], Int) = {
+    val l = Profiler(s"$solverName Prepare") { // Not doing prepare for primary moments
+      dc.index.prepareBatch(q)
+    }
+    val maxDimFetch = l.last.cuboidCost
+    val fetched = Profiler("Vanilla IPF Fetch") { // Same as moment for now
+      l.map { pm => (pm.queryIntersection, dc.fetch2[Double](List(pm))) }
+    }
+    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes: ${ fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }.mkString(":")}")
+    (fetched, maxDimFetch)
+  }
+
+  /**
    * Solving with the vanilla version of IPF.
    * @param dc DataCube object.
    * @param q Sequence of queried dimensions.
@@ -89,28 +112,14 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def vanillaIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (VanillaIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Vanilla IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Vanilla IPF Fetch") { // Same as moment for now
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
-
-    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes: ${ fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }.mkString(":")}")
+    val (fetched, maxDimFetch) = momentPrepareFetch("Vanilla IPF", dc, q)
 
     val result = Profiler("Vanilla IPF Constructor + Add + Solve") {
       val solver = Profiler("Vanilla IPF Constructor") {
         new VanillaIPFSolver(q.length, true, trueRes, ipfTimeErrorFileout, dcname, q.mkString(":"))
       }
-      Profiler("Vanilla IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Vanilla IPF Solve") {
-        solver.solve()
-      }
+      Profiler("Vanilla IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Vanilla IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
@@ -125,27 +134,12 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def effectiveIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (EffectiveIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Effective IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Effective IPF Fetch") { // Same as moment for now
-
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
+    val (fetched, maxDimFetch) = momentPrepareFetch("Effective IPF", dc, q)
 
     val result = Profiler("Effective IPF Constructor + Add + Solve") {
-      val solver = Profiler("Effective IPF Constructor") {
-        new EffectiveIPFSolver(q.length)
-      }
-      Profiler("Effective IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Effective IPF Solve") {
-        solver.solve()
-      }
+      val solver = Profiler("Effective IPF Constructor") { new EffectiveIPFSolver(q.length) }
+      Profiler("Effective IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Effective IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
@@ -160,27 +154,12 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def worstLoopyIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (WorstLoopyIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Worst Loopy IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Worst Loopy IPF Fetch") { // Same as moment for now
-
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
+    val (fetched, maxDimFetch) = momentPrepareFetch("Worst Loopy IPF", dc, q)
 
     val result = Profiler("Worst Loopy IPF Constructor + Add + Solve") {
-      val solver = Profiler("Worst Loopy IPF Constructor") {
-        new WorstLoopyIPFSolver(q.length)
-      }
-      Profiler("Worst Loopy IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Worst Loopy IPF Solve") {
-        solver.solve()
-      }
+      val solver = Profiler("Worst Loopy IPF Constructor") { new WorstLoopyIPFSolver(q.length) }
+      Profiler("Worst Loopy IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Worst Loopy IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
@@ -195,27 +174,12 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def randomJunctionGraphIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (RandomJunctionGraphIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Random Junction Graph IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Random Junction Graph IPF Fetch") { // Same as moment for now
-
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
+    val (fetched, maxDimFetch) = momentPrepareFetch("Random Junction Graph IPF", dc, q)
 
     val result = Profiler("Random Junction Graph IPF Constructor + Add + Solve") {
-      val solver = Profiler("Random Junction Graph IPF Constructor") {
-        new RandomJunctionGraphIPFSolver(q.length)
-      }
-      Profiler("Random Junction Graph IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Random Junction Graph IPF Solve") {
-         solver.solve()
-      }
+      val solver = Profiler("Random Junction Graph IPF Constructor") { new RandomJunctionGraphIPFSolver(q.length) }
+      Profiler("Random Junction Graph IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Random Junction Graph IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits)})
@@ -230,26 +194,14 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def dimensionBasedDropoutEffectiveIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (DimensionBasedDropoutEffectiveIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Dimension-Based Dropout Effective IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Dimension-Based Dropout Effective IPF Fetch") { // Same as moment for now
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
+    val (fetched, maxDimFetch) = momentPrepareFetch("Dimension-Based Dropout Effective IPF", dc, q)
 
     val result = Profiler("Dimension-Based Dropout Effective IPF Constructor + Add + Solve") {
       val solver = Profiler("Dimension-Based Dropout Effective IPF Constructor") {
         new DimensionBasedDropoutEffectiveIPFSolver(q.length)
       }
-      Profiler("Dimension-Based Dropout Effective IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Dimension-Based Dropout Effective IPF Solve") {
-        solver.solve()
-      }
+      Profiler("Dimension-Based Dropout Effective IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Dimension-Based Dropout Effective IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
@@ -264,32 +216,44 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
   def entropyBasedDropoutEffectiveIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (EntropyBasedDropoutEffectiveIPFSolver, Int, Int, Seq[Int]) = {
-    val l = Profiler("Entropy-Based Dropout Effective IPF Prepare") { // Not doing prepare for primary moments
-      dc.index.prepareBatch(q)
-    }
-    val maxDimFetch = l.last.cuboidCost
-    val fetched = Profiler("Entropy-Based Dropout Effective IPF Fetch") { // Same as moment for now
-      l.map { pm =>
-        (pm.queryIntersection, dc.fetch2[Double](List(pm)))
-      }
-    }
+    val (fetched, maxDimFetch) = momentPrepareFetch("Entropy-Based Dropout Effective IPF", dc, q)
 
     val result = Profiler("Entropy-Based Dropout Effective IPF Constructor + Add + Solve") {
       val solver = Profiler("Entropy-Based Dropout Effective IPF Constructor") {
         new EntropyBasedDropoutEffectiveIPFSolver(q.length)
       }
-      Profiler("Entropy-Based Dropout Effective IPF Add") {
-        fetched.foreach { case (bits, array) => solver.add(bits, array) }
-      }
-      Profiler("Entropy-Based Dropout Effective IPF Solve") {
-        solver.solve()
-      }
+      Profiler("Entropy-Based Dropout Effective IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Entropy-Based Dropout Effective IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
   }
 
+
+
+  def runIPFSolver(solverName: String,
+                   solveMethod: (DataCube, IndexedSeq[Int], Array[Double], String) => (IPFSolver, Int, Int, Seq[Int]),
+                   dc: DataCube, q: IndexedSeq[Int], trueResult: Array[Double], dcname: String): (IPFSolver, Int, Int, Seq[Int], Double) = {
+    println(s"\t\t$solverName starts")
+
+    val (solver, maxDim, numCubesFetched, cubeSizes) = Profiler(s"$solverName Total") {
+      solveMethod(dc, q, trueResult, dcname)
+    }
+    val error = Profiler(s"$solverName Error Checking") {
+      SolverTools.error(trueResult, solver.getSolution)
+    }
+
+    println(s"\t\t\t$solverName solve time: " + Profiler.durations(s"$solverName Solve")._2 / 1000 +
+      ", total time: " + Profiler.durations(s"$solverName Total")._2 / 1000 +
+      ", error: " + error)
+
+    (solver, maxDim, numCubesFetched, cubeSizes, error)
+  }
+
+
+
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+
     val q = qu.sorted
 
     Profiler.resetAll()
@@ -311,114 +275,40 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 
 
 
-    println("\t\tVanilla IPF starts")
-
-    val (vanillaIPFSolver, vanillaIPFMaxDim, vanillaIpfNumCubesFetched, vanillaIPFCubeSizes) = Profiler("Vanilla IPF Total") {
-      vanillaIPF_solve(dc, q, trueResult, dcname)
-    }
-    val vanillaIPFError = Profiler("Vanilla IPF Error Checking") {
-      SolverTools.error(trueResult, vanillaIPFSolver.getSolution)
-    }
-
-    println("\t\t\tVanilla IPF solve time: " + Profiler.durations("Vanilla IPF Solve")._2 / 1000 +
-            ", total time: " + Profiler.durations("Vanilla IPF Total")._2 / 1000 +
-            ", error: " + vanillaIPFError)
+    val (vanillaIPFSolver, vanillaIPFMaxDim, vanillaIPFNumCubesFetched, vanillaIPFCubeSizes, vanillaIPFError)
+      = runIPFSolver("Vanilla IPF", vanillaIPF_solve, dc, q, trueResult, dcname)
 
 
-
-
-    println("\t\tEffective IPF starts")
-
-    val (effectiveIPFSolver, effectiveIPFMaxDim, effectiveIPFNumCubesFetched, effectiveIPFCubeSizes) = Profiler("Effective IPF Total") {
-      effectiveIPF_solve(dc, q, trueResult, dcname)
-    }
-    val effectiveIPFError = Profiler("Effective IPF Error Checking") {
-      effectiveIPFSolver.getTotalDistribution
-      SolverTools.error(trueResult, effectiveIPFSolver.getSolution)
-    }
-
-
-    println("\t\t\tEffective IPF solve time: " + Profiler.durations("Effective IPF Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations("Effective IPF Total")._2 / 1000 +
-      ", error: " + effectiveIPFError)
+    val (effectiveIPFSolver, effectiveIPFMaxDim, effectiveIPFNumCubesFetched, effectiveIPFCubeSizes, effectiveIPFError)
+      = runIPFSolver("Effective IPF", effectiveIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tEffective IPF junction tree construction time: ${Profiler.durations("Effective IPF Junction Tree Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Effective IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Effective IPF Solution Derivation")._2 / 1000}")
 
 
-
-    println("\t\tDimension-Based Dropout Effective IPF starts")
-
-    val (dimensionBasedDropoutIPFSolver, dimensionBasedDropoutIPFMaxDim, dimensionBasedDropoutIPFNumCubesFetched, dimensionBasedDropoutIPFCubeSizes)
-      = Profiler("Dimension-Based Dropout Effective IPF Total") { dimensionBasedDropoutEffectiveIPF_solve(dc, q, trueResult, dcname) }
-    val dimensionBasedDropoutEffectiveIPFError = Profiler("Dimension-Based Dropout Effective IPF Error Checking") {
-      dimensionBasedDropoutIPFSolver.getTotalDistribution
-      SolverTools.error(trueResult, dimensionBasedDropoutIPFSolver.getSolution)
-    }
-
-
-    println("\t\t\tDimension-Based Dropout Effective IPF solve time: " + Profiler.durations("Dimension-Based Dropout Effective IPF Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations("Dimension-Based Dropout Effective IPF Total")._2 / 1000 +
-      ", error: " + dimensionBasedDropoutEffectiveIPFError)
+    val (dimensionBasedDropoutEffectiveIPFSolver, dimensionBasedDropoutEffectiveIPFMaxDim, dimensionBasedDropoutEffectiveIPFNumCubesFetched, dimensionBasedDropoutEffectiveIPFCubeSizes, dimensionBasedDropoutEffectiveIPFError)
+      = runIPFSolver("Dimension-Based Dropout IPF", dimensionBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tDimension-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
-
-    println("\t\tEntropy-Based Dropout Effective IPF starts")
-
-    val (entropyDropoutEffectiveIPFSolver, entropyDropOutEffectiveIPFMaxDim, entropyDropoutEffectiveIPFNumCubesFetched, entropyDropoutEffectiveIPFCubeSizes)
-      = Profiler("Entropy-Based Dropout Effective IPF Total") { entropyBasedDropoutEffectiveIPF_solve(dc, q, trueResult, dcname) }
-    val entropyDropoutEffectiveIPFError = Profiler("Entropy-Based Dropout Effective IPF Error Checking") {
-      entropyDropoutEffectiveIPFSolver.getTotalDistribution
-      SolverTools.error(trueResult, entropyDropoutEffectiveIPFSolver.getSolution)
-    }
-
-
-    println("\t\t\tEntropy-Based Dropout Effective IPF solve time: " + Profiler.durations("Entropy-Based Dropout Effective IPF Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations("Entropy-Based Dropout Effective IPF Total")._2 / 1000 +
-      ", error: " + entropyDropoutEffectiveIPFError)
+    val (entropyBasedDropoutEffectiveIPFSolver, entropyBasedDropoutEffectiveIPFMaxDim, entropyBasedDropoutEffectiveIPFNumCubesFetched, entropyBasedDropoutEffectiveIPFCubeSizes, entropyBasedDropoutEffectiveIPFError)
+      = runIPFSolver("Entropy-Based Dropout IPF", entropyBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tEntropy-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
-
-    println("\t\tWorst Loopy IPF starts")
-
-    val (worstLoopyIPFSolver, worstLoopyIPFMaxDim, worstLoopyIPFNumCubesFetched, worstLoopyIPFCubeSizes) = Profiler("Worst Loopy IPF Total") {
-      worstLoopyIPF_solve(dc, q, trueResult, dcname)
-    }
-    val worstLoopyIPFError = Profiler("Worst Loopy IPF Error Checking") {
-      worstLoopyIPFSolver.getTotalDistribution
-      SolverTools.error(trueResult, worstLoopyIPFSolver.getSolution)
-    }
-
-
-    println("\t\t\tWorst Loopy IPF solve time: " + Profiler.durations("Worst Loopy IPF Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations("Worst Loopy IPF Total")._2 / 1000 +
-      ", error: " + worstLoopyIPFError)
+    val (worstLoopyIPFSolver, worstLoopyIPFMaxDim, worstLoopyIPFNumCubesFetched, worstLoopyIPFCubeSizes, worstLoopyIPFError)
+      = runIPFSolver("Worst Loopy IPF", worstLoopyIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tWorst Loopy IPF junction graph construction time: ${Profiler.durations("Worst Loopy IPF Junction Graph Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Worst Loopy IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Worst Loopy IPF Solution Derivation")._2 / 1000}")
 
 
-
-
-    println("\t\tRandom Junction Graph IPF starts")
-
-    val (randomJunctionGraphIPFSolver, randomJunctionGraphIPFMaxDim, randomJunctionGraphIPFNumCubesFetched, randomJunctionGraphIPFCubeSizes) =
-      Profiler("Random Junction Graph IPF Total") { randomJunctionGraphIPF_solve(dc, q, trueResult, dcname) }
-    val randomJunctionGraphIPFError = Profiler("Random Junction Graph IPF Error Checking") {
-       randomJunctionGraphIPFSolver.getTotalDistribution
-       SolverTools.error(trueResult, randomJunctionGraphIPFSolver.getSolution)
-    }
-
-
-    println("\t\t\tRandom Junction Graph IPF solve time: " + Profiler.durations("Random Junction Graph IPF Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations("Random Junction Graph IPF Total")._2 / 1000 +
-      ", error: " + randomJunctionGraphIPFError)
+    val (randomJunctionGraphIPFSolver, randomJunctionGraphIPFMaxDim, randomJunctionGraphIPFNumCubesFetched, randomJunctionGraphIPFCubeSizes, randomJunctionGraphIPFError)
+    = runIPFSolver("Random Junction Graph Loopy IPF", randomJunctionGraphIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tRandom Junction Graph IPF junction graph construction time: ${Profiler.durations("Random Junction Graph IPF Junction Graph Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Random Junction Graph IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Random Junction Graph IPF Solution Derivation")._2 / 1000}")
@@ -453,14 +343,19 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     val momentEntropy = entropy(momentSolver.solution)
     val vanillaIPFEntropy = entropy(vanillaIPFSolver.getSolution)
     val effectiveIPFEntropy = entropy(effectiveIPFSolver.getSolution)
-    val loopyIPFEntropy = entropy(worstLoopyIPFSolver.getSolution)
+    val dimensionBasedDropoutEffectiveIPFEntropy = entropy(dimensionBasedDropoutEffectiveIPFSolver.getSolution)
+    val entropyBasedDropoutEffectiveIPFEntropy = entropy(entropyBasedDropoutEffectiveIPFSolver.getSolution)
+    val worstLoopyIPFEntropy = entropy(worstLoopyIPFSolver.getSolution)
+    val randomJunctionGraphIPFEntropy = entropy(randomJunctionGraphIPFSolver.getSolution)
     println("\t\tEntropies")
     println(s"\t\t\tTrue Entropy = $trueEntropy")
     println(s"\t\t\tMoment Entropy = $momentEntropy")
     println(s"\t\t\tVanilla IPF Entropy = $vanillaIPFEntropy")
     println(s"\t\t\tEffective IPF Entropy = $effectiveIPFEntropy")
-    println(s"\t\t\tDropout Effective IPF Entropy = ${entropy(dimensionBasedDropoutIPFSolver.getSolution)}")
-    println(s"\t\t\tLoopy IPF Entropy = $loopyIPFEntropy")
+    println(s"\t\t\tDimension-Based Dropout Effective IPF Entropy = $dimensionBasedDropoutEffectiveIPFEntropy")
+    println(s"\t\t\tEntropy-Based Dropout Effective IPF Entropy = $entropyBasedDropoutEffectiveIPFEntropy")
+    println(s"\t\t\tWorst Loopy IPF Entropy = $worstLoopyIPFEntropy")
+    println(s"\t\t\tRandom Junction Graph IPF Entropy = $randomJunctionGraphIPFEntropy")
 
     val mprep = Profiler.durations("Moment Prepare")._2 / 1000
     val mfetch = Profiler.durations("Moment Fetch")._2 / 1000
@@ -477,26 +372,39 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     val effectiveIPFSolve = Profiler.durations("Effective IPF Solve")._2 / 1000
     val effectiveIPFTotal = Profiler.durations("Effective IPF Total")._2 / 1000
 
-    val loopyIPFPrepare = Profiler.durations("Loopy IPF Prepare")._2 / 1000
-    val loopyIPFFetch = Profiler.durations("Loopy IPF Fetch")._2 / 1000
-    val loopyIPFSolve = Profiler.durations("Loopy IPF Solve")._2 / 1000
-    val loopyIPFTotal = Profiler.durations("Loopy IPF Total")._2 / 1000
+    val dimensionBasedDropoutEffectiveIPFPrepare = Profiler.durations("Dimension-Based Dropout Effective IPF Prepare")._2 / 1000
+    val dimensionBasedDropoutEffectiveIPFFetch = Profiler.durations("Dimension-Based Dropout Effective IPF Fetch")._2 / 1000
+    val dimensionBasedDropoutEffectiveIPFSolve = Profiler.durations("Dimension-Based Dropout Effective IPF Solve")._2 / 1000
+    val dimensionBasedDropoutEffectiveIPFTotal = Profiler.durations("Dimension-Based Dropout Effective IPF Total")._2 / 1000
+
+    val entropyBasedDropoutEffectiveIPFPrepare = Profiler.durations("Entropy-Based Dropout Effective IPF Prepare")._2 / 1000
+    val entropyBasedDropoutEffectiveIPFFetch = Profiler.durations("Entropy-Based Dropout Effective IPF Fetch")._2 / 1000
+    val entropyBasedDropoutEffectiveIPFSolve = Profiler.durations("Entropy-Based Dropout Effective IPF Solve")._2 / 1000
+    val entropyBasedDropoutEffectiveIPFTotal = Profiler.durations("Entropy-Based Dropout Effective IPF Total")._2 / 1000
+
+    val worstLoopyIPFPrepare = Profiler.durations("Worst Loopy IPF Prepare")._2 / 1000
+    val worstLoopyIPFFetch = Profiler.durations("Worst Loopy IPF Fetch")._2 / 1000
+    val worstLoopyIPFSolve = Profiler.durations("Worst Loopy IPF Solve")._2 / 1000
+    val worstLoopyIPFTotal = Profiler.durations("Worst Loopy IPF Total")._2 / 1000
+
+    val randomJunctionGraphIPFPrepare = Profiler.durations("Random Junction Graph IPF Prepare")._2 / 1000
+    val randomJunctionGraphIPFFetch = Profiler.durations("Random Junction Graph IPF Fetch")._2 / 1000
+    val randomJunctionGraphIPFSolve = Profiler.durations("Random Junction Graph IPF Solve")._2 / 1000
+    val randomJunctionGraphIPFTotal = Profiler.durations("Random Junction Graph IPF Total")._2 / 1000
 
     if (output) {
-      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$vanillaIpfNumCubesFetched,${vanillaIPFCubeSizes.mkString(":")},$dof,  " +
+      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$vanillaIPFNumCubesFetched,${vanillaIPFCubeSizes.mkString(":")},$dof,  " +
         s"$trueEntropy,  " +
         s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError,$momentEntropy, " +
         s"$vanillaIPFTotal,$vanillaIPFPrepare,$vanillaIPFFetch,$vanillaIPFMaxDim,$vanillaIPFSolve,$vanillaIPFError,$vanillaIPFEntropy, " +
         s"$effectiveIPFTotal,$effectiveIPFPrepare,$effectiveIPFFetch,$effectiveIPFMaxDim,$effectiveIPFSolve,$effectiveIPFError,$effectiveIPFEntropy, " +
-        s"$loopyIPFTotal,$loopyIPFPrepare,$loopyIPFFetch,$worstLoopyIPFMaxDim,$loopyIPFSolve,$worstLoopyIPFError,$loopyIPFEntropy, " +
+        s"$dimensionBasedDropoutEffectiveIPFTotal,$dimensionBasedDropoutEffectiveIPFPrepare,$dimensionBasedDropoutEffectiveIPFFetch,$dimensionBasedDropoutEffectiveIPFMaxDim,$dimensionBasedDropoutEffectiveIPFSolve,$dimensionBasedDropoutEffectiveIPFError,$dimensionBasedDropoutEffectiveIPFEntropy, " +
+        s"$entropyBasedDropoutEffectiveIPFTotal,$entropyBasedDropoutEffectiveIPFPrepare,$entropyBasedDropoutEffectiveIPFFetch,$entropyBasedDropoutEffectiveIPFMaxDim,$entropyBasedDropoutEffectiveIPFSolve,$entropyBasedDropoutEffectiveIPFError,$entropyBasedDropoutEffectiveIPFEntropy, " +
+        s"$worstLoopyIPFTotal,$worstLoopyIPFPrepare,$worstLoopyIPFFetch,$worstLoopyIPFMaxDim,$worstLoopyIPFSolve,$worstLoopyIPFError,$worstLoopyIPFEntropy, " +
+        s"$randomJunctionGraphIPFTotal,$randomJunctionGraphIPFPrepare,$randomJunctionGraphIPFFetch,$randomJunctionGraphIPFMaxDim,$randomJunctionGraphIPFSolve,$randomJunctionGraphIPFError,$randomJunctionGraphIPFEntropy, " +
         s"$difference_vanillaIPF_moment,$maxDifference_vanillaIPF_moment, $difference_effectiveIPF_vanillaIPF,$maxDifference_effectiveIPF_vanillaIPF, " +
         s"$difference_loopyIPF_vanillaIPF,$maxDifference_loopyIPF_vanillaIPF"
       fileout.println(resultrow)
     }
-  }
-
-  def entropy(p: Array[Double]): Double = {
-    val grandTotal = p.sum
-    p.map(n => if (n != 0) - (n/grandTotal) * math.log(n/grandTotal) else 0).sum
   }
 }
