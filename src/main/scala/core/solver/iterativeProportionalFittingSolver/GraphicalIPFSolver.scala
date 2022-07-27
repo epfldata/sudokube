@@ -9,11 +9,47 @@ import scala.collection.mutable
  * Includes definitions a graphical model and a junction graph.
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
+ * @param solverName The name of the concrete method (e.g. "Effective IPF", "Loopy IPF"), empty by default,
+ *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
  */
-abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver(querySize) {
+abstract class GraphicalIPFSolver(override val querySize: Int, override val solverName: String) extends IPFSolver(querySize, solverName) {
 
   val graphicalModel = new IPFGraphicalModel(querySize)
   val junctionGraph = new JunctionGraph()
+
+  /**
+   * Create graphical model for elimination.
+   */
+  def constructGraphicalModel(): Unit = {
+    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
+  }
+
+  /**
+   * After constructing the junction graph/tree, perform iterative updates.
+   * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
+   */
+  def solveWithJunctionGraph(): Array[Double] = {
+    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
+    println(s"\t\t\t$solverName number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
+
+    var totalDelta: Double = 0
+    var numIterations: Int = 0
+    Profiler(s"$solverName Iterations") {
+      do {
+        numIterations += 1
+        println(s"\t\t\t$solverName Iteration $numIterations")
+        totalDelta = iterativeUpdate()
+      } while (totalDelta >= convergenceThreshold * totalNumUpdates)
+    }
+    println(s"\t\t\t$solverName number of iterations $numIterations")
+
+    Profiler(s"$solverName Solution Derivation") {
+      getTotalDistribution
+      getSolution
+    }
+
+    solution
+  }
 
   /**
    * Calculate the total distribution based on the marginal distributions in cliques and separators.
@@ -84,7 +120,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver
   def updateCliqueBasedOnClusters(clique: JunctionGraph.Clique): Double = {
     var totalDelta: Double = 0.0
 
-    Profiler("Effective IPF Update Clique") {
+    Profiler(s"$solverName Update Clique") {
       clique.clusters.foreach(cluster => {
         totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(
           clique.numVariables,
@@ -104,7 +140,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver
    * @param clique The given clique.
    */
   def updateSeparatorBasedOnClique(separator: JunctionGraph.Separator, clique: JunctionGraph.Clique): Unit = {
-    Profiler("Effective IPF Update Separator") {
+    Profiler(s"$solverName Update Separator") {
       IPFUtils.getMarginalDistributionFromTotalDistribution(
         clique.numVariables,
         clique.distribution,
@@ -121,7 +157,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver
    * @return The total delta of the update.
    */
   def updateCliqueBasedOnSeparator(clique: JunctionGraph.Clique, separator: JunctionGraph.Separator): Double = {
-    Profiler("Effective IPF Update Clique") {
+    Profiler(s"$solverName Update Clique") {
       IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(
         clique.numVariables,
         clique.distribution,
@@ -130,5 +166,4 @@ abstract class GraphicalIPFSolver(override val querySize: Int) extends IPFSolver
       )
     }
   }
-
 }

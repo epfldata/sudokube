@@ -1,14 +1,14 @@
-import core.solver.iterativeProportionalFittingSolver.{IPFUtils, LoopyIPFSolver}
+import core.solver.iterativeProportionalFittingSolver.{IPFUtils, WorstLoopyIPFSolver}
 import org.junit.Test
 import util.BitUtils
 import BitUtils._
 import scala.util.Random
 
-class LoopyIPFTest {
+class WorstLoopyIPFTest {
   private val eps = 1e-3
   @Test
   def testConstructJunctionGraph(): Unit = {
-    val solver = new LoopyIPFSolver(5)
+    val solver = new WorstLoopyIPFSolver(5)
     Seq(Seq(0, 1), Seq(0, 2), Seq(0, 3), Seq(0, 4), Seq(2, 3)).foreach(variables => solver.add(SetToInt(variables), Array.fill(variables.size)(1.0 / variables.size)))
     solver.constructJunctionGraph()
     solver.junctionGraph.cliques.foreach(clique => println(IntToSet(clique.variables)))
@@ -26,7 +26,7 @@ class LoopyIPFTest {
     val data: Array[Double] = Array.fill(1 << 6)(0)
     (0 until 1 << 6).foreach(i => data(i) = randomGenerator.nextInt(100))
 
-    val solver = new LoopyIPFSolver(6)
+    val solver = new WorstLoopyIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size,SetToInt(marginalVariables))
@@ -57,7 +57,7 @@ class LoopyIPFTest {
 
     println(s"Total distribution: ${data.map(_ / data.sum).mkString(", ")}")
 
-    val solver = new LoopyIPFSolver(4)
+    val solver = new WorstLoopyIPFSolver(4)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,1,3)).map(marginalVariables => {
         val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, SetToInt(marginalVariables))
@@ -88,7 +88,7 @@ class LoopyIPFTest {
 
     println(s"Total distribution: ${data.map(_ / data.sum).mkString(", ")}")
 
-    val solver = new LoopyIPFSolver(4)
+    val solver = new WorstLoopyIPFSolver(4)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,1,3)).map(marginalVariables => {
         val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, SetToInt(marginalVariables))
@@ -114,7 +114,7 @@ class LoopyIPFTest {
 
     println(s"Total distribution: ${data.map(_ / data.sum).map("%.50f" format _).mkString(", ")}")
 
-    val solver = new LoopyIPFSolver(5)
+    val solver = new WorstLoopyIPFSolver(5)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,3,4), Seq(0,1,4), Seq(1,3,4)).map(marginalVariables => {
         val marginalDistribution = IPFUtils.getMarginalDistribution(5, data, marginalVariables.size, SetToInt(marginalVariables))

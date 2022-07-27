@@ -2,68 +2,21 @@ package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.SolverTools.entropy
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.isVariablesContained
-import util.{BitUtils, Profiler}
+import util.BitUtils
 
 import scala.collection.mutable
 import scala.util.control.Breaks.{break, breakable}
 
 /**
- * Variant of the effective IPF where we throw out some cuboids with high dimensions.
- * TODO: Maybe a generalization for the current two heuristics of dropout.
+ * Variant of the effective IPF where we throw out some cuboids with high entropies.
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
+ * @param solverName The name of the solver, "Entropy-Based Dropout Effective IPF",
+ *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
  */
-class EntropyDropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIPFSolver(querySize) {
-  /**
-   * Add a new known marginal distribution as a cluster.
-   * Create network graph for elimination (triangulation to generate clique tree).
-   * @param marginalVariables Sequence of marginal variables.
-   * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
-   */
-  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
-    normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
-    clusters = cluster :: clusters
-  }
-
-  /**
-   * Solve for the total distribution
-   * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
-   * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
-   */
-  override def solve(): Array[Double] = {
-    selectiveDropout()
-
-    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
-
-    Profiler("Entropy-Based Dropout Effective IPF Junction Tree Construction") {
-      constructJunctionTree()
-    }
-
-    junctionGraph.printAllCliquesAndSeparators()
-
-    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
-    println(s"\t\t\tEntropy-Based Dropout Effective IPF number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
-
-    var totalDelta: Double = 0
-    var numIterations: Int = 0
-    Profiler("Entropy-Based Dropout Effective IPF Iterations") {
-      do {
-        numIterations += 1
-        println(s"\t\t\tEntropy-Based Dropout Effective IPF Iteration $numIterations")
-        totalDelta = iterativeUpdate()
-      } while (totalDelta >= convergenceThreshold * totalNumUpdates)
-    }
-    println(s"\t\t\tEntropy-Based Dropout Effective IPF number of iterations $numIterations")
-
-    Profiler("Entropy-Based Dropout Effective IPF Solution Derivation") {
-      getTotalDistribution
-      getSolution
-    }
-
-    solution
-  }
-
+class EntropyBasedDropoutEffectiveIPFSolver(override val querySize: Int,
+                                            override val solverName: String = "Entropy-Based Dropout Effective IPF")
+  extends EffectiveIPFSolver(querySize, solverName) {
   /**
    * Select clusters to drop out.
    * The clusters will be ranked according to its entropy relative to the maximum possible entropy at its dimensionality (- N * N log 1/N = -log 1/N),

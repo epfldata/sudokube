@@ -8,6 +8,7 @@ import scala.util.control.Breaks.{break, breakable}
 
 /**
  * Definition of junction graphs.
+ * @author Zhekai Jiang
  */
 object JunctionGraph {
   /**

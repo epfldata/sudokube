@@ -15,17 +15,8 @@ class VanillaIPFSolver(override val querySize: Int,
                        val isExperimenting: Boolean = false,
                        val trueResult: Array[Double] = null, /* for experimentation only */
                        val timeErrorFileOut: PrintStream = null, /* for experimentation only */
-                       val cubeName: String = "", val query: String = "" /* for experimentation only */) extends IPFSolver(querySize) {
-
-  /**
-   * Add a new known marginal distribution as a cluster.
-   * @param marginalVariables Sequence of marginal variables.
-   * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
-   */
-  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
-    normalizationFactor = marginalDistribution.sum
-    clusters = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor)) :: clusters
-  }
+                       val cubeName: String = "", val query: String = "" /* for experimentation only */)
+  extends IPFSolver(querySize, "Vanilla IPF") {
 
   /**
    * Obtain the solution, un-normalized
