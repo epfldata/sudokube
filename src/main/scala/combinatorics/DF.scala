@@ -72,9 +72,9 @@ object DF {
 
       Note: compute_df avoids enumerating the equations and is faster.
   */
-  def compute_df0(n: Int, l: Seq[Seq[Int]]) : BigInt = {
+  def compute_df0(n: Int, l: Seq[Int]) : BigInt = {
     // Enumerate the equations as collections of variables.
-    val eqs = l.map(Bits.group_values(_, 0 to (n - 1)
+    val eqs = l.map(BitUtils.group_values_Int(_, n
                  ).map(x => x.map(_.toInt))).flatten
 
     /* We can compute the determined vars as the set of vars of maximal

@@ -13,18 +13,18 @@ import scala.concurrent.{ExecutionContext, Future}
 @SerialVersionUID(1L)
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
-  def bits: Seq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
+  def bits: IndexedSeq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
   def bitsMin : Int
   def isRange: Boolean
   def encode_locally(v: T) : Int
   def decode_locally(i: Int): T
   def maxIdx : Int
-  def queries(): Set[Seq[Int]]
+  def queries(): Set[IndexedSeq[Int]]
   def initializeBeforeEncoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
   def initializeBeforeDecoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
-  def queriesUpto(qsize: Int) : Set[Seq[Int]] = queries().filter(_.length <= qsize)
-  def prefixUpto(size: Int) : Set[Seq[Int]] = queriesUpto(size) //override for non-prefix columns such as MemCol
-  def samplePrefix(size: Int): Seq[Int] = bits.takeRight(size) //override for nested columns such as Date
+  def queriesUpto(qsize: Int) : Set[IndexedSeq[Int]] = queries().filter(_.length <= qsize)
+  def prefixUpto(size: Int) : Set[IndexedSeq[Int]] = queriesUpto(size) //override for non-prefix columns such as MemCol
+  def samplePrefix(size: Int): IndexedSeq[Int] = bits.takeRight(size) //override for nested columns such as Date
   def encode(v: T): BigBinary = { //overriden by nested encoders
     val v0 = encode_locally(v)
     if (isRange) {
@@ -100,7 +100,7 @@ abstract class ColEncoder[T] extends Serializable {
     val relevant_bits = bits.intersect(q_bits)
     val idxs = relevant_bits.map(x => bits.indexWhere(x == _))
 
-    Bits.group_values(idxs, 0 to (bits.length - 1)).map(
+    BitUtils.group_values(idxs, 0 to (bits.length - 1)).map(
       x => x.map(y => {
         try { Some(decode_locally(y.toInt)) }
         catch { case (e: Exception) => None }
@@ -123,7 +123,7 @@ abstract class StaticColEncoder[T] extends ColEncoder[T] {
   def n_bits: Int
   override def bitsMin: Int = bits.min
   override def isRange: Boolean = true
-  var bits: Seq[Int] = Nil
+  var bits: IndexedSeq[Int] = IndexedSeq.empty
   def set_bits(offset: Int) = {
     bits = (offset until offset + n_bits)
     offset + n_bits
@@ -132,7 +132,7 @@ abstract class StaticColEncoder[T] extends ColEncoder[T] {
 
 abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T] {
   val register = new RegisterIdx(bitPosRegistry)
-  override def bits: Seq[Int] = register.bits.reverse  //Static schema has bits in increasing order
+  override def bits: IndexedSeq[Int] = register.bits
   override def bitsMin: Int = register.bitsMin
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx

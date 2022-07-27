@@ -6,14 +6,19 @@ import core._
 import combinatorics._
 import util._
 import backend._
+import core.cube.ArrayCuboidIndexFactory
+import core.materialization.{MaterializationStrategy, MaterializationStrategyInfo, OldRandomizedMaterializationStrategy}
+import core.solver.{Rational, RationalTools, SolverTools}
+import core.solver.lpp.{Interval, SliceSparseSolver}
 import generators._
+
 import scala.util.Random
 object Tools {
   def round(v: Double, digits: Int) ={
     val prec = math.pow(10, digits)
     math.floor(v * prec)/prec
   }
-  //For Randomized Materialization Scheme so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
+  //For Randomized Materialization Strategy so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
   def params(nbits: Int, colWith1: Int) = {
     /*
       x * y^(n-4) = 10^4
@@ -27,8 +32,8 @@ object Tools {
     (logx, logy)
   }
 
-  def qq(qsize: Int) = (0 to qsize - 1).toList
-  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toList).take(qsize).sorted
+  def qq(qsize: Int) = (0 to qsize - 1)
+  def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toVector).take(qsize).sorted
 
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
@@ -37,10 +42,10 @@ object Tools {
   }
 
   class JailBrokenDataCube(
-    m: MaterializationScheme,
+    m: MaterializationStrategy,
     fc: Cuboid
-  ) extends DataCube(m) with Serializable {
-    build(fc)
+  ) extends DataCube with Serializable {
+    build(fc, m)
 
     /// here one can access the cuboids directly
     def getCuboids = cuboids
@@ -59,9 +64,9 @@ object Tools {
     println("mkDC: Creating maximum-granularity cuboid...")
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
-    val m = RandomizedMaterializationScheme(n_bits, rf, base)
-    val dc = new DataCube(m);
-    Profiler("Projections"){dc.build(fc)}
+    val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
+    val dc = new DataCube();
+    Profiler("Projections"){dc.build(fc, m)}
     //    val dc = new JailBrokenDataCube(m, fc)
     //    assert(dc.getCuboids.last == fc)
     dc
@@ -78,7 +83,7 @@ object minus1_adv {
       using only the full cube:
       how much bigger (in bits, i.e. log2(factor)) is the best cube to answer
       the query in full compared to the worst size cube
-      of size |q| - 1?
+      of (projected) size |q| - 1?
   */
   def apply(nbits: Int, rf: Double, base: Double, lognrows: Int, qsize: Int, num_it: Int) = {
     val pw = new PrintWriter(new File("expdata/m1_adv_" + nbits + "_" + rf
@@ -90,22 +95,22 @@ object minus1_adv {
 
     for(i <- 1 to num_it) {
       val q = Tools.qq(qsize)
-      val m = RandomizedMaterializationScheme(nbits, rf, base)
+      val m = OldRandomizedMaterializationStrategy(nbits, rf, base)
 
-      //SBJ: cheap size of qsize - 1 is arbitrary
-      val a = m.prepare(q, qsize - 1, nbits).groupBy(_.accessible_bits.length)
-      val full_cost = cost(a(q.length).head.mask.length)
+      //SBJ: Changed parameters for this calculation
+      val a = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q).groupBy(ps => BitUtils.sizeOfSet(ps.queryIntersection))
+      val full_cost = cost(a(q.length).head.cuboidCost)
       accum_full_cost += full_cost
 
       a.get(q.length - 1) match {
         case Some(m1) => {
-          val df = DF.compute_df0(q.length, m1.map(_.accessible_bits))
+          val df = DF.compute_df0(q.length, m1.map(_.queryIntersection))
           val detsize = (1 << q.length) - df
 
-          val worst_proj_cost = cost(m1.map(_.mask.length).max)
-          val avg_proj_cost = cost((m1.map(_.mask.length).sum.toDouble/m1.length).toInt)
+          val worst_proj_cost = cost(m1.map(_.cuboidCost).max)
+          val avg_proj_cost = cost((m1.map(_.cuboidCost).sum.toDouble/m1.length).toInt)
           val sum_proj_cost = cost((avg_proj_cost + Math.log(m1.length)/Math.log(2)).toInt)
-          val  best_proj_cost = cost(m1.map(_.mask.length).min)
+          val  best_proj_cost = cost(m1.map(_.cuboidCost).min)
 
          //val n = Math.log(df.toDouble)/Math.log(2)
           val m = Math.log(detsize.toDouble)/Math.log(2)
@@ -164,11 +169,11 @@ object fd_storage {
       val base = 1.0 + j.toDouble / 100  // 1.01 to 1.2 
       println(rf + " " + base)
 
-      val m = core.RandomizedMaterializationScheme(n, rf, base)
-
+      val m = OldRandomizedMaterializationStrategy(n, rf, base)
+      val info = new MaterializationStrategyInfo(m)
       pw.write(rf + "\t" + base + "\t" + m.projections.length
-        + "\t" + m.info.wc_ratio(30) + "\t" + m.info.wc_ratio(40)
-        + "\t" + m.info.fd_ratio(30) + "\t" + m.info.fd_ratio(40) + "\n")
+        + "\t" + info.wc_ratio(30) + "\t" + info.wc_ratio(40)
+        + "\t" + info.fd_ratio(30) + "\t" + info.fd_ratio(40) + "\n")
       pw.flush
     }
     pw.close
@@ -187,9 +192,9 @@ object exp_e_df {
     max_fetch_dim: Int
   ) = {
     import backend.Payload
-    val m = RandomizedMaterializationScheme(n_bits, rf, base)
-    val q = (0 to qsize-1).toList
-    val l = m.prepare(q, max_fetch_dim, max_fetch_dim).map(_.accessible_bits)
+    val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
+    val q = (0 to qsize-1)
+    val l = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q, max_fetch_dim).map(_.queryIntersection)
 
 /*
     val n_vval = l.map(x => Big.pow2(x.length)).sum
@@ -242,7 +247,7 @@ object exp_error_bounds {
     last_dc = Some(dc)
 
     for(j <- 1 to 10) {
-      var q = Util.rnd_choose(n_bits, qsize)
+      var q = Util.rnd_choose(n_bits, qsize).toIndexedSeq
 
       var best_df = 1
       for(d5 <- 1 to 20) {
@@ -250,7 +255,13 @@ object exp_error_bounds {
           val d = d5 * 5
           println("\nIt: " + i + ":" + j + " Query = " + q + "; " + d + " dims")
 
-          val s = dc.solver[Rational](q, d)
+          //TODO: SBJ: The parameter to dc.solver is in terms of original cuboid size. Check if d here is the size before or after projection
+          val l = Profiler("SolverPrepare") { dc.index.prepareBatch(q, d) }
+          val bounds = SolverTools.mk_all_non_neg[Rational](1 << q.length)
+          val data = Profiler("SolverFetch") { dc.fetch2(l) }
+          val s = Profiler("SolverConstructor") { new SliceSparseSolver[Rational](q.length, bounds, l.map(_.queryIntersection), data) }
+
+
           s.compute_bounds
 
           best_df = s.df

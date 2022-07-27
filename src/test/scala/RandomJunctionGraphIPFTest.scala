@@ -1,6 +1,6 @@
 import core.solver.iterativeProportionalFittingSolver.{IPFUtils, RandomJunctionGraphIPFSolver}
 import org.junit.Test
-import util.Bits
+import util.BitUtils
 
 import scala.util.Random
 
@@ -16,7 +16,7 @@ class RandomJunctionGraphIPFTest {
     val solver = new RandomJunctionGraphIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size, BitUtils.SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
@@ -27,10 +27,10 @@ class RandomJunctionGraphIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, BitUtils.SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(6, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(6, solver.totalDistribution, BitUtils.SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
         )
       })
     }

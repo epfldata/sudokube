@@ -10,8 +10,8 @@ object IPFExperimenter {
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load2(fullname, cg.inputname + "_base")
-    dc.loadPrimaryMoments(cg.inputname + "_base")
+    val dc = PartialDataCube.load(fullname, cg.baseName)
+    dc.loadPrimaryMoments(cg.baseName)
 
     val expname2 = s"query-dim-$cubeGenerator-$ms"
     val exptfull = new IPFMomentBatchExpt(expname2)
@@ -25,7 +25,7 @@ object IPFExperimenter {
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"\tBatch Query ${i + 1}/$ql")
         val trueResult = materializedQueries.loadQueryResult(qs, i)
-        exptfull.run(dc, fullname, q, trueResult)
+        exptfull.run(dc, fullname, q, trueResult, sliceValues = Vector())
       }
     }
     dc.cuboids.head.backend.reset

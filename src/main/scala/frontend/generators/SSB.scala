@@ -1,24 +1,19 @@
 package frontend.generators
 
 import breeze.io.CSVReader
-import core.{DataCube, PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
-import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
 import util.Profiler
 
 import java.io.FileReader
-import java.text.SimpleDateFormat
-import scala.concurrent.duration.{Duration => ScalaDur}
 import java.util.Date
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
   override def schema(): Schema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
-    import StaticNatCol._
     import StaticDateCol._
     val louniqs = uniq("lineorder") _
     //val oidCol = LD2[String]("order_key", new LazyMemCol(louniqs(1)))
@@ -125,7 +120,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   }
 
   def generate( ) = ???
-  override def generate2() = {
+  override def generatePartitions() = {
 
     //val date = readTbl("date", Vector(0, 2)).map(d => d.head -> Vector(sdf.parse(d(0)), d(1))).toMap
 
@@ -133,7 +128,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d.tail).toMap
     val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d.tail).toMap
 
-    val sch = schema()
+    val sch = schemaInstance
 
     def joinFunc(r: IndexedSeq[String]) = {
       val oid = r(0)
@@ -174,30 +169,21 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     //println("LO Parts  = " + los.size)
     val jos = los.map{ case (n, it) => n -> it.map(joinFunc)}
 
-    (sch, jos)
+    jos
   }
 }
 
 object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
-    val sch = cg.schema()
 
-    //val dcbase = cg.saveBase._2
-    //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
-    //dcbase.savePrimaryMoments(cg.inputname + "_base")
-
-
+    cg.saveBase()
+    val maxD = 30 // >15+14, so never passes threshold
     List(
       (15, 14)
     ).map { case (logN, minD) =>
-      val maxD = 30 // >15+14, so never passes threshold
-      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")
-      dc2.build()
-      dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
-      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, logN, minD, maxD), cg.inputname + "_base")
-      dc3.build()
-      dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
+      cg.saveRMS(logN, minD, maxD)
+      cg.saveSMS(logN, minD, maxD)
     }
 
   }

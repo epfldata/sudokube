@@ -1,22 +1,88 @@
-import core.RandomizedMaterializationScheme2
+import core.cube.{ArrayCuboidIndexFactory, OptimizedArrayCuboidIndexFactory, SetTrieCuboidIndexFactory}
+import core.materialization._
 import frontend.experiments.Tools
 import org.scalatest.{FlatSpec, Matchers}
-import planning.ProjectionMetaData
-import util.Profiler
+import planning.{NewProjectionMetaData, ProjectionMetaData}
+import util.{BitUtils, Profiler}
 
 class PrepareSpec extends FlatSpec with Matchers {
 
-  def RMS(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = RandomizedMaterializationScheme2(nbits, logncubs, dmin + logncubs - 1, 0)
-    (0 until nq).foreach{ i =>
-      val q = Tools.rand_q(nbits, qs)
-      val oldp = Profiler("OldPrepare"){m.prepare_old(q, cheap, maxFetch)}.map(p => ProjectionMetaData(p.accessible_bits, p.accessible_bits0.toList.sorted, p.mask, p.id)).sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
-      val newp = Profiler("NewPrepare"){m.prepare_new(q, cheap, maxFetch)}.sortBy(p => p.accessible_bits.mkString("") + "_" +p.mask.length + "_" + p.id)
-      assert(oldp.sameElements(newp))
+
+  implicit def toNewProjectionMetaData(os: Seq[ProjectionMetaData]) = os.map { o =>
+    val abInt = BitUtils.SetToInt(o.accessible_bits)
+    val maskpos = o.mask.indices.filter(i => o.mask(i) == 1)
+    NewProjectionMetaData(abInt, o.id, o.mask.length, maskpos)
+  }
+
+  def isSameAs(x: Seq[NewProjectionMetaData], y: Seq[NewProjectionMetaData]) = {
+    assert(x.length == y.length)
+    val xy = x zip y
+    xy.foreach { case (xp, yp) =>
+      assert(xp.queryIntersection == yp.queryIntersection)
+      assert(xp.cuboidCost == yp.cuboidCost)
     }
-    println("Time for RMS")
+  }
+
+
+  def RMS_online_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
+    val m = new RandomizedMaterializationStrategy(nbits, logncubs, dmin)
+    val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
+    val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
+    val idx3 = SetTrieCuboidIndexFactory.buildFrom(m)
+    Profiler.resetAll()
+    (0 until nq).foreach { i =>
+      val q = Tools.rand_q(nbits, qs)
+      print(i + " ")
+      val idx1po = Profiler("ArrayCuboidIndex PrepareOnline") { idx1.prepareOnline(q, cheap, maxFetch) }
+      val idx2po = Profiler("OptimizedArrayCuboidIndex PrepareOnline") { idx2.prepareOnline(q, cheap, maxFetch) }
+      val idx3po = Profiler("SetTrieCuboidIndex PrepareOnline") { idx3.prepareOnline(q, cheap, maxFetch) }
+
+      isSameAs(idx1po, idx2po)
+      isSameAs(idx1po, idx3po)
+
+      //Check if smaller ones appear first
+      assert(idx1po.sortBy(ps => ps.sortID(nbits)) sameElements idx1po)
+      assert(idx2po.sortBy(ps => ps.sortID(nbits)) sameElements idx2po)
+      assert(idx3po.sortBy(ps => ps.sortID(nbits)) sameElements idx3po)
+    }
+    println("\nTime for Online")
     Profiler.print()
   }
 
-  "Old and New Prepare " should " match " in RMS(200, 15, 15, 100, 10, 40, 40)
+  def RMS_batch_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, maxFetch: Int): Unit = {
+    val m = new RandomizedMaterializationStrategy(nbits, logncubs, dmin)
+    val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
+    val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
+    val idx3 = SetTrieCuboidIndexFactory.buildFrom(m)
+
+    Profiler.resetAll()
+    (0 until nq).foreach { i =>
+      val q = Tools.rand_q(nbits, qs).toIndexedSeq
+      print(i + " ")
+      val idx2pb = Profiler("OptimizedArrayCuboidIndex PrepareBatch") { idx2.prepareBatch(q, maxFetch) }
+      val idx1pb = Profiler("ArrayCuboidIndex PrepareBatch") { idx1.prepareBatch(q, maxFetch) }
+      val idx3pb = Profiler("SetTrieCuboidIndex PrepareBatch") { idx3.prepareBatch(q, maxFetch) }
+
+      isSameAs(idx2pb, idx1pb)
+      isSameAs(idx3pb, idx1pb)
+
+      //Check if larger ones appear first
+      assert(idx1pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx1pb)
+      assert(idx2pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx2pb)
+      assert(idx3pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx3pb)
+
+    }
+    println(s"\nTime for Batch qs=$qs")
+    Profiler.print()
+  }
+
+
+  "All cuboid indexes " should " give the same result for Online Prepare QS=15" in RMS_online_test(100, 15, 15, 100, 15, 0, 40)
+  //"All cuboid indexes " should " give the same result for Online Prepare2 " in RMS_online_test(100, 15, 15, 100, 10, 20, 40)
+  //"All cuboid indexes " should " give the same result for Online Prepare3 " in RMS_online_test(100, 15, 15, 100, 10, 39, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=5  " in RMS_batch_test(100, 15, 15, 100, 5, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=10  " in RMS_batch_test(100, 15, 15, 100, 10, 40)
+  "All cuboid indexes" should " give the same result for Batch Prepare QS=15  " in RMS_batch_test(100, 15, 15, 100, 15, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=20  " in RMS_batch_test(100, 15, 15, 100, 20, 40)
+
 }

@@ -1,5 +1,10 @@
+import core.materialization.OldRandomizedMaterializationStrategy
+import core.solver.moment.Moment1Transformer
 import frontend.experiments.Tools
 import org.scalatest._
+
+import java.io.File
+import scala.util.Random
 
 
 class CBackendSpec extends FlatSpec with Matchers {
@@ -10,14 +15,15 @@ class CBackendSpec extends FlatSpec with Matchers {
   import backend._
   import core._
   import util._
+  import BitUtils._
 
   "CBackend simple absolute test" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =
       CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
-    val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
-    val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
+    val d = c.rehash_to_sparse(Array(0, 1)) // keep both dimensions
+    val e = d.rehash_to_dense(Array(0))  // project down to the 1st dimension
     assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
   }
 
@@ -31,7 +37,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     assert(c.size == 20)
     assert(c.numBytes == 420)
-    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).filter { i => pos.contains(i)}
 
     val m0 = Set(0, 1, 2, 3, 4)
     val m1 = m0 ++ Set(20, 21, 22, 23, 24)
@@ -87,8 +93,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     val c = my_mk(100, (1 to 20).map(i => (i, i)))
 
-    def toMask(d : Int, pos: Set[Int]) = (0 until d).map { i => if (pos.contains(i)) 1 else 0 }.toArray
-
+    def toMask(d : Int, pos: Set[Int]) = (0 until d).filter(i => pos.contains(i))
     val c1 = c.rehash(toMask(100, Set(0,2,3)))
     assert(c1.isInstanceOf[CBackend.b.DenseCuboid])
     val c2_ = c.rehash(toMask(100, Set(0, 2, 3, 20, 30)))
@@ -116,15 +121,15 @@ class CBackendSpec extends FlatSpec with Matchers {
     def my_mk(d: Int, l: List[(Int, Int)]) =
       ScalaBackend.mk(d, l.map(x => (BigBinary(x._1), x._2.toLong)).toIterator)
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
-    val d = c.rehash_to_sparse(Array(1,1)) // keep both dimensions
-    val e = d.rehash_to_dense(Array(1,0))  // project down to the 1st dimension
+    val d = c.rehash_to_sparse(Array(0, 1)) // keep both dimensions
+    val e = d.rehash_to_dense(Array(0))  // project down to the 1st dimension
     assert(e.fetch.map(_.sm.toInt).toList == List(4, 7))
   }
 
   "CBackend first projecting to an intermediate query and then down to a lower-dimensional query in three different ways" should "always yield the same result as directly projecting down to the lower-dimensional query" in {
 
-    def mk_mask(d: Int, l: List[Int]) =
-      Bits.mk_list_mask(0 to d - 1, l.toSet).toArray
+    def mk_mask(d: Int, l: IndexedSeq[Int]) =
+      mk_list_bitpos(0 to d - 1, l.toSet).toArray
 
     val n_bits = 70
     val schema = StaticSchema.mk(n_bits)
@@ -132,8 +137,8 @@ class CBackendSpec extends FlatSpec with Matchers {
     for(it <- 1 to 50) {
       val R   = TupleGenerator(schema, 100, Sampling.f1).toList
       val c   = CBackend.b.mkAll(n_bits, R)
-      val q1  = Util.rnd_choose(n_bits,    6)
-      val q2  = Util.rnd_choose(q1.length, 3)
+      val q1  = Util.rnd_choose(n_bits,    6).toIndexedSeq
+      val q2  = Util.rnd_choose(q1.length, 3).toIndexedSeq
       val qmask = mk_mask(n_bits, q2.map(q1(_)))
 
       val r1 =  c.rehash_to_dense( qmask).fetch.toList
@@ -151,7 +156,7 @@ class CBackendSpec extends FlatSpec with Matchers {
       assert(r1 == r4, "FAILURE C != Scala")
 
 
-      val m = RandomizedMaterializationScheme(n_bits, 1, 1.05)
+      val m = OldRandomizedMaterializationStrategy(n_bits, 1, 1.05)
       val dc = new JailBrokenDataCube(m, c)
       val r5 = dc.getCuboids.last.rehash_to_dense(qmask)
                  .asInstanceOf[CBackend.b.DenseCuboid].fetch.toList
@@ -169,10 +174,10 @@ class CBackendSpec extends FlatSpec with Matchers {
     val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
     val be = Vector(CBackend.b, ScalaBackend)
     val full_cube = be.map(_.mkAll(n_bits, R))
-    val m = RandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
     val dcs = full_cube.map { fc =>
-      val dc = new DataCube(m)
-      dc.build(fc)
+      val dc = new DataCube()
+      dc.build(fc, m)
       dc
     }
     val queries = (3 to qmax).flatMap{ s => (1 to 100).map(i => Tools.rand_q(n_bits, s))}
@@ -199,6 +204,44 @@ class CBackendSpec extends FlatSpec with Matchers {
     randomTest(15, 100000, 1, 100, 14)
   }
 */
+  "CBackend Trie results" should "be correct " in {
+    val cubename = "CBackendTrieTest"
+    val filename = "cubedata/" + cubename + "/" + cubename + ".ctrie"
+    val file = new File(filename)
+    if(!file.exists())
+      file.getParentFile.mkdirs()
+
+    val nbits = 9
+    val N = 1 << nbits
+    val data = (0 to 100).map { i =>
+      val key = BigBinary(Random.nextInt(512))
+      val valueD = math.pow(Random.nextInt(1<<20) + 999999.0, 2)
+      val valueLog = math.log(valueD)/math.log(2)
+      assert(valueLog < 63)
+      val value = valueD.toLong
+      key -> value
+    }
+    val dataArray = Array.fill(N)(0L)
+
+    data.foreach{case (BigBinary(k), v) => dataArray(k.toInt) += v }
+
+    val base = CBackend.b.mk(nbits, data.toIterator)
+    val all = 0 until nbits
+    val densecub = base.rehash_to_dense(all)
+    val densearray = densecub.fetch.map(_.sm )
+    assert(densearray.sameElements(dataArray))
+
+    val denseMoments = Moment1Transformer[Double]().getMoments(densearray)
+
+    CBackend.b.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
+    val trieResult  = CBackend.b.prepareFromTrie((0 until nbits))
+    val trieMomentArray = Array.fill(N)(0.0)
+    trieResult.foreach{case (k, v) => trieMomentArray(k) += v.toDouble }
+    val total = dataArray.sum
+    trieMomentArray.zip(denseMoments).zipWithIndex.foreach{case ((t,d), i) => if(t.toLong != d.toLong) println(s"$i :: trie ${t.toLong}  actual ${d.toLong}")}
+    assert(trieMomentArray.sameElements(denseMoments))
+
+  }
 }
 
 

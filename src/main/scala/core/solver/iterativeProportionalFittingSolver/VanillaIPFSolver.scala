@@ -1,7 +1,7 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import core.SolverTools.error
-import util.{Bits, Profiler}
+import core.solver.SolverTools.error
+import util.{BitUtils, Profiler}
 
 import java.io.PrintStream
 
@@ -22,11 +22,11 @@ class VanillaIPFSolver(override val querySize: Int,
    * @param marginalVariables Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
-    normalizationFactor = marginalDistribution.sum
-    clusters = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor)) :: clusters
+  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Unit = {
+    clusters = Cluster(marginalVariables, marginalDistribution) :: clusters
   }
 
+  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = ???
   /**
    * Obtain the solution, un-normalized
    * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
@@ -70,7 +70,7 @@ class VanillaIPFSolver(override val querySize: Int,
 
     clusters.foreach { case Cluster(marginalVariables: Int, expectedMarginalDistribution: Array[Double]) =>
       totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution)
-      println(s"\t\t\tUpdating ${Bits.fromInt(marginalVariables).mkString(":")}")
+      println(s"\t\t\tUpdating ${BitUtils.IntToSet(marginalVariables).mkString(":")}")
 //      clusters.foreach(cluster => {
 //        print(s"${error(cluster.distribution, IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables))}, ")
 //        println(s"Expected ${cluster.distribution.mkString(",")}, got ${IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables).mkString(",")}")

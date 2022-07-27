@@ -1,12 +1,13 @@
 import org.scalatest._
 import core._
-import core.solver.MomentSolverAll
-import RationalTools._
-import core.solver.Strategy._
+import core.solver.RationalTools._
+import core.solver.moment.Strategy._
 import core.solver._
+import core.solver.moment.{CoMoment4Solver, Moment1Transformer, MomentSolverAll}
+import util.BitUtils
 
 class MomentSolverAllSpec extends FlatSpec with Matchers {
-
+  implicit def listToInt = BitUtils.SetToInt(_)
   "MomentSolver " should " work when full cuboid is known using fast solve " in {
     val cuboid = Array(1, 3, 2, 1, 5, 1, 0, 2).map(_.toDouble)
     val solver = new MomentSolverAll[Double](3)
@@ -49,7 +50,7 @@ class MomentSolverAllSpec extends FlatSpec with Matchers {
   "CoMoment4 Solver batch mode" should "extrapolate correctly" in {
     import frontend.experiments.Tools.round
     val primaryMoments = List(0 -> 17.0, 1 -> 4.0, 2 -> 7.0, 4 -> 12.0)
-    val solver = new CoMoment4Solver(3, true, Moment1Transformer, primaryMoments)
+    val solver = new CoMoment4Solver[Double](3, true, Moment1Transformer(), primaryMoments)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(_.toDouble))
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(_.toDouble))
@@ -66,7 +67,7 @@ class MomentSolverAllSpec extends FlatSpec with Matchers {
   "CoMoment4 Solver online mode" should "extrapolate correctly" in {
     import frontend.experiments.Tools.round
     val primaryMoments = List(0 -> 17.0, 1 -> 4.0, 2 -> 7.0, 4 -> 12.0)
-    val solver = new CoMoment4Solver(3, false, Moment1Transformer, primaryMoments)
+    val solver = new CoMoment4Solver[Double](3, false, Moment1Transformer(), primaryMoments)
     val actual = Array(0, 1, 3, 1, 7, 2, 3, 0).map(_.toDouble)
     solver.add(List(2), Array(5, 12).map(_.toDouble))
     solver.add(List(0, 1), Array(7, 3, 6, 1).map(_.toDouble))

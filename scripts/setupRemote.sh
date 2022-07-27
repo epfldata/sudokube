@@ -5,16 +5,16 @@ hostname="iccluster$2"
 
 case "$nickname" in
 "kube1")
-  line=8
+  line=9
   ;;
 "kube2")
-  line=15
+  line=17
   ;;
 "kube3")
-  line=22
+  line=25
   ;;
 "kube4")
-  line=29
+  line=33
   ;;
 *)
   echo "First argument must be kube1 or kube2"
@@ -37,8 +37,4 @@ ssh datadell "scp ~/.ssh/id* $nickname:/root/.ssh"
 
 ssh $nickname 'chmod +x ./init.sh && ./init.sh'
 scripts/sync.sh $nickname
-ssh $nickname 'PATH=/opt/sbt/bin:$PATH;cd /var/data/sudokube/sudokube && make'
-
-ssh datadell "/home/sachin/sudokube/sudokube/scripts/uniqsyncto $nickname SSB/sf100"
-ssh datadell "/home/sachin/sudokube/sudokube/scripts/uniqsyncto $nickname nyc"
-
+ssh $nickname 'PATH=/opt/sbt/bin:$PATH;JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64;cd /var/data/sudokube/sudokube && make'

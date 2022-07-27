@@ -1,5 +1,6 @@
 package backend
-import core.Interval
+
+import core.solver.lpp.Interval
 
 
 /** A payload consisting of three values, a sum, a max, and a min (as an
@@ -13,14 +14,15 @@ import core.Interval
     Summable or Monoid.
 
     TODO: This is ugly.
-*/
+ */
 class Payload(var sm: Double, var i: Option[Interval[Double]]) {
-  var smLong = 0L //Hack to avoid precision error
+  var smLong = sm.toLong //Hack to avoid precision error
   /** an aggregation function for payload with the same key (a hash collision).
       Used only in the Backend package.
   */
   def merge_in(other: Payload) {
     sm += other.sm
+    smLong += other.smLong
     i   = if(i == None) other.i
           else if(other.i == None) i
           else Some(i.get.envelope(other.i.get))

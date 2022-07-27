@@ -2,7 +2,7 @@ package core.solver.iterativeProportionalFittingSolver
 
 import core.SolverTools.entropy
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.{getNumOnesInBinary, isVariablesContained}
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.util.control.Breaks.{break, breakable}
 
@@ -21,7 +21,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
    */
   override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(Bits.toInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
+    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
   }
 
@@ -33,7 +33,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
   override def solve(): Array[Double] = {
     selectiveDropout()
 
-    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(Bits.fromInt(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
+    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
 
     Profiler("Dropout Effective IPF Junction Tree Construction") {
       constructJunctionTree()
@@ -91,7 +91,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
       }
       val candidateClustersToDrop = clusters.filter(cluster =>
         cluster.numVariables == currentNumDimensions
-          && Bits.fromInt(cluster.variables).forall(variable => (clusters.toSet - cluster).exists(cluster => isVariablesContained(1 << variable, cluster.variables)))
+          && BitUtils.IntToSet(cluster.variables).forall(variable => (clusters.toSet - cluster).exists(cluster => isVariablesContained(1 << variable, cluster.variables)))
       )
       if (candidateClustersToDrop.isEmpty) {
         currentNumDimensions += 1
@@ -102,7 +102,7 @@ class DropoutEffectiveIPFSolver(override val querySize: Int) extends EffectiveIP
         }
         coverage -= droppedCluster.numVariables
         numDroppedClusters += 1
-        print(s"${Bits.fromInt(droppedCluster.variables).size}:")
+        print(s"${BitUtils.IntToSet(droppedCluster.variables).size}:")
         clusters = clusters.filter(_ != droppedCluster)
       }
     } }

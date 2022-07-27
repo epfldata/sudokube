@@ -1,5 +1,6 @@
 //package ch.epfl.data.sudokube
 package combinatorics
+import core.materialization.OldRandomizedMaterializationStrategy
 import util._
 
 
@@ -266,7 +267,7 @@ object Combinatorics {
 
     var k = 0
     var x: BigDecimal = 0
-    val m = core.RandomizedMaterializationScheme(n, rf, base, mindim)
+    val m = OldRandomizedMaterializationStrategy(n, rf, base, mindim)
 
     while((x < 1) && (k <= n)) {
       val npd = m.n_proj_d(k)
@@ -296,7 +297,7 @@ object Combinatorics {
   val qsize = 6
   frontend.experiments.minus1_adv(n_bits, rf, base, qsize, 1000)
 
-  val m = core.RandomizedMaterializationScheme(n_bits, rf, base, 0)
+  val m = core.materialization.RandomizedMaterializationStrategy(n_bits, rf, base, 0)
   exp_cost2(n_bits, qsize, qsize, m.n_proj_d(_))
   */
   def exp_cost2(n: Int, qsize: Int, goal_size: Int, size_f: Int => Int) = {

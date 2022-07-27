@@ -92,8 +92,8 @@ class StaticSchema(top_level: List[Dim]) extends Schema {
   val n_bits = root.bits.length
 
   // the actual columns are the leaves of the hierarchy.
-  val columnList = root.leaves.map(c => (c.name, c.encoder))
-  val colMap = columnList.toMap
+  val columnList = root.leaves.map(c => (c.name, c.encoder)).toIndexedSeq
+  val colMap = columnList.toMap[String, StaticMemCol[_]]
 
   // uses ColEncoder[T].encode_any
   protected def encode_column(key: String, v: Any) = {

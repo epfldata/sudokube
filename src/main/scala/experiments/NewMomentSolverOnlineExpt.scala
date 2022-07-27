@@ -1,60 +1,55 @@
 package experiments
 
-import core.{DataCube, SolverTools}
-import core.SolverTools._
+import core.DataCube
+import core.solver.SolverTools._
 import core.solver._
 import util.{ManualStatsGatherer, Profiler, ProgressIndicator}
-import Strategy._
+import core.solver.moment.Strategy._
+import core.solver.moment.{CoMoment3Solver, CoMoment4Solver, Moment1Transformer, MomentSolver}
 
 class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", containsAllCuboids: Boolean = false)(implicit shouldRecord: Boolean) extends Experiment("newmoment-online", ename2) {
 
   fileout.println("CubeName,SolverName,RunID,QSize,Counter,TimeElapsed(s),DOF,Error,MaxDim,Query,QueryName,Entropy")
 
-  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver = strategy match {
-    case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer, pm)
-    case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer, pm)
+  def solver(qsize: Int, pm: Seq[(Int, Double)])(implicit shouldRecord: Boolean): MomentSolver[Double] = strategy match {
+    case CoMoment3 => new CoMoment3Solver(qsize, false, Moment1Transformer(), pm)
+    case CoMoment4 => new CoMoment4Solver(qsize, false, Moment1Transformer(), pm)
   }
 
-  override def warmup(nw: Int): Unit = if (!containsAllCuboids) super.warmup(nw) else {
-    //Cannot use default warmup because of "containsAllCuboid" set to true
-    val dcwarm = DataCube.load2("warmupall")
-    dcwarm.loadPrimaryMoments("warmupall")
-    (1 until 6).foreach(i => run(dcwarm, "warmupall", 0 until i, null, false))
-    println("Warmup Complete")
-  }
+
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     val qstr = qu.mkString(":")
     val stg = new ManualStatsGatherer[(Int, (Int, Array[Double]))]()
     stg.start()
-    val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments))
+    val s = solver(q.size, SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments))
     var maxDimFetched = 0
     stg.task = () => ((maxDimFetched, s.getStats))
-    var l = Profiler("Prepare") {
-      if (containsAllCuboids)
-        dc.m.prepare_online_full(q, 2)
-      else
-        dc.m.prepare_online_agg(q, 2)
+    val prepareList = Profiler("Prepare") {
+      //if (containsAllCuboids)
+      //  FullLatticeOnlinePreparer.prepareOnline(dc.m, q, 2, dc.m.n_bits)
+      dc.index.prepareOnline(q, 2)
     }
-    val totalsize = l.size
+    val totalsize = prepareList.length
     //println("Prepare over. #Cuboids to fetch = " + totalsize)
     //Profiler.print()
-    val pi = new ProgressIndicator(l.size, "Online aggregation", false)
-    //l.map(p => (p.accessible_bits, p.mask.length)).foreach(println)
-    while (!(l.isEmpty)) {
+    val pi = new ProgressIndicator(totalsize, "Online aggregation", false)
+    val iter = prepareList.iterator
+    while (iter.hasNext) {
+      val current = iter.next()
       val fetched = Profiler.noprofile("Fetch") {
-        dc.fetch2[Double](List(l.head))
+        dc.fetch2[Double](List(current))
       }
-      val bits = l.head.accessible_bits
-      if (l.head.mask.length > maxDimFetched)
-        maxDimFetched = l.head.mask.length
+
+      if (current.cuboidCost > maxDimFetched)
+        maxDimFetched = current.cuboidCost
       Profiler.noprofile("Add") {
-        s.add(bits, fetched.toArray)
+        s.add(current.queryIntersection, fetched)
       }
       Profiler.noprofile("FillMiss") {
         s.fillMissing()
@@ -64,7 +59,6 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
       }
       stg.record()
       pi.step
-      l = l.tail
     }
     stg.finish()
 

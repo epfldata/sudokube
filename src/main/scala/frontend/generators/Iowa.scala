@@ -1,26 +1,25 @@
 package frontend.generators
 
-import backend.CBackend
-import core.{DataCube, RandomizedMaterializationScheme, Rational}
-import core.RationalTools._
-import experiments.{LPSolverBatchExpt, OldMomentSolverBatchExpt, OldMomentSolverOnlineExpt}
-import frontend.Sampling
-import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
-import util.{Profiler, Util}
+import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import scala.io.Source
 
-object Iowa extends CubeGenerator ("IowaAll") {
+object Iowa extends CubeGenerator("IowaAll") {
+  lazy val schemaAndData = read(inputname)
+  def generatePartitions() = {
+    val data = schemaAndData._2
+    Vector(data.size -> data.toIterator) //only one partition
+  }
 
-  def generate() = read(inputname)
+  override protected def schema(): Schema2 = schemaAndData._1
 
-  //SBJ: Can't remove this due to lambda deserialization error
   def read(name: String) = {
     val filename = s"tabledata/Iowa/$name.tsv"
-    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").toVector).toVector
+    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t")).toVector
+
 
     val header = data.head
     val keyCols = Vector("Date", "County Number", "City", "Zip Code", "Store Location", "Store Number", "Item Number", "Category", "Vendor Number")
@@ -33,7 +32,7 @@ object Iowa extends CubeGenerator ("IowaAll") {
         case 1 => try {
           f1.parse(r(1))
         } catch {
-          case e: Exception => new Date(2012-1900, 0, 1)
+          case e: Exception => new Date(2012 - 1900, 0, 1)
         }
         case i => r(i)
       }

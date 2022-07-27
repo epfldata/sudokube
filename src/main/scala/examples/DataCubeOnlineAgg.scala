@@ -1,10 +1,13 @@
 package examples
 
+import core.solver.{Rational, RationalTools}
+import core.solver.lpp.{Interval, SparseSolver}
+
 object DataCubeOnlineAgg {
   def main(args: Array[String]): Unit = {
 
     import frontend.experiments.Tools._
-    import core._
+
     import RationalTools._
 
     class CB {
@@ -20,7 +23,7 @@ object DataCubeOnlineAgg {
 
     val dc = mkDC(10, 1, 2, 10)
     val cb = new CB
-    dc.online_agg[Rational](List(0, 1, 2), 2, cb.callback)
+    dc.online_agg[Rational](Vector(0, 1, 2), 2, cb.callback)
     val final_result = cb.bounds.get
 
   }

@@ -1,26 +1,22 @@
 package frontend.generators
 
-import core.{PartialDataCube, RandomizedMaterializationScheme2, SchemaBasedMaterializationScheme, SolverTools}
-import frontend.experiments.Tools
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
-import util.{BigBinary, Util}
+import util.BigBinary
 
 import java.util.Date
 import scala.io.Source
 
 object NYC extends CubeGenerator("NYC") {
 
-  override def generate() = ???
-  override def generate2(): (Schema2, IndexedSeq[(Int, Iterator[(BigBinary, Long)])]) = {
-    val sch = schema()
+  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
       val n2 = "all.part" + num + ".tsv"
         val size = read(n2).size
-      size ->read(n2).map(r => sch.encode_tuple(r) -> 1L)
+      size ->read(n2).map(r => schemaInstance.encode_tuple(r) -> 1L)
     }
-    (sch, join)
+    join
   }
 
   override def schema(): Schema2 =  {
@@ -99,25 +95,18 @@ object NYC extends CubeGenerator("NYC") {
   }
 
   def main(args: Array[String]): Unit = {
-    val sch = schema()
+    println("Loading Schema")
     val cg = this
 
-    //val dcbase = saveBase()._2
-    //dcbase.primaryMoments = SolverTools.primaryMoments(dcbase)
-    //dcbase.savePrimaryMoments(cg.inputname + "_base")
+    cg.saveBase()
 
-
+    val maxD = 30 // >15+14, so never passes threshold for any of the cuboids
     List(
       (17, 10),(13, 10),
       (15, 6), (15, 10), (15, 14)
     ).map { case (logN, minD) =>
-      val maxD = 30 // >15+14, so never passes threshold
-      val dc2 = new PartialDataCube(RandomizedMaterializationScheme2(sch.n_bits, logN, minD, maxD), cg.inputname + "_base")
-      dc2.build()
-      dc2.save2(s"${cg.inputname}_rms3_${logN}_${minD}_${maxD}")
-      val dc3 = new PartialDataCube(SchemaBasedMaterializationScheme(sch, logN, minD, maxD), cg.inputname + "_base")
-      dc3.build()
-      dc3.save2(s"${cg.inputname}_sms3_${logN}_${minD}_${maxD}")
+      cg.saveRMS(logN, minD, maxD)
+      cg.saveSMS(logN, minD, maxD)
     }
 
   }

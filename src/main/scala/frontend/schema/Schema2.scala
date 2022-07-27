@@ -14,24 +14,24 @@ import scala.util.Random
 
 @SerialVersionUID(3L)
 abstract class Dim2(val name: String) extends Serializable {
-  def queries: Set[Seq[Int]]
+  def queries: Set[IndexedSeq[Int]]
 
-  def queriesUpto(qsize: Int): Set[Seq[Int]]
+  def queriesUpto(qsize: Int): Set[IndexedSeq[Int]]
 
   def numPrefixUpto(size: Int): Array[BigInt]
 
-  def samplePrefix(size: Int): Seq[Int]
+  def samplePrefix(size: Int): IndexedSeq[Int]
 
   def maxSize: Int
 }
 
 @SerialVersionUID(5066804864072392482L)
 case class LD2[T](override val name: String, encoder: ColEncoder[T]) extends Dim2(name) {
-  override def queries: Set[Seq[Int]] = encoder.queries()
+  override def queries: Set[IndexedSeq[Int]] = encoder.queries()
 
-  override def queriesUpto(qsize: Int): Set[Seq[Int]] = encoder.queriesUpto(qsize)
+  override def queriesUpto(qsize: Int): Set[IndexedSeq[Int]] = encoder.queriesUpto(qsize)
 
-  override def samplePrefix(size: Int): Seq[Int] = if (size > 0) encoder.samplePrefix(size) else Nil
+  override def samplePrefix(size: Int): IndexedSeq[Int] = if (size > 0) encoder.samplePrefix(size) else Vector()
 
   override def numPrefixUpto(size: Int): Array[BigInt] = {
     val sizes = encoder.prefixUpto(size).groupBy(_.size).mapValues(x => BigInt(x.size)).withDefaultValue(BigInt(0))
@@ -81,14 +81,14 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
     result
   }
 
-  override def samplePrefix(size: Int): Seq[Int] = if (size <= 0) Nil else {
+  override def samplePrefix(size: Int): IndexedSeq[Int] = if (size <= 0) Vector() else {
     assert(size <= maxSize)
     if (cross) {
       val childrenToConsider = collection.mutable.ArrayBuffer[Int]()
       childrenToConsider ++= children.indices
       var bitsLeft = size
       var totalBits = maxSize
-      var result = List[Int]()
+      var result = Vector[Int]()
       while (bitsLeft != 0) {
         assert(bitsLeft > 0)
         if (totalBits > bitsLeft) {
@@ -125,9 +125,9 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
   }
 
 
-  override def queriesUpto(qsize: Int): Set[Seq[Int]] = if (qsize <= 0) Set() else {
+  override def queriesUpto(qsize: Int): Set[IndexedSeq[Int]] = if (qsize <= 0) Set() else {
     if (cross)
-      children.foldLeft(Set(Seq[Int]())) { case (acc, cur) =>
+      children.foldLeft(Set(IndexedSeq[Int]())) { case (acc, cur) =>
         val cq = cur.queriesUpto(qsize)
         acc.flatMap(q1 => cq.flatMap(q2 => if (q1.size + q2.size <= qsize) Some(q1 ++ q2) else None))
       }
@@ -135,8 +135,8 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
       children.map(_.queriesUpto(qsize)).reduce(_ union _)
   }
 
-  override def queries: Set[Seq[Int]] = if (cross)
-    children.foldLeft(Set(Seq[Int]())) { case (acc, cur) =>
+  override def queries: Set[IndexedSeq[Int]] = if (cross)
+    children.foldLeft(Set(IndexedSeq[Int]())) { case (acc, cur) =>
       val cq = cur.queries
       acc.flatMap(q1 => cq.map(q2 => q1 ++ q2))
     }

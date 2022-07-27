@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <mutex>
 #include "Keys.h"
+#include "SetTrie.h"
 #include "Payload.h"
 #include <cstring>
 #include <iostream>
@@ -23,6 +24,7 @@ struct tempRec {
     value_t val;
 };
 
+SetTrie globalSetTrie;
 
 /**
  We support only nbits <= 320 and nrows < 2^31 currently. We still use size_t for numrows because the numbytes obtained
@@ -31,12 +33,13 @@ struct tempRec {
  */
 
 //Used in sorting within global_compare_keys  to store the number of bytes (out of tempKeySize=40) that need to be compared
-thread_local unsigned short globalnumkeybytes = 0;
+ thread_local unsigned short globalnumkeybytes = 0;
 
 /*
  * Returns whether k1 < k2 . Assumes the bytes are in little endian (LS byte first). Requires globalnumkeybytes to be set.
+ * TODO: Check why :: If inlined, weird behaviour( no sorting happens) when run multiple times within the same sbt instance. No issue for the first time.
  */
-inline bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
+ bool global_compare_keys(const tempRec &k1, const tempRec &k2) {
     //DO NOT use unsigned !! i >= 0 always true
     for (short i = globalnumkeybytes - 1; i >= 0; i--) {
         if (k1.key[i] < k2.key[i]) return true;
@@ -59,7 +62,7 @@ struct {
      * Currently we support only number of rows < IntMax */
     std::vector<size_t> numrows_registry;
 
-     /** stores size of key in bytes for sparse cuboids. Not relevant for dense cuboids. May be possible to remove it. */
+    /** stores size of key in bytes for sparse cuboids. Not relevant for dense cuboids. May be possible to remove it. */
     std::vector<unsigned short> keysz_registry;
 
     /** for synchronization when multiple java threads try to update this registry simulataneously */
@@ -68,12 +71,13 @@ struct {
     //Do not call when unfrozen cuboids are present
     void clear() {
         std::unique_lock<std::mutex> lock(registryMutex);
-        for(auto ptr: ptr_registry)
+        for (auto ptr: ptr_registry)
             free(ptr);
         ptr_registry.clear();
         numrows_registry.clear();
         keysz_registry.clear();
     }
+
     /**
         Adds a dense or sparse cuboid to the registry
         @param p  Pointer to the array representing the dense or sparse cuboid
@@ -196,6 +200,7 @@ void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
     p->push_back(myrec); // makes a copy of myrec
     globalRegistry.numrows_registry[s_id]++;
 }
+
 /**
  * Adds record at specified position to a cuboid initialized by mkAll()
  * Thread-safe, as long as there are no conflicts on the parameter i
@@ -223,6 +228,35 @@ void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
  * Also sets the cuboid size. Only single thread may call it.
  * @param s_id Id of the cuboid (retured by mk()) to be finalized.
  */
+void freezePartial(unsigned int s_id, unsigned int n_bits) {
+    //SBJ: No other threads. No locks
+    std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
+    unsigned short keySize = bitsToBytes(n_bits);
+    globalRegistry.keysz_registry[s_id] = keySize;
+    size_t rows = store->size();
+    size_t recSize = keySize + sizeof(value_t);
+    byte **newstore = (byte **) calloc(rows, recSize);
+    size_t sizeMB = rows * recSize / (1000 * 1000);
+    if (sizeMB > 100) fprintf(stderr, "\nfreeze calloc : %lu MB\n", sizeMB);
+
+    for (size_t r = 0; r < rows; r++) {
+        memcpy(getKey(newstore, r, recSize), &(*store)[r].key[0], keySize);
+        memcpy(getVal(newstore, r, recSize), &((*store)[r].val), sizeof(value_t));
+    }
+
+#ifdef VERBOSE
+    printf("\nFREEZE keySize = %d  recSize = %lu\n", keySize, recSize);
+    for (unsigned i = 0; i < rows; i++) {
+        print_key(10, getKey(newstore, i, recSize)); //hard coded 10 bits
+        printf(" ");
+        printf(" %lld ", *getVal(newstore, i, recSize));
+        printf("\n");
+    }
+#endif
+    delete store;
+    globalRegistry.ptr_registry[s_id] = newstore;
+}
+
 void freeze(unsigned int s_id) {
     //SBJ: No other threads. No locks
     std::vector<tempRec> *store = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
@@ -333,7 +367,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
             byte *buffer = (byte *) malloc(byte_size);
             size_t readBytes = fread(buffer, 1, byte_size, fp);
             if (readBytes != byte_size)
-                fprintf(stderr, "size = %lu ,recSize=%u  -- %lu bytes read instead of %lu bytes because %s \n", size,
+                fprintf(stderr, "File %s  :: size = %lu, recSize=%u  -- %lu bytes read instead of %lu bytes because %s \n", filename, size,
                         recSize, readBytes, byte_size, strerror(errno));
             assert(readBytes == byte_size);
             buffer_array[i] = buffer;
@@ -352,7 +386,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
             byte *buffer = (byte *) malloc(byte_size);
             size_t readBytes = fread(buffer, 1, byte_size, fp);
             if (readBytes != byte_size)
-                fprintf(stderr, "%lu bytes read instead of %lu bytes because %s \n", readBytes, byte_size,
+                fprintf(stderr, "File %s  :: %lu bytes read instead of %lu bytes because %s \n", filename, readBytes, byte_size,
                         strerror(errno));
             assert(readBytes == byte_size);
             buffer_array[i] = buffer;
@@ -370,90 +404,6 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
     delete[] buffer_array;
 }
 
-void *read_cb(const char *filename, size_t byte_size) {
-    unsigned char *b = (unsigned char *) malloc(byte_size);
-    FILE *fp = fopen(filename, "r");
-    assert(fp != NULL);
-    fread(b, 1, byte_size, fp);
-    fclose(fp);
-    return b;
-}
-
-/**
- * Reads a file containing a single sparse cuboid and loads it into RAM
- * @return Unique id for the cuboid
- * @deprecated Use readMultiCuboid
- */
-unsigned int readSCuboid(const char *filename, unsigned int n_bits, size_t size) {
-    printf("readSCuboid(\"%s\", %d, %lu)\n", filename, n_bits, size);
-    unsigned int keySize = bitsToBytes(n_bits);
-    unsigned int recSize = keySize + sizeof(value_t);
-    size_t byte_size = size * recSize;
-    unsigned int s_id = globalRegistry.r_add(read_cb(filename, byte_size), size, keySize);
-#ifdef VERBOSE
-    sparse_print(s_id, n_bits);
-#endif
-    return s_id;
-}
-
-/**
- * Reads a file containing a single dense cuboid and lodas it into RAM
- * @return Unique id
- * @deprecated use readMultiCuboid
- */
-unsigned int readDCuboid(const char *filename, unsigned int n_bits, size_t size) {
-    printf("readDCuboid(\"%s\", %d, %lu)\n", filename, n_bits, size);
-
-    assert(size == 1 << n_bits);
-    unsigned int keySize = bitsToBytes(n_bits);
-    size_t byte_size = size * sizeof(value_t);
-    unsigned int d_id = globalRegistry.r_add(read_cb(filename, byte_size), size, keySize);
-#ifdef VERBOSE
-    dense_print(d_id, n_bits);
-#endif
-    return d_id;
-}
-
-void write_cb(const char *filename, void *data, unsigned int id, size_t byte_size) {
-    printf("write_cb(\"%s\", %d): %lu bytes\n", filename, id, byte_size);
-
-    FILE *fp = fopen(filename, "wb");
-    assert(fp != NULL);
-
-    size_t sw = fwrite(data, 1, byte_size, fp);
-    if (sw != byte_size) {
-        printf("Write Error: %s\n", strerror(errno));
-        exit(1);
-    }
-    fclose(fp);
-}
-
-/**
- * Writes a sparse cuboid to file
-   @deprecated use writeMultiCuboid
- */
-void writeSCuboid(const char *filename, unsigned int s_id) {
-    void *data;
-    size_t size;
-    unsigned short keySize;
-    globalRegistry.read(s_id, data, size, keySize);
-    unsigned int recSize = keySize + sizeof(value_t);
-    size_t byte_size = size * recSize;
-    write_cb(filename, data, s_id, byte_size);
-}
-
-/**
- * Writes a dense cuboid to file
-   @deprecated use writeMultiCuboid
- */
-void writeDCuboid(const char *filename, unsigned int d_id) {
-    void *data;
-    size_t size;
-    unsigned short keySize;
-    globalRegistry.read(d_id, data, size, keySize);
-    size_t byte_size = size * sizeof(value_t);
-    write_cb(filename, data, d_id, byte_size);
-}
 
 /**
  * Writes a batch of cuboids to file
@@ -526,6 +476,7 @@ void cuboid_GC(unsigned int id) {
     globalRegistry.read(id, ptr, size, keySize);
     free(ptr);
 }
+
 /**
  * Aggregates a sparse cuboid to another sparse cuboid according to a specific mask
  * Uses sorting on tempRec typed records -- avoid this function if possible
@@ -593,7 +544,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
         if (watermark < r) {
             byte *key1 = getKey((byte **) tempstore, watermark, tempRecSize);
             byte *key2 = getKey((byte **) tempstore, r, tempRecSize);
-            bool cmp = compare_keys(key1, key2, keySize);
+            bool cmp = compare_keys(key1, key2, newKeySize);
 #ifdef VERBOSE
             printf(" Comparing ");
             print_key(masklen, key1);
@@ -851,7 +802,7 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
 
             for (size_t r = 0; r < dense_rows; r++) {
                 if (dense_store[r] != 0) {
-                    from_Long_to_Key(newKeySize,  r, getKey(sparse_store, w, newRecSize));
+                    from_Long_to_Key(newKeySize, r, getKey(sparse_store, w, newRecSize));
                     memcpy(getVal(sparse_store, w, newRecSize), dense_store + r, sizeof(value_t));
                     w++;
                 }
@@ -866,3 +817,52 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
         }
     }
 }
+
+bool addDenseCuboidToTrie(const vector<int> &cuboidDims, unsigned int d_id) {
+    cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
+    size_t len;
+    value_t *values = fetch(d_id, len);
+    vector<value_t> valueVec(values, values + len);
+    momentTransform(valueVec);
+    globalSetTrie.insertAll(cuboidDims, valueVec);
+    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    return globalSetTrie.count < globalSetTrie.maxSize;
+}
+
+bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
+    cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << cuboidDims.size();
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehash2 calloc : %lu MB\n", numMB);
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+        size_t i = from_Key_to_Long(keySize, getKey(store, r, recSize));
+        newstore[i] += *getVal(store, r, recSize);
+//    printf(" %lld %d\n", i, newstore[i]);
+    }
+
+    vector<value_t> valueVec(newstore, newstore + newsize);
+    momentTransform(valueVec);
+
+    globalSetTrie.insertAll(cuboidDims, valueVec);
+    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    free(newstore);
+    return globalSetTrie.count < globalSetTrie.maxSize;
+}
+
+void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
+void saveTrie(const char *filename) { globalSetTrie.saveToFile(filename); }
+void loadTrie(const char *filename) { globalSetTrie.loadFromFile(filename); }
+
+void prepareFromTrie(const vector<int>& query, map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}

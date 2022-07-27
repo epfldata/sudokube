@@ -4,9 +4,10 @@ target
 *.dc
 *.txt
 libCBackend.*
-makefile*
 expdata/*
 cubedata/*
-tabledata/*
+tabledata/**/*.tbl
+tabledata/**/*.uniq
+tabledata/**/*.tsv
 data/*
 figs/*

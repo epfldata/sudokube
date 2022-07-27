@@ -106,7 +106,7 @@ object Migros {
       val (sch, r) = read()
       val rf = math.pow(10, lrf)
       val base = math.pow(10, lbase)
-      val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+      val dc = new DataCube(OldRandomizedMaterializationStrategy(sch.n_bits, rf, base))
       val name = "brazil"
       sch.save(name)
       dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))
@@ -117,7 +117,7 @@ object Migros {
     val inputname = "brazil"
     val sch = StructuredDynamicSchema.load(inputname)
     sch.columnVector.map(c => c.name -> c.encoder.bits).foreach(println)
-    val dc = DataCube.load2(s"${inputname}_${lrf}_${lbase}")
+    val dc = DataCube.load(s"${inputname}_${lrf}_${lbase}")
     (sch, dc)
   }
 

@@ -1,18 +1,20 @@
 package frontend.generators
 
-import backend.CBackend
 import breeze.io.CSVReader
-import core.{DataCube, RandomizedMaterializationScheme}
-import experiments.OldMomentSolverBatchExpt
 import frontend.schema.encoders.{DateCol, MemCol}
-import frontend.schema.{BD2, BitPosRegistry, LD2, StructuredDynamicSchema}
-import core.RationalTools._
+import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
+import util.BigBinary
 
 import java.io.FileReader
 import java.util.Date
 
-object Brazil extends CubeGenerator("Brazil"){
-
+object Brazil extends CubeGenerator("Brazil") {
+  lazy val schemaAndData = generate()
+  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
+    val data = schemaAndData._2
+    Vector(data.size -> data.iterator) //Only 1 partition
+  }
+  override protected def schema(): Schema2 = schemaAndData._1
   def readCSV(name: String, cols: Vector[String]) = {
     val folder = "tabledata/Brazil"
     val csv = CSVReader.read(new FileReader(s"$folder/olist_${name}_dataset.csv"))
@@ -51,26 +53,26 @@ object Brazil extends CubeGenerator("Brazil"){
      */
 
     implicit val bitR = new BitPosRegistry
-    val order_id =  LD2[String]("order_id", new MemCol)
-    val o_item_id =  LD2[String]("order_item_id", new MemCol)
-    val time =  LD2[Date]("order_purchase_timestamp", new DateCol(2016, 2018, true, true, true, true, true))
-    val orderDim =  BD2("Order", Vector(order_id, o_item_id, time), false)
+    val order_id = LD2[String]("order_id", new MemCol)
+    val o_item_id = LD2[String]("order_item_id", new MemCol)
+    val time = LD2[Date]("order_purchase_timestamp", new DateCol(2016, 2018, true, true, true, true, true))
+    val orderDim = BD2("Order", Vector(order_id, o_item_id, time), false)
 
-    val cust_id =  LD2[String]("customer_id", new MemCol)
-    val cust_zip =  LD2[String]("customer_zip_code_prefix", new MemCol)
-    val cust_city =  LD2[String]("customer_city", new MemCol)
-    val cust_state =  LD2[String]("customer_state", new MemCol)
-    val custDim =  BD2("Customer", Vector(cust_id, cust_zip, cust_city, cust_state), false)
+    val cust_id = LD2[String]("customer_id", new MemCol)
+    val cust_zip = LD2[String]("customer_zip_code_prefix", new MemCol)
+    val cust_city = LD2[String]("customer_city", new MemCol)
+    val cust_state = LD2[String]("customer_state", new MemCol)
+    val custDim = BD2("Customer", Vector(cust_id, cust_zip, cust_city, cust_state), false)
 
-    val prod_id =  LD2[String]("product_id", new MemCol)
-    val prod_cat =  LD2[String]("product_category_name", new MemCol)
-    val prodDim =  BD2("Product", Vector(prod_id, prod_cat), false)
+    val prod_id = LD2[String]("product_id", new MemCol)
+    val prod_cat = LD2[String]("product_category_name", new MemCol)
+    val prodDim = BD2("Product", Vector(prod_id, prod_cat), false)
 
-    val sel_id =  LD2[String]("seller_id", new MemCol)
-    val sel_zip =  LD2[String]("seller_zip_code_prefix", new MemCol)
-    val sel_city =  LD2[String]("seller_city", new MemCol)
-    val sel_state =  LD2[String]("seller_state", new MemCol)
-    val selDim =  BD2("Seller", Vector(sel_id, sel_zip, sel_city, sel_state), false)
+    val sel_id = LD2[String]("seller_id", new MemCol)
+    val sel_zip = LD2[String]("seller_zip_code_prefix", new MemCol)
+    val sel_city = LD2[String]("seller_city", new MemCol)
+    val sel_state = LD2[String]("seller_state", new MemCol)
+    val selDim = BD2("Seller", Vector(sel_id, sel_zip, sel_city, sel_state), false)
 
     val sch = new StructuredDynamicSchema(Vector(orderDim, custDim, prodDim, selDim))
     val r = join.map { case (k, v) => sch.encode_tuple(k) -> v }

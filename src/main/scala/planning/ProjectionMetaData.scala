@@ -7,7 +7,7 @@ import combinatorics._
 /**
     @param accessible_bits    normalized, assumes the query is 0,1,2,..
     @param accessible_bits0   with gaps, using the original bit indexes 
-                              of the MaterializationScheme
+                              of the MaterializationStrategy
     @param mask               in the mask, the least significant bit comes first
 */
 case class ProjectionMetaData(
@@ -18,7 +18,11 @@ case class ProjectionMetaData(
 ) {
   //assert(accessible_bits.length == mask.filter(_ == 1).length)
   lazy val  (accessible_bit_indexes, inaccessible_bit_indexes) =  mask.indices.partition( i => mask(i) == 1)
-
+  implicit def toNewProjectiobMetaData() = {
+    val abInt = BitUtils.SetToInt(accessible_bits)
+    val maskpos = mask.indices.filter(i => mask(i) == 1)
+    NewProjectionMetaData(abInt, id, mask.length, maskpos)
+  }
 
   lazy val n_inaccessible_bits = mask.filter(_ == 0).length
   lazy val cost_factor = Big.pow2(n_inaccessible_bits)
@@ -50,7 +54,7 @@ case class ProjectionMetaData(
        -- this is correct, since we have already filtered with the query:
           we want all the bits the projections can offer.
 
-     Used in MaterializationScheme.qproject()
+     Used in CuboidIndex.eliminateRedudant()
   */
   def dominates(other: ProjectionMetaData, cheap: Int = -1) = {
     (!(this eq other)) &&

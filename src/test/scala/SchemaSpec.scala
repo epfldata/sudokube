@@ -1,8 +1,9 @@
 import backend.CBackend
-import core.{DataCube, RandomizedMaterializationScheme2}
+import core.DataCube
+import core.materialization.RandomizedMaterializationStrategy
 import frontend.schema.DynamicSchema
 import org.scalatest.{FreeSpec, Matchers}
-import util.Bits
+import util.BitUtils
 
 class SchemaSpec extends FreeSpec with Matchers {
 
@@ -17,7 +18,7 @@ class SchemaSpec extends FreeSpec with Matchers {
   )
   "DynamicSchema" - {
     val sch = new DynamicSchema()
-    val R = sch.read("investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
+    val R = sch.read("example-data/investments.json", Some("k_amount"), _.asInstanceOf[Int].toLong)
 
     "must read tuples correctly" in {
       val d1 = R.map { case (k, v) => sch.decode_tuple(k).map({
@@ -38,17 +39,17 @@ class SchemaSpec extends FreeSpec with Matchers {
 
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-    val matscheme = RandomizedMaterializationScheme2(sch.n_bits, 8, 4, 4)
-    val dc = new DataCube(matscheme)
-    dc.build(basecuboid)
+    val matstrat = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4)
+    val dc = new DataCube()
+    dc.build(basecuboid, matstrat)
 
-    def perm_func(query: Seq[Int]) = {
+    def perm_func(query: IndexedSeq[Int]) = {
       val query_sorted = query.sorted
       val perm = query.map(b => query_sorted.indexOf(b)).toArray
-      Bits.permute_bits(query.size, perm)
+      BitUtils.permute_bits(query.size, perm)
     }
 
-    def permuted_result(query: Seq[Int]) = {
+    def permuted_result(query: IndexedSeq[Int]) = {
       val permf = perm_func(query)
       val result0 = dc.naive_eval(query.sorted)
       val result1 = new Array[Int](result0.size)

@@ -2,7 +2,7 @@
 package backend
 import combinatorics.Big
 import util._
-
+import BitUtils._
 import java.io._
 
 
@@ -54,11 +54,37 @@ object ScalaBackend extends Backend[Payload] {
     oos.close
   }
 
+
+  override def saveAsTrie(cuboids: Array[(Array[Int], (Array[Payload], Seq[(BigBinary, Payload)]))], filename: String, maxSize: Long): Unit = ???
+  override def loadTrie(filename: String): Unit = ???
+  override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = ???
+
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = mkAll(n_bits, it.toSeq)
-  def mkAll(n_bits: Int, vs: Seq[(BigBinary, Long)]) : SparseCuboid = {
-    val a : SPARSE_T = vs.map(x => (x._1, Payload.mk(x._2)))
-    val mask = (1 to n_bits).map(_ => 1).toArray // dummy for deduplication
-    SparseCuboid(n_bits, sRehash(a, mask))
+  def mkAll(n_bits: Int, kvs: Seq[(BigBinary, Long)]) : SparseCuboid = {
+    val a : SPARSE_T = kvs.map(x => (x._1, Payload.mk(x._2)))
+    val bitpos = (0 until n_bits) // pick all bits for deduplication
+    SparseCuboid(n_bits, sRehash(a, bitpos))
+  }
+  def addPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc : SparseCuboid): SparseCuboid = {
+      val a : SPARSE_T = it.toSeq.map(x => (x._1, Payload.mk(x._2)))
+      val bitpos = (0 until n_bits)
+      SparseCuboid(n_bits, sRehashPartial(a, bitpos, sc.data))
+    
+  }
+
+  protected def sRehashPartial(a: SPARSE_T, bitpos: BITPOS_T, prev : SPARSE_T) : SPARSE_T = {
+    val hash_f: BigBinary => BigBinary = mk_project_bitpos_f(bitpos)
+
+    def dedup(b: SPARSE_T) : SPARSE_T = b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList
+
+    dedup(a.map{ case (i, v) => (hash_f(i), v) } ++ prev)
+  }
+
+  def initPartial(): SparseCuboid = {
+    return new SparseCuboid(0, Seq[(BigBinary, Payload)]())
+  }
+  def finalisePartial(sc :SparseCuboid): SparseCuboid = {
+    sc
   }
 
   protected def dFetch(data: DENSE_T) : Array[Payload] = data
@@ -71,27 +97,26 @@ object ScalaBackend extends Backend[Payload] {
   private def d2s(a: DENSE_T) : SPARSE_T =
     a.zipWithIndex.map(x => (BigBinary(x._2), x._1))
 
-  protected def dRehash(n_bits: Int, a: DENSE_T, p_bits: Int, mask: MASK_T
-  ) : DENSE_T = {
-    s2dRehash(d2s(a), p_bits, mask)
+  protected def dRehash(n_bits: Int, a: DENSE_T, p_bits: Int, bitpos: BITPOS_T) : DENSE_T = {
+    s2dRehash(d2s(a), p_bits, bitpos)
   }
 
   /** @param n_bits currently not used */
-  protected def d2sRehash(n_bits: Int, a: DENSE_T, mask: MASK_T) : SPARSE_T = {
-    sRehash(d2s(a), mask)
+  protected def d2sRehash(n_bits: Int, a: DENSE_T, bitpos: BITPOS_T) : SPARSE_T = {
+    sRehash(d2s(a), bitpos)
   }
 
-  protected def s2dRehash(a: SPARSE_T, p_bits: Int, mask: MASK_T) : DENSE_T = {
+  protected def s2dRehash(a: SPARSE_T, p_bits: Int, bitpos: BITPOS_T) : DENSE_T = {
     val hash_f: BigBinary => Int =
-      (x: BigBinary) => Bits.mk_project_f(mask)(x).toInt
+      (x: BigBinary) => mk_project_bitpos_f(bitpos)(x).toInt
 
     val a2 = Util.mkAB[Payload](1 << p_bits, _ => Payload.none)
     a.foreach { case(i, v) => a2(hash_f(i)).merge_in(v) }
     a2.toArray
   }
 
-  protected def sRehash(a: SPARSE_T, mask: MASK_T) : SPARSE_T = {
-    val hash_f: BigBinary => BigBinary = Bits.mk_project_f(mask)
+  protected def sRehash(a: SPARSE_T, bitspos: BITPOS_T) : SPARSE_T = {
+    val hash_f: BigBinary => BigBinary = mk_project_bitpos_f(bitspos)
 
     def dedup(b: SPARSE_T) : SPARSE_T =
        b.groupBy(_._1).mapValues(x => Payload.sum(x.map(_._2))).toList
@@ -99,16 +124,16 @@ object ScalaBackend extends Backend[Payload] {
     dedup(a.map{ case (i, v) => (hash_f(i), v) })
   }
 
-  override protected def hybridRehash(a: Seq[(BigBinary, Payload)], mask: MASK_T) : HYBRID_T = {
-      val res_n_bits = mask.sum
+  override protected def hybridRehash(a: Seq[(BigBinary, Payload)], bitpos: BITPOS_T) : HYBRID_T = {
+      val res_n_bits = bitpos.length
       val n0 = (math.log(a.size.toDouble)/math.log(2)).toInt
       if(n0 >= res_n_bits + 10)
-        (s2dRehash(a, res_n_bits, mask), null)
+        (s2dRehash(a, res_n_bits, bitpos), null)
       else {
         val size_dense = Big.pow2(res_n_bits)
-        val sparse_cuboid = sRehash(a, mask)
+        val sparse_cuboid = sRehash(a, bitpos)
         if (size_dense <= sparse_cuboid.size)
-          (s2dRehash(sparse_cuboid, res_n_bits, allones(res_n_bits)), null)
+          (s2dRehash(sparse_cuboid, res_n_bits, 0 until res_n_bits), null)
         else (null, sparse_cuboid)
     }
   }

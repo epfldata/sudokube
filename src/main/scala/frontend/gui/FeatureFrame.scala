@@ -2,18 +2,19 @@ package frontend.gui
 
 
 import core._
+import core.solver.lpp.SparseSolver
+import core.solver.{Rational, RationalTools}
 import frontend.schema._
-import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.chart.axis.NumberAxis
 import org.jfree.chart.plot.{PlotOrientation, XYPlot}
 import org.jfree.chart.renderer.xy.DeviationRenderer
+import org.jfree.chart.{ChartFactory, ChartPanel}
 import org.jfree.data.xy.{YIntervalSeries, YIntervalSeriesCollection}
 import org.jfree.ui.RectangleInsets
 import util.BigBinary
 
-import java.awt.{BasicStroke, BorderLayout, Color}
-
-import scala.swing.BorderPanel.Position.{Center, North, South}
+import java.awt.{BasicStroke, Color}
+import scala.swing.BorderPanel.Position.{Center, South}
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 
@@ -54,7 +55,7 @@ case class FeatureFrame(sch: Schema2, dc: DataCube, cheap_size: Int) {
   case class DimensionPanel(dimname: String, low: Int, high: Int, isColX: Boolean = false) extends GridBagPanel {
     var cur = if (isColX) high-1 else high + 1
 
-    def colsList = (cur to high).toList
+    def colsList = (cur to high)
 
     val plusButton = new Button("+")
     val minusButton = new Button("-")

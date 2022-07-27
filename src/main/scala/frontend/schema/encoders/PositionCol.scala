@@ -19,7 +19,7 @@ class PositionCol(reference: (Double, Double), precision: Int, maxVal: (Double, 
   }
 
 
-  override def bits: Seq[Int] = long.bits ++ lat.bits
+  override def bits: IndexedSeq[Int] = long.bits ++ lat.bits
 
   override def bitsMin: Int = ???
 
@@ -42,5 +42,5 @@ class PositionCol(reference: (Double, Double), precision: Int, maxVal: (Double, 
 
   override def decode_locally(i: Int): (Double, Double) = ???
 
-  override def queries(): Set[Seq[Int]] = lat.queries.flatMap(q1 => long.queries.map(q2 => q1 ++ q2))
+  override def queries(): Set[IndexedSeq[Int]] = lat.queries.flatMap(q1 => long.queries.map(q2 => q1 ++ q2))
 }

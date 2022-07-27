@@ -1,7 +1,7 @@
 import core.solver.iterativeProportionalFittingSolver.{IPFUtils, LoopyIPFSolver}
 import org.junit.Test
-import util.Bits
-
+import util.BitUtils
+import BitUtils._
 import scala.util.Random
 
 class LoopyIPFTest {
@@ -11,8 +11,8 @@ class LoopyIPFTest {
     val solver = new LoopyIPFSolver(5)
     Seq(Seq(0, 1), Seq(0, 2), Seq(0, 3), Seq(0, 4), Seq(2, 3)).foreach(variables => solver.add(variables, Array.fill(variables.size)(1.0 / variables.size)))
     solver.constructJunctionGraph()
-    solver.junctionGraph.cliques.foreach(clique => println(Bits.fromInt(clique.variables)))
-    solver.junctionGraph.separators.foreach(separator => println(s"${Bits.fromInt(separator.clique1.variables)} <--[${Bits.fromInt(separator.variables)}]--> ${Bits.fromInt(separator.clique2.variables)}"))
+    solver.junctionGraph.cliques.foreach(clique => println(IntToSet(clique.variables)))
+    solver.junctionGraph.separators.foreach(separator => println(s"${IntToSet(separator.clique1.variables)} <--[${BitUtils.IntToSet(separator.variables)}]--> ${BitUtils.IntToSet(separator.clique2.variables)}"))
     assert(!solver.junctionGraph.separators.exists(separator => separator.numVariables == 0 || separator.variables == 0))
     (0 until 5).foreach(variable => assert(
       solver.junctionGraph.separators.count(separator => (separator.variables & (1 << variable)) != 0)
@@ -29,7 +29,7 @@ class LoopyIPFTest {
     val solver = new LoopyIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
-        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        marginalVariables -> IPFUtils.getMarginalDistribution(6, data, marginalVariables.size,SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
@@ -40,10 +40,10 @@ class LoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(6, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
         )
       })
     }
@@ -60,7 +60,7 @@ class LoopyIPFTest {
     val solver = new LoopyIPFSolver(4)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,1,3)).map(marginalVariables => {
-        val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, SetToInt(marginalVariables))
         println(s"Variables ${marginalVariables.mkString("")}: ${marginalDistribution.map(_ / marginalDistribution.sum).mkString(", ")}")
         marginalVariables -> marginalDistribution
       }).toMap
@@ -73,10 +73,10 @@ class LoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(4, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(4, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
         )
       })
     }
@@ -91,7 +91,7 @@ class LoopyIPFTest {
     val solver = new LoopyIPFSolver(4)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,1,3)).map(marginalVariables => {
-        val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        val marginalDistribution = IPFUtils.getMarginalDistribution(4, data, marginalVariables.size, SetToInt(marginalVariables))
         println(s"Variables ${marginalVariables.mkString("")}: ${marginalDistribution.map(_ / marginalDistribution.sum).mkString(", ")}")
         marginalVariables -> marginalDistribution
       }).toMap
@@ -117,7 +117,7 @@ class LoopyIPFTest {
     val solver = new LoopyIPFSolver(5)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1,2), Seq(0,2,3), Seq(0,3,4), Seq(0,1,4), Seq(1,3,4)).map(marginalVariables => {
-        val marginalDistribution = IPFUtils.getMarginalDistribution(5, data, marginalVariables.size, Bits.toInt(marginalVariables))
+        val marginalDistribution = IPFUtils.getMarginalDistribution(5, data, marginalVariables.size, SetToInt(marginalVariables))
         println(s"Variables ${marginalVariables.mkString("")}: ${marginalDistribution.map(_ / marginalDistribution.sum).mkString(", ")}")
         marginalVariables -> marginalDistribution
       }).toMap
@@ -130,7 +130,7 @@ class LoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, Bits.toInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
       })
     }
   }

@@ -1,13 +1,11 @@
 package experiments
 
-import core.{DataCube, RandomizedMaterializationScheme, SolverTools, SparseSolver}
-import core.solver.{SliceSparseSolver, Strategy}
+import core.DataCube
+import core.solver.SolverTools
+import core.solver.lpp.{SliceSparseSolver, SparseSolver}
 import frontend.experiments.Tools
 import util.Profiler
 
-import java.io.{File, PrintStream}
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime}
 import scala.reflect.ClassTag
 
 class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("lp-batch", ename2) {
@@ -18,11 +16,11 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
   )
   //println("LP Solver of type " + implicitly[ClassTag[T]])
 
-  def lp_solve(dc: DataCube, q: Seq[Int]) = {
+  def lp_solve(dc: DataCube, q: IndexedSeq[Int]) = {
     val l = Profiler("LPSolve Prepare") {
-      dc.m.prepare(q, dc.m.n_bits - 1, dc.m.n_bits - 1) //fetch most dominating cuboids other than full
+      dc.index.prepareBatch(q) //fetch most dominating cuboids other than full
     }
-    val prepareMaxDim = l.last.mask.length
+    val prepareMaxDim = l.last.cuboidCost
     //println("Prepare over. #Cuboids to fetch = "+l.size + "  Last cuboid size =" + prepareMaxDim)
 
     val fetched = Profiler("LPSolve Fetch") {
@@ -33,7 +31,7 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
     //println("\nSliceSparseSolver")
     val s1 = Profiler("Init SliceSparseSolver") {
       val b1 = SolverTools.mk_all_non_neg(1 << q.size)
-      new SliceSparseSolver[T](q.length, b1, l.map(_.accessible_bits), fetched)
+      new SliceSparseSolver[T](q.length, b1, l.map(_.queryIntersection), fetched)
     }
 
     Profiler("ComputeBounds SliceSparse") {
@@ -55,16 +53,16 @@ class LPSolverBatchExpt[T: Fractional : ClassTag](val ename2: String = "")(impli
     (s1, prepareMaxDim)
   }
 
-  def run(dc: DataCube, dcname: String, qu: Seq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = ""): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
     val q = qu.sorted
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()
 
     val (naiveRes, naiveMaxDim) = Profiler("Naive Full") {
       val l = Profiler("NaivePrepare") {
-        dc.m.prepare(q, dc.m.n_bits, dc.m.n_bits)
+        dc.index.prepareNaive(q)
       }
-      val maxDim = l.head.mask.length
+      val maxDim = l.head.cuboidCost
       //println("Naive query "+l.head.mask.sum + "  maxDimFetched = " + maxDim)
       val res = Profiler("NaiveFetch") {
         dc.fetch(l).map(p => p.sm.toDouble)

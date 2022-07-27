@@ -1,9 +1,10 @@
-import core.SolverTools.error
-import core.solver.MomentSolverAll
-import core.solver.Strategy._
-import core.solver.iterativeProportionalFittingSolver.{Cluster, IPFUtils, VanillaIPFSolver}
+package core.solver.iterativeProportionalFittingSolver
+
+import core.solver.SolverTools.error
+import core.solver.moment.Strategy._
+import core.solver.moment.MomentSolverAll
 import org.junit.Test
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.util.Random
 
@@ -13,7 +14,7 @@ import scala.util.Random
  */
 class VanillaIPFTest {
   private val eps = 1e-3
-
+  implicit def listToInt = BitUtils.SetToInt(_)
   @Test
   def testAdd(): Unit = {
     val solver = new VanillaIPFSolver(3)
@@ -191,13 +192,13 @@ class VanillaIPFTest {
       for (marginalVariablesValues <- 0 until 1 << numMarginalVariables) {
         for (nonMarginalVariablesValues <- 0 until 1 << numNonMarginalVariables) {
           val nonMarginalVariables = ((1 << numDimensions) - 1) ^ marginalVariables
-          val allVariablesValues = Bits.unproject(marginalVariablesValues, marginalVariables) | Bits.unproject(nonMarginalVariablesValues, nonMarginalVariables)
+          val allVariablesValues = BitUtils.unprojectIntWithInt(marginalVariablesValues, marginalVariables) | BitUtils.unprojectIntWithInt(nonMarginalVariablesValues, nonMarginalVariables)
           marginalDistribution(marginalVariablesValues) += distribution(allVariablesValues)
         }
       }
 
-      vanillaIPFSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
-      momentSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
+      vanillaIPFSolver.add(marginalVariables, marginalDistribution)
+      momentSolver.add(marginalVariables, marginalDistribution)
     }
 
     momentSolver.fillMissing()
@@ -244,12 +245,12 @@ class VanillaIPFTest {
       for (marginalVariablesValues <- 0 until 1 << numMarginalVariables) {
         for (nonMarginalVariablesValues <- 0 until 1 << numNonMarginalVariables) {
           val nonMarginalVariables = ((1 << numDimensions) - 1) ^ marginalVariables
-          val allVariablesValues = Bits.unproject(marginalVariablesValues, marginalVariables) | Bits.unproject(nonMarginalVariablesValues, nonMarginalVariables)
+          val allVariablesValues = BitUtils.unprojectIntWithInt(marginalVariablesValues, marginalVariables) | BitUtils.unprojectIntWithInt(nonMarginalVariablesValues, nonMarginalVariables)
           marginalDistribution(marginalVariablesValues) += distribution(allVariablesValues)
         }
       }
 
-      vanillaIPFSolver.add(Bits.fromInt(marginalVariables).reverse, marginalDistribution)
+      vanillaIPFSolver.add(BitUtils.IntToSet(marginalVariables).reverse, marginalDistribution)
     }
 
     vanillaIPFSolver.solve()
@@ -259,7 +260,7 @@ class VanillaIPFTest {
 
   private def checkSolutionConsistency(solver: VanillaIPFSolver): Unit = {
     for (Cluster(marginalVariablesAsInt, expectedMarginalDistribution) <- solver.clusters) {
-      val marginalVariables = Bits.fromInt(marginalVariablesAsInt).reverse
+      val marginalVariables = BitUtils.IntToSet(marginalVariablesAsInt).reverse
       for (marginalVariablesValues <- 0 until (1 << marginalVariables.length)) {
         assertApprox(
           IPFUtils.getMarginalProbability(solver.querySize, solver.totalDistribution, marginalVariablesAsInt, marginalVariablesValues),

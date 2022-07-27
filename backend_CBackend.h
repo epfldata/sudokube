@@ -57,6 +57,30 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
 /*
  * Class:     backend_CBackend
+ * Method:    saveAsTrie0
+ * Signature: ([Lscala/Tuple2;Ljava/lang/String;J)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
+  (JNIEnv *, jobject, jobjectArray, jstring, jlong);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    loadTrie0
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_loadTrie0
+  (JNIEnv *, jobject, jstring);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    prepareFromTrie0
+ * Signature: ([I)[Lscala/Tuple2;
+ */
+JNIEXPORT jobjectArray JNICALL Java_backend_CBackend_prepareFromTrie0
+  (JNIEnv *, jobject, jintArray);
+
+/*
+ * Class:     backend_CBackend
  * Method:    mkAll0
  * Signature: (II)I
  */
@@ -121,43 +145,19 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add
 
 /*
  * Class:     backend_CBackend
+ * Method:    freezePartial
+ * Signature: (II)V
+ */
+JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
+  (JNIEnv *, jobject, jint, jint);
+
+/*
+ * Class:     backend_CBackend
  * Method:    freeze
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_freeze
   (JNIEnv *, jobject, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    readSCuboid0
- * Signature: (Ljava/lang/String;II)I
- */
-JNIEXPORT jint JNICALL Java_backend_CBackend_readSCuboid0
-  (JNIEnv *, jobject, jstring, jint, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    readDCuboid0
- * Signature: (Ljava/lang/String;II)I
- */
-JNIEXPORT jint JNICALL Java_backend_CBackend_readDCuboid0
-  (JNIEnv *, jobject, jstring, jint, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    writeSCuboid0
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_backend_CBackend_writeSCuboid0
-  (JNIEnv *, jobject, jstring, jint);
-
-/*
- * Class:     backend_CBackend
- * Method:    writeDCuboid0
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_backend_CBackend_writeDCuboid0
-  (JNIEnv *, jobject, jstring, jint);
 
 /*
  * Class:     backend_CBackend

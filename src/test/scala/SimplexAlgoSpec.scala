@@ -1,14 +1,13 @@
+import core.solver.lpp._
+import core.solver.{Rational, SolverTools, lpp}
 import org.scalatest._
-
-
+import IntervalTools._
+import core.solver.RationalTools._
+import core.solver.lpp.SparseMatrixImplicits._
+import util.{BitUtils, Util}
 class SimplexAlgoSpec extends FlatSpec with Matchers {
-  import core._
-  import frontend._
-  import frontend.schema._
-  import backend._
-  import util._
-  import RationalTools._
-  import core.SparseMatrixImplicits._
+  implicit def listToInt = BitUtils.SetToInt(_)
+  implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
 
   "SimplexAlgo" should "not crash when there are no constraints" in {
     val qsize = 1
@@ -40,7 +39,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
 /*
     val fc     = CBackend.b.mk(n_bits,
                    StaticSchema.mk(n_bits).TupleGenerator(50, Sampling.f1))
-    val m      = RandomizedMaterializationScheme(n_bits, .4, 2)
+    val m      = RandomizedMaterializationStrategy(n_bits, .4, 2)
     val dc     = new DataCube(m, fc)
     var q      = Util.rnd_choose(n_bits, 3)
     val l      = m.prepare(q, 1, 1)
@@ -51,7 +50,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
     val l2     = List(List(1), List(0), List(2))
     val v      = Array(100, 113, 106, 107, 126, 87).map(x => Rational(x, 1))
     val bounds = SolverTools.mk_all_non_neg[Rational](1 << q.length)
-    val s      = SparseSolver[Rational](3, bounds, l2, v)
+    val s      = lpp.SparseSolver[Rational](3, bounds, l2, v)
 
     s.my_bounds(0 to (1 << q.length) - 1)
     val r = s.bounds.toList.toString
@@ -81,7 +80,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
     val s = SparseSolver[Double](3,
       Util.mkAB[Interval[Double]](8, _ => Interval(None, None)),
       List(List(0,1), List(1,2)),
-      Array(7,7,10,7, 6,14,8,3)
+      Vector(7,7,10,7, 6,14,8,3)
     )
     val a = s.mk_tableau
     a.set_simple_objective(0, true)
@@ -222,12 +221,11 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
 
 
   "Empty tableau" should "not crash" in {
-    import core._
-    import RationalTools._
+    import core.solver.RationalTools._
     val qsize = 1
     val bounds = SolverTools.mk_all_non_neg[Rational](1 << qsize)
     val v = List[Rational]()
-    val l = List[List[Int]]()
+    val l = List[Int]()
     val s = SparseSolver[Rational](qsize, bounds, l, v)
     s.propagate_bounds(0 to (1 << qsize) - 1)
     s.my_bounds(0 to (1 << qsize) - 1)

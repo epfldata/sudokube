@@ -1,9 +1,8 @@
 package frontend.generators
 
-import backend.CBackend
-import core.{DataCube, MaterializationScheme}
+import core.DataCube
+import frontend.schema.encoders.StaticNatCol
 import frontend.schema.encoders.StaticNatCol.defaultToInt
-import frontend.schema.encoders.{NatCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2, StructuredDynamicSchema}
 import util.BigBinary
 
@@ -19,15 +18,13 @@ case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double) ex
     sch
   }
 
-  def dc = DataCube.load2(inputname + "_all")
+  def dc = DataCube.load(inputname + "_all")
 
-  override def generate(): (StructuredDynamicSchema, Seq[(BigBinary, Long)]) = ???
 
-  override def generate2(): (Schema2, IndexedSeq[(Int, Iterator[(BigBinary, Long)])]) = {
-    val sch = schema()
+  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val keys = (0 until 1 << n_bits)
     val kv = keys.map(k => BigBinary(k) -> sampleValue(k).toLong)
-    sch -> Vector((kv.size, kv.iterator))
+    Vector((kv.size, kv.iterator))
   }
 
   def sampleValue(k: Int): Int = {

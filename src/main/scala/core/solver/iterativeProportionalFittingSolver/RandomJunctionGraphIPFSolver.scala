@@ -2,7 +2,7 @@ package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.existsIntersectingVariables
 import core.solver.iterativeProportionalFittingSolver.JunctionGraph.Clique
-import util.{Bits, Profiler}
+import util.{BitUtils, Profiler}
 
 import scala.util.Random
 
@@ -29,7 +29,7 @@ class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPF
    */
   override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
     normalizationFactor = marginalDistribution.sum
-    val clusterVariables = Bits.toInt(marginalVariables)
+    val clusterVariables = BitUtils.SetToInt(marginalVariables)
     val cluster = Cluster(clusterVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters = cluster :: clusters
     val clique = Random.shuffle(junctionGraph.cliques.filter(clique => existsIntersectingVariables(clique.variables, clusterVariables)).toList).head

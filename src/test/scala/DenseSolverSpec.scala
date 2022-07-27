@@ -1,11 +1,14 @@
-import org.scalatest._
-import core._
-import DenseSolverTools._
 import backend.Payload
-import planning.ProjectionMetaData
+import core.solver.lpp.{DenseSolver, DenseSolverTools, Interval}
+import core.solver.{SolverTools, lpp}
+import org.scalatest._
+import planning.{NewProjectionMetaData, ProjectionMetaData}
+import util.BitUtils
 
 
 class SolverSpec extends FlatSpec with Matchers {
+  implicit def listToInt = BitUtils.SetToInt(_)
+  implicit def listOfListToListOfList(l: List[List[Int]]) = l.map(listToInt)
   val v = Array(2,2,2,2,2,2,2,2).map(x => new Payload(x, None))
 
   "removeSolved() test 1" should "work" in {
@@ -122,8 +125,8 @@ class SolverSpec extends FlatSpec with Matchers {
     // correct query result:
     // val v0 = Array(8.0, 4.0, 0.0, 2.0, 16.0, 0.0, 13.0, 0.0)
 
-    val l1 = List(ProjectionMetaData(List(0, 2),List(3, 9),List(1, 1),23), ProjectionMetaData(List(0, 1),List(3, 4),List(1, 1),26))
-    val l2 = List(ProjectionMetaData(List(1),List(4),List(1),10), ProjectionMetaData(List(0, 2),List(3, 9),List(1, 1),23), ProjectionMetaData(List(),List(),List(),0), ProjectionMetaData(List(0, 1),List(3, 4),List(1, 1),26), ProjectionMetaData(List(0),List(3),List(1),9), ProjectionMetaData(List(2),List(9),List(1),5))
+    val l1 = List(NewProjectionMetaData(List(0, 2), 23, 2, Vector(0, 1)), NewProjectionMetaData(List(0, 1), 26, 2, Vector(0, 1)))
+    val l2 = List(NewProjectionMetaData(List(1), 10, 1, Vector(0)), NewProjectionMetaData(List(0, 2), 23, 2, Vector(0, 1)), NewProjectionMetaData(List(), 0, 0,Vector()), NewProjectionMetaData(List(0, 1),26, 2, Vector(0, 1)), NewProjectionMetaData(List(0), 9, 1, Vector(0)), NewProjectionMetaData(List(2),5, 1, Vector(0)))
 
     def f(x: Double, y: Double) = Some(Interval(Some(x), Some(y)))
 
@@ -133,8 +136,8 @@ class SolverSpec extends FlatSpec with Matchers {
     val b1 = SolverTools.mk_all_non_neg[Double](1 << 3)
     val b2 = SolverTools.mk_all_non_neg[Double](1 << 3)
 
-    val s1 = DenseSolver(3, b1, l1.map(_.accessible_bits), v1)
-    val s2 = DenseSolver(3, b2, l2.map(_.accessible_bits), v2)
+    val s1 = DenseSolver(3, b1, l1.map(_.queryIntersection), v1)
+    val s2 = DenseSolver(3, b2, l2.map(_.queryIntersection), v2)
 
     assert(s1.compute_bounds.toList == s2.compute_bounds.toList)
   }

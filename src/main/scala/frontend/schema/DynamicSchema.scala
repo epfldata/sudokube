@@ -11,7 +11,7 @@ import java.io.{File, FileOutputStream, ObjectOutputStream}
 
     Example:
     {{{
-    $ cat animals.json
+    $ cat example-data/animals.json
     [
       { "name": "polar bear",
         "origin": "North Pole",
@@ -29,7 +29,7 @@ import java.io.{File, FileOutputStream, ObjectOutputStream}
     scala> val animals_sch = new DynamicSchema
 
     // R is the actual data; this is not stored in the schema.
-    scala> val R = animals_sch.read("animals.json")
+    scala> val R = animals_sch.read("example-data/animals.json")
     R: List[(util.BigBinary, Int)] = List(( 10101111,1), (11101 00100000,1))
 
     scala> val col_names = animals_sch.columnList.map(_._1)
@@ -71,7 +71,7 @@ class DynamicSchema extends Schema {
   implicit val bitPosRegistry = new BitPosRegistry
   val columns = collection.mutable.Map[String, ColEncoder[_]]()
   /* protected */
-  def columnList = columns.toList
+  def columnList = columns.toIndexedSeq
 
   /** stores integers efficiently using NatCol and a sign bit;
       everything else is represented by MemCol[Option[String]].

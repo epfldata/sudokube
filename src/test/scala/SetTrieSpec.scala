@@ -1,16 +1,16 @@
-import core.solver.Moment1Transformer
-import core.{SetTrie, SetTrieForMoments}
+import core.ds.settrie.{SetTrie, SetTrieForMoments}
+import core.solver.moment.Moment1Transformer
 import org.scalatest.{FlatSpec, Matchers}
-import util.{BigBinary, Bits, Util}
+import util.{BigBinary, BitUtils, Util}
 
-import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
-import scala.math.Numeric.Implicits.infixNumericOps
+import java.io._
+import scala.reflect.ClassTag
 import scala.util.Random
 
 class SetTrieSpec extends FlatSpec with Matchers {
 
   "ExistsSuperSet " should " work " in {
-    val trie = new SetTrie()
+    val trie = new SetTrie(1024)
     trie.insert(List(1, 2, 3, 4, 5))
     trie.insert(List(10, 12, 15, 21, 25, 26))
     trie.insert(List(11, 12, 16, 18, 30, 31))
@@ -35,7 +35,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
   }
 
   def randomTest(ns: Int, ss: Int, max: Int, nq: Int, sq: Int)  = {
-    val trie = new SetTrie()
+    val trie = new SetTrie(ss * max)
     val sets = collection.mutable.ArrayBuffer[Set[Int]]()
     (0 until ns).foreach { i =>
       val s = Util.collect_n(ss,  () => Random.nextInt(max))
@@ -52,7 +52,7 @@ class SetTrieSpec extends FlatSpec with Matchers {
       else falseCount += 1
       assert(s1 == s2)
     }
-    print(s"Trie Randomtest true = $trueCount false = $falseCount")
+    println(s"Trie Randomtest true = $trueCount false = $falseCount")
   }
 
   "Trie ExistSuperset" should s"be correct for random sets 1" in randomTest(10, 5, 20, 10, 2)
@@ -65,36 +65,36 @@ class SetTrieSpec extends FlatSpec with Matchers {
     val nbits = 10
     val N = (1 << nbits)
     (0 until N).foreach { i =>
-      val cs = Bits.fromInt(i).sorted
-      trie.insert(cs, i.toDouble)
+      val cs = BitUtils.IntToSet(i).sorted
+      trie.insert(cs, (i+1).toDouble)
     }
-    assert(trie.count == N)
-    def query(q: List[Int]) = {
+    assert(trie.nodeCount == N)
+    def query(q: IndexedSeq[Int]) = {
       val moments = trie.getNormalizedSubsetMoments(q).toMap
       val N = (1 << q.length)
       assert(moments.size == N)
       (0 until N).foreach { i =>
         //println(s"i = $i  m = ${moments(i)}")
-        assert(moments(i).toInt == BigBinary(i).pup(q).toInt)
+        assert(moments(i).toInt-1 == BigBinary(i).pup(q).toInt)
       }
     }
 
-    query(List())
-    query((0 until nbits).toList)
-    query(List(5, 7, 9))
-    query(List(2, 5, 6))
-    query(List(0, 5, 6, 7))
-    query(List(0, 2, 3, 4, 8))
-    query(List(1, 3, 4))
+    query(Vector())
+    query((0 until nbits))
+    query(Vector(5, 7, 9))
+    query(Vector(2, 5, 6))
+    query(Vector(0, 5, 6, 7))
+    query(Vector(0, 2, 3, 4, 8))
+    query(Vector(1, 3, 4))
   }
 
   "SetTrie" should "return subset moments from cuboids for query " in {
     val trie = new SetTrieForMoments()
-    def ms[T:Numeric](vs : Array[T]) = Moment1Transformer.getMoments(vs.map(_.toDouble))
-    trie.insertAll(List(0, 1), ms(Array(7, 3, 6, 1)))
-    trie.insertAll(List(1, 2), ms(Array(1, 4, 9, 3)))
-    trie.insertAll(List(0, 2), ms(Array(3, 2, 10, 2)))
-    assert(trie.count == 7)
+    def ms[T:ClassTag:Fractional](vs : Array[T]) = Moment1Transformer[T]().getMoments(vs)
+    trie.insertAll(Vector(0, 1), ms(Array(7, 3, 6, 1)))
+    trie.insertAll(Vector(1, 2), ms(Array(1, 4, 9, 3)))
+    trie.insertAll(Vector(0, 2), ms(Array(3, 2, 10, 2)))
+    assert(trie.nodeCount == 7)
     val filename = "triemoment"
     val file = new File("cubedata/" + filename + "/" + filename + ".trie")
     if(!file.exists())
@@ -105,11 +105,12 @@ class SetTrieSpec extends FlatSpec with Matchers {
 
     val ois = new ObjectInputStream(new FileInputStream(file))
     val trie2 = ois.readObject().asInstanceOf[SetTrieForMoments]
-    assert(trie2.count == 7)
-    val q = List(0, 1, 2)
+    assert(trie2.nodeCount == 7)
+    val q = Vector(0, 1, 2)
     val moments = trie2.getNormalizedSubsetMoments(q).sortBy(_._1)
     val actual = List(17, 4, 7, 1, 12, 2, 3).zipWithIndex.map{case (m, i) => (i, m.toDouble)}
     assert(moments.sameElements(actual))
-    file.delete()
+    file.delete
+    file.getParentFile.delete()
   }
 }
