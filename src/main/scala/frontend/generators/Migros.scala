@@ -106,7 +106,7 @@ object Migros {
       val (sch, r) = read()
       val rf = math.pow(10, lrf)
       val base = math.pow(10, lbase)
-      val dc = new DataCube(RandomizedMaterializationScheme(sch.n_bits, rf, base))
+      val dc = new DataCube(OldRandomizedMaterializationStrategy(sch.n_bits, rf, base))
       val name = "brazil"
       sch.save(name)
       dc.build(CBackend.b.mk(sch.n_bits, r.toIterator))

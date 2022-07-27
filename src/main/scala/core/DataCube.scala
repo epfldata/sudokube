@@ -4,7 +4,7 @@ package core
 import backend._
 import core.cube.{CuboidIndex, CuboidIndexFactory}
 import core.ds.settrie.SetTrieForMoments
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import core.materialization.builder._
 import core.solver._
 import core.solver.lpp.{SliceSparseSolver, SparseSolver}
@@ -19,7 +19,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 
 /** To create a DataCube, must either
-  * (1) call DataCube.build(full_cube, matscheme) or
+  * (1) call DataCube.build(full_cube, matstrat) or
   * (2) call (companion object) DataCube.load(..)
   * before use.
   *
@@ -45,7 +45,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
   /**
     * Builds this cube using the base_cuboid of another DataCube
     */
-  def buildFrom(that: DataCube, m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default): Unit = {
+  def buildFrom(that: DataCube, m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default): Unit = {
     val full_cube = that.cuboids.last
     build(full_cube, m, indexFactory, cb)
   }
@@ -58,7 +58,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
     *
     * @param full_cube is integrated into the data cube as is and not copied.
     */
-  def build(full_cube: Cuboid, m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) {
+  def build(full_cube: Cuboid, m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) {
     assert(full_cube.n_bits == m.n_bits)
     val showProgress = m.n_bits > 25
     index = indexFactory.buildFrom(m)
@@ -196,7 +196,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
 
   /** lets us provide a callback function that is called for increasing
     bit depths of relevant projections (as provided by
-    MaterializationScheme.prepare_online_agg()).
+    CuboidIndex.prepareOnline()).
 
     @param cheap_size is the number of dimensions up to which cuboids
     can be prepared for the initial iteration. cheap_size refers
@@ -341,7 +341,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
 class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
   lazy val base = DataCube.load(basename)
 
-   def buildPartial(m: MaterializationScheme, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
+   def buildPartial(m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
 
   override def load(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](index.length)

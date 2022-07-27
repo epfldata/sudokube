@@ -1,6 +1,6 @@
 package core.cube
 
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import planning.{NewProjectionMetaData, ProjectionMetaData}
 import util.BitUtils
 
@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
   override val typeName: String = "DAG"
   override protected def saveToOOS(oos: ObjectOutputStream): Unit = ???
-  override def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
+  override def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int): List[NewProjectionMetaData] = {
     val hm_cheap = collection.mutable.HashMap[Seq[Int], DagVertex]()
     val qSet = query.toSet
     val ret = new ListBuffer[NewProjectionMetaData]()
@@ -100,7 +100,7 @@ class DAGCuboidIndex(val projectionsDAGroot: DagVertex, projections: IndexedSeq[
       ret += NewProjectionMetaData(abInt, dv.id, dv.p.length, bitpos)
     })
     resetDag(projectionsDAGroot)
-    ret
+    ret.toList
   }
 
   override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = ???
@@ -194,6 +194,6 @@ object DAGCuboidIndexFactory extends CuboidIndexFactory {
     }
     root
   }
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new DAGCuboidIndex(buildDag(m.projections.zipWithIndex.sortBy(-_._1.length)), m.projections, m.n_bits)
+  override def buildFrom(m: MaterializationStrategy): CuboidIndex = new DAGCuboidIndex(buildDag(m.projections.zipWithIndex.sortBy(-_._1.length)), m.projections, m.n_bits)
   override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = ???
 }

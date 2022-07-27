@@ -1,6 +1,6 @@
 import backend.CBackend
 import core.DataCube
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.RandomizedMaterializationStrategy
 import frontend.schema.DynamicSchema
 import org.scalatest.{FreeSpec, Matchers}
 import util.BitUtils
@@ -39,9 +39,9 @@ class SchemaSpec extends FreeSpec with Matchers {
 
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-    val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
+    val matstrat = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4)
     val dc = new DataCube()
-    dc.build(basecuboid, matscheme)
+    dc.build(basecuboid, matstrat)
 
     def perm_func(query: IndexedSeq[Int]) = {
       val query_sorted = query.sorted

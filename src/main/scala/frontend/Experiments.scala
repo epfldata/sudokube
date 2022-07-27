@@ -7,7 +7,7 @@ import combinatorics._
 import util._
 import backend._
 import core.cube.ArrayCuboidIndexFactory
-import core.materialization.{MaterializationScheme, MaterializationSchemeInfo, OldRandomizedMaterializationScheme}
+import core.materialization.{MaterializationStrategy, MaterializationStrategyInfo, OldRandomizedMaterializationStrategy}
 import core.solver.{Rational, RationalTools, SolverTools}
 import core.solver.lpp.{Interval, SliceSparseSolver}
 import generators._
@@ -18,7 +18,7 @@ object Tools {
     val prec = math.pow(10, digits)
     math.floor(v * prec)/prec
   }
-  //For Randomized Materialization Scheme so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
+  //For Randomized Materialization Strategy so that a specific column has 1 cuboid and 4th level has 10^4 cuboids
   def params(nbits: Int, colWith1: Int) = {
     /*
       x * y^(n-4) = 10^4
@@ -42,7 +42,7 @@ object Tools {
   }
 
   class JailBrokenDataCube(
-    m: MaterializationScheme,
+    m: MaterializationStrategy,
     fc: Cuboid
   ) extends DataCube with Serializable {
     build(fc, m)
@@ -64,7 +64,7 @@ object Tools {
     println("mkDC: Creating maximum-granularity cuboid...")
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
-    val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
     val dc = new DataCube();
     Profiler("Projections"){dc.build(fc, m)}
     //    val dc = new JailBrokenDataCube(m, fc)
@@ -95,7 +95,7 @@ object minus1_adv {
 
     for(i <- 1 to num_it) {
       val q = Tools.qq(qsize)
-      val m = OldRandomizedMaterializationScheme(nbits, rf, base)
+      val m = OldRandomizedMaterializationStrategy(nbits, rf, base)
 
       //SBJ: Changed parameters for this calculation
       val a = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q).groupBy(ps => BitUtils.sizeOfSet(ps.queryIntersection))
@@ -169,8 +169,8 @@ object fd_storage {
       val base = 1.0 + j.toDouble / 100  // 1.01 to 1.2 
       println(rf + " " + base)
 
-      val m = OldRandomizedMaterializationScheme(n, rf, base)
-      val info = new MaterializationSchemeInfo(m)
+      val m = OldRandomizedMaterializationStrategy(n, rf, base)
+      val info = new MaterializationStrategyInfo(m)
       pw.write(rf + "\t" + base + "\t" + m.projections.length
         + "\t" + info.wc_ratio(30) + "\t" + info.wc_ratio(40)
         + "\t" + info.fd_ratio(30) + "\t" + info.fd_ratio(40) + "\n")
@@ -192,7 +192,7 @@ object exp_e_df {
     max_fetch_dim: Int
   ) = {
     import backend.Payload
-    val m = OldRandomizedMaterializationScheme(n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
     val q = (0 to qsize-1)
     val l = ArrayCuboidIndexFactory.buildFrom(m).prepareBatch(q, max_fetch_dim).map(_.queryIntersection)
 

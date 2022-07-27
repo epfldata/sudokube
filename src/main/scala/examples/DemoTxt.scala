@@ -229,7 +229,7 @@ object DemoTxt {
     val fullcub = CBackend.b.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
     val dc = new DataCube()
-    val m = new RandomizedMaterializationScheme(n_bits, 6, 2)
+    val m = new RandomizedMaterializationStrategy(n_bits, 6, 2)
     dc.build(fullcub, m)
     (0 until n_queries).map { i =>
       val q = Tools.rand_q(n_bits, query_size)

@@ -1,11 +1,11 @@
-import core.materialization.{MaterializationScheme, RandomizedMaterializationScheme}
+import core.materialization.{MaterializationStrategy, RandomizedMaterializationStrategy}
 import core.materialization.builder._
 import org.scalatest.{FlatSpec, Matchers}
 import util.Profiler
 
 class CubeBuilderTest extends FlatSpec with Matchers {
   type Plan = Seq[(Set[Int], Int, Int)]
-  def checkSame(m: MaterializationScheme, relaxed: Boolean = false)(plan1: Plan, plan2: Plan) {
+  def checkSame(m: MaterializationStrategy, relaxed: Boolean = false)(plan1: Plan, plan2: Plan) {
     plan1.zip(plan2).foreach{ case(p1, p2)  =>
       assert(p1._1 equals p2._1)
       assert(p1._2 equals p2._2)
@@ -23,7 +23,7 @@ class CubeBuilderTest extends FlatSpec with Matchers {
     }
   }
   def randomTest(nbits: Int, logN: Int, minD: Int): Unit = {
-    val m = new RandomizedMaterializationScheme(nbits, logN, minD)
+    val m = new RandomizedMaterializationStrategy(nbits, logN, minD)
     Profiler.resetAll()
     val plan1 = Profiler("SimplePlan"){SimpleCubeBuilderST.create_build_plan(m)}
     val plan2 = Profiler("BSTPlan"){BinarySearchCubeBuilderST.create_build_plan(m)}

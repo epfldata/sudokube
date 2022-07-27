@@ -55,7 +55,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = (1 to N).map { i => BigBinary(i) -> i.toLong }
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
-    val m = MaterializationScheme.only_base_cuboid(n_bits)
+    val m = MaterializationStrategy.only_base_cuboid(n_bits)
     val dc1 = new DataCube(name)
     dc1.build(full_cube, m)
 
@@ -81,7 +81,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = (0 to 15).map(i => BigBinary(i) -> i.toLong)
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mkAll(n_bits, R)
-    val m = OldRandomizedMaterializationScheme(schema.n_bits, 1, 1)
+    val m = OldRandomizedMaterializationStrategy(schema.n_bits, 1, 1)
 
     val name = "MultiCuboidTest1"
     val dc1 = new DataCube(name)
@@ -121,7 +121,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = TupleGenerator(schema, n_rows, Sampling.f1)
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
-    val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
     val dc1 = new DataCube(name)
     dc1.build(full_cube, m)
     dc1.save()
@@ -158,11 +158,11 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val R = TupleGenerator(schema, n_rows, Sampling.f1)
     val be: Backend[Payload] = CBackend.b
     val full_cube = be.mk(n_bits, R)
-    val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
 
     val basename = name + "_base"
     val dcbase = new DataCube(basename)
-    val m0 = MaterializationScheme.only_base_cuboid(n_bits)
+    val m0 = MaterializationStrategy.only_base_cuboid(n_bits)
     dcbase.build(full_cube, m)
     dcbase.save()
 

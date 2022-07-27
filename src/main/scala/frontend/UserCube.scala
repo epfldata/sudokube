@@ -3,7 +3,7 @@ package frontend
 import backend.CBackend
 import core.DataCube
 import TestLine.testLineOp
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.RandomizedMaterializationStrategy
 import frontend.schema.Schema
 import util.BitUtils.permute_bits
 
@@ -296,10 +296,10 @@ object UserCube {
   def createFromJson(filename: String, fieldToConsider: String, cubeName: String): UserCube = {
     val sch = new schema.DynamicSchema
     val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
-    val matScheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
+    val m = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
     val dc = new DataCube(cubeName)
     val baseCuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
-    dc.build(baseCuboid, matScheme)
+    dc.build(baseCuboid, m)
     new UserCube(cubeName, dc, sch)
   }
 }

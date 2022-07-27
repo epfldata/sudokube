@@ -3,7 +3,7 @@ package experiments
 import backend.CBackend
 import combinatorics.Combinatorics
 import core._
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import core.solver.moment.Strategy._
 import core.solver.moment._
 import core.solver.{Rational, RationalTools, SolverTools}
@@ -416,7 +416,7 @@ object Experimenter {
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
-        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val m = MaterializationStrategy.all_cuboids(cg.n_bits)
         val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
@@ -441,7 +441,7 @@ object Experimenter {
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
-        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val m = MaterializationStrategy.all_cuboids(cg.n_bits)
         val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
@@ -467,7 +467,7 @@ object Experimenter {
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
-        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val m = MaterializationStrategy.all_cuboids(cg.n_bits)
         val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
@@ -492,7 +492,7 @@ object Experimenter {
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
-        val m = MaterializationScheme.all_cuboids(cg.n_bits)
+        val m = MaterializationStrategy.all_cuboids(cg.n_bits)
         val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)

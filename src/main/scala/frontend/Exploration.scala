@@ -69,7 +69,7 @@ val sch = new DynamicSchema
 val R   = sch.read("/Users/ckoch/json/Shoppen.json")
 val fc  = CBackend.b.mk(sch.n_bits, R.toIterator)
 //val fc  = ScalaBackend.mk(sch.n_bits, R.toIterator)
-val m   = RandomizedMaterializationScheme(sch.n_bits, .005, 1.02)
+val m   = OldRandomizedMaterializationStrategy(sch.n_bits, .005, 1.02)
 val dc  = new DataCube(m)
 dc.build(fc)
 

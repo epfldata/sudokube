@@ -1,7 +1,7 @@
 package core.materialization.builder
 
 import backend.Cuboid
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import util.{BitUtils, ProgressIndicator, Util}
 
 
@@ -13,7 +13,7 @@ import scala.concurrent.duration.Duration
  * it is to be obtained.
  */
 trait CubeBuilder {
-  def build(base: Cuboid, m: MaterializationScheme, showProgress: Boolean = false): IndexedSeq[Cuboid]
+  def build(base: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid]
 
   /** Create a plan for building each cuboid from the smallest that subsumes
    * it. Using BestSubsumerPlanBuilder for this is too expensive though.
@@ -33,7 +33,7 @@ trait CubeBuilder {
    * same projections (in the same order), it always produces the same
    * result.
    */
-  protected def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): Seq[(Set[Int], Int, Int)]
+  protected def create_build_plan(m: MaterializationStrategy, showProgress: Boolean = false): Seq[(Set[Int], Int, Int)]
 
 }
 
@@ -41,7 +41,7 @@ object CubeBuilder {
   var default: CubeBuilder = TrieCubeBuilderMT
 }
 trait SingleThreadedCubeBuilder extends CubeBuilder {
-  override def build(full_cube: Cuboid, m: MaterializationScheme, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
+  override def build(full_cube: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
 
     // puts a ref to the same object into all fields of the array.
@@ -69,7 +69,7 @@ trait SingleThreadedCubeBuilder extends CubeBuilder {
 
 trait MultiThreadedCubeBuilder extends CubeBuilder {
 
-  override def build(full_cube: Cuboid, m: MaterializationScheme, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
+  override def build(full_cube: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
     val cuboidFutures = Util.mkAB[Future[Cuboid]](m.projections.length, _ => null)
     val pi = new ProgressIndicator(build_plan.length, "Projecting...", showProgress)

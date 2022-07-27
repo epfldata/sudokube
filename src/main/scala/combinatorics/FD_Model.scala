@@ -1,7 +1,7 @@
 //package ch.epfl.data.sudokube
 package combinatorics
 import core.materialization
-import core.materialization.OldRandomizedMaterializationScheme
+import core.materialization.OldRandomizedMaterializationStrategy
 import util._
 
 
@@ -39,7 +39,7 @@ object FD_Model {
   /** estimated storage overhead. */
   def est(n: Int, s: Int, rf: Double, base: Double, mindim: Int = 0
   ) : BigDecimal= {
-    val m = materialization.OldRandomizedMaterializationScheme(n, rf, base, mindim)
+    val m = materialization.OldRandomizedMaterializationStrategy(n, rf, base, mindim)
     val total = (for(d <- 0 to n) yield { m.n_proj_d(d) * avg_u(n, s, d) }).sum
     BigDecimal(total) / Big.pow(2, s)
   }
@@ -53,7 +53,7 @@ object FD_Model {
 
     pw.write("#Dimensions\t#Cuboids\tAvg. Cuboid Size\tStorage Consumption\n")
 
-    val m = OldRandomizedMaterializationScheme(n, rf, base, mindim)
+    val m = OldRandomizedMaterializationStrategy(n, rf, base, mindim)
     val total = (for(d <- 0 to n) yield {
       val n_proj = m.n_proj_d(d)
       val a = avg_u(n, s, d)

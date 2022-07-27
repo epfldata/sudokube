@@ -1,4 +1,4 @@
-import core.materialization.OldRandomizedMaterializationScheme
+import core.materialization.OldRandomizedMaterializationStrategy
 import core.solver.moment.Moment1Transformer
 import frontend.experiments.Tools
 import org.scalatest._
@@ -156,7 +156,7 @@ class CBackendSpec extends FlatSpec with Matchers {
       assert(r1 == r4, "FAILURE C != Scala")
 
 
-      val m = OldRandomizedMaterializationScheme(n_bits, 1, 1.05)
+      val m = OldRandomizedMaterializationStrategy(n_bits, 1, 1.05)
       val dc = new JailBrokenDataCube(m, c)
       val r5 = dc.getCuboids.last.rehash_to_dense(qmask)
                  .asInstanceOf[CBackend.b.DenseCuboid].fetch.toList
@@ -174,7 +174,7 @@ class CBackendSpec extends FlatSpec with Matchers {
     val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
     val be = Vector(CBackend.b, ScalaBackend)
     val full_cube = be.map(_.mkAll(n_bits, R))
-    val m = OldRandomizedMaterializationScheme(schema.n_bits, rf, base)
+    val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
     val dcs = full_cube.map { fc =>
       val dc = new DataCube()
       dc.build(fc, m)

@@ -1,7 +1,8 @@
 package core.cube
 
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import planning.NewProjectionMetaData
+import util.Profiler
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
@@ -64,15 +65,21 @@ abstract class CuboidIndex(val n_bits: Int) extends IndexedSeq[IndexedSeq[Int]] 
    */
   def prepareOnline(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int = n_bits) = prepare(query, cheap_size, max_fetch_dim)
   protected def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int) = {
-    val cubs = qproject(query, max_fetch_dim).sortBy(-_.queryIntersection) //sorting by supersets first and then subsets
-    val cubs2 = eliminateRedundant(cubs, cheap_size)
-    if (cheap_size == max_fetch_dim) cubs2 else cubs2.reverse //supersets first then subsets for batch mode, reverse for online mode
+    val cname = getClass.getCanonicalName
+
+    val cubs0 = Profiler(cname + " QP") { qproject(query, max_fetch_dim) }
+    val cubs = Profiler(cname + " sort") { cubs0.sortBy(p => -p.sortID(query.size)) } //sorting by larger cuboids first and then smaller
+    val cubsER = Profiler(cname + " ER") { eliminateRedundant(cubs, cheap_size).toList }
+
+    //MUST return List, otherwise it returns Stream which computes it lazily affecting Time measurements
+
+    if (cheap_size == max_fetch_dim) cubsER else cubsER.reverse // larger ones first for batch mode, smaller ones for online
   }
 }
 
 
 abstract class CuboidIndexFactory {
-  def buildFrom(m: MaterializationScheme): CuboidIndex
+  def buildFrom(m: MaterializationStrategy): CuboidIndex
   def loadFromOIS(ois: ObjectInputStream): CuboidIndex
 }
 

@@ -2,7 +2,7 @@ package examples
 
 import backend.CBackend
 import core.DataCube
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.RandomizedMaterializationStrategy
 import frontend._
 
 import java.io._
@@ -40,9 +40,9 @@ object StreamProcessingDemo {
     val R = sch.read("random.json")
     val basecuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
 
-    val matscheme = new RandomizedMaterializationScheme(sch.n_bits, 8, 4)
+    val matstrat = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4)
     val dc = new DataCube()
-    dc.build(basecuboid, matscheme)
+    dc.build(basecuboid, matstrat)
     val cube = new UserCube("StreamDemo", dc, sch)
     val analyse = new Analysis(cube, sch)
     //val r :  List[(Int, List[(String, String, String)])] = analyse.divideV2()

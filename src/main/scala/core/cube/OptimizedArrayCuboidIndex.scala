@@ -1,10 +1,12 @@
 package core.cube
 
-import core.materialization.MaterializationScheme
+import core.ds.settrie.SetTrieForPrepare
+import core.materialization.MaterializationStrategy
 import planning.NewProjectionMetaData
 import util.Profiler
 
 import java.io.ObjectInputStream
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Stores all projections in an array. Uses an optimized algorithm for intersection in [[qproject]]
@@ -40,7 +42,7 @@ class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[
     intersectionX -> intersectionY
   }
 
-  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = Profiler("OACI qp"){
+  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
 
     val hm =  collection.mutable.Map[Int, NewProjectionMetaData]()
     projections.indices.foreach { id =>
@@ -57,13 +59,23 @@ class OptimizedArrayCuboidIndex(override val projections: IndexedSeq[IndexedSeq[
     hm.values.toSeq
   }
 
-  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = Profiler("OACI eR"){
-    cubs.filter(x => !cubs.exists(y => y.dominates(x, cheap_size)))
+  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = {
+    val result = new ArrayBuffer[NewProjectionMetaData]()
+    val trie = new SetTrieForPrepare(cubs.length * cubs.head.cuboidCost)
+    //cubs must processed in the order supersets first and then subsets
+    cubs.foreach { p =>
+      //Add to result if there does not exist a cheap super set.
+      if (!trie.existsCheapSuperSetInt(p.queryIntersection, p.cuboidCost max cheap_size)) {
+        trie.insertInt(p.queryIntersection, p.cuboidCost)
+        result += p
+      }
+    }
+    result
   }
 }
 
 object OptimizedArrayCuboidIndexFactory extends CuboidIndexFactory {
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new OptimizedArrayCuboidIndex(m.projections, m. n_bits)
+  override def buildFrom(m: MaterializationStrategy): CuboidIndex = new OptimizedArrayCuboidIndex(m.projections, m. n_bits)
   override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = {
     val nbits = ois.readInt()
     val projections = ois.readObject().asInstanceOf[IndexedSeq[IndexedSeq[Int]]]

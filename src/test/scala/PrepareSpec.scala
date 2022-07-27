@@ -25,7 +25,7 @@ class PrepareSpec extends FlatSpec with Matchers {
 
 
   def RMS_online_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, cheap: Int, maxFetch: Int): Unit = {
-    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
+    val m = new RandomizedMaterializationStrategy(nbits, logncubs, dmin)
     val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
     val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
     val idx3 = SetTrieCuboidIndexFactory.buildFrom(m)
@@ -40,17 +40,17 @@ class PrepareSpec extends FlatSpec with Matchers {
       isSameAs(idx1po, idx2po)
       isSameAs(idx1po, idx3po)
 
-      //Check if subsets before supersets
-      assert(idx1po.sortBy(ps => ps.queryIntersection) sameElements idx1po)
-      assert(idx2po.sortBy(ps => ps.queryIntersection) sameElements idx2po)
-      assert(idx3po.sortBy(ps => ps.queryIntersection) sameElements idx3po)
+      //Check if smaller ones appear first
+      assert(idx1po.sortBy(ps => ps.sortID(nbits)) sameElements idx1po)
+      assert(idx2po.sortBy(ps => ps.sortID(nbits)) sameElements idx2po)
+      assert(idx3po.sortBy(ps => ps.sortID(nbits)) sameElements idx3po)
     }
     println("\nTime for Online")
     Profiler.print()
   }
 
   def RMS_batch_test(nbits: Int, dmin: Int, logncubs: Int, nq: Int, qs: Int, maxFetch: Int): Unit = {
-    val m = new RandomizedMaterializationScheme(nbits, logncubs, dmin)
+    val m = new RandomizedMaterializationStrategy(nbits, logncubs, dmin)
     val idx1 = ArrayCuboidIndexFactory.buildFrom(m)
     val idx2 = OptimizedArrayCuboidIndexFactory.buildFrom(m)
     val idx3 = SetTrieCuboidIndexFactory.buildFrom(m)
@@ -66,18 +66,23 @@ class PrepareSpec extends FlatSpec with Matchers {
       isSameAs(idx2pb, idx1pb)
       isSameAs(idx3pb, idx1pb)
 
-      //Check if supersets before subsets
-      assert(idx1pb.sortBy(ps => -ps.queryIntersection) sameElements idx1pb)
-      assert(idx2pb.sortBy(ps => -ps.queryIntersection) sameElements idx2pb)
-      assert(idx3pb.sortBy(ps => -ps.queryIntersection) sameElements idx3pb)
+      //Check if larger ones appear first
+      assert(idx1pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx1pb)
+      assert(idx2pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx2pb)
+      assert(idx3pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx3pb)
 
     }
-    println("\nTime for Batch")
+    println(s"\nTime for Batch qs=$qs")
     Profiler.print()
   }
 
 
-  "All cuboid indexes " should " give the same result for Online Prepare " in RMS_online_test(100, 15, 15, 100, 10, 0, 40)
-  "All cuboid indexes" should " give the same result for Batch Prepare  " in RMS_batch_test(100, 15, 15, 100, 18, 40)
+  "All cuboid indexes " should " give the same result for Online Prepare QS=15" in RMS_online_test(100, 15, 15, 100, 15, 0, 40)
+  //"All cuboid indexes " should " give the same result for Online Prepare2 " in RMS_online_test(100, 15, 15, 100, 10, 20, 40)
+  //"All cuboid indexes " should " give the same result for Online Prepare3 " in RMS_online_test(100, 15, 15, 100, 10, 39, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=5  " in RMS_batch_test(100, 15, 15, 100, 5, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=10  " in RMS_batch_test(100, 15, 15, 100, 10, 40)
+  "All cuboid indexes" should " give the same result for Batch Prepare QS=15  " in RMS_batch_test(100, 15, 15, 100, 15, 40)
+  //"All cuboid indexes" should " give the same result for Batch Prepare QS=20  " in RMS_batch_test(100, 15, 15, 100, 20, 40)
 
 }

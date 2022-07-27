@@ -20,7 +20,6 @@ case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double) ex
 
   def dc = DataCube.load(inputname + "_all")
 
-  override def generate(): (StructuredDynamicSchema, Seq[(BigBinary, Long)]) = ???
 
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val keys = (0 until 1 << n_bits)

@@ -1,6 +1,6 @@
 package core.materialization.builder
 
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import util.ProgressIndicator
 
 /**
@@ -9,7 +9,7 @@ import util.ProgressIndicator
 trait SimpleBuildPlan {
 
 
-   def create_build_plan(m: MaterializationScheme, showProgress: Boolean = false): List[(Set[Int], Int, Int)] = {
+   def create_build_plan(m: MaterializationStrategy, showProgress: Boolean = false): List[(Set[Int], Int, Int)] = {
     // aren't they sorted by length by construction?
     val ps = m.projections.zipWithIndex.sortBy(_._1.length).reverse.toList
     assert(ps.head._1.length == m.n_bits)

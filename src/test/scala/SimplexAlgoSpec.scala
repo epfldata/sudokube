@@ -39,7 +39,7 @@ class SimplexAlgoSpec extends FlatSpec with Matchers {
 /*
     val fc     = CBackend.b.mk(n_bits,
                    StaticSchema.mk(n_bits).TupleGenerator(50, Sampling.f1))
-    val m      = RandomizedMaterializationScheme(n_bits, .4, 2)
+    val m      = RandomizedMaterializationStrategy(n_bits, .4, 2)
     val dc     = new DataCube(m, fc)
     var q      = Util.rnd_choose(n_bits, 3)
     val l      = m.prepare(q, 1, 1)

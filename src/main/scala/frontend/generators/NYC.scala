@@ -1,7 +1,5 @@
 package frontend.generators
 
-import core.PartialDataCube
-import core.materialization.{RandomizedMaterializationScheme, SchemaBasedMaterializationScheme}
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
@@ -11,7 +9,6 @@ import scala.io.Source
 
 object NYC extends CubeGenerator("NYC") {
 
-  override def generate() = ???
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))

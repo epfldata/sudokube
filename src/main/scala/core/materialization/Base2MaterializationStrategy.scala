@@ -5,7 +5,7 @@ import frontend.schema.Schema2
 import util.Util
 
 /**
- * Materialization scheme that picks cuboids between minD and maxD for a total of approximately 2^{logN} cuboids
+ * Materialization strategy that picks cuboids between minD and maxD for a total of approximately 2^{logN} cuboids
  * Starts with logN-1 cuboids at minD
  *
  *
@@ -13,7 +13,7 @@ import util.Util
  * @param maxD  maximum dimension upto which we materialize cuboids
  * @param minD  minimum dimensions upto which we materialize cuboids
  */
-abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD: Int) extends MaterializationScheme(nb) {
+abstract class Base2MaterializationStrategy(nb: Int, logN: Double, minD: Int, maxD: Int) extends MaterializationStrategy(nb) {
   //get number of materialized cuboids with d dims
   def n_proj_d(d: Int) = if (d >= minD && d <= maxD) {
     val n = math.pow(2, logN - 1 + minD - d)
@@ -43,10 +43,10 @@ abstract class Base2MaterializationScheme(nb: Int, logN: Double, minD: Int, maxD
 
 @SerialVersionUID(4L)
 /**
- * Concrete subclass of [[Base2MaterializationScheme]] that picks cuboids of a given dimensionality as prefixes of bits
+ * Concrete subclass of [[Base2MaterializationStrategy]] that picks cuboids of a given dimensionality as prefixes of bits
  * from cosmetic dimensions in the schema
  */
-class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(sch.n_bits, logN, minD, maxD) {
+class SchemaBasedMaterializationStrategy(sch: Schema2, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationStrategy(sch.n_bits, logN, minD, maxD) {
   def this(sch: Schema2, logN: Double, minD: Int) = this(sch, logN, minD, (minD + logN - 1).toInt)
   override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
     val n_proj = n_proj_d(d)
@@ -55,10 +55,10 @@ class SchemaBasedMaterializationScheme(sch: Schema2, logN: Double, minD: Int, ma
 }
 
 /**
- * Concrete subclass of [[Base2MaterializationScheme]] that picks cuboids of a given dimensionality randomly
+ * Concrete subclass of [[Base2MaterializationStrategy]] that picks cuboids of a given dimensionality randomly
  */
 @SerialVersionUID(5L)
-class RandomizedMaterializationScheme(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationScheme(n_bits, logN, minD, maxD) {
+class RandomizedMaterializationStrategy(override val n_bits: Int, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationStrategy(n_bits, logN, minD, maxD) {
   def this(n_bits: Int, logN: Double, minD: Int) = this(n_bits, logN, minD, (minD + logN - 1).toInt)
   override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
     val n_proj = n_proj_d(d)

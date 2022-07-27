@@ -5,7 +5,7 @@ package schema
 import backend._
 import breeze.io.CSVReader
 import core._
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.RandomizedMaterializationStrategy
 import frontend.schema.encoders.ColEncoder
 import util.BigBinaryTools._
 import util._
@@ -228,11 +228,11 @@ trait Schema extends Serializable {
     //Waits for the iteration of the main loop to end and stops threadWrite.
     threadWrite.stopRunning()
     threadWrite.join()
-    val matscheme = new RandomizedMaterializationScheme(n_bits, 8, 4)
+    val  m = new RandomizedMaterializationStrategy(n_bits, 8, 4)
     val dc = new DataCube()
     //converts the partial cuboid into a cuboid
     sc = CBackend.b.finalisePartial(sc)
-    dc.build(sc, matscheme)
+    dc.build(sc,  m)
     dc
  }
 

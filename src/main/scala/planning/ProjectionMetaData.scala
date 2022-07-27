@@ -7,7 +7,7 @@ import combinatorics._
 /**
     @param accessible_bits    normalized, assumes the query is 0,1,2,..
     @param accessible_bits0   with gaps, using the original bit indexes 
-                              of the MaterializationScheme
+                              of the MaterializationStrategy
     @param mask               in the mask, the least significant bit comes first
 */
 case class ProjectionMetaData(
@@ -54,7 +54,7 @@ case class ProjectionMetaData(
        -- this is correct, since we have already filtered with the query:
           we want all the bits the projections can offer.
 
-     Used in MaterializationScheme.qproject()
+     Used in CuboidIndex.eliminateRedudant()
   */
   def dominates(other: ProjectionMetaData, cheap: Int = -1) = {
     (!(this eq other)) &&

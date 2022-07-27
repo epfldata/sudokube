@@ -2,7 +2,7 @@ package core.materialization
 
 import combinatorics.{Big, FD_Model}
 
-class MaterializationSchemeInfo(m: MaterializationScheme) {
+class MaterializationStrategyInfo(m: MaterializationStrategy) {
   def wc_estimate(s: Int) = {
     m.projections.map(x => {
       val dense_size = Big.pow2(x.length)

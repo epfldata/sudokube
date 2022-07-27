@@ -1,6 +1,6 @@
 package core.cube
 
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import planning.{NewProjectionMetaData, ProjectionMetaData}
 import util.{BitUtils, Profiler}
 import BitUtils._
@@ -16,7 +16,7 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override va
     oos.writeInt(n_bits)
     oos.writeObject(projections)
   }
-  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = Profiler("ACI qP"){
+  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
     val qBS = query.toSet
     val qIS = query.toIndexedSeq
     val qp0 = projections.indices.map { id =>
@@ -37,7 +37,7 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override va
     qp1
   }
 
-  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = Profiler("ACI eR"){
+  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = {
     cubs.filter(x => !cubs.exists(y => y.dominates(x, cheap_size)))
   }
   override def length: Int = projections.length
@@ -45,7 +45,7 @@ class ArrayCuboidIndex(val projections: IndexedSeq[IndexedSeq[Int]], override va
 }
 
 object ArrayCuboidIndexFactory extends CuboidIndexFactory {
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = new ArrayCuboidIndex(m.projections, m.n_bits)
+  override def buildFrom(m: MaterializationStrategy): CuboidIndex = new ArrayCuboidIndex(m.projections, m.n_bits)
   override def loadFromOIS(ois: ObjectInputStream): CuboidIndex = {
     val nbits = ois.readInt()
     val projections = ois.readObject().asInstanceOf[IndexedSeq[IndexedSeq[Int]]]

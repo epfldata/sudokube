@@ -1,7 +1,7 @@
 package frontend.generators
 import backend.CBackend
 import core.DataCube
-import core.materialization.RandomizedMaterializationScheme
+import core.materialization.RandomizedMaterializationStrategy
 import core.solver.SolverTools
 
 object Warmup {
@@ -13,7 +13,7 @@ object Warmup {
     sch.initBeforeEncode()
     val name = "Warmup"
     val dc = new DataCube(name)
-    val m = new RandomizedMaterializationScheme(nbits, 6, 5)
+    val m = new RandomizedMaterializationStrategy(nbits, 6, 5)
     val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.primaryMoments = SolverTools.primaryMoments(dc, false)

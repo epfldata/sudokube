@@ -1,7 +1,7 @@
 package core.cube
 
 import core.ds.settrie.{SetTrieForPrepare, SetTrieIntersect}
-import core.materialization.MaterializationScheme
+import core.materialization.MaterializationStrategy
 import planning.NewProjectionMetaData
 import util.Profiler
 
@@ -16,7 +16,7 @@ import scala.collection.mutable.ArrayBuffer
 class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq[IndexedSeq[Int]], override val n_bits: Int) extends CuboidIndex(n_bits) {
   override val typeName: String = "SetTrie"
   override protected def saveToOOS(oos: ObjectOutputStream): Unit = ???
-  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = Profiler("STCI qP"){
+  override def qproject(query: IndexedSeq[Int], max_fetch_dim: Int): Seq[NewProjectionMetaData] = {
     val hm = collection.mutable.HashMap[Int, NewProjectionMetaData]()
     val queryLength = query.length
     val nodes = trie.nodes
@@ -58,7 +58,7 @@ class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq
     intersectRec(0, 0, 0, 0, Vector())
     hm.values.toSeq
   }
-  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = Profiler("STCI eR"){
+  override def eliminateRedundant(cubs: Seq[NewProjectionMetaData], cheap_size: Int): Seq[NewProjectionMetaData] = {
     val result = new ArrayBuffer[NewProjectionMetaData]()
     val trie = new SetTrieForPrepare(cubs.length * cubs.head.cuboidCost)
     //cubs must processed in the order supersets first and then subsets
@@ -76,7 +76,7 @@ class SetTrieCuboidIndex(val trie: SetTrieIntersect, val projections: IndexedSeq
 }
 
 object SetTrieCuboidIndexFactory extends CuboidIndexFactory {
-  override def buildFrom(m: MaterializationScheme): CuboidIndex = {
+  override def buildFrom(m: MaterializationStrategy): CuboidIndex = {
     val minD = m.projections.head.length
     val trie = new SetTrieIntersect(m.projections.length * 2 * minD)
     m.projections.zipWithIndex.sortBy(res => res._1.size).foreach{res => trie.insert(res._1, res._1.size, res._2)}

@@ -15,12 +15,12 @@ import util.Util
  */
 
 @SerialVersionUID(1L)
-case class OldRandomizedMaterializationScheme(
+case class OldRandomizedMaterializationStrategy(
                                             _n_bits: Int,
                                             rf: Double,
                                             base: Double,
                                             mindim: Int = 0
-                                          ) extends MaterializationScheme(_n_bits) {
+                                          ) extends MaterializationStrategy(_n_bits) {
 
   /** build that many cuboids with d dimensions.
    * @example {{{
@@ -44,7 +44,7 @@ case class OldRandomizedMaterializationScheme(
     if (np0 > 10000) 10000 else np0
   }
 
-  println("Creating materialization scheme...")
+  println("Creating materialization strategy...")
 
   val projections = {
     val r = (for (d <- 0 to n_bits - 1) yield {
