@@ -72,10 +72,11 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
   override def build(full_cube: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
     val cuboidFutures = Util.mkAB[Future[Cuboid]](m.projections.length, _ => null)
-    val pi = new ProgressIndicator(build_plan.length, "Projecting...", showProgress)
+    val numCores = Runtime.getRuntime.availableProcessors()
+    val pi = new ProgressIndicator(build_plan.length, s"Projecting with $numCores threads ", showProgress)
     implicit val ec = ExecutionContext.global
     build_plan.foreach {
-      case (_, id, -1) => cuboidFutures(id) = Future {full_cube}
+      case (_, id, -1) => cuboidFutures(id) = Future { pi.step; full_cube}
       case (s, id, parent_id) =>
         val bitpos = BitUtils.mk_list_bitpos(m.projections(parent_id), s)
         cuboidFutures(id) = cuboidFutures(parent_id).map { oldcub =>
