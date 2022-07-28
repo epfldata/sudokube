@@ -24,30 +24,26 @@ class VanillaIPFSolver(override val querySize: Int,
    * @return solution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double] = {
-    println(s"\t\t\tVanilla IPF number of updates per iteration (|C| 2^|Q|): ${clusters.size << querySize}")
+    println(s"\t\t\tVanilla IPF number of entries (|C| 2^|Q|): ${clusters.size << querySize}")
 
     var totalDelta: Double = 0.0
     var numIterations = 0
 
-//    if (isExperimenting)
-//      printExperimentTimeErrorDataToFile()
+    if (isExperimenting)
+      printExperimentTimeErrorDataToFile()
 
-//    print(", ")
-//    clusters.foreach(cluster => print(s"${Bits.fromInt(cluster.variables).mkString(":")}, "))
-//    println()
     do {
       numIterations += 1
       println(s"\t\t\tIteration $numIterations")
       totalDelta = iterativeUpdate()
-//      verifySolution()
 
-//      if (isExperimenting) {
-//        printExperimentTimeErrorDataToFile()
-              println(s"\t\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.length * totalDistribution.sum}")
-              println(s"\t\t\tError: ${error(trueResult, getSolution)}")
-//      }
+      if (isExperimenting) {
+        printExperimentTimeErrorDataToFile()
+        println(s"\t\t\tTotal delta: $totalDelta, threshold: ${convergenceThreshold * N * clusters.size * totalDistribution.sum}")
+        println(s"\t\t\tError: ${error(trueResult, getSolution)}")
+      }
 
-    } while (totalDelta >= convergenceThreshold * N * clusters.length)
+    } while (totalDelta >= convergenceThreshold * N * clusters.size)
     println(s"\t\t\tVanilla IPF number of iterations: $numIterations")
     getSolution
   }

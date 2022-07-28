@@ -192,6 +192,22 @@ object IPFUtils {
     (containedVariables & containingVariables) == containedVariables
   }
 
+  /**
+   * Test whether a variable is fully contained in a set of variables.
+   * @param containedVariable The index of the variable that is presumably contained.
+   * @param containingVariables The variables that are presumably containing the contained variable, encoded as bits of 1 in a single integer.
+   * @return Whether the variable is fully contained in the set of variables.
+   */
+  def isVariableContained(containedVariable: Int, containingVariables: Int): Boolean = {
+    ((1 << containedVariable) & containingVariables) == (1 << containedVariable)
+  }
+
+  /**
+   * Test whether there are intersecting variables between two sets of variables.
+   * @param variables1 The first set of variables, encoded as an integer.
+   * @param variables2 The second set of variables, encoded as an integer.
+   * @return A boolean to indicate whether there are intersecting variables.
+   */
   def existsIntersectingVariables(variables1: Int, variables2: Int): Boolean = {
     (variables1 & variables2) != 0
   }

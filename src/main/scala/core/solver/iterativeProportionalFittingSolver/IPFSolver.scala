@@ -12,7 +12,7 @@ import util.BitUtils
  */
 abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
   val N: Int = 1 << querySize
-  var clusters: List[Cluster] = List[Cluster]()
+  var clusters: Set[Cluster] = Set[Cluster]()
   var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
   var solution: Array[Double] = Array[Double]() // the un-normalized total distribution
   def getSolution: Array[Double] = {
@@ -31,7 +31,7 @@ abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
   def add(marginalVariables: Int, marginalDistribution: Array[Double]): Cluster = {
     normalizationFactor = marginalDistribution.sum
     val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
-    clusters = cluster :: clusters
+    clusters += cluster
     cluster
   }
 
