@@ -29,8 +29,8 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
    * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
    */
   def solveWithJunctionGraph(): Array[Double] = {
-    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
-    println(s"\t\t\t$solverName number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
+    val totalNumUpdates: Long = junctionGraph.cliques.foldLeft(0L)((acc, clique) => acc + 1L * clique.N * clique.clusters.size)
+    println(s"\t\t\t$solverName number of entries (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
 
     var totalDelta: Double = 0
     var numIterations: Int = 0

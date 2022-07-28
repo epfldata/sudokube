@@ -30,7 +30,7 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
 
     verifyJunctionGraph() // for testing purpose only
 
-    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
+    val totalNumUpdates: Long = junctionGraph.cliques.foldLeft(0L)((acc, clique) => acc + 1L * clique.N * clique.clusters.size)
     println(s"\t\t\t$solverName number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
 
     var totalDelta: Double = 0
