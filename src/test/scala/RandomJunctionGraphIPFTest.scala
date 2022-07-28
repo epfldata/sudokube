@@ -5,7 +5,7 @@ import util.BitUtils
 import scala.util.Random
 
 class RandomJunctionGraphIPFTest {
-  val eps: Double = 1e-4
+  val eps: Double = 1e-3
 
   @Test
   def test(): Unit = {

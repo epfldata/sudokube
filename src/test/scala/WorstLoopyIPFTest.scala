@@ -10,9 +10,12 @@ class WorstLoopyIPFTest {
   def testConstructJunctionGraph(): Unit = {
     val solver = new WorstLoopyIPFSolver(5)
     Seq(Seq(0, 1), Seq(0, 2), Seq(0, 3), Seq(0, 4), Seq(2, 3)).foreach(variables => solver.add(SetToInt(variables), Array.fill(variables.size)(1.0 / variables.size)))
+    solver.constructGraphicalModel()
     solver.constructJunctionGraph()
     solver.junctionGraph.cliques.foreach(clique => println(IntToSet(clique.variables)))
-    solver.junctionGraph.separators.foreach(separator => println(s"${IntToSet(separator.clique1.variables)} <--[${BitUtils.IntToSet(separator.variables)}]--> ${BitUtils.IntToSet(separator.clique2.variables)}"))
+    solver.junctionGraph.separators.foreach(separator =>
+      println(s"${IntToSet(separator.clique1.variables)} <--[${BitUtils.IntToSet(separator.variables)}]--> ${BitUtils.IntToSet(separator.clique2.variables)}")
+    )
     assert(!solver.junctionGraph.separators.exists(separator => separator.numVariables == 0 || separator.variables == 0))
     (0 until 5).foreach(variable => assert(
       solver.junctionGraph.separators.count(separator => (separator.variables & (1 << variable)) != 0)
@@ -40,10 +43,11 @@ class WorstLoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, " +
+          s"Got ${IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues) * solver.normalizationFactor}")
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(6, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues) * solver.normalizationFactor
         )
       })
     }
@@ -73,10 +77,11 @@ class WorstLoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, " +
+          s"Got ${IPFUtils.getMarginalProbability(4, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues) * solver.normalizationFactor}")
         assertApprox(
           marginalDistribution(marginalVariablesValues),
-          IPFUtils.getMarginalProbability(4, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor
+          IPFUtils.getMarginalProbability(4, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues) * solver.normalizationFactor
         )
       })
     }
@@ -130,7 +135,8 @@ class WorstLoopyIPFTest {
 
     marginalDistributions.foreach { case (marginalVariables, marginalDistribution) =>
       marginalDistribution.indices.foreach(marginalVariablesValues => {
-        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues)* solver.normalizationFactor}")
+        println(s"Expected ${marginalDistribution(marginalVariablesValues)}, " +
+          s"Got ${IPFUtils.getMarginalProbability(5, solver.totalDistribution, SetToInt(marginalVariables), marginalVariablesValues) * solver.normalizationFactor}")
       })
     }
   }

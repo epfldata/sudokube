@@ -6,10 +6,10 @@ import scala.collection.mutable
 import scala.util.Random
 
 class EffectiveIPFTest {
-  private val eps = 1e-5
+  private val eps = 1e-3
 
   @Test
-  def testAdd(): Unit = {
+  def testConstructGraphicalModel(): Unit = {
     val solver = new EffectiveIPFSolver(6)
     solver.add(BitUtils.SetToInt(Seq(0, 1)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(0, 4)), Array(0.5, 0.5))
@@ -17,6 +17,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(2, 3, 4)), Array(1.0/3.0, 1.0/3.0, 1.0/3.0))
     solver.add(BitUtils.SetToInt(Seq(2, 3)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(3, 5)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     assert(solver.graphicalModel.nodes(0).adjacencyList.exists { case (destination, edge) => destination.variable == 1 && edge.clusters.size == 1 })
     assert(solver.graphicalModel.nodes(0).adjacencyList.exists { case (destination, edge) => destination.variable == 4 && edge.clusters.size == 1 })
     assert(solver.graphicalModel.nodes(1).adjacencyList.exists { case (destination, edge) => destination.variable == 0 && edge.clusters.size == 1 })
@@ -39,6 +40,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(2, 3, 4)), Array(1.0/3.0, 1.0/3.0, 1.0/3.0))
     solver.add(BitUtils.SetToInt(Seq(2, 3)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(3, 5)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     solver.junctionGraph.constructCliquesFromGraph(solver.graphicalModel)
     println(solver.junctionGraph.cliques.map(clique => BitUtils.IntToSet(clique.variables)))
   }
@@ -52,6 +54,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(2, 3, 4)), Array(1.0/3.0, 1.0/3.0, 1.0/3.0))
     solver.add(BitUtils.SetToInt(Seq(2, 3)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(3, 5)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     solver.junctionGraph.constructCliquesFromGraph(solver.graphicalModel)
     solver.junctionGraph.deleteNonMaximalCliques()
     for (clique1 <- solver.junctionGraph.cliques; clique2 <- solver.junctionGraph.cliques) {
@@ -70,6 +73,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(2, 3, 4)), Array(1.0/3.0, 1.0/3.0, 1.0/3.0))
     solver.add(BitUtils.SetToInt(Seq(2, 3)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(3, 5)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     solver.junctionGraph.constructCliquesFromGraph(solver.graphicalModel)
     solver.junctionGraph.deleteNonMaximalCliques()
     solver.junctionGraph.connectAllCliquesCompletely()
@@ -91,6 +95,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(2, 3, 4)), Array(1.0/3.0, 1.0/3.0, 1.0/3.0))
     solver.add(BitUtils.SetToInt(Seq(2, 3)), Array(0.5, 0.5))
     solver.add(BitUtils.SetToInt(Seq(3, 5)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     solver.constructJunctionTree()
     assert(solver.junctionGraph.separators.size == solver.junctionGraph.cliques.size - 1)
   }
@@ -104,6 +109,7 @@ class EffectiveIPFTest {
       println(variables)
       solver.add(BitUtils.SetToInt(variables), Array.fill(variables.size)(1.0 / variables.size))
     }
+    solver.constructGraphicalModel()
     solver.constructJunctionTree()
     println()
   }
@@ -122,6 +128,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(6, 9, 10)), Array.fill(8)(0.125))
     solver.add(BitUtils.SetToInt(Seq(10, 11)), Array.fill(4)(0.25))
     solver.add(BitUtils.SetToInt(Seq(12)), Array(0.5, 0.5))
+    solver.constructGraphicalModel()
     solver.constructJunctionTree()
     println()
   }

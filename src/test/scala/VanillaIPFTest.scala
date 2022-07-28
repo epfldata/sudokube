@@ -1,5 +1,4 @@
-package core.solver.iterativeProportionalFittingSolver
-
+import core.solver.iterativeProportionalFittingSolver.{Cluster, IPFUtils, VanillaIPFSolver}
 import core.solver.SolverTools.error
 import core.solver.moment.Strategy._
 import core.solver.moment.MomentSolverAll
@@ -14,7 +13,7 @@ import scala.util.Random
  */
 class VanillaIPFTest {
   private val eps = 1e-3
-  implicit def listToInt = BitUtils.SetToInt(_)
+  implicit def listToInt: Seq[Int] => Int = BitUtils.SetToInt
   @Test
   def testAdd(): Unit = {
     val solver = new VanillaIPFSolver(3)
