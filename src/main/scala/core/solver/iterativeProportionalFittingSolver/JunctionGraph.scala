@@ -236,8 +236,7 @@ class JunctionGraph {
     println(s"\t\t\t${cliques.size} cliques, ${separators.size} separators")
     println("\t\t\tCliques:")
     cliques.foreach(clique =>
-      println(s"\t\t\t\t${clique.numVariables} variables: ${BitUtils.IntToSet(clique.variables).mkString(":")}, "
-        + s"${clique.clusters.size} clusters, sizes: ${clique.clusters.toList.map(cluster => BitUtils.IntToSet(cluster.variables).size).mkString(":")}, "
+      println(s"\t\t\t\t${clique.numVariables} variables: ${BitUtils.IntToSet(clique.variables).mkString(":")}, ${clique.clusters.size} clusters, "
         + s"variable occurrences: ${BitUtils.IntToSet(clique.variables).map(variable => clique.clusters.count(cluster => (cluster.variables & (1 << variable)) != 0)).mkString(":")}")
         // "Variable occurrences" mean the number of clusters each variable is covered by, potentially useful for the decomposition-reduction method.
     )
