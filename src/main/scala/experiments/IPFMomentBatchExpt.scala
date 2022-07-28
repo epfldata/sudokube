@@ -13,19 +13,18 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * TODO: add data by new methods of junction trees & graphs to fileout when finalized and running real experiments
- * TODO: better modularization and ways to select experiments to run (e.g. we may not want to run vanilla IPF anymore)
+ * TODO: better modularization and ways to select experiments to run
  */
 class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"vanilla-ipf-moment-batch", ename2) {
   fileout.println(
     "CubeName, MomentSolverName, Query, QSize, NCubesFetched, CubeSizes, DOF, trueEntropy " +
       "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, MEntropy, " +
-      "VIPFTotalTime(us), VIPFPrepareTime(us), VIPFFetchTime(us), VIPFMaxDimFetched, VIPFSolveTime(us), VIPFErr, VIPFEntropy, " +
+//      "VIPFTotalTime(us), VIPFPrepareTime(us), VIPFFetchTime(us), VIPFMaxDimFetched, VIPFSolveTime(us), VIPFErr, VIPFEntropy, " +
       "EIPFTotalTime(us), EIPFPrepareTime(us), EIPFFetchTime(us), EIPFMaxDimFetched, EIPFSolveTime(us), EIPFErr, EIPFEntropy, " +
       "DBDEIPFTotalTime(us), DBDEIPFPrepareTime(us), DBDEIPFFetchTime(us), DBDEIPFMaxDimFetched, DBDEIPFSolveTime(us), DBDEIPFErr, DBDEIPFEntropy, " +
       "EBDEIPFTotalTime(us), EBDEIPFPrepareTime(us), EBDEIPFFetchTime(us), EBDEIPFMaxDimFetched, EBDEIPFSolveTime(us), EBDEIPFErr, EBDEIPFEntropy, " +
-      "LIPFTotalTime(us), LIPFPrepareTime(us), LIPFFetchTime(us), LIPFMaxDimFetched, LIPFSolveTime(us), LIPFErr, LIPFEntropy, " +
-      "RJGIPFTotalTime(us), RJGIPFPrepareTime(us), RJGIPFFetchTime(us), RJGIPFMaxDimFetched, RJGIPFSolveTime(us), RJGIPFErr, RJGIPFEntropy, " +
+//      "LIPFTotalTime(us), LIPFPrepareTime(us), LIPFFetchTime(us), LIPFMaxDimFetched, LIPFSolveTime(us), LIPFErr, LIPFEntropy, " +
+//      "RJGIPFTotalTime(us), RJGIPFPrepareTime(us), RJGIPFFetchTime(us), RJGIPFMaxDimFetched, RJGIPFSolveTime(us), RJGIPFErr, RJGIPFEntropy, " +
       "Difference_vanillaIPF_vs_moment,MaxDifference_vanillaIPF_vs_moment, " +
       "Difference_effectiveIPF_vs_vanillaIPF,MaxDifference_effectiveIPF_vs_vanillaIPF, " +
       "Difference_loopyIPF_vs_vanillaIPF,MaxDifference_loopyIPF_vs_vanillaIPF"
@@ -84,8 +83,9 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     (result, maxDimFetch)
   }
 
+
   /**
-   * Prepare and fetch of the moment solver.
+   * Prepare and fetch taken from the moment solver.
    * @param solverName The name of the concrete solver, to be used in entries in the profiler.
    * @param dc DataCube object.
    * @param q Sequence of queried dimensions.
@@ -99,9 +99,44 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     val fetched = Profiler("Vanilla IPF Fetch") { // Same as moment for now
       l.map { pm => (pm.queryIntersection, dc.fetch2[Double](List(pm))) }
     }
-    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes: ${ fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }.mkString(":")}")
+    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes (counts): " + s"${
+      fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }
+        .groupBy(identity).mapValues(_.size).toList.sorted
+        .map { case (cubeSizes, count) => s"$cubeSizes ($count)" }.mkString(", ")
+    }")
     (fetched, maxDimFetch)
   }
+
+
+  /**
+   * A common framework of the setup and execution of IPF solvers.
+   * @param solverName The name of the concrete solver method, e.g. "Effective IPF".
+   * @param solveMethod The solve method to be called, e.g. effectiveIPF_solve.
+   * @param dc DataCube object.
+   * @param q Sequence of queried dimensions.
+   * @param trueResult True result of the query.
+   * @param dcname Name of the data cube (optional, only used if we want to see it while experimenting).
+   * @return Solver object, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids, and error of the solution.
+   */
+  def runIPFSolver(solverName: String,
+                   solveMethod: (DataCube, IndexedSeq[Int], Array[Double], String) => (IPFSolver, Int, Int, Seq[Int]),
+                   dc: DataCube, q: IndexedSeq[Int], trueResult: Array[Double], dcname: String): (IPFSolver, Int, Int, Seq[Int], Double) = {
+    println(s"\t\t$solverName starts")
+
+    val (solver, maxDim, numCubesFetched, cubeSizes) = Profiler(s"$solverName Total") {
+      solveMethod(dc, q, trueResult, dcname)
+    }
+    val error = Profiler(s"$solverName Error Checking") {
+      SolverTools.error(trueResult, solver.getSolution)
+    }
+
+    println(s"\t\t\t$solverName solve time: " + Profiler.durations(s"$solverName Solve")._2 / 1000 +
+      ", total time: " + Profiler.durations(s"$solverName Total")._2 / 1000 +
+      ", error: " + error)
+
+    (solver, maxDim, numCubesFetched, cubeSizes, error)
+  }
+
 
   /**
    * Solving with the vanilla version of IPF.
@@ -231,27 +266,6 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 
 
 
-  def runIPFSolver(solverName: String,
-                   solveMethod: (DataCube, IndexedSeq[Int], Array[Double], String) => (IPFSolver, Int, Int, Seq[Int]),
-                   dc: DataCube, q: IndexedSeq[Int], trueResult: Array[Double], dcname: String): (IPFSolver, Int, Int, Seq[Int], Double) = {
-    println(s"\t\t$solverName starts")
-
-    val (solver, maxDim, numCubesFetched, cubeSizes) = Profiler(s"$solverName Total") {
-      solveMethod(dc, q, trueResult, dcname)
-    }
-    val error = Profiler(s"$solverName Error Checking") {
-      SolverTools.error(trueResult, solver.getSolution)
-    }
-
-    println(s"\t\t\t$solverName solve time: " + Profiler.durations(s"$solverName Solve")._2 / 1000 +
-      ", total time: " + Profiler.durations(s"$solverName Total")._2 / 1000 +
-      ", error: " + error)
-
-    (solver, maxDim, numCubesFetched, cubeSizes, error)
-  }
-
-
-
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
 
     val q = qu.sorted
@@ -275,8 +289,8 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 
 
 
-    val (vanillaIPFSolver, vanillaIPFMaxDim, vanillaIPFNumCubesFetched, vanillaIPFCubeSizes, vanillaIPFError)
-      = runIPFSolver("Vanilla IPF", vanillaIPF_solve, dc, q, trueResult, dcname)
+//    val (vanillaIPFSolver, vanillaIPFMaxDim, vanillaIPFNumCubesFetched, vanillaIPFCubeSizes, vanillaIPFError)
+//      = runIPFSolver("Vanilla IPF", vanillaIPF_solve, dc, q, trueResult, dcname)
 
 
     val (effectiveIPFSolver, effectiveIPFMaxDim, effectiveIPFNumCubesFetched, effectiveIPFCubeSizes, effectiveIPFError)
@@ -287,85 +301,85 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 
 
     val (dimensionBasedDropoutEffectiveIPFSolver, dimensionBasedDropoutEffectiveIPFMaxDim, dimensionBasedDropoutEffectiveIPFNumCubesFetched, dimensionBasedDropoutEffectiveIPFCubeSizes, dimensionBasedDropoutEffectiveIPFError)
-      = runIPFSolver("Dimension-Based Dropout IPF", dimensionBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
+      = runIPFSolver("Dimension-Based Dropout Effective IPF", dimensionBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tDimension-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
     val (entropyBasedDropoutEffectiveIPFSolver, entropyBasedDropoutEffectiveIPFMaxDim, entropyBasedDropoutEffectiveIPFNumCubesFetched, entropyBasedDropoutEffectiveIPFCubeSizes, entropyBasedDropoutEffectiveIPFError)
-      = runIPFSolver("Entropy-Based Dropout IPF", entropyBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
+      = runIPFSolver("Entropy-Based Dropout Effective IPF", entropyBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
     println(s"\t\t\tEntropy-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
       + s"iterations time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Iterations")._2 / 1000}, "
       + s"solution derivation time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
-    val (worstLoopyIPFSolver, worstLoopyIPFMaxDim, worstLoopyIPFNumCubesFetched, worstLoopyIPFCubeSizes, worstLoopyIPFError)
-      = runIPFSolver("Worst Loopy IPF", worstLoopyIPF_solve, dc, q, trueResult, dcname)
-    println(s"\t\t\tWorst Loopy IPF junction graph construction time: ${Profiler.durations("Worst Loopy IPF Junction Graph Construction")._2 / 1000}, "
-      + s"iterations time: ${Profiler.durations("Worst Loopy IPF Iterations")._2 / 1000}, "
-      + s"solution derivation time: ${Profiler.durations("Worst Loopy IPF Solution Derivation")._2 / 1000}")
+//    val (worstLoopyIPFSolver, worstLoopyIPFMaxDim, worstLoopyIPFNumCubesFetched, worstLoopyIPFCubeSizes, worstLoopyIPFError)
+//      = runIPFSolver("Worst Loopy IPF", worstLoopyIPF_solve, dc, q, trueResult, dcname)
+//    println(s"\t\t\tWorst Loopy IPF junction graph construction time: ${Profiler.durations("Worst Loopy IPF Junction Graph Construction")._2 / 1000}, "
+//      + s"iterations time: ${Profiler.durations("Worst Loopy IPF Iterations")._2 / 1000}, "
+//      + s"solution derivation time: ${Profiler.durations("Worst Loopy IPF Solution Derivation")._2 / 1000}")
+//
+//
+//    val (randomJunctionGraphIPFSolver, randomJunctionGraphIPFMaxDim, randomJunctionGraphIPFNumCubesFetched, randomJunctionGraphIPFCubeSizes, randomJunctionGraphIPFError)
+//    = runIPFSolver("Random Junction Graph Loopy IPF", randomJunctionGraphIPF_solve, dc, q, trueResult, dcname)
+//    println(s"\t\t\tRandom Junction Graph IPF junction graph construction time: ${Profiler.durations("Random Junction Graph IPF Junction Graph Construction")._2 / 1000}, "
+//      + s"iterations time: ${Profiler.durations("Random Junction Graph IPF Iterations")._2 / 1000}, "
+//      + s"solution derivation time: ${Profiler.durations("Random Junction Graph IPF Solution Derivation")._2 / 1000}")
 
 
-    val (randomJunctionGraphIPFSolver, randomJunctionGraphIPFMaxDim, randomJunctionGraphIPFNumCubesFetched, randomJunctionGraphIPFCubeSizes, randomJunctionGraphIPFError)
-    = runIPFSolver("Random Junction Graph Loopy IPF", randomJunctionGraphIPF_solve, dc, q, trueResult, dcname)
-    println(s"\t\t\tRandom Junction Graph IPF junction graph construction time: ${Profiler.durations("Random Junction Graph IPF Junction Graph Construction")._2 / 1000}, "
-      + s"iterations time: ${Profiler.durations("Random Junction Graph IPF Iterations")._2 / 1000}, "
-      + s"solution derivation time: ${Profiler.durations("Random Junction Graph IPF Solution Derivation")._2 / 1000}")
 
 
-
-
-    println("\t\tDifferences")
-
-    val difference_vanillaIPF_moment = error(momentSolver.solution, vanillaIPFSolver.getSolution)
-    print(s"\t\t\tVanilla IPF vs moment: $difference_vanillaIPF_moment, ")
-
-    val grandTotal = trueResult.sum
-    vanillaIPFSolver.getSolution
-    val maxDifference_vanillaIPF_moment = (0 until 1 << q.length).map(i => (momentSolver.solution(i) - vanillaIPFSolver.solution(i)).abs).max / grandTotal
-    println(s"max difference out of total sum: $maxDifference_vanillaIPF_moment")
-
-    val difference_effectiveIPF_vanillaIPF = error(vanillaIPFSolver.getSolution, effectiveIPFSolver.getSolution)
-    print(s"\t\t\tEffective IPF vs vanilla IPF: $difference_effectiveIPF_vanillaIPF ")
-
-    val maxDifference_effectiveIPF_vanillaIPF = (0 until 1 << q.length).map(i => (vanillaIPFSolver.solution(i) - effectiveIPFSolver.solution(i)).abs).max / grandTotal
-    println(s"Max difference out of total sum: $maxDifference_effectiveIPF_vanillaIPF")
-
-    val difference_loopyIPF_vanillaIPF = error(vanillaIPFSolver.getSolution, worstLoopyIPFSolver.getSolution)
-    print(s"\t\t\tLoopy IPF vs vanilla IPF: $difference_loopyIPF_vanillaIPF ")
-
-    val maxDifference_loopyIPF_vanillaIPF = (0 until 1 << q.length).map(i => (vanillaIPFSolver.solution(i) - worstLoopyIPFSolver.solution(i)).abs).max / grandTotal
-    println(s"Max difference out of total sum: $maxDifference_loopyIPF_vanillaIPF")
+//    println("\t\tDifferences")
+//
+//    val difference_vanillaIPF_moment = error(momentSolver.solution, vanillaIPFSolver.getSolution)
+//    print(s"\t\t\tVanilla IPF vs moment: $difference_vanillaIPF_moment, ")
+//
+//    val grandTotal = trueResult.sum
+//    vanillaIPFSolver.getSolution
+//    val maxDifference_vanillaIPF_moment = (0 until 1 << q.length).map(i => (momentSolver.solution(i) - vanillaIPFSolver.solution(i)).abs).max / grandTotal
+//    println(s"max difference out of total sum: $maxDifference_vanillaIPF_moment")
+//
+//    val difference_effectiveIPF_vanillaIPF = error(vanillaIPFSolver.getSolution, effectiveIPFSolver.getSolution)
+//    print(s"\t\t\tEffective IPF vs vanilla IPF: $difference_effectiveIPF_vanillaIPF ")
+//
+//    val maxDifference_effectiveIPF_vanillaIPF = (0 until 1 << q.length).map(i => (vanillaIPFSolver.solution(i) - effectiveIPFSolver.solution(i)).abs).max / grandTotal
+//    println(s"Max difference out of total sum: $maxDifference_effectiveIPF_vanillaIPF")
+//
+//    val difference_loopyIPF_vanillaIPF = error(vanillaIPFSolver.getSolution, worstLoopyIPFSolver.getSolution)
+//    print(s"\t\t\tLoopy IPF vs vanilla IPF: $difference_loopyIPF_vanillaIPF ")
+//
+//    val maxDifference_loopyIPF_vanillaIPF = (0 until 1 << q.length).map(i => (vanillaIPFSolver.solution(i) - worstLoopyIPFSolver.solution(i)).abs).max / grandTotal
+//    println(s"Max difference out of total sum: $maxDifference_loopyIPF_vanillaIPF")
 
 
     val trueEntropy = entropy(trueResult)
     val momentEntropy = entropy(momentSolver.solution)
-    val vanillaIPFEntropy = entropy(vanillaIPFSolver.getSolution)
+//    val vanillaIPFEntropy = entropy(vanillaIPFSolver.getSolution)
     val effectiveIPFEntropy = entropy(effectiveIPFSolver.getSolution)
     val dimensionBasedDropoutEffectiveIPFEntropy = entropy(dimensionBasedDropoutEffectiveIPFSolver.getSolution)
     val entropyBasedDropoutEffectiveIPFEntropy = entropy(entropyBasedDropoutEffectiveIPFSolver.getSolution)
-    val worstLoopyIPFEntropy = entropy(worstLoopyIPFSolver.getSolution)
-    val randomJunctionGraphIPFEntropy = entropy(randomJunctionGraphIPFSolver.getSolution)
+//    val worstLoopyIPFEntropy = entropy(worstLoopyIPFSolver.getSolution)
+//    val randomJunctionGraphIPFEntropy = entropy(randomJunctionGraphIPFSolver.getSolution)
     println("\t\tEntropies")
     println(s"\t\t\tTrue Entropy = $trueEntropy")
     println(s"\t\t\tMoment Entropy = $momentEntropy")
-    println(s"\t\t\tVanilla IPF Entropy = $vanillaIPFEntropy")
+//    println(s"\t\t\tVanilla IPF Entropy = $vanillaIPFEntropy")
     println(s"\t\t\tEffective IPF Entropy = $effectiveIPFEntropy")
     println(s"\t\t\tDimension-Based Dropout Effective IPF Entropy = $dimensionBasedDropoutEffectiveIPFEntropy")
     println(s"\t\t\tEntropy-Based Dropout Effective IPF Entropy = $entropyBasedDropoutEffectiveIPFEntropy")
-    println(s"\t\t\tWorst Loopy IPF Entropy = $worstLoopyIPFEntropy")
-    println(s"\t\t\tRandom Junction Graph IPF Entropy = $randomJunctionGraphIPFEntropy")
+//    println(s"\t\t\tWorst Loopy IPF Entropy = $worstLoopyIPFEntropy")
+//    println(s"\t\t\tRandom Junction Graph IPF Entropy = $randomJunctionGraphIPFEntropy")
 
     val mprep = Profiler.durations("Moment Prepare")._2 / 1000
     val mfetch = Profiler.durations("Moment Fetch")._2 / 1000
     val mtot = Profiler.durations("Moment Total")._2 / 1000
     val msolve = Profiler.durations("Moment Solve")._2 / 1000
 
-    val vanillaIPFPrepare = Profiler.durations("Vanilla IPF Prepare")._2 / 1000
-    val vanillaIPFFetch = Profiler.durations("Vanilla IPF Fetch")._2 / 1000
-    val vanillaIPFSolve = Profiler.durations("Vanilla IPF Solve")._2 / 1000
-    val vanillaIPFTotal = Profiler.durations("Vanilla IPF Total")._2 / 1000
+//    val vanillaIPFPrepare = Profiler.durations("Vanilla IPF Prepare")._2 / 1000
+//    val vanillaIPFFetch = Profiler.durations("Vanilla IPF Fetch")._2 / 1000
+//    val vanillaIPFSolve = Profiler.durations("Vanilla IPF Solve")._2 / 1000
+//    val vanillaIPFTotal = Profiler.durations("Vanilla IPF Total")._2 / 1000
 
     val effectiveIPFPrepare = Profiler.durations("Effective IPF Prepare")._2 / 1000
     val effectiveIPFFetch = Profiler.durations("Effective IPF Fetch")._2 / 1000
@@ -382,28 +396,28 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     val entropyBasedDropoutEffectiveIPFSolve = Profiler.durations("Entropy-Based Dropout Effective IPF Solve")._2 / 1000
     val entropyBasedDropoutEffectiveIPFTotal = Profiler.durations("Entropy-Based Dropout Effective IPF Total")._2 / 1000
 
-    val worstLoopyIPFPrepare = Profiler.durations("Worst Loopy IPF Prepare")._2 / 1000
-    val worstLoopyIPFFetch = Profiler.durations("Worst Loopy IPF Fetch")._2 / 1000
-    val worstLoopyIPFSolve = Profiler.durations("Worst Loopy IPF Solve")._2 / 1000
-    val worstLoopyIPFTotal = Profiler.durations("Worst Loopy IPF Total")._2 / 1000
-
-    val randomJunctionGraphIPFPrepare = Profiler.durations("Random Junction Graph IPF Prepare")._2 / 1000
-    val randomJunctionGraphIPFFetch = Profiler.durations("Random Junction Graph IPF Fetch")._2 / 1000
-    val randomJunctionGraphIPFSolve = Profiler.durations("Random Junction Graph IPF Solve")._2 / 1000
-    val randomJunctionGraphIPFTotal = Profiler.durations("Random Junction Graph IPF Total")._2 / 1000
+//    val worstLoopyIPFPrepare = Profiler.durations("Worst Loopy IPF Prepare")._2 / 1000
+//    val worstLoopyIPFFetch = Profiler.durations("Worst Loopy IPF Fetch")._2 / 1000
+//    val worstLoopyIPFSolve = Profiler.durations("Worst Loopy IPF Solve")._2 / 1000
+//    val worstLoopyIPFTotal = Profiler.durations("Worst Loopy IPF Total")._2 / 1000
+//
+//    val randomJunctionGraphIPFPrepare = Profiler.durations("Random Junction Graph IPF Prepare")._2 / 1000
+//    val randomJunctionGraphIPFFetch = Profiler.durations("Random Junction Graph IPF Fetch")._2 / 1000
+//    val randomJunctionGraphIPFSolve = Profiler.durations("Random Junction Graph IPF Solve")._2 / 1000
+//    val randomJunctionGraphIPFTotal = Profiler.durations("Random Junction Graph IPF Total")._2 / 1000
 
     if (output) {
-      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$vanillaIPFNumCubesFetched,${vanillaIPFCubeSizes.mkString(":")},$dof,  " +
+      val resultrow = s"$dcname, ${momentSolver.name}, ${qu.mkString(":")},${q.size},$effectiveIPFNumCubesFetched,${effectiveIPFCubeSizes.mkString(":")},$dof,  " +
         s"$trueEntropy,  " +
         s"$mtot,$mprep,$mfetch,$momentMaxDim,$msolve,$momentError,$momentEntropy, " +
-        s"$vanillaIPFTotal,$vanillaIPFPrepare,$vanillaIPFFetch,$vanillaIPFMaxDim,$vanillaIPFSolve,$vanillaIPFError,$vanillaIPFEntropy, " +
+//        s"$vanillaIPFTotal,$vanillaIPFPrepare,$vanillaIPFFetch,$vanillaIPFMaxDim,$vanillaIPFSolve,$vanillaIPFError,$vanillaIPFEntropy, " +
         s"$effectiveIPFTotal,$effectiveIPFPrepare,$effectiveIPFFetch,$effectiveIPFMaxDim,$effectiveIPFSolve,$effectiveIPFError,$effectiveIPFEntropy, " +
         s"$dimensionBasedDropoutEffectiveIPFTotal,$dimensionBasedDropoutEffectiveIPFPrepare,$dimensionBasedDropoutEffectiveIPFFetch,$dimensionBasedDropoutEffectiveIPFMaxDim,$dimensionBasedDropoutEffectiveIPFSolve,$dimensionBasedDropoutEffectiveIPFError,$dimensionBasedDropoutEffectiveIPFEntropy, " +
-        s"$entropyBasedDropoutEffectiveIPFTotal,$entropyBasedDropoutEffectiveIPFPrepare,$entropyBasedDropoutEffectiveIPFFetch,$entropyBasedDropoutEffectiveIPFMaxDim,$entropyBasedDropoutEffectiveIPFSolve,$entropyBasedDropoutEffectiveIPFError,$entropyBasedDropoutEffectiveIPFEntropy, " +
-        s"$worstLoopyIPFTotal,$worstLoopyIPFPrepare,$worstLoopyIPFFetch,$worstLoopyIPFMaxDim,$worstLoopyIPFSolve,$worstLoopyIPFError,$worstLoopyIPFEntropy, " +
-        s"$randomJunctionGraphIPFTotal,$randomJunctionGraphIPFPrepare,$randomJunctionGraphIPFFetch,$randomJunctionGraphIPFMaxDim,$randomJunctionGraphIPFSolve,$randomJunctionGraphIPFError,$randomJunctionGraphIPFEntropy, " +
-        s"$difference_vanillaIPF_moment,$maxDifference_vanillaIPF_moment, $difference_effectiveIPF_vanillaIPF,$maxDifference_effectiveIPF_vanillaIPF, " +
-        s"$difference_loopyIPF_vanillaIPF,$maxDifference_loopyIPF_vanillaIPF"
+        s"$entropyBasedDropoutEffectiveIPFTotal,$entropyBasedDropoutEffectiveIPFPrepare,$entropyBasedDropoutEffectiveIPFFetch,$entropyBasedDropoutEffectiveIPFMaxDim,$entropyBasedDropoutEffectiveIPFSolve,$entropyBasedDropoutEffectiveIPFError,$entropyBasedDropoutEffectiveIPFEntropy, " // +
+//        s"$worstLoopyIPFTotal,$worstLoopyIPFPrepare,$worstLoopyIPFFetch,$worstLoopyIPFMaxDim,$worstLoopyIPFSolve,$worstLoopyIPFError,$worstLoopyIPFEntropy, " +
+//        s"$randomJunctionGraphIPFTotal,$randomJunctionGraphIPFPrepare,$randomJunctionGraphIPFFetch,$randomJunctionGraphIPFMaxDim,$randomJunctionGraphIPFSolve,$randomJunctionGraphIPFError,$randomJunctionGraphIPFEntropy, " +
+//        s"$difference_vanillaIPF_moment,$maxDifference_vanillaIPF_moment, $difference_effectiveIPF_vanillaIPF,$maxDifference_effectiveIPF_vanillaIPF, " +
+//        s"$difference_loopyIPF_vanillaIPF,$maxDifference_loopyIPF_vanillaIPF"
       fileout.println(resultrow)
     }
   }
