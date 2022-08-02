@@ -45,9 +45,11 @@ object Profiler {
   }
   def print(byDuration: Boolean = true) = {
     if(!durations.isEmpty) {
+      println
       val L = durations.keys.map(_.length).max + 2
       val sorted_durations = if(byDuration) durations.toList.sortBy{_._2._2} else durations.toList.sortBy{_._1}
         sorted_durations.map{ case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c)} ns" }.foreach(println)
+      println
     }
   }
 }
