@@ -29,4 +29,6 @@ mkdir -p tabledata/nyc/uniq
 (cd tabledata/nyc && rm all)
 
 #Build Datacube
-sbt --error 'set showSuccess := false' "runMain frontend.generators.NYC"
+sbt --error "runMain frontend.generators.NYC base"
+sbt --error "runMain frontend.generators.NYC RMS"
+sbt --error "runMain frontend.generators.NYC SMS"

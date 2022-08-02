@@ -177,15 +177,28 @@ object SSBGen {
   def main(args: Array[String])  {
     val cg = SSB(100)
 
-    cg.saveBase()
+    val resetSeed = true //for reproducing the same set of materialization decisions
+    val seedValue = 0L
+
+
+    val arg = args.lift(0).getOrElse("all")
+    val params = List((15, 14))
     val maxD = 30 // >15+14, so never passes threshold
-    List(
-      (15, 14)
-    ).map { case (logN, minD) =>
-      cg.saveRMS(logN, minD, maxD)
-      cg.saveSMS(logN, minD, maxD)
+
+    if ((arg equals "base") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      cg.saveBase()
     }
 
+    if ((arg equals "RMS") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
+    }
+
+    if ((arg equals "SMS") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
+    }
   }
 }
 

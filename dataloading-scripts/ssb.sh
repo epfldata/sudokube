@@ -16,4 +16,6 @@ mkdir -p tabledata/SSB/sf$sf/uniq
 (cd tabledata/SSB/sf$sf/ && rm lineorder.tbl)
 
 #Build Datacube
-sbt --error 'set showSuccess := false' "runMain frontend.generators.SSBGen"
+sbt --error  "runMain frontend.generators.SSBGen base"
+sbt --error  "runMain frontend.generators.SSBGen RMS"
+sbt --error  "runMain frontend.generators.SSBGen SMS"
