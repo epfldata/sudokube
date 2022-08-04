@@ -17,7 +17,7 @@ import scala.collection.mutable
  */
 class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("dropout-ipf", ename2) {
 
-  val entropyBasedDropoutIPFFileout: PrintStream = {
+  val normalizedEntropyBasedDropoutIPFFileout: PrintStream = {
     val isFinal = true
     val (timestamp, folder) = {
       if (isFinal) ("final", ".")
@@ -26,14 +26,14 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
         (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
       } else ("dummy", "dummy")
     }
-    val file = new File(s"expdata/$folder/entropy-based-${ename2}_$timestamp.csv")
+    val file = new File(s"expdata/$folder/normalized-entropy-based-${ename2}_$timestamp.csv")
     if (!file.exists())
       file.getParentFile.mkdirs()
     new PrintStream(file)
   }
 
-  entropyBasedDropoutIPFFileout.println(
-    "TrueEntropy, DroppedCubeDim, DroppedCubeEntropy, DroppedCubeMaxPossibleEntropy, DroppedCubeEntropyRatio, RemCoverage, "
+  normalizedEntropyBasedDropoutIPFFileout.println(
+    "TrueEntropy, DroppedCubeDim, DroppedCubeEntropy, DroppedCubeMaxPossibleEntropy, DroppedCubeNormalizedEntropy, RemCoverage, "
       +"NumCliques, NumEntries, TotalTime(us), SolveTime(us), Err, Entropy"
   )
 
@@ -53,7 +53,7 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
   }
 
   dimensionBasedDropoutIPFFileout.println(
-    "TrueEntropy, DroppedCubeDim, DroppedCubeEntropy, DroppedCubeMaxPossibleEntropy, DroppedCubeEntropyRatio, RemCoverage, "
+    "TrueEntropy, DroppedCubeDim, DroppedCubeEntropy, DroppedCubeMaxPossibleEntropy, DroppedCubeNormalizedEntropy, RemCoverage, "
       + "NumCliques, NumEntries, TotalTime(us), SolveTime(us), Err, Entropy"
   )
 
@@ -132,7 +132,7 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
 
   /**
    * Run experiment with the specified dropout policy.
-   * @param policy "Entropy" (prioritize high entropy (ratio) cuboids) or "Dimension" (prioritize low dimensional cuboids).
+   * @param policy "Normalized-Entropy" (prioritize high "normalized" entropy cuboids) or "Dimension" (prioritize low dimensional cuboids).
    * @param dc The DataCube object.
    * @param q Sorted sequence of queries dimensions.
    * @param trueResult The true result of the query.
@@ -150,7 +150,7 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
         )) ++ clusters
       else
         mutable.PriorityQueue[Cluster]()(Ordering.by(cluster => (
-          entropyRatio (cluster), // high to low entropy
+          normalizedEntropy(cluster), // high to low entropy
           - cluster.numVariables // low dimensionality to high dimensionality in case of tie
         ))) ++ clusters
     var totalCoverage = clusters.toList.map(_.numVariables).sum
@@ -163,7 +163,7 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
     val error = SolverTools.error(trueResult, solver.getSolution)
     val solutionEntropy = entropy(solver.getSolution)
     println(s"\t\tSolve time: $solveTime, total time: $totalTime, solution error $error, entropy $solutionEntropy")
-    (if (policy == "dimensionality") dimensionBasedDropoutIPFFileout else entropyBasedDropoutIPFFileout).println(
+    (if (policy == "dimensionality") dimensionBasedDropoutIPFFileout else normalizedEntropyBasedDropoutIPFFileout).println(
       s"${entropy(trueResult)}, , , , , $totalCoverage, "
         + s"${solver.junctionGraph.cliques.size}, ${solver.junctionGraph.cliques.toList.map(1 << _.numVariables).sum}, $totalTime, $solveTime, $error, $solutionEntropy"
     )
@@ -175,15 +175,15 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
       val cluster = clustersQueue.dequeue()
       totalCoverage -= cluster.numVariables
       clusters -= cluster
-      println(s"\tDropped cuboid $cuboidIndex/${fetched.size}: size ${cluster.numVariables}, entropy ${entropy(cluster.distribution)}, entropy ratio ${entropyRatio(cluster)}")
+      println(s"\tDropped cuboid $cuboidIndex/${fetched.size}: size ${cluster.numVariables}, entropy ${entropy(cluster.distribution)}, normalized entropy ${normalizedEntropy(cluster)}")
       val solver = effectiveIPF_solve(clusters, q, trueResult, dcname)
       val solveTime = Profiler.durations("Effective IPF Solve")._2 / 1000
       val totalTime = Profiler.durations("Effective IPF Total")._2 / 1000
       val error = SolverTools.error(trueResult, solver.getSolution)
       val solutionEntropy = entropy(solver.getSolution)
       println(s"\t\tSolve time: $solveTime, total time: $totalTime, solution error $error, entropy $solutionEntropy")
-      (if (policy == "dimensionality") dimensionBasedDropoutIPFFileout else entropyBasedDropoutIPFFileout).println(
-        s"${entropy(trueResult)}, ${cluster.numVariables}, ${entropy(cluster.distribution)}, ${-math.log(1.0 / (1 << cluster.numVariables))}, ${entropyRatio(cluster)}, $totalCoverage, "
+      (if (policy == "dimension") dimensionBasedDropoutIPFFileout else normalizedEntropyBasedDropoutIPFFileout).println(
+        s"${entropy(trueResult)}, ${cluster.numVariables}, ${entropy(cluster.distribution)}, ${-math.log(1.0 / (1 << cluster.numVariables))}, ${normalizedEntropy(cluster)}, $totalCoverage, "
           + s"${solver.junctionGraph.cliques.size}, ${solver.junctionGraph.cliques.toList.map(1 << _.numVariables).sum}, $totalTime, $solveTime, $error, $solutionEntropy"
       )
     }
@@ -191,7 +191,7 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
 
 
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
-    run_dropoutIPF("Entropy", dc, qu.sorted, trueResult, dcname)
+    run_dropoutIPF("Normalized-Entropy", dc, qu.sorted, trueResult, dcname)
   }
 
   /**
@@ -199,5 +199,5 @@ class DropoutIPFExpt(ename2: String = "")(implicit shouldRecord: Boolean) extend
    * @param cluster The cluster.
    * @return The ratio of the entropy of a cluster relative to the maximum possible entropy at its dimensionality.
    */
-  def entropyRatio(cluster: Cluster): Double = entropy(cluster.distribution) / (-math.log(1.0 / (1 << cluster.numVariables)))
+  def normalizedEntropy(cluster: Cluster): Double = entropy(cluster.distribution) / (-math.log(1.0 / (1 << cluster.numVariables)))
 }

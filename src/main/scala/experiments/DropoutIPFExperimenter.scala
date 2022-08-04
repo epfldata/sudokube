@@ -17,7 +17,7 @@ object DropoutIPFExperimenter {
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
 
-    val expname2 = s"dropout-$cubeGenerator-$ms-dmin-$minNumDimensions-querydim-$querySize-query-$queryIndex"
+    val expname2 = s"dropout-ipf-$cubeGenerator-$ms-dmin-$minNumDimensions-querydim-$querySize-query-$queryIndex"
     val exptfull = new DropoutIPFExpt(expname2)
     val materializedQueries = new MaterializedQueryResult(cg)
     val queries = materializedQueries.loadQueries(querySize)

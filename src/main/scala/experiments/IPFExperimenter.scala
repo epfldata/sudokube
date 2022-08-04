@@ -20,7 +20,7 @@ object IPFExperimenter {
     val qss = List(6, 9, 12, 15, 18, 21)
     qss.foreach { qs =>
       val queries = materializedQueries.loadQueries(qs).take(numIters)
-      println(s"Vanilla IPF vs Effective IPF vs Loopy IPF vs Moment Solver Experiment for ${cg.inputname} dataset MS = $ms (d_min = $minNumDimensions) Query Dimensionality = $qs")
+      println(s"IPF Solvers vs Moment Solver Experiment for ${cg.inputname} dataset MS = $ms (d_min = $minNumDimensions) Query Dimensionality = $qs")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
         println(s"\tBatch Query ${i + 1}/$ql")

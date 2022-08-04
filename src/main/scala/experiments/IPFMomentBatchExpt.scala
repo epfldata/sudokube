@@ -2,7 +2,7 @@ package experiments
 
 import core.DataCube
 import core.solver.SolverTools
-import core.solver.SolverTools.{entropy, error}
+import core.solver.SolverTools.entropy
 import core.solver.iterativeProportionalFittingSolver._
 import core.solver.moment.{CoMoment4Solver, Moment1Transformer}
 import util.{BitUtils, Profiler}
@@ -21,8 +21,8 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       "MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveMaxDimFetched, MSolveTime(us), MErr, MEntropy, " +
 //      "VIPFTotalTime(us), VIPFPrepareTime(us), VIPFFetchTime(us), VIPFMaxDimFetched, VIPFSolveTime(us), VIPFErr, VIPFEntropy, " +
       "EIPFTotalTime(us), EIPFPrepareTime(us), EIPFFetchTime(us), EIPFMaxDimFetched, EIPFSolveTime(us), EIPFErr, EIPFEntropy, " +
-      "DBDEIPFTotalTime(us), DBDEIPFPrepareTime(us), DBDEIPFFetchTime(us), DBDEIPFMaxDimFetched, DBDEIPFSolveTime(us), DBDEIPFErr, DBDEIPFEntropy, " +
-      "EBDEIPFTotalTime(us), EBDEIPFPrepareTime(us), EBDEIPFFetchTime(us), EBDEIPFMaxDimFetched, EBDEIPFSolveTime(us), EBDEIPFErr, EBDEIPFEntropy, " +
+      "DimDropoutIPFTotalTime(us), DimDropoutIPFPrepareTime(us), DimDropoutIPFFetchTime(us), DimDropoutIPFMaxDimFetched, DimDropoutIPFSolveTime(us), DimDropoutIPFErr, DimDropoutIPFEntropy, " +
+      "NormEntDropoutIPFTotalTime(us), NormEntDropoutPrepareTime(us), NormEntDropoutIPFFetchTime(us), NormEntDropoutIPFMaxDimFetched, NormEntDropoutIPFSolveTime(us), NormEntDropoutIPFErr, NormEntDropoutIPFEntropy, " +
 //      "LIPFTotalTime(us), LIPFPrepareTime(us), LIPFFetchTime(us), LIPFMaxDimFetched, LIPFSolveTime(us), LIPFErr, LIPFEntropy, " +
 //      "RJGIPFTotalTime(us), RJGIPFPrepareTime(us), RJGIPFFetchTime(us), RJGIPFMaxDimFetched, RJGIPFSolveTime(us), RJGIPFErr, RJGIPFEntropy, " +
       "Difference_vanillaIPF_vs_moment,MaxDifference_vanillaIPF_vs_moment, " +
@@ -250,15 +250,16 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @param dcname Name of the data cube (optional, only used if we want to see it while experimenting).
    * @return Query result, maximum dimension fetched, number of cuboids fetched, sizes of fetched cuboids.
    */
-  def entropyBasedDropoutEffectiveIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String): (EntropyBasedDropoutEffectiveIPFSolver, Int, Int, Seq[Int]) = {
-    val (fetched, maxDimFetch) = momentPrepareFetch("Entropy-Based Dropout Effective IPF", dc, q)
+  def normalizedEntropyBasedDropoutEffectiveIPF_solve(dc: DataCube, q: IndexedSeq[Int], trueRes: Array[Double], dcname: String)
+    : (NormalizedEntropyBasedDropoutEffectiveIPFSolver, Int, Int, Seq[Int]) = {
+    val (fetched, maxDimFetch) = momentPrepareFetch("Normalized-Entropy-Based Dropout Effective IPF", dc, q)
 
-    val result = Profiler("Entropy-Based Dropout Effective IPF Constructor + Add + Solve") {
-      val solver = Profiler("Entropy-Based Dropout Effective IPF Constructor") {
-        new EntropyBasedDropoutEffectiveIPFSolver(q.length)
+    val result = Profiler("Normalized-Entropy-Based Dropout Effective IPF Constructor + Add + Solve") {
+      val solver = Profiler("Normalized-Entropy-Based Dropout Effective IPF Constructor") {
+        new NormalizedEntropyBasedDropoutEffectiveIPFSolver(q.length)
       }
-      Profiler("Entropy-Based Dropout Effective IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
-      Profiler("Entropy-Based Dropout Effective IPF Solve") { solver.solve() }
+      Profiler("Normalized-Entropy-Based Dropout Effective IPF Add") { fetched.foreach { case (bits, array) => solver.add(bits, array) } }
+      Profiler("Normalized-Entropy-Based Dropout Effective IPF Solve") { solver.solve() }
       solver
     }
     (result, maxDimFetch, fetched.length, fetched.map { case (bits, _) => sizeOfSet(bits) })
@@ -307,11 +308,11 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
       + s"solution derivation time: ${Profiler.durations("Dimension-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
-    val (entropyBasedDropoutEffectiveIPFSolver, entropyBasedDropoutEffectiveIPFMaxDim, entropyBasedDropoutEffectiveIPFNumCubesFetched, entropyBasedDropoutEffectiveIPFCubeSizes, entropyBasedDropoutEffectiveIPFError)
-      = runIPFSolver("Entropy-Based Dropout Effective IPF", entropyBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
-    println(s"\t\t\tEntropy-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
-      + s"iterations time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Iterations")._2 / 1000}, "
-      + s"solution derivation time: ${Profiler.durations("Entropy-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
+    val (normalizedEntropyBasedDropoutEffectiveIPFSolver, normalizedEntropyBasedDropoutEffectiveIPFMaxDim, normalizedEntropyBasedDropoutEffectiveIPFNumCubesFetched, normalizedEntropyBasedDropoutEffectiveIPFCubeSizes, normalizedEntropyBasedDropoutEffectiveIPFError)
+      = runIPFSolver("Normalized-Entropy-Based Dropout Effective IPF", normalizedEntropyBasedDropoutEffectiveIPF_solve, dc, q, trueResult, dcname)
+    println(s"\t\t\tNormalized-Entropy-Based Dropout Effective IPF junction tree construction time: ${Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Junction Tree Construction")._2 / 1000}, "
+      + s"iterations time: ${Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Iterations")._2 / 1000}, "
+      + s"solution derivation time: ${Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Solution Derivation")._2 / 1000}")
 
 
 //    val (worstLoopyIPFSolver, worstLoopyIPFMaxDim, worstLoopyIPFNumCubesFetched, worstLoopyIPFCubeSizes, worstLoopyIPFError)
@@ -358,7 +359,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 //    val vanillaIPFEntropy = entropy(vanillaIPFSolver.getSolution)
     val effectiveIPFEntropy = entropy(effectiveIPFSolver.getSolution)
     val dimensionBasedDropoutEffectiveIPFEntropy = entropy(dimensionBasedDropoutEffectiveIPFSolver.getSolution)
-    val entropyBasedDropoutEffectiveIPFEntropy = entropy(entropyBasedDropoutEffectiveIPFSolver.getSolution)
+    val normalizedEntropyBasedDropoutEffectiveIPFEntropy = entropy(normalizedEntropyBasedDropoutEffectiveIPFSolver.getSolution)
 //    val worstLoopyIPFEntropy = entropy(worstLoopyIPFSolver.getSolution)
 //    val randomJunctionGraphIPFEntropy = entropy(randomJunctionGraphIPFSolver.getSolution)
     println("\t\tEntropies")
@@ -367,7 +368,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 //    println(s"\t\t\tVanilla IPF Entropy = $vanillaIPFEntropy")
     println(s"\t\t\tEffective IPF Entropy = $effectiveIPFEntropy")
     println(s"\t\t\tDimension-Based Dropout Effective IPF Entropy = $dimensionBasedDropoutEffectiveIPFEntropy")
-    println(s"\t\t\tEntropy-Based Dropout Effective IPF Entropy = $entropyBasedDropoutEffectiveIPFEntropy")
+    println(s"\t\t\tNormalized-Entropy-Based Dropout Effective IPF Entropy = $normalizedEntropyBasedDropoutEffectiveIPFEntropy")
 //    println(s"\t\t\tWorst Loopy IPF Entropy = $worstLoopyIPFEntropy")
 //    println(s"\t\t\tRandom Junction Graph IPF Entropy = $randomJunctionGraphIPFEntropy")
 
@@ -391,10 +392,10 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
     val dimensionBasedDropoutEffectiveIPFSolve = Profiler.durations("Dimension-Based Dropout Effective IPF Solve")._2 / 1000
     val dimensionBasedDropoutEffectiveIPFTotal = Profiler.durations("Dimension-Based Dropout Effective IPF Total")._2 / 1000
 
-    val entropyBasedDropoutEffectiveIPFPrepare = Profiler.durations("Entropy-Based Dropout Effective IPF Prepare")._2 / 1000
-    val entropyBasedDropoutEffectiveIPFFetch = Profiler.durations("Entropy-Based Dropout Effective IPF Fetch")._2 / 1000
-    val entropyBasedDropoutEffectiveIPFSolve = Profiler.durations("Entropy-Based Dropout Effective IPF Solve")._2 / 1000
-    val entropyBasedDropoutEffectiveIPFTotal = Profiler.durations("Entropy-Based Dropout Effective IPF Total")._2 / 1000
+    val normalizedEntropyBasedDropoutEffectiveIPFPrepare = Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Prepare")._2 / 1000
+    val normalizedEntropyBasedDropoutEffectiveIPFFetch = Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Fetch")._2 / 1000
+    val normalizedEntropyBasedDropoutEffectiveIPFSolve = Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Solve")._2 / 1000
+    val normalizedEntropyBasedDropoutEffectiveIPFTotal = Profiler.durations("Normalized-Entropy-Based Dropout Effective IPF Total")._2 / 1000
 
 //    val worstLoopyIPFPrepare = Profiler.durations("Worst Loopy IPF Prepare")._2 / 1000
 //    val worstLoopyIPFFetch = Profiler.durations("Worst Loopy IPF Fetch")._2 / 1000
@@ -413,7 +414,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 //        s"$vanillaIPFTotal,$vanillaIPFPrepare,$vanillaIPFFetch,$vanillaIPFMaxDim,$vanillaIPFSolve,$vanillaIPFError,$vanillaIPFEntropy, " +
         s"$effectiveIPFTotal,$effectiveIPFPrepare,$effectiveIPFFetch,$effectiveIPFMaxDim,$effectiveIPFSolve,$effectiveIPFError,$effectiveIPFEntropy, " +
         s"$dimensionBasedDropoutEffectiveIPFTotal,$dimensionBasedDropoutEffectiveIPFPrepare,$dimensionBasedDropoutEffectiveIPFFetch,$dimensionBasedDropoutEffectiveIPFMaxDim,$dimensionBasedDropoutEffectiveIPFSolve,$dimensionBasedDropoutEffectiveIPFError,$dimensionBasedDropoutEffectiveIPFEntropy, " +
-        s"$entropyBasedDropoutEffectiveIPFTotal,$entropyBasedDropoutEffectiveIPFPrepare,$entropyBasedDropoutEffectiveIPFFetch,$entropyBasedDropoutEffectiveIPFMaxDim,$entropyBasedDropoutEffectiveIPFSolve,$entropyBasedDropoutEffectiveIPFError,$entropyBasedDropoutEffectiveIPFEntropy, " // +
+        s"$normalizedEntropyBasedDropoutEffectiveIPFTotal,$normalizedEntropyBasedDropoutEffectiveIPFPrepare,$normalizedEntropyBasedDropoutEffectiveIPFFetch,$normalizedEntropyBasedDropoutEffectiveIPFMaxDim,$normalizedEntropyBasedDropoutEffectiveIPFSolve,$normalizedEntropyBasedDropoutEffectiveIPFError,$normalizedEntropyBasedDropoutEffectiveIPFEntropy, " // +
 //        s"$worstLoopyIPFTotal,$worstLoopyIPFPrepare,$worstLoopyIPFFetch,$worstLoopyIPFMaxDim,$worstLoopyIPFSolve,$worstLoopyIPFError,$worstLoopyIPFEntropy, " +
 //        s"$randomJunctionGraphIPFTotal,$randomJunctionGraphIPFPrepare,$randomJunctionGraphIPFFetch,$randomJunctionGraphIPFMaxDim,$randomJunctionGraphIPFSolve,$randomJunctionGraphIPFError,$randomJunctionGraphIPFEntropy, " +
 //        s"$difference_vanillaIPF_moment,$maxDifference_vanillaIPF_moment, $difference_effectiveIPF_vanillaIPF,$maxDifference_effectiveIPF_vanillaIPF, " +
