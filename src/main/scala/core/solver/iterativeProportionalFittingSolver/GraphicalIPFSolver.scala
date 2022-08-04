@@ -39,7 +39,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
         numIterations += 1
         println(s"\t\t\t$solverName Iteration $numIterations")
         totalDelta = iterativeUpdate()
-      } while (totalDelta >= convergenceThreshold * totalNumUpdates)
+      } while (totalDelta > convergenceThreshold * totalNumUpdates)
     }
     println(s"\t\t\t$solverName number of iterations $numIterations")
 
