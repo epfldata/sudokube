@@ -24,11 +24,14 @@ This project has the following dependencies:
 	+ Run `sbt "runMain frontend.generators.Warmup"`
 
 ## Run Experiments from our paper
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig7"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Tab1"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig8"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig9"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig10"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig11"
-
-
+- sbt  'runMain experiments.Experimenter Fig7'
+- sbt  'runMain experiments.Experimenter Tab1'
+- sbt  'runMain experiments.Experimenter Fig8 RMS'
+- sbt  'runMain experiments.Experimenter Fig8 SMS'
+- sbt  'runMain experiments.Experimenter Fig9 RMS'
+- sbt  'runMain experiments.Experimenter Fig9 SMS'
+- sbt  'runMain experiments.Experimenter Fig10 RMS'
+- sbt  'runMain experiments.Experimenter Fig10 SMS'
+- sbt  'runMain experiments.Experimenter Fig11'
+- sbt  'runMain experiments.Experimenter Fig12 NYC'
+- sbt  'runMain experiments.Experimenter Fig12 SSB'
