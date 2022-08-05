@@ -15,6 +15,8 @@ This project has the following dependencies:
 - Run `sbt "runMain <classname>"` to run some class containing the main method, for example, `example.Demotxt`
 
 ## Generate data and build data cube
+In order to reproduce the experiment with fixed queries (Fig 12) exactly, we have fixed the seed of the random generator
+that is used in deciding what cuboids are materialized to zero. This can be disabled by editing the files `src/main/scala/frontend/generators/NYC.scala` and  `src/main/scala/frontend/generators/SSB.scala` before generating the data cube.
 - [New York Parking Violations Dataset](https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2021/kvfd-bves)
 	+ Run `dataloading-scripts/nyc.sh`
 - [Star Schema Benchmark](https://github.com/eyalroz/ssb-dbgen)
@@ -22,6 +24,7 @@ This project has the following dependencies:
 	+ Run `dataloading-scripts/ssb.sh`
 - Warmup Dataset
 	+ Run `sbt "runMain frontend.generators.Warmup"`
+
 
 ## Run Experiments from our paper
 - sbt --error 'runMain experiments.Experimenter Fig7'
