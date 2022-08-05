@@ -694,19 +694,19 @@ object Experimenter {
         cuboid_distribution(false)
         cuboid_distribution(true)
       case "Tab1" => storage_overhead()
-      case "Fig8 RMS" =>
+      case "Fig8-RMS" =>
         lpp_query_dimensionality(false)
-      case "Fig8 SMS" =>
+      case "Fig8-SMS" =>
         lpp_query_dimensionality(true)
-      case "Fig9 RMS" =>
+      case "Fig9-RMS" =>
         moment_query_dimensionality(strategy, false)
-      case "Fig9 SMS" =>
+      case "Fig9-SMS" =>
         moment_query_dimensionality(strategy, true)
-      case "Fig10 RMS" =>
+      case "Fig10-RMS" =>
         moment_mat_params(strategy, false)
-      case "Fig10 SMS" =>
+      case "Fig10-SMS" =>
         moment_mat_params(strategy, true)
-      case "Fig11" | "microbench" =>
+      case "Fig11"  =>
         mb_dims()
         mb_stddev()
         mb_prob()
@@ -716,9 +716,9 @@ object Experimenter {
       case "momentcompare" =>
         momentCompareFixedSlice()
         momentCompareFixedTotal()
-      case "Fig12 SSB" =>
+      case "Fig12-SSB" =>
         manualSSB(strategy, true)
-      case "Fig12 NYC" =>
+      case "Fig12-NYC" =>
         manualNYC(strategy, true)
       case expt =>
         throw new IllegalArgumentException("Unknown experiment name "+ expt)
