@@ -145,7 +145,7 @@ object Experimenter {
       val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query $i/$ql")
+        println(s"Dim=$qs Batch Query $i/$ql")
         expt.run(dc, fullname, q, null, true, sliceValues = Vector())
       }
     }
@@ -173,7 +173,7 @@ object Experimenter {
       val queries = mq.loadQueries(qs).take(numIters)
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s" Query ${i + 1}/$ql")
+        println(s"Dim=$qs Query ${i + 1}/$ql")
         val trueResult = mq.loadQueryResult(qs, i)
         expt.run(dc, fullname, q, trueResult, true, sliceValues = Vector(1, 0, 0, 0, 1, 1, 0, 0))
       }
@@ -200,7 +200,7 @@ object Experimenter {
     val ql = queries.length
     println(s"\n\nMoment Solver Strategy Comparison Fixed Total Experiment for MS = $ms")
     queries.zipWithIndex.foreach { case (q, i) =>
-      println(s" Query ${i + 1}/$ql")
+      println(s"Dim=$qs Query ${i + 1}/$ql")
       val trueResult = mq.loadQueryResult(qs, i)
       sss.foreach { ss =>
         val svs = if(ss == 0) Vector()  else {
@@ -350,12 +350,12 @@ object Experimenter {
       println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query ${i + 1}/$ql")
+        println(s"Dim=$qs Batch Query ${i + 1}/$ql")
         exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Online Query ${i + 1}/$ql")
+        println(s"Dim=$qs Online Query ${i + 1}/$ql")
         exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
     }
@@ -388,12 +388,12 @@ object Experimenter {
       println(s"Moment Solver Materialization Parameters Experiment for $fullname")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query ${i + 1}/$ql")
+        println(s"Dim=$qs Batch Query ${i + 1}/$ql")
         exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Online Query ${i + 1}/$ql")
+        println(s"Dim=$qs Online Query ${i + 1}/$ql")
         exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
@@ -411,7 +411,7 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
 
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"Dim=$nb Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
@@ -462,7 +462,7 @@ object Experimenter {
       val cg = MicroBench(10, 100000, stddev, 0.25)
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"stddev=$stddev Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
@@ -487,7 +487,7 @@ object Experimenter {
       val cg = MicroBench(10, 100000, 0.5, prob)
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"prob=$prob Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
@@ -631,7 +631,7 @@ object Experimenter {
       queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
-        println(s"  Query $i :: $qname   length = $qsize")
+        println(s"Query $i :: $qname   length = $qsize")
         expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
@@ -674,7 +674,7 @@ object Experimenter {
       queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
-        println(s"  Query $i :: $qname   length = $qsize ")
+        println(s"Query $i :: $qname   length = $qsize ")
         expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
