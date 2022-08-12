@@ -174,6 +174,10 @@ class DataCube(var cubeName: String = "") extends Serializable {
       f1.map(p => Util.fromLong(p.smLong))
   }
 
+  /** Fetches a single cuboid for which we care only about the indexes where [[maskArray]] is set to true */
+  def fetchWithSliceMask[T: ClassTag](pm: NewProjectionMetaData, maskArray: Array[Boolean])(implicit num: Fractional[T]): Array[T] = {
+    cuboids(pm.cuboidID).rehashWithSliceAndFetch(pm.cuboidIntersection, maskArray: Array[Boolean]).map(p => Util.fromLong(p))
+  }
   /** returns a solver for a given query. One needs to explicitly compute
     * and extract bounds from it. (See the code of DataCube.online_agg() for
     * an example.)

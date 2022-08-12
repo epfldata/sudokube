@@ -57,6 +57,22 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
 /*
  * Class:     backend_CBackend
+ * Method:    sRehashSlice0
+ * Signature: (I[I[Z)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
+  (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
+
+/*
+ * Class:     backend_CBackend
+ * Method:    dRehashSlice0
+ * Signature: (I[I[Z)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
+  (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
+
+/*
+ * Class:     backend_CBackend
  * Method:    saveAsTrie0
  * Signature: ([Lscala/Tuple2;Ljava/lang/String;J)V
  */

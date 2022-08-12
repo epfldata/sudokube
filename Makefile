@@ -8,6 +8,7 @@ CP=~/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.7.jar
 osname=$(shell uname | tr A-Z a-z)
 jni_include=-I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(osname)
 lib_src=src/main/cpp/CBackend.cpp src/main/cpp/CubeArrays.cpp
+lib_h=src/main/cpp/Keys.h
 $(info osname is $(osname))
 ifeq ($(osname), darwin)
 lib=libCBackend.dylib
@@ -23,10 +24,10 @@ backend_CBackend.h: src/main/scala/backend/CBackend.scala
 	sbt compile
 	javah -cp $(CP):target/scala-2.12/classes:. backend.CBackend
 
-libCBackend.so: backend_CBackend.h $(lib_src)
+libCBackend.so: backend_CBackend.h $(lib_src) $(lib_h)
 	g++ -std=c++11 -shared -fPIC -O3 $(jni_include) -I. $(lib_src) -o libCBackend.so
 
-libCBackend.dylib: backend_CBackend.h $(lib_src)
+libCBackend.dylib: backend_CBackend.h $(lib_src) $(lib_h)
 	g++ -std=c++11 -dynamiclib -O3 $(jni_include) -I. $(lib_src) -o libCBackend.dylib
 
 clean:

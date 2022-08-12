@@ -861,6 +861,97 @@ bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
     return globalSetTrie.count < globalSetTrie.maxSize;
 }
 
+byte* slice_mask_to_index(unsigned int bitposlength, bool * sm) {
+    size_t sourceSize = 1 << bitposlength;
+    size_t destSize = sourceSize << 1;
+    auto idx = new byte[destSize];
+    //idx starts from 1. the last sourceSize entries is the original array
+    memcpy(idx + sourceSize, sm , sourceSize);
+    for(size_t i = sourceSize - 1; i > 0; i --) {
+        auto leftChild = i << 1;
+        auto rightChild = leftChild + 1;
+        byte left = idx[leftChild];
+        byte right = idx[rightChild];
+        if(left == right) {
+            idx[i] = left;
+        } else {
+            idx[i] = 2;
+        }
+    }
+//    fprintf(stderr, "Tree index ");
+//    for(int logh = 0; logh <= bitposlength; ++logh) {
+//        fprintf(stderr, "\n");
+//        for(int i = 1 << logh; i < 1 << (logh + 1); i++) {
+//            fprintf(stderr, "%u ", idx[i]);
+//        }
+//    }
+    return idx;
+}
+value_t* s2drehashSlice(unsigned int s_id, unsigned int *bitpos, unsigned int bitposlength, bool* sliceMask) {
+
+    auto sliceIdx = slice_mask_to_index(bitposlength, sliceMask);
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << bitposlength;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehashSlice calloc : %lu MB\n", numMB);
+
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+//    print_key(masklen, getKey(store, r, recSize));
+        size_t i = project_Key_to_Long_WithSlice(bitposlength, bitpos, getKey(store, r, recSize), sliceIdx);
+        if(i < newsize) {
+            newstore[i] += *getVal(store, r, recSize);
+//            fprintf(stderr, " newstore[%lld] = %d\n", i, newstore[i]);
+        }
+    }
+    return newstore;
+}
+
+value_t* drehashSlice(unsigned int d_id, unsigned int *bitpos, unsigned int bitposlength, bool* sliceMask) {
+
+//   fprintf(stderr, "Making tree index... ");
+    auto sliceIdx = slice_mask_to_index(bitposlength, sliceMask);
+//    fprintf(stderr, "   Done\n");
+    size_t size;
+    unsigned short keySize;
+    void *ptr;
+    globalRegistry.read(d_id, ptr, size, keySize);
+
+    value_t *store = (value_t *) ptr;
+
+    unsigned int newsize = 1 << bitposlength;
+
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ndrehash calloc : %lu MB\n", numMB);
+
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+
+    unsigned int newKeySize = bitsToBytes(bitposlength);
+    for (size_t r = 0; r < size; r++) {
+        size_t i = project_Long_to_Long_WithSlice(bitposlength, bitpos, r, sliceIdx);
+        if (i < newsize) {
+            newstore[i] += store[r];
+//            fprintf(stderr, " newstore[%lld] = %d\n", i, newstore[i]);
+        }
+    }
+    return newstore;
+}
+
 void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
 void saveTrie(const char *filename) { globalSetTrie.saveToFile(filename); }
 void loadTrie(const char *filename) { globalSetTrie.loadFromFile(filename); }

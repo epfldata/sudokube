@@ -185,7 +185,7 @@ object BitUtils {
     var result = List[Int]()
     var pos = 0
     while (i2 > 0) {
-      if ((i2 % 2) == 1)
+      if ((i2 & 0x1) == 1)
         result = pos :: result
       pos += 1
       i2 = i2 >> 1
@@ -212,7 +212,7 @@ object BitUtils {
     var hw = 0
     var maxb2 = maxb
     while (maxb2 > 0) {
-      if ((i2 % 2) == 1) {
+      if ((i2 & 0x1) == 1) {
         result1 = pos :: result1
         hw += 1
       } else
@@ -231,8 +231,8 @@ object BitUtils {
     var pos = 0
     while (i2 > 0 && idx2 > 0) {
 
-      if ((idx2 % 2) == 1) {
-        result += (i2 % 2) << pos
+      if ((idx2 & 0x1 ) == 1) {
+        result += (i2 & 0x1) << pos
         pos += 1
       }
       i2 = i2 >> 1
@@ -248,8 +248,8 @@ object BitUtils {
     var shift = 0
     var result = 0
     while (idx2 > 0) {
-      if ((idx2 % 2) == 1) {
-        result += (i2 % 2) << shift
+      if ((idx2 & 0x1) == 1) {
+        result += (i2 & 0x1) << shift
         i2 = i2 >> 1
       }
       shift += 1

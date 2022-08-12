@@ -3,6 +3,7 @@ package backend
 import combinatorics.Big
 import util._
 import BitUtils._
+
 import java.io._
 
 
@@ -124,6 +125,9 @@ object ScalaBackend extends Backend[Payload] {
     dedup(a.map{ case (i, v) => (hash_f(i), v) })
   }
 
+
+  override protected def sRehashSlice(a: Seq[(BigBinary, Payload)], BITPOS_T: ScalaBackend.BITPOS_T, maskArray: Array[Boolean]): Array[Long] = ???
+  override protected def dRehashSlice(a: Array[Payload], BITPOS_T: ScalaBackend.BITPOS_T, maskArray: Array[Boolean]): Array[Long] = ???
   override protected def hybridRehash(a: Seq[(BigBinary, Payload)], bitpos: BITPOS_T) : HYBRID_T = {
       val res_n_bits = bitpos.length
       val n0 = (math.log(a.size.toDouble)/math.log(2)).toInt

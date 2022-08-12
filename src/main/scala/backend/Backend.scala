@@ -48,6 +48,11 @@ abstract class Cuboid {
    */
   def rehash(bitpos: BITPOS_T): Cuboid
   def backend: Backend[_]
+
+  /**
+   * Rehashes this cuboid to Dense Cuboid that is fetched immediately. Only computes the entries where [[maskArray]] is set to true
+   */
+  def rehashWithSliceAndFetch(bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
 }
 
 /**
@@ -223,6 +228,11 @@ abstract class Backend[MEASURES_T] {
   protected def   dRehash(n_bits: Int, a: DENSE_T, p_bits: Int,
                           bitpos: BITPOS_T) : DENSE_T
 
+  /** Rehash with slice on sparse cuboid to dense and fetch */
+  protected def sRehashSlice(a: SPARSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
+  /** Rehash with slice on dense cuboid to dense and fetch */
+  protected def dRehashSlice(a: DENSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
+
   /**
    * Stores non-zero cells as a sequence of key-value pairs. Key is cell address and Value is fact value in the cell
    */
@@ -253,6 +263,7 @@ abstract class Backend[MEASURES_T] {
       SparseCuboid(bitpos.length, sRehash(data, bitpos))
     }
 
+    override def rehashWithSliceAndFetch(bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = sRehashSlice(data, bitpos, maskArray)
     def backend = be_this
   }
 
@@ -274,6 +285,8 @@ abstract class Backend[MEASURES_T] {
       val res_n_bits = bitpos.length
       DenseCuboid(res_n_bits, dRehash(n_bits, data, res_n_bits, bitpos))
     }
+
+    override def rehashWithSliceAndFetch(bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = dRehashSlice(data, bitpos, maskArray)
 
     def rehash_to_sparse(bitpos: BITPOS_T) = {
       SparseCuboid(bitpos.length, d2sRehash(n_bits, data, bitpos))

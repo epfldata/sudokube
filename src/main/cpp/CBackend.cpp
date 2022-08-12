@@ -11,6 +11,9 @@ extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
+extern value_t* s2drehashSlice(unsigned int s_id, unsigned int *bitpos, unsigned int bitlength, bool *sliceMask);
+extern value_t*  drehashSlice(unsigned int d_id, unsigned int *bitpos, unsigned int bitposlength, bool *sliceMask);
+
 extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
 extern unsigned int      mk(unsigned int n_bits);
 extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
@@ -183,6 +186,49 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 
     env->ReleaseIntArrayElements(pos, posbody, 0);
     return x;
+}
+
+
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
+        (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos, jbooleanArray jslicemask) {
+    jsize bitposlen = env->GetArrayLength(jbitpos);
+    jint* bitpos = env->GetIntArrayElements(jbitpos, 0);
+    jboolean *sliceMask = env->GetBooleanArrayElements(jslicemask, 0);
+    jsize slicemasklen = env->GetArrayLength(jslicemask);
+    assert(slicemasklen == (1 << bitposlen));
+    value_t* result = s2drehashSlice(s_id, (unsigned int*) bitpos, bitposlen, (bool *) sliceMask);
+    env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
+    env->ReleaseBooleanArrayElements(jslicemask, sliceMask, 0);
+    jlongArray jresult = env ->NewLongArray(slicemasklen);
+    if (result == NULL) return NULL; // out of memory error thrown
+    jlong *fill;
+    if (sizeof(jlong) != sizeof(value_t))
+        fill = nullptr;
+    else
+        fill = (jlong *) result;
+    env->SetLongArrayRegion(jresult, 0, slicemasklen, fill);
+    return jresult;
+}
+
+JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
+        (JNIEnv *env, jobject obj, jint d_id, jintArray jbitpos, jbooleanArray jslicemask) {
+    jsize bitposlen = env->GetArrayLength(jbitpos);
+    jint* bitpos = env->GetIntArrayElements(jbitpos, 0);
+    jboolean *sliceMask = env->GetBooleanArrayElements(jslicemask, 0);
+    jsize slicemasklen = env->GetArrayLength(jslicemask);
+    assert(slicemasklen == (1 << bitposlen));
+    value_t* result = drehashSlice(d_id, (unsigned int*) bitpos, bitposlen, (bool *) sliceMask);
+    env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
+    env->ReleaseBooleanArrayElements(jslicemask, sliceMask, 0);
+    jlongArray jresult = env ->NewLongArray(slicemasklen);
+    if (result == NULL) return NULL; // out of memory error thrown
+    jlong *fill;
+    if (sizeof(jlong) != sizeof(value_t))
+        fill = nullptr;
+    else
+        fill = (jlong *) result;
+    env->SetLongArrayRegion(jresult, 0, slicemasklen, fill);
+    return jresult;
 }
 
 

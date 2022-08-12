@@ -28,6 +28,9 @@ class CBackend extends Backend[Payload] {
   @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
   @native protected def dRehash0(d_id: Int, pos: Array[Int]): Int
 
+  @native protected def sRehashSlice0(s_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long]
+  @native protected def dRehashSlice0(d_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long]
+
   @native protected def saveAsTrie0(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long)
   @native protected def loadTrie0(filename: String)
   @native protected def prepareFromTrie0(query: Array[Int]): Array[(Int, Long)]
@@ -188,6 +191,8 @@ class CBackend extends Backend[Payload] {
     dRehash0(d_id, bitpos.toArray)
   }
 
+  override protected def sRehashSlice(a: Int, bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = sRehashSlice0(a, bitpos.toArray, maskArray)
+  override protected def dRehashSlice(a: Int, bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = dRehashSlice0(a, bitpos.toArray, maskArray)
   protected def dFetch(data: DENSE_T) : Array[Payload] =
     Payload.decode_fetched(dFetch0(data))
 

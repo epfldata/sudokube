@@ -93,6 +93,26 @@ inline size_t project_Key_to_Long(unsigned int masksum, unsigned int *maskpos, b
     return to;
 }
 
+inline size_t project_Key_to_Long_WithSlice(unsigned int masksum, unsigned int *maskpos, byte *from_key, byte* sliceIdx) {
+    size_t to = 0;
+    size_t indexPtr = 1;
+    //start from msb of destination key
+    for (int wpos = masksum-1; wpos >= 0; wpos--) {
+        //get index of source key from mask
+        int rpos = maskpos[wpos];
+
+        //we read (rpos % 8)^th bit of (rpos / 8)^th byte. If this bit is 1, then bit at  wpos is set to 1 in destination key
+        unsigned int bit = 1 << (rpos & 0x7);
+        indexPtr <<= 1; //leftChild
+        if (from_key[rpos >> 3] & bit) {
+            indexPtr += 1; //rightChild
+            to |= 1 << wpos;
+        }
+        if(sliceIdx[indexPtr] == 0) return -1; //early abort
+    }
+    return to;
+}
+
 /**
  * Projects a dynamically sized key  using the mask into a long value that represents index in a dense representation of cuboid.
  * @param masksum Number of 1s in mask
@@ -151,6 +171,7 @@ inline void from_Long_to_Key(unsigned int numkeybytes, size_t from, byte *to) {
     assert(pos <= numkeybytes);
 }
 
+
 /**
  * Projects a dynamically sized sparse key to another sparse key using a mask
  * @param masksum Number of 1s in the mask
@@ -194,6 +215,29 @@ inline size_t project_Long_to_Long(unsigned int masksum, unsigned int *maskpos, 
     }
     return to;
 }
+inline size_t project_Long_to_Long_WithSlice(unsigned int masksum, unsigned int *maskpos, size_t from, byte* sliceIdx) {
+    size_t to = 0;
+    size_t indexPtr = 1;
+//    fprintf(stderr, "L2L from=%lu, masksum=%u \n", from, masksum);
+    //start at msb of destination
+    for (int wpos = masksum-1; wpos >= 0; wpos--) {
+        //get index of source from mask
+        int rpos = maskpos[wpos];
+        size_t bit = 1L << rpos;
 
+        indexPtr <<= 1; //left child;
+        //read rpos^th bit from source and if 1, set the wpos^th bit of destination
+        if (from & bit) {
+            indexPtr += 1; //right child
+            to |= 1 << wpos;
+        }
+//        fprintf(stderr, "bit = %x, indexPtr = %lu \n", bit, indexPtr);
+        if(sliceIdx[indexPtr] == 0) {
+//            fprintf(stderr, "EARLY ABORT\n");
+            return -1;
+        }
+    }
+    return to;
+}
 #endif
 

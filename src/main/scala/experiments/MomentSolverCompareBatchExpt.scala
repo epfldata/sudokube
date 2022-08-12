@@ -20,7 +20,7 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
     val aggN = 1 << (qs - sliceValues.length)
 
     def getSolverStats(stg: Strategy) = {
-      //Profiler.print()
+      Profiler.print()
       val mprep = Profiler.durations(stg + "Moment Prepare")._2 / 1000
       val mfetch = Profiler.durations(stg + "Moment Fetch")._2 / 1000
       val msolve = Profiler.durations(stg + s"Moment Solve")._2 / 1000
@@ -29,13 +29,14 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
     }
 
     val cm3limit = 15
-    val cm4limit = 18
+    val cm4limit = 15
+    val cm5limit = 15
     Profiler.resetAll()
     var stg = CoMoment3
     val result0 = Profiler(stg + "Moment Total") {
       if (qs <= cm3limit) solve(dc, stg, q, sliceValues) else null
     }
-      val s0stats = getSolverStats(stg)
+    val s0stats = getSolverStats(stg)
 
     Profiler.resetAll()
     stg = CoMoment4
@@ -44,10 +45,11 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
     }
     val s1stats = getSolverStats(stg)
 
+
     Profiler.resetAll()
     stg = CoMoment5
     val result2 = Profiler(stg + "Moment Total") {
-      solve(dc, stg, q, sliceValues)
+     if(qs <= cm5limit) solve(dc, stg, q, sliceValues) else null
     }
     val s2stats = getSolverStats(stg)
 
@@ -65,28 +67,39 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
     }
     val s4stats = getSolverStats(stg)
 
+    Profiler.resetAll()
+    stg = CoMoment5Slice3
+    val result5 = Profiler(stg + "Moment Total") {
+      solve(dc, stg, q, sliceValues)
+    }
+    val s5stats = getSolverStats(stg)
+
     //Profiler.print()
     //println(s"qs = $qs, Total = ${result1.N}  slice = ${1 << sliceValues.length}  agg = $aggN  result1=${result1.solution.length} result2=${result2.solution.length} result3=${result3.solution.length}")
     assert(result3.solution.length == aggN)
 
     val trueResultSlice = Util.slice(trueResult0, sliceValues)
-    val sol0 = if(qs <= cm3limit) Util.slice(result0.solution, sliceValues) else null
+    val sol0 = if (qs <= cm3limit) Util.slice(result0.solution, sliceValues) else null
     val sol1 = if (qs <= cm4limit) Util.slice(result1.solution, sliceValues) else null
-    val sol2 = Util.slice(result2.solution, sliceValues)
+    val sol2 = if (qs <= cm5limit) Util.slice(result2.solution, sliceValues) else null
     val sol3 = result3.solution
     val sol4 = result4.solution
-    val err0 = if(qs <= cm3limit) SolverTools.error(trueResultSlice, sol0) else Double.PositiveInfinity
+    val sol5 = result5.solution
+    assert(sol4 sameElements sol5)
+    val err0 = if (qs <= cm3limit) SolverTools.error(trueResultSlice, sol0) else Double.PositiveInfinity
     val err1 = if (qs <= cm4limit) SolverTools.error(trueResultSlice, sol1) else Double.PositiveInfinity
-    val err2 = SolverTools.error(trueResultSlice, sol2)
+    val err2 = if (qs <= cm5limit) SolverTools.error(trueResultSlice, sol2) else Double.PositiveInfinity
     val err3 = SolverTools.error(trueResultSlice, sol3)
     val err4 = SolverTools.error(trueResultSlice, sol4)
+    val err5 = SolverTools.error(trueResultSlice, sol5)
     if (output) {
       val common = s"$dcname, ${qu.mkString(":")}, ${q.size}, ${sliceValues.mkString(":")}, ${sliceValues.length}"
-      if(qs <= cm3limit) fileout.println(s"$common, $s0stats, $err0")
+      if (qs <= cm3limit) fileout.println(s"$common, $s0stats, $err0")
       if (qs <= cm4limit) fileout.println(s"$common, $s1stats, $err1")
-      fileout.println(s"$common, $s2stats, $err2")
+      if (qs <= cm5limit) fileout.println(s"$common, $s2stats, $err2")
       fileout.println(s"$common, $s3stats, $err3")
       fileout.println(s"$common, $s4stats, $err4")
+      fileout.println(s"$common, $s5stats, $err5")
     }
 
 
@@ -100,10 +113,9 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
     val maxDimFetch = l.last.cuboidCost
     //println("Solver Prepare Over.  #Cuboids = "+l.size + "  maxDim="+maxDimFetch)
     val fetched = Profiler(strategy + "Moment Fetch") {
-      l.map {
-        pm =>
-          (pm.queryIntersection, dc.fetch2[T](List(pm)).toArray)
-      }
+      if (strategy != CoMoment5Slice3)
+        l.map { pm => (pm.queryIntersection, dc.fetch2[T](List(pm))) }
+      else Nil
     }
     val result = Profiler(strategy + s"Moment Solve") {
       val s = Profiler(strategy + s"Moment Constructor") {
@@ -113,12 +125,14 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
           case CoMoment5 => new CoMoment5Solver[T](q.length, true, Moment1Transformer(), pm)
           case CoMoment5Slice => new CoMoment5SliceSolver[T](q.length, sliceValues, true, Moment1Transformer(), pm)
           case CoMoment5Slice2 => new CoMoment5SliceSolver2[T](q.length, sliceValues, true, Moment1Transformer(), pm)
+          case CoMoment5Slice3 => new CoMoment5SliceSolver2[T](q.length, sliceValues, true, Moment1Transformer(), pm)
         }
       }
       Profiler(strategy + s"Moment Add") {
-        fetched.foreach {
-          case (bits, array) => s.add(bits, array)
-        }
+        if (strategy == CoMoment5Slice3) {
+          s.asInstanceOf[CoMoment5SliceSolver2[T]].fetchAndAdd(l, dc)
+        } else
+          fetched.foreach { case (bits, array) => s.add(bits, array) }
       }
       Profiler(strategy + s"Moment FillMissing") {
         s.fillMissing()

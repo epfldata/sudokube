@@ -193,7 +193,7 @@ object Experimenter {
     val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt("fixedtotal")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
-    val sss = List(0, 4, 8, 12, 16, 20)
+    val sss = List(24)
     //val sss = List( 18, 21)
     val qs = 24
     val queries = mq.loadQueries(qs).take(numIters)
@@ -714,7 +714,7 @@ object Experimenter {
         schemas()
       case "moment01" => moment01[Rational]()
       case "momentcompare" =>
-        momentCompareFixedSlice()
+        //momentCompareFixedSlice()
         momentCompareFixedTotal()
       case "Fig12-SSB" =>
         manualSSB(strategy, true)
