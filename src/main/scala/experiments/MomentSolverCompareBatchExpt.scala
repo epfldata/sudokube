@@ -28,9 +28,9 @@ class MomentSolverCompareBatchExpt(ename2: String = "")(implicit shouldRecord: B
       s"$stg, $mtot, $mprep, $mfetch, $msolve"
     }
 
-    val cm3limit = 15
-    val cm4limit = 15
-    val cm5limit = 15
+    val cm3limit = 1
+    val cm4limit = 1
+    val cm5limit = 25
     Profiler.resetAll()
     var stg = CoMoment3
     val result0 = Profiler(stg + "Moment Total") {
