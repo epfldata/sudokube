@@ -21,12 +21,13 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
    * Create graphical model for elimination.
    */
   def constructGraphicalModel(): Unit = {
-    clusters.foreach(cluster => graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster))
+    clusters.foreach(cluster =>
+      graphicalModel.connectNodesCompletely(BitUtils.IntToSet(cluster.variables).map(graphicalModel.nodes(_)).toSet, cluster)
+    )
   }
 
   /**
    * After constructing the junction graph/tree, perform iterative updates.
-   * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
    */
   def solveWithJunctionGraph(): Array[Double] = {
     val totalNumUpdates: Long = junctionGraph.cliques.foldLeft(0L)((acc, clique) => acc + 1L * clique.N * clique.clusters.size)
@@ -39,7 +40,9 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
         numIterations += 1
         println(s"\t\t\t$solverName Iteration $numIterations")
         totalDelta = iterativeUpdate()
-      } while (totalDelta > convergenceThreshold * totalNumUpdates)
+      } while (totalDelta > Math.max(convergenceThreshold * totalNumUpdates, 1e-5) /* in case of 0 clusters */)
+        // There may be alternative ways to define the convergence criteria,
+        // e.g. compare directly with previous distribution, compare to given marginal distributions, max of all deltas, etc.
     }
     println(s"\t\t\t$solverName number of iterations $numIterations")
 
@@ -54,7 +57,6 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
   /**
    * Calculate the total distribution based on the marginal distributions in cliques and separators.
    * totalDistribution will be updated and returned.
-   * TODO: Look at floating point precisions?
    * @return The array containing the total distribution, indexed by an integer with variable values encoded as bits of 0 or 1.
    */
   def getTotalDistribution: Array[Double] = {
@@ -79,7 +81,12 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
     val visitedSeparators: mutable.Set[JunctionGraph.Separator] = mutable.Set[JunctionGraph.Separator]()
     var totalDelta: Double = 0.0
     while (remainingCliques.nonEmpty) { // Could be a forest?
-      totalDelta += dfsUpdate(remainingCliques.head, remainingCliques, visitedSeparators)
+      totalDelta += dfsUpdate(
+        remainingCliques.minBy(clique => clique.clusters.size << clique.numVariables),
+          // Start with any clique as the root.
+          // The fluctuation in runtime turned out to be caused by imbalanced cliques.
+          // So here we simply pick the one that has the least number of entries to update to reduce the runtime since the root will be updated multiple times with backtracking.
+        remainingCliques, visitedSeparators)
     }
     totalDelta
   }
@@ -90,7 +97,8 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
    * @param visitedSeparators The set of all separators already visited on the path.
    * @return The total delta during the updates starting from the current clique.
    */
-  def dfsUpdate(clique: JunctionGraph.Clique, remainingCliques: mutable.Set[JunctionGraph.Clique], visitedSeparators: mutable.Set[JunctionGraph.Separator]): Double = {
+  def dfsUpdate(clique: JunctionGraph.Clique, remainingCliques: mutable.Set[JunctionGraph.Clique],
+                visitedSeparators: mutable.Set[JunctionGraph.Separator]): Double = {
     remainingCliques -= clique
 
     var totalDelta: Double = 0.0
@@ -120,7 +128,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
   def updateCliqueBasedOnClusters(clique: JunctionGraph.Clique): Double = {
     var totalDelta: Double = 0.0
 
-    Profiler(s"$solverName Update Clique") {
+    Profiler(s"$solverName Update Clique Based on Clusters") {
       clique.clusters.foreach(cluster => {
         totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(
           clique.numVariables,
@@ -157,7 +165,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
    * @return The total delta of the update.
    */
   def updateCliqueBasedOnSeparator(clique: JunctionGraph.Clique, separator: JunctionGraph.Separator): Double = {
-    Profiler(s"$solverName Update Clique") {
+    Profiler(s"$solverName Update Clique Based on Separator") {
       IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(
         clique.numVariables,
         clique.distribution,
