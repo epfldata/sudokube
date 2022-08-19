@@ -8,7 +8,8 @@ import util.{BitUtils, Profiler}
 import scala.util.Random
 
 /**
- * TODO: extending FlatSpec with Matchers in org.scalatest._ ? (Cannot resolve symbol)
+ * Test the functionalities of the vanilla IPF solver.
+ * Currently using JUnit, but may be able to extend FlatSpec with Matchers in org.scalatest._ ? (Cannot resolve symbol when I tried.)
  * @author Zhekai Jiang
  */
 class VanillaIPFTest {
@@ -131,7 +132,7 @@ class VanillaIPFTest {
     val solver = new VanillaIPFSolver(2)
     solver.add(Seq(0), Array(0.4, 0.6))
     solver.add(Seq(1), Array(0.3, 0.7))
-    val totalDelta = solver.iterativeUpdate()
+    val totalDelta = solver.iterativeUpdate(1)
     for ((i, p) <- Seq((0, 0.12), (1, 0.18), (2, 0.28), (3, 0.42))) {
       assertApprox(solver.totalDistribution(i), p)
     }

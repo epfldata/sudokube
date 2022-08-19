@@ -13,10 +13,10 @@ import scala.util.Random
  * (connecting completely and delete variables from separators until "connectedness condition" is satisfied for all variable.)
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
- * @param solverName The name of the solver, "Random Junction Graph IPF",
+ * @param solverName The name of the solver, "Random Bucket Elimination Loopy IPF",
  *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
  */
-class RandomJunctionGraphIPFSolver(override val querySize: Int, override val solverName: String = "Random Junction Graph IPF")
+class RandomBucketEliminationLoopyIPFSolver(override val querySize: Int, override val solverName: String = "Random Bucket Elimination Loopy IPF")
   extends LoopyIPFSolver(querySize, solverName) {
 
   // Similar to bucket elimination, every variable will be placed in a separate "bucket" initially.

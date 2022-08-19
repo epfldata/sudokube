@@ -64,7 +64,7 @@ object DemoTxt {
 
   def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
     val actual = Array(1, 1000, 1000, 1000, 1000, 1000, 1000, 1).map(_.toDouble)
-    val solver = new VanillaIPFSolver(3, true, actual)
+    val solver = new VanillaIPFSolver(3, true, false, actual)
     solver.add(BitUtils.SetToInt(List(0, 1)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
     solver.add(BitUtils.SetToInt(List(1, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
     solver.add(BitUtils.SetToInt(List(0, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
@@ -101,7 +101,7 @@ object DemoTxt {
     val actual: Array[Double] = Array.fill(1 << 6)(0)
     (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
 
-    val solver = new VanillaIPFSolver(6, true, actual)
+    val solver = new VanillaIPFSolver(6, true, false, actual)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))

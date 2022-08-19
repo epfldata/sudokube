@@ -5,6 +5,10 @@ import util.BitUtils
 import scala.collection.mutable
 import scala.util.Random
 
+/**
+ * Test the functionalities of the effective IPF solver.
+ * @author Zhekai Jiang
+ */
 class EffectiveIPFTest {
   private val eps = 1e-3
 
@@ -43,6 +47,7 @@ class EffectiveIPFTest {
     solver.constructGraphicalModel()
     solver.junctionGraph.constructCliquesFromGraph(solver.graphicalModel)
     println(solver.junctionGraph.cliques.map(clique => BitUtils.IntToSet(clique.variables)))
+    solver.clusters.foreach(cluster => assert(solver.junctionGraph.cliques.count(clique => clique.clusters.contains(cluster)) == 1))
   }
 
   @Test
@@ -111,7 +116,7 @@ class EffectiveIPFTest {
     }
     solver.constructGraphicalModel()
     solver.constructJunctionTree()
-    println()
+    assert(solver.junctionGraph.separators.size == solver.junctionGraph.cliques.size - 1)
   }
 
   @Test
@@ -130,7 +135,7 @@ class EffectiveIPFTest {
     solver.add(BitUtils.SetToInt(Seq(12)), Array(0.5, 0.5))
     solver.constructGraphicalModel()
     solver.constructJunctionTree()
-    println()
+    assert(solver.junctionGraph.separators.size == solver.junctionGraph.cliques.size - 1)
   }
 
   @Test

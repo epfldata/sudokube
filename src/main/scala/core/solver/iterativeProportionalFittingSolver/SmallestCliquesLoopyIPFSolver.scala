@@ -7,13 +7,14 @@ import scala.collection.mutable
 /**
  * The IPF with loopy scaling updates.
  * The current version is the worst one with the smallest possible cliques (i.e., one cluster per clique).
- * TODO: delete printing statements for testing/demo
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
- * @param solverName The name of the solver, "Worst Loopy IPF",
+ * @param solverName The name of the solver, "Smallest-Cliques Loopy IPF",
  *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
+ * @param verifyConsistencies Whether to verify consistencies within junction graphs and with cuboids during iterations.
  */
-class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: String = "Worst Loopy IPF")
+class SmallestCliquesLoopyIPFSolver(override val querySize: Int, override val solverName: String = "Smallest-Cliques Loopy IPF",
+                                    val verifyConsistencies: Boolean = false)
   extends LoopyIPFSolver(querySize, solverName) {
 
   /**
@@ -28,7 +29,9 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
 
     junctionGraph.printAllCliquesAndSeparators()
 
-    verifyJunctionGraph() // for testing purpose only
+    if (verifyConsistencies) {
+      verifyJunctionGraph()
+    }
 
     val totalNumUpdates: Long = junctionGraph.cliques.foldLeft(0L)((acc, clique) => acc + 1L * clique.N * clique.clusters.size)
     println(s"\t\t\t$solverName number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
@@ -40,10 +43,12 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
       do {
         numIterations += 1
         totalDelta = iterativeUpdate() // Start with any clique
-        verifyReducedFormula()
-        verifyJunctionGraph()
-        verifyEqualToCuboids()
-        println(s"\t\t\tSum of distribution: ${getTotalDistribution.sum}") // this shows that the probabilities do not even sum up to 1
+        if (verifyConsistencies) {
+          verifyReducedFormula()
+          verifyJunctionGraph()
+          verifyCliqueConsistencyWithCuboidAndSeparators()
+          println(s"\t\t\tSum of distribution: ${getTotalDistribution.sum}") // this shows that the probabilities do not even sum up to 1
+        }
       } while (totalDelta >= convergenceThreshold * (1 << querySize))
     }
     println(s"\t\t\t$solverName number of iterations $numIterations")
@@ -67,6 +72,13 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
   /**
    * Methods below are for testing/verification only
    */
+
+  /**
+   * Verify that the junction graph satisfies the following:
+   * (1) each cluster is covered by at least one clique,
+   * (2) separators in the separators set can all correspond to separators in the adjacency lists of cliques, andx
+   * (3) the cliques and separators induced by each variable form a spanning tree
+   */
   def verifyJunctionGraph(): Unit = {
     clusters.foreach(cluster => assert(junctionGraph.cliques.exists(_.clusters.contains(cluster))))
     junctionGraph.cliques.foreach(clique => clique.adjacencyList.foreach { case (_, separator) => assert(junctionGraph.separators.contains(separator)) })
@@ -74,7 +86,11 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
     (0 until querySize).foreach(node => verifyConnectednessCondition(node))
   }
 
-  def verifyEqualToCuboids(): Unit = {
+  /**
+   * Verify that, after an update, the distribution of the clique is exactly the same as the (only one) cluster / cuboid,
+   * and that each separator has distribution consistent with the respective marginal of at least one clique associated.
+   */
+  def verifyCliqueConsistencyWithCuboidAndSeparators(): Unit = {
     junctionGraph.cliques.foreach(clique => assertArrayApprox(clique.clusters.head.distribution, clique.distribution))
     junctionGraph.separators.foreach(separator => {
       val marginalDistributionFromClique1 = Array.fill(1 << separator.numVariables)(0.0)
@@ -92,7 +108,10 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
     })
   }
 
-
+  /**
+   * Verify that the cliques and separators induced by (containing) each variable form a spanning tree.
+   * @param node The node/variable index.
+   */
   def verifyConnectednessCondition(node: Int): Unit = {
     val remainingCliques = junctionGraph.cliques.filter(clique => (clique.variables & (1 << node)) != 0)
     val remainingSeparators = junctionGraph.separators.filter(separator => (separator.variables & (1 << node)) != 0)
@@ -109,6 +128,12 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
     })
   }
 
+  /**
+   * DFS traversal for the verification of connectedness condition.
+   * @param clique Current clique visited.
+   * @param remainingCliques Set of remaining cliques not visited.
+   * @param remainingSeparators Set of remaining separators not visited.
+   */
   def dfsTraverse(clique: JunctionGraph.Clique, remainingCliques: mutable.Set[JunctionGraph.Clique], remainingSeparators: mutable.Set[JunctionGraph.Separator]): Unit = {
     remainingCliques -= clique
     clique.adjacencyList.foreach { case (destination, separator) =>
@@ -119,6 +144,11 @@ class WorstLoopyIPFSolver(override val querySize: Int, override val solverName: 
     }
   }
 
+  /**
+   * Since each clique is associated with exactly one cluster, the resulting solution can be given exactly by
+   * product of marginal probabilities by all cliques / product of marginal probabilities by all separators (simply projected from connected cliques)
+   * This method verifies that the solution derived is consistent with this presumed formula.
+   */
   def verifyReducedFormula(): Unit = {
     getTotalDistribution
     (0 until 1 << querySize).foreach(allVariablesValues => {

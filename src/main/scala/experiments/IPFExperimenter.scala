@@ -3,6 +3,10 @@ package experiments
 import core.{MaterializedQueryResult, PartialDataCube}
 import frontend.generators.{CubeGenerator, NYC, SSB}
 
+/**
+ * Compare the time and error for IPF solvers and moment solver.
+ * @author Zhekai Jiang
+ */
 object IPFExperimenter {
   def ipf_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
     val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC else SSB(100)
@@ -13,7 +17,7 @@ object IPFExperimenter {
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
 
-    val expname2 = s"query-dim-$cubeGenerator-$ms"
+    val expname2 = s"query-dim-$cubeGenerator-$ms-dmin-$minNumDimensions"
     val exptfull = new IPFMomentBatchExpt(expname2)
     if (shouldRecord) exptfull.warmup()
     val materializedQueries = new MaterializedQueryResult(cg)
@@ -33,7 +37,7 @@ object IPFExperimenter {
 
   def main(args: Array[String]): Unit = {
     implicit val shouldRecord: Boolean = false
-    implicit val numIters: Int = 2
+    implicit val numIters: Int = 20
     ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14)
     ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14)
     ipf_moment_compareTimeError(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6)

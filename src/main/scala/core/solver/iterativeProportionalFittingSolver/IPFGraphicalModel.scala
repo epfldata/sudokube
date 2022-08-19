@@ -6,7 +6,6 @@ import scala.collection.mutable
  * The graphical model constructed based on the given data cubes, where
  * each node (denoted by an Int) represents a variable, and
  * each pair of nodes are connected if they are in a same cluster.
- * TODO: Confirm about handling of cubes concerning one single variable (currently the cluster is added to the node)
  * @author Zhekai Jiang
  */
 object IPFGraphicalModel {
@@ -31,7 +30,7 @@ class IPFGraphicalModel (val numVariables: Int) {
    *                (to make iterative updates based on the given marginal distributions).
    */
   def connectNodesCompletely(nodes: Set[IPFGraphicalModel.Node], cluster: Cluster = null): Unit = {
-    if (nodes.size == 1) { // only one variable associated with the cluster, add to the node TODO: confirm about this?
+    if (nodes.size == 1) { // only one variable associated with the cluster, add to the node
       if (cluster != null) {
         nodes.head.clusters += cluster
       }
