@@ -4,7 +4,6 @@ import util.Profiler
 
 /**
  * Effective iterative proportional fitting, based on junction tree (or clique tree).
- * TODO: Confirm about the uses of collection data structures (Set, Map, Seq)
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
  * @param solverName The name of the concrete method (e.g. "Effective IPF", "Entropy-Based Dropout Effective IPF"), "EffectiveIPF" by default,
@@ -37,6 +36,10 @@ class EffectiveIPFSolver(override val querySize: Int, override val solverName: S
     junctionGraph.deleteNonMaximalCliques()
     junctionGraph.connectAllCliquesCompletely()
     junctionGraph.constructMaximumSpanningTree()
+
+    if (oneDimMarginals != null) {
+      junctionGraph.fixOneDimensionalMarginals(oneDimMarginals)
+    }
 
     junctionGraph.printAllCliquesAndSeparators()
   }

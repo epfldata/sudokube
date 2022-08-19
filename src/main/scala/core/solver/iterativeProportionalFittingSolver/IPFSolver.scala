@@ -13,10 +13,14 @@ import util.BitUtils
 abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
   val N: Int = 1 << querySize
   var clusters: Set[Cluster] = Set[Cluster]()
+  var oneDimMarginals: Array[Array[Double]] = null
+    // To support dropout experiments where some variables are not covered by any cuboid but we can remember the one-dimensional marginal distribution
   var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
   var solution: Array[Double] = Array[Double]() // the un-normalized total distribution
   def getSolution: Array[Double] = {
-    val distributionSum = totalDistribution.sum // TODO: Confirm about this normalization, for junction graph only
+    val distributionSum = totalDistribution.sum
+      // This normalization only applies for loopy IPF solvers which generate a probability distribution not summing to 1.
+      // But this does not really help much because the error would still be very high.
     solution = totalDistribution.map(_ / distributionSum * normalizationFactor)
     solution
   }

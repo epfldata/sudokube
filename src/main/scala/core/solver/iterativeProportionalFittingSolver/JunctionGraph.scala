@@ -91,14 +91,12 @@ class JunctionGraph {
         edge.clusters.filter(cluster => IPFUtils.isVariablesContained(cluster.variables, variables)) // fully contained in clique
       }.foldLeft(node.clusters.clone())(_ ++ _)
     // If there is a cluster with the node only (1 single marginal variable), add here
-    // TODO: add such clusters from other variables in the clique...?
     new JunctionGraph.Clique(variables, clusters)
   }
 
   /**
    * Delete all non-maximal cliques (whose variables are contained in some other clique).
    * The clusters associated with those cliques will be merged into the their corresponding maximal cliques.
-   * TODO: Optimize this?
    */
   def deleteNonMaximalCliques(): Unit = {
     breakable { while (true) {
@@ -130,7 +128,6 @@ class JunctionGraph {
   /**
    * Construct the maximum spanning tree, where the weight is based on the number of variables in the separators.
    * Greedily select the maximum-weight separator crossing the cut at each iteration.
-   * TODO: confirm about variable missing in all cubes / disjoint sets of variables => forest instead of tree or 0-weight edges ?
    * (adding 0-weight edges seems to work fine)
    */
   def constructMaximumSpanningTree(): Unit = {
@@ -218,6 +215,19 @@ class JunctionGraph {
   }
 
   /**
+   * For all cliques with only one variable and zero clusters, i.e., for all variables not covered by any cuboid added,
+   * use the known one dimensional marginal distribution.
+   * @param oneDimMarginals All one-dimensional marginals as an array, indexed by variable number, of arrays of distribution (length 2).
+   */
+  def fixOneDimensionalMarginals(oneDimMarginals: Array[Array[Double]]): Unit = {
+    cliques.foreach(clique =>
+      if (clique.numVariables == 1 && clique.clusters.isEmpty) {
+        clique.distribution = oneDimMarginals(BitUtils.IntToSet(clique.variables).head)
+      }
+    )
+  }
+
+  /**
    * Delete separators associated with no variables.
    */
   def deleteZeroSeparators(): Unit = {
@@ -237,12 +247,15 @@ class JunctionGraph {
     println("\t\t\tCliques:")
     cliques.foreach(clique =>
       println(s"\t\t\t\t${clique.numVariables} variables: ${BitUtils.IntToSet(clique.variables).mkString(":")}, ${clique.clusters.size} clusters, "
-        + s"variable occurrences: ${BitUtils.IntToSet(clique.variables).map(variable => clique.clusters.count(cluster => (cluster.variables & (1 << variable)) != 0)).mkString(":")}")
+        + s"variable occurrences: ${BitUtils.IntToSet(clique.variables).map(variable => clique.clusters.count(cluster => (cluster.variables & (1 << variable)) != 0)).mkString(":")}"
+      )
         // "Variable occurrences" mean the number of clusters each variable is covered by, potentially useful for the decomposition-reduction method.
     )
     println("\t\t\tSeparators:")
     separators.foreach(separator =>
-      println(s"\t\t\t\t${BitUtils.IntToSet(separator.clique1.variables).mkString(":")} <--> ${BitUtils.IntToSet(separator.clique2.variables).mkString(":")}: ${separator.numVariables} variables: ${BitUtils.IntToSet(separator.variables).mkString(":")}")
+      println(s"\t\t\t\t${BitUtils.IntToSet(separator.clique1.variables).mkString(":")} <--> ${BitUtils.IntToSet(separator.clique2.variables).mkString(":")}: "
+        + s"${separator.numVariables} variables: ${BitUtils.IntToSet(separator.variables).mkString(":")}"
+      )
     )
   }
 }
