@@ -25,7 +25,7 @@ class NormalizedEntropyBasedDropoutEffectiveIPFSolver(override val querySize: In
    * At each time, the method will simply throw out the cluster with the lowest "normalized" entropy
    * but will skip a cluster if it contains at least one variable that is not covered by other remaining clusters.
    * The dropout will stop when either
-   * (1) 95% of the clusters have already been dropped, or
+   * (1) the normalized entropy is below 0.7 (based on empirical results), or
    * (2) the remaining "coverage", defined as the sum of the number of variables among all clusters, drops below |Q| * (|Q| - 1)
    *     - this threshold can be adjusted — right now the rationale simply comes from the fact that
    *       if we have all possible (|Q|-1)-dimensional cuboids, this "coverage" will be (|Q|-1) * C(|Q|, |Q|-1) = |Q| * (|Q|-1)
@@ -39,12 +39,15 @@ class NormalizedEntropyBasedDropoutEffectiveIPFSolver(override val querySize: In
     val totalNumClusters = clusters.size
     var totalCoverage = clusters.toList.map(_.numVariables).sum
     val variableCoverage = (0 until querySize).map(variable => clusters.count(cluster => isVariableContained(variable, cluster.variables))).toBuffer
-    print("\t\t\tDropping out cuboids of sizes (entropy ratios) ")
+    print("\t\t\tDropping out cuboids of sizes (normalized entropies) ")
     breakable { while (clustersQueue.nonEmpty) {
-      if (numDroppedClusters >= totalNumClusters * 0.95) {
+//      if (numDroppedClusters >= totalNumClusters * 0.95) {
+//        break
+//      }
+      val cluster = clustersQueue.dequeue()
+      if (normalizedEntropy(cluster) < 0.7) {
         break
       }
-      val cluster = clustersQueue.dequeue()
       if (BitUtils.IntToSet(cluster.variables).forall(variableCoverage(_) > 1)) {
         // skip if there exists a variable not covered by any other cluster
         if (totalCoverage - cluster.numVariables < querySize * (querySize - 1)) {
