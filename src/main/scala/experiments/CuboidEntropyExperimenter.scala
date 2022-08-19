@@ -10,7 +10,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * An experiment to output fetched cuboids' entropies and the "relative" entropies (ratio of the entropy to the maximum possible entropy of the cuboid's dimensionality).
+ * An experiment to output fetched cuboids' entropies and the "normalized" entropies (ratio of the entropy to the maximum possible entropy of the cuboid's dimensionality).
+ * This experimenter does not use an Experiment object at the moment because it does not run any solver and does not compute any e.g. error.
  * @author Zhekai Jiang
  */
 object CuboidEntropyExperimenter {
@@ -24,7 +25,7 @@ object CuboidEntropyExperimenter {
     dc.loadPrimaryMoments(cg.baseName)
 
     val materializedQueries = new MaterializedQueryResult(cg)
-    val qss = List(6, 9, 12, 15, 18, 21)
+    val qss = List(18, 21, 24)
     qss.foreach { qs =>
       val queries = materializedQueries.loadQueries(qs).take(numIters)
       println(s"Cuboid Entropy Experiment for ${cg.inputname} dataset, MS = $ms, Min Materialization Dimensionality = $minNumDimensions, Query Dimensionality = $qs")
@@ -35,10 +36,10 @@ object CuboidEntropyExperimenter {
         val fileout = {
           val isFinal = true
           val (timestamp, folder) = {
-            if (isFinal) ("final", ".")
+            if (isFinal) ("final", "cuboid-entropy/.")
             else if (shouldRecord) {
               val datetime = LocalDateTime.now
-              (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
+              (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), "cuboid-entropy/" + DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
             } else ("dummy", "dummy")
           }
           val file = new File(s"expdata/$folder/cuboid-entropy_$cubeGenerator-$ms-queryDim-$qs-minDim-$minNumDimensions-query-${i + 1}_$timestamp.csv")
@@ -47,7 +48,7 @@ object CuboidEntropyExperimenter {
           new PrintStream(file)
         }
 
-        fileout.println("dimensions, variables, entropy, maxEntropy, relativeEntropy")
+        fileout.println("Dimensions, Variables, Entropy, MaxEntropy, NormalizedEntropy")
 
         val q = qu.sorted
 
@@ -58,8 +59,8 @@ object CuboidEntropyExperimenter {
           val numDimensions = BitUtils.sizeOfSet(bits)
           val cuboidEntropy = SolverTools.entropy(array)
           val maxEntropy = -math.log(1.0 / (1 << numDimensions))
-          val relativeEntropy = cuboidEntropy / maxEntropy
-          fileout.println(s"$numDimensions, ${BitUtils.IntToSet(bits).mkString(":")}, $cuboidEntropy, $maxEntropy, $relativeEntropy")
+          val normalizedEntropy = cuboidEntropy / maxEntropy
+          fileout.println(s"$numDimensions, ${BitUtils.IntToSet(bits).mkString(":")}, $cuboidEntropy, $maxEntropy, $normalizedEntropy")
         }
 
       }
