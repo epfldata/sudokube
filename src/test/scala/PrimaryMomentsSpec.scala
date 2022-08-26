@@ -15,7 +15,7 @@ class PrimaryMomentsSpec extends FlatSpec with Matchers {
     val nbits = 13
     val qsize = 5
 
-    val dc = mkDC(nbits, 1, 1.5, 4096, Sampling.f1, CBackend.b)
+    val dc = mkDC(nbits, 1, 1.5, 4096, Sampling.f1, CBackend.default)
     val (t1, m1) = SolverTools.primaryMoments(dc)
 
     val m2 = Array.fill(nbits)(0L)

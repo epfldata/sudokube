@@ -37,8 +37,8 @@ class DataCubeSpec extends FlatSpec with Matchers {
 
 
   "build" should "produce the same cuboids as direct construction for CBackend.b" in {
-    compare_direct(mkDC(13, 1, 1.5, 4096,  Sampling.f1, CBackend.b))
-    compare_direct(mkDC(16, 1, 1.5, 10000, Sampling.f1, CBackend.b))
+    compare_direct(mkDC(13, 1, 1.5, 4096,  Sampling.f1, CBackend.default))
+    compare_direct(mkDC(16, 1, 1.5, 10000, Sampling.f1, CBackend.default))
   }
 
   "build" should "produce the same cuboids as direct construction for ScalaBackend" in {

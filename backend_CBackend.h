@@ -146,18 +146,18 @@ JNIEXPORT void JNICALL Java_backend_CBackend_cuboidGC0
 /*
  * Class:     backend_CBackend
  * Method:    add_i
- * Signature: (III[IJ)V
+ * Signature: (III[BJ)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
-  (JNIEnv *, jobject, jint, jint, jint, jintArray, jlong);
+  (JNIEnv *, jobject, jint, jint, jint, jbyteArray, jlong);
 
 /*
  * Class:     backend_CBackend
  * Method:    add
- * Signature: (II[IJ)V
+ * Signature: (II[BJ)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_add
-  (JNIEnv *, jobject, jint, jint, jintArray, jlong);
+  (JNIEnv *, jobject, jint, jint, jbyteArray, jlong);
 
 /*
  * Class:     backend_CBackend

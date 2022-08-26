@@ -4,41 +4,69 @@
 #include "Keys.h"
 #include "SetTrie.h"
 
+extern void readRegistry(unsigned int id, void *&ptr, size_t &size, unsigned short &keySize);
+
 extern void reset();
-extern  int   shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
-extern unsigned int   srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+
+extern int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+
+extern unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
+
 extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
+
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
-extern unsigned int   drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
-extern value_t* s2drehashSlice(unsigned int s_id, unsigned int *bitpos, unsigned int bitlength, bool *sliceMask);
-extern value_t*  drehashSlice(unsigned int d_id, unsigned int *bitpos, unsigned int bitposlength, bool *sliceMask);
+extern unsigned int drehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
-extern unsigned int      mkAll(unsigned int n_bits, size_t n_rows);
-extern unsigned int      mk(unsigned int n_bits);
-extern void     add_i(size_t i, unsigned int s_id,  byte *key, value_t v);
-extern void     add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
-extern void     freeze(unsigned int s_id);
-extern void     freezePartial(unsigned int s_id, unsigned int n_bits);
-extern value_t *fetch(unsigned int d_id, size_t& size);
+extern value_t *s2drehashSlice(unsigned int s_id, unsigned int *bitpos, unsigned int bitlength, bool *sliceMask);
+
+extern value_t *drehashSlice(unsigned int d_id, unsigned int *bitpos, unsigned int bitposlength, bool *sliceMask);
+
+extern unsigned int mkAll(unsigned int n_bits, size_t n_rows);
+
+extern unsigned int mk(unsigned int n_bits);
+
+extern void add_i(size_t i, unsigned int s_id, byte *key, value_t v);
+
+extern void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
+
+extern void freeze(unsigned int s_id);
+
+extern void freezePartial(unsigned int s_id, unsigned int n_bits);
+
+extern value_t *fetch(unsigned int d_id, size_t &size);
+
 extern void cuboid_GC(unsigned int id);
-extern size_t      sz(unsigned int id);
-extern size_t   sNumBytes(unsigned int id);
 
-extern unsigned int   readSCuboid(const char *filename, unsigned int n_bits, size_t size);
-extern unsigned int   readDCuboid(const char *filename, unsigned int n_bits, size_t size);
+extern size_t sz(unsigned int id);
+
+extern size_t sNumBytes(unsigned int id);
+
+extern unsigned int readSCuboid(const char *filename, unsigned int n_bits, size_t size);
+
+extern unsigned int readDCuboid(const char *filename, unsigned int n_bits, size_t size);
+
 extern void writeSCuboid(const char *filename, unsigned int s_id);
+
 extern void writeDCuboid(const char *filename, unsigned int d_id);
 
-extern bool addDenseCuboidToTrie(const vector<int> &cuboidDims, unsigned int d_id);
-extern bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id);
-extern void loadTrie(const char* filename);
-extern void saveTrie(const char* filename);
-extern void initTrie(size_t ms);
-extern void prepareFromTrie(const vector<int>& query, map<int, value_t> &result);
+extern bool addDenseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int d_id);
 
-extern void readMultiCuboid(const char *filename,  int n_bits_array[], int size_array[], unsigned char isSparse_array[], unsigned int id_array[], unsigned int numCuboids);
-extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[],  int ids[], unsigned int numCuboids);
+extern bool addSparseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int s_id);
+
+extern void loadTrie(const char *filename);
+
+extern void saveTrie(const char *filename);
+
+extern void initTrie(size_t ms);
+
+extern void prepareFromTrie(const std::vector<int> &query, std::map<int, value_t> &result);
+
+extern void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
+                            unsigned int id_array[], unsigned int numCuboids);
+
+extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int ids[], unsigned int numCuboids);
+
 
 JNIEXPORT void JNICALL Java_backend_CBackend_reset0(JNIEnv *env, jobject obj) {
     reset();
@@ -57,6 +85,10 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
     jintArray result = env->NewIntArray(numCuboids);
     if (result == NULL) return NULL; // out of memory error thrown
     env->SetIntArrayRegion(result, 0, numCuboids, (jint *) idsArray);
+    env->ReleaseStringUTFChars(Jfilename, filename);
+    env->ReleaseBooleanArrayElements(JisSparseArray, isSparseArray, 0);
+    env->ReleaseIntArrayElements(JnbitsArray, nbitsArray, 0);
+    env ->ReleaseIntArrayElements(JsizeArray, sizeArray, 0);
     return result;
 
 }
@@ -69,22 +101,19 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
     jint *idArray = env->GetIntArrayElements(JidArray, 0);
     assert(sizeof(jint) == sizeof(unsigned int));
     writeMultiCuboid(filename, isSparseArray, idArray, numCuboids);
+    env->ReleaseStringUTFChars(Jfilename, filename);
+    env->ReleaseBooleanArrayElements(JisSparseArray, isSparseArray, 0);
+    env->ReleaseIntArrayElements(JidArray, idArray, 0);
 }
 
 JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
-        (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jintArray key, jlong v) {
+        (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jbyteArray key, jlong v) {
     jsize keylen = env->GetArrayLength(key);
-    jint *keybody = env->GetIntArrayElements(key, 0);
-
-    // the key is transmitted as an array of bytes (0 to 255).
-
+    auto ckey =  env->GetByteArrayElements(key, 0);
+    // the key is transmitted as an array of signed bytes (should be read as unsigned bytes)
     assert(n_bits <= keylen * 8);
-    byte ckey[keylen];
-    for (int i = 0; i < keylen; i++) ckey[i] = keybody[i];
-
-    add_i(idx, s_id, ckey, v);
-
-    env->ReleaseIntArrayElements(key, keybody, 0);
+    add_i(idx, s_id, (byte *) ckey, v);
+    env->ReleaseByteArrayElements(key, ckey, 0);
 }
 
 JNIEXPORT void JNICALL Java_backend_CBackend_add
@@ -109,10 +138,9 @@ JNIEXPORT void JNICALL Java_backend_CBackend_freeze
 }
 
 JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
-  (JNIEnv* env, jobject obj, jint s_id, jint n_bits)
-  {
+        (JNIEnv *env, jobject obj, jint s_id, jint n_bits) {
     freezePartial(s_id, n_bits);
-  }
+}
 
 
 JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
@@ -192,14 +220,14 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
         (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos, jbooleanArray jslicemask) {
     jsize bitposlen = env->GetArrayLength(jbitpos);
-    jint* bitpos = env->GetIntArrayElements(jbitpos, 0);
+    jint *bitpos = env->GetIntArrayElements(jbitpos, 0);
     jboolean *sliceMask = env->GetBooleanArrayElements(jslicemask, 0);
     jsize slicemasklen = env->GetArrayLength(jslicemask);
     assert(slicemasklen == (1 << bitposlen));
-    value_t* result = s2drehashSlice(s_id, (unsigned int*) bitpos, bitposlen, (bool *) sliceMask);
+    value_t *result = s2drehashSlice(s_id, (unsigned int *) bitpos, bitposlen, (bool *) sliceMask);
     env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
     env->ReleaseBooleanArrayElements(jslicemask, sliceMask, 0);
-    jlongArray jresult = env ->NewLongArray(slicemasklen);
+    jlongArray jresult = env->NewLongArray(slicemasklen);
     if (result == NULL) return NULL; // out of memory error thrown
     jlong *fill;
     if (sizeof(jlong) != sizeof(value_t))
@@ -213,14 +241,14 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
         (JNIEnv *env, jobject obj, jint d_id, jintArray jbitpos, jbooleanArray jslicemask) {
     jsize bitposlen = env->GetArrayLength(jbitpos);
-    jint* bitpos = env->GetIntArrayElements(jbitpos, 0);
+    jint *bitpos = env->GetIntArrayElements(jbitpos, 0);
     jboolean *sliceMask = env->GetBooleanArrayElements(jslicemask, 0);
     jsize slicemasklen = env->GetArrayLength(jslicemask);
     assert(slicemasklen == (1 << bitposlen));
-    value_t* result = drehashSlice(d_id, (unsigned int*) bitpos, bitposlen, (bool *) sliceMask);
+    value_t *result = drehashSlice(d_id, (unsigned int *) bitpos, bitposlen, (bool *) sliceMask);
     env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
     env->ReleaseBooleanArrayElements(jslicemask, sliceMask, 0);
-    jlongArray jresult = env ->NewLongArray(slicemasklen);
+    jlongArray jresult = env->NewLongArray(slicemasklen);
     if (result == NULL) return NULL; // out of memory error thrown
     jlong *fill;
     if (sizeof(jlong) != sizeof(value_t))
@@ -266,7 +294,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
     jobject first = env->GetObjectArrayElement(array, 0);
     jclass tuple2Class = env->GetObjectClass(first);
     jclass intClass = env->FindClass("Ljava/lang/Integer;");
-    jmethodID  intValue = env->GetMethodID(intClass, "intValue", "()I");
+    jmethodID intValue = env->GetMethodID(intClass, "intValue", "()I");
     jmethodID getFirst = env->GetMethodID(tuple2Class, "_1", "()Ljava/lang/Object;");
     jmethodID getSecond = env->GetMethodID(tuple2Class, "_2", "()Ljava/lang/Object;");
 
@@ -278,14 +306,14 @@ JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
         jobject secondObject = env->CallObjectMethod(tupleObject, getSecond);
         int cuboid_id = env->CallIntMethod(secondObject, intValue);
         jsize innerlen = env->GetArrayLength(jcuboidDims);
-        int* cuboidDims = env->GetIntArrayElements(jcuboidDims, 0);
+        int *cuboidDims = env->GetIntArrayElements(jcuboidDims, 0);
         std::vector<int> cuboidDimVec(cuboidDims, cuboidDims + innerlen);
-        if(cuboid_id < 0) { //dense cuboid
+        if (cuboid_id < 0) { //dense cuboid
             int d_id = -cuboid_id;
-            if(!addDenseCuboidToTrie(cuboidDimVec, d_id)) break;
+            if (!addDenseCuboidToTrie(cuboidDimVec, d_id)) break;
         } else {
             int s_id = cuboid_id;
-            if(!addSparseCuboidToTrie(cuboidDimVec, s_id)) break;
+            if (!addSparseCuboidToTrie(cuboidDimVec, s_id)) break;
         }
     }
     saveTrie(filename);
@@ -301,10 +329,10 @@ JNIEXPORT jobjectArray JNICALL Java_backend_CBackend_prepareFromTrie0
         (JNIEnv *env, jobject obj, jintArray array) {
     jsize len = env->GetArrayLength(array);
     jint *qarray = env->GetIntArrayElements(array, 0);
-    vector<int> qvec(qarray, qarray + len);
-    map<int, value_t> result;
+    std::vector<int> qvec(qarray, qarray + len);
+    std::map<int, value_t> result;
     prepareFromTrie(qvec, result);
-    size_t resultLen =  result.size();
+    size_t resultLen = result.size();
 
     jclass tuple2Class = env->FindClass("Lscala/Tuple2;");
     jmethodID tuple2init = env->GetMethodID(tuple2Class, "<init>", "(Ljava/lang/Object;Ljava/lang/Object;)V");

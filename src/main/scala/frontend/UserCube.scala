@@ -298,7 +298,7 @@ object UserCube {
     val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
     val m = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
     val dc = new DataCube(cubeName)
-    val baseCuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
+    val baseCuboid = CBackend.default.mk(sch.n_bits, R.toIterator)
     dc.build(baseCuboid, m)
     new UserCube(cubeName, dc, sch)
   }

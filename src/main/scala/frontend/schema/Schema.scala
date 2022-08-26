@@ -109,7 +109,7 @@ trait Schema extends Serializable {
   def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String, bufferSize : Int = 7, delay : Int = 0): DataCube = {
 
      ///Initiates the partial cuboid
-     @volatile var sc = CBackend.b.initPartial()
+     @volatile var sc = CBackend.default.initPartial()
 
       val threadWrite  = new Thread {
 
@@ -196,7 +196,7 @@ trait Schema extends Serializable {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
-                        sc = CBackend.b.addPartial(n_bits, r.toIterator, sc)
+                        sc = CBackend.default.addPartial(n_bits, r.toIterator, sc)
                     }
                 }
             }
@@ -231,7 +231,7 @@ trait Schema extends Serializable {
     val  m = new RandomizedMaterializationStrategy(n_bits, 8, 4)
     val dc = new DataCube()
     //converts the partial cuboid into a cuboid
-    sc = CBackend.b.finalisePartial(sc)
+    sc = CBackend.default.finalisePartial(sc)
     dc.build(sc,  m)
     dc
  }

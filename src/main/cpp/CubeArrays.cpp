@@ -53,7 +53,7 @@ SetTrie globalSetTrie;
  * Various registries storing in-memory cuboids and their meta-information.
  */
 
-struct {
+struct globalRegistry_t {
     /**pointer to dense or sparse cuboid*/
     std::vector<void *> ptr_registry;
 
@@ -141,8 +141,12 @@ struct {
         keySize = keysz_registry[id];
     }
 
-} globalRegistry;
+};
+globalRegistry_t globalRegistry;
 
+void readRegistry(unsigned int id, void *&ptr, size_t &size, unsigned short &keySize) {
+    globalRegistry.read(id, ptr, size, keySize);
+}
 /**
  * Resets the backend by unloading all cuboids from memory and clearing the registry
  */
@@ -552,11 +556,13 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
             print_key(masklen, key2);
             printf("  ==> %d \n", cmp);
 #endif
+            value_t  value = *getVal((byte **) tempstore, r, tempRecSize);
+            if (value == 0) continue;
             if (!cmp) { // same keys
                 //printf("Merge %lu into %lu\n", r, watermark);
-                *getVal((byte **) tempstore, watermark, tempRecSize) += *getVal((byte **) tempstore, r, tempRecSize);
+                *getVal((byte **) tempstore, watermark, tempRecSize) += value;
             } else {
-                watermark++;
+                if(*getVal((byte **) tempstore, watermark, tempRecSize) > 0) watermark++; //overwrite 0 vals
                 if (watermark < r) {
                     //printf("Copy %lu into %lu\n", r, watermark);
                     memcpy(getKey((byte **) tempstore, watermark, tempRecSize),
@@ -565,7 +571,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
                 }
             }
         }
-
+    if(*getVal((byte **) tempstore, watermark, tempRecSize) == 0) watermark--;
     size_t new_rows = watermark + 1;
     //printf("End srehash (compressing from %lu to %d)\n", rows, new_rows);
 
@@ -818,19 +824,19 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
     }
 }
 
-bool addDenseCuboidToTrie(const vector<int> &cuboidDims, unsigned int d_id) {
-    cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
+bool addDenseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int d_id) {
+    std::cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
     size_t len;
     value_t *values = fetch(d_id, len);
-    vector<value_t> valueVec(values, values + len);
+    std::vector<value_t> valueVec(values, values + len);
     momentTransform(valueVec);
     globalSetTrie.insertAll(cuboidDims, valueVec);
-    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    std::cout << "  TrieCount = " << globalSetTrie.count << std::endl;
     return globalSetTrie.count < globalSetTrie.maxSize;
 }
 
-bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
-    cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
+bool addSparseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int s_id) {
+    std::cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
     size_t rows;
     void *ptr;
     unsigned short keySize;
@@ -852,11 +858,11 @@ bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
 //    printf(" %lld %d\n", i, newstore[i]);
     }
 
-    vector<value_t> valueVec(newstore, newstore + newsize);
+    std::vector<value_t> valueVec(newstore, newstore + newsize);
     momentTransform(valueVec);
 
     globalSetTrie.insertAll(cuboidDims, valueVec);
-    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    std::cout << "  TrieCount = " << globalSetTrie.count << std::endl;
     free(newstore);
     return globalSetTrie.count < globalSetTrie.maxSize;
 }
@@ -956,4 +962,4 @@ void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
 void saveTrie(const char *filename) { globalSetTrie.saveToFile(filename); }
 void loadTrie(const char *filename) { globalSetTrie.loadFromFile(filename); }
 
-void prepareFromTrie(const vector<int>& query, map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}
+void prepareFromTrie(const std::vector<int>& query, std::map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}

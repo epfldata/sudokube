@@ -415,7 +415,7 @@ object DataCube {
      @param cubeName is the name of the metadata file.
     */
 
-  def load(cubeName: String, be: Backend[Payload] = CBackend.b): DataCube = {
+  def load(cubeName: String, be: Backend[Payload] = CBackend.default): DataCube = {
     val file = new File("cubedata/" + cubeName + "/" + cubeName + ".mcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
@@ -431,7 +431,7 @@ object DataCube {
 }
 
 object PartialDataCube {
-  def load(cubeName: String, basename: String, be: Backend[Payload] = CBackend.b) = {
+  def load(cubeName: String, basename: String, be: Backend[Payload] = CBackend.default) = {
     val file = new File("cubedata/" + cubeName + "/" + cubeName + ".pmcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")

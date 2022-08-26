@@ -226,7 +226,7 @@ object DemoTxt {
     val query_size = 5
     val rnd = new Random(1L)
     val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
-    val fullcub = CBackend.b.mk(n_bits, data.toIterator)
+    val fullcub = CBackend.default.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
     val dc = new DataCube()
     val m = new RandomizedMaterializationStrategy(n_bits, 6, 2)

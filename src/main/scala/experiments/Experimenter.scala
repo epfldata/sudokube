@@ -225,7 +225,7 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
-    CBackend.b.loadTrie(trie_filename)
+    CBackend.default.loadTrie(trie_filename)
     val sch = cg.schema()
 
     def momentSolve(q: IndexedSeq[Int]) = {
@@ -264,7 +264,7 @@ object Experimenter {
         SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
       }
       val moments = Profiler("Trie Moments") {
-        CBackend.b.prepareFromTrie(q)
+        CBackend.default.prepareFromTrie(q)
       }
       val result2 = Profiler(s"Trie Solve") {
         val s = Profiler(s"TrieMoment Constructor") {
@@ -417,7 +417,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
@@ -442,7 +442,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -468,7 +468,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -493,7 +493,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
