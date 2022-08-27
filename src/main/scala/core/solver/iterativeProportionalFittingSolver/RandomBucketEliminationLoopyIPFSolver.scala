@@ -2,7 +2,7 @@ package core.solver.iterativeProportionalFittingSolver
 
 import core.solver.iterativeProportionalFittingSolver.IPFUtils.existsIntersectingVariables
 import core.solver.iterativeProportionalFittingSolver.JunctionGraph.Clique
-import util.{BitUtils, Profiler}
+import util.Profiler
 
 import scala.util.Random
 
@@ -13,8 +13,12 @@ import scala.util.Random
  * (connecting completely and delete variables from separators until "connectedness condition" is satisfied for all variable.)
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
+ * @param solverName The name of the solver, "Random Bucket Elimination Loopy IPF",
+ *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
  */
-class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPFSolver(querySize) {
+class RandomBucketEliminationLoopyIPFSolver(override val querySize: Int, override val solverName: String = "Random Bucket Elimination Loopy IPF")
+  extends LoopyIPFSolver(querySize, solverName) {
+
   // Similar to bucket elimination, every variable will be placed in a separate "bucket" initially.
   (0 until querySize).foreach(variable => junctionGraph.cliques += new Clique(1 << variable))
 
@@ -27,14 +31,13 @@ class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPF
    * @param marginalVariables    Sequence of marginal variables.
    * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
-  override def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
-    normalizationFactor = marginalDistribution.sum
-    val clusterVariables = BitUtils.SetToInt(marginalVariables)
-    val cluster = Cluster(clusterVariables, marginalDistribution.map(_ / normalizationFactor))
-    clusters = cluster :: clusters
-    val clique = Random.shuffle(junctionGraph.cliques.filter(clique => existsIntersectingVariables(clique.variables, clusterVariables)).toList).head
+  override def add(marginalVariables: Int, marginalDistribution: Array[Double]): Cluster = {
+    val cluster = super.add(marginalVariables, marginalDistribution)
+    val clique = Random.shuffle(junctionGraph.cliques.filter(clique => existsIntersectingVariables(clique.variables, marginalVariables)).toList).head
+      // Randomly select one clique that has at least one intersecting variable to add the cluster to.
     clique.clusters += cluster
-    clique.variables |= clusterVariables
+    clique.variables |= marginalVariables
+    cluster
   }
 
   /**
@@ -43,7 +46,7 @@ class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPF
    * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   override def solve(): Array[Double] = {
-    Profiler("Random Junction Graph IPF Junction Graph Construction") {
+    Profiler(s"$solverName Junction Graph Construction") {
       junctionGraph.cliques.retain(_.clusters.nonEmpty)
       junctionGraph.deleteNonMaximalCliques()
       junctionGraph.initializeCliques()
@@ -51,25 +54,6 @@ class RandomJunctionGraphIPFSolver(override val querySize: Int) extends LoopyIPF
       junctionGraph.printAllCliquesAndSeparators()
     }
 
-    var totalDelta: Double = 0
-    var numIterations: Int = 0
-
-    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
-    println(s"\t\t\tRandom Junction Graph IPF number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
-
-    Profiler("Random Junction Graph IPF Iterations") {
-      do {
-        numIterations += 1
-        println(s"\t\t\tRandom Junction Graph IPF Iteration $numIterations")
-        totalDelta = iterativeUpdate() // Start with any clique
-        println(s"\t\t\tTotal delta: $totalDelta, threshold = ${convergenceThreshold * totalNumUpdates}")
-      } while (totalDelta >= convergenceThreshold * totalNumUpdates)
-    }
-    println(s"\t\t\tRandom Junction Graph IPF number of iterations $numIterations")
-
-    Profiler("Random Junction Graph IPF Solution Derivation") {
-      getTotalDistribution
-      getSolution
-    }
+    solveWithJunctionGraph()
   }
 }

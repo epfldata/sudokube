@@ -63,11 +63,11 @@ object DemoTxt {
   }
 
   def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
-    val actual = Array(0, 1, 1, 1, 1, 0, 0, 0).map(_.toDouble)
-    val solver = new VanillaIPFSolver(3, true, actual)
-    solver.add(List(0, 1), Array(1, 1, 1, 1).map(_.toDouble))
-    solver.add(List(1, 2), Array(1, 2, 1, 0).map(_.toDouble))
-    solver.add(List(0, 2), Array(1, 2, 1, 0).map(_.toDouble))
+    val actual = Array(1, 1000, 1000, 1000, 1000, 1000, 1000, 1).map(_.toDouble)
+    val solver = new VanillaIPFSolver(3, true, false, actual)
+    solver.add(BitUtils.SetToInt(List(0, 1)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
+    solver.add(BitUtils.SetToInt(List(1, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
+    solver.add(BitUtils.SetToInt(List(0, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
     val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result))
@@ -86,7 +86,7 @@ object DemoTxt {
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(BitUtils.SetToInt(marginalVariables), clustersDistribution)
     }
 
     val result = solver.solve()
@@ -101,14 +101,14 @@ object DemoTxt {
     val actual: Array[Double] = Array.fill(1 << 6)(0)
     (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
 
-    val solver = new VanillaIPFSolver(6)
+    val solver = new VanillaIPFSolver(6, true, false, actual)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
       Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(BitUtils.SetToInt(marginalVariables), clustersDistribution)
     }
 
     val result = solver.solve()

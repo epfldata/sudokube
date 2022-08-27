@@ -4,8 +4,6 @@ import core.solver.iterativeProportionalFittingSolver.IPFUtils.getNumOnesInBinar
 
 /**
  * A Cluster, i.e., given knowledge of marginal distribution of a subset of variables.
- * May be useful for graphical models (nodes in junction tree, region graph, etc.)
- *
  * @author Zhekai Jiang
  * @param variables The indices (in the original solver) of the variables concerned, encoded as bits of 1 in an Int.
  * @param distribution The marginal distribution of the variables. Values are encoded as bits of 1 in the index.
