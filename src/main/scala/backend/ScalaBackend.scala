@@ -55,11 +55,6 @@ object ScalaBackend extends Backend[Payload] {
     oos.close
   }
 
-
-  override def saveAsTrie(cuboids: Array[(Array[Int], (Array[Payload], Seq[(BigBinary, Payload)]))], filename: String, maxSize: Long): Unit = ???
-  override def loadTrie(filename: String): Unit = ???
-  override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = ???
-
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = mkAll(n_bits, it.toSeq)
   def mkAll(n_bits: Int, kvs: Seq[(BigBinary, Long)]) : SparseCuboid = {
     val a : SPARSE_T = kvs.map(x => (x._1, Payload.mk(x._2)))

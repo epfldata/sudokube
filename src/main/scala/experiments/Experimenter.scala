@@ -215,17 +215,17 @@ object Experimenter {
   }
 
   def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-
+    val be = CBackend.original
     val cg = SSB(100)
     val param = "15_14_30"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName)
+    val dc = PartialDataCube.load(fullname, cg.baseName, be)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
-    CBackend.default.loadTrie(trie_filename)
+    be.loadTrie(trie_filename)
     val sch = cg.schema()
 
     def momentSolve(q: IndexedSeq[Int]) = {
@@ -260,11 +260,12 @@ object Experimenter {
     }
 
     def trieSolve(q: IndexedSeq[Int]) = {
+      val be = CBackend.original
       val pm = Profiler("Trie Prepare pm") {
         SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
       }
       val moments = Profiler("Trie Moments") {
-        CBackend.default.prepareFromTrie(q)
+        be.prepareFromTrie(q)
       }
       val result2 = Profiler(s"Trie Solve") {
         val s = Profiler(s"TrieMoment Constructor") {

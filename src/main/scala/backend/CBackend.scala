@@ -10,12 +10,41 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 /** proxy for C implementation; provides access to native functions
  *via JNI.
  */
-@nativeLoader("CBackend0") //name + version
-class CBackend extends Backend[Payload] {
+
+abstract class CBackend extends Backend[Payload] {
   protected type DENSE_T = Int // index in C registry data structure
   protected type SPARSE_T = Int
   protected type HYBRID_T = Int //positive is sparse, negative is dense
 
+  //------------- NATIVE METHODS ---------------------
+  protected def reset0(): Unit = ???
+  protected def cuboidGC0(id: Int): Unit = ???
+
+  protected def sRehash0(s_id: Int, pos: Array[Int], mode: Int): Int = ???
+  protected def dRehash0(d_id: Int, pos: Array[Int]): Int = ???
+
+  protected def sRehashSlice0(s_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long] = ???
+  protected def dRehashSlice0(d_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long] = ???
+
+  protected def dFetch0(d_id: Int): Array[Long] = ???
+
+  protected def sSize0(id: Int): Int = ???
+  protected def sNumBytes0(id: Int): Long = ???
+
+  protected def mkAll0(n_bits: Int, n_rows: Int): Int = ???
+  protected def mk0(n_bits: Int): Int = ???
+  protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Byte], v: Long): Unit = ???
+  protected def add(s_id: Int, n_bits: Int, key: Array[Byte], v: Long): Unit = ???
+  protected def freezePartial(s_id: Int, n_bits: Int): Unit = ???
+  protected def freeze(s_id: Int): Unit = ???
+
+  protected def readMultiCuboid0(filename: String, isSparseArray: Array[Boolean],
+                                 nbitsArray: Array[Int], sizeArray: Array[Int]): Array[Int] = ???
+
+  protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int]): Unit = ???
+
+
+  //------------------- END NATIVE ----------------------
 
   override def isDense(h: Int): Boolean = h < 0
   override def extractDense(h: Int): Int = -h
@@ -23,55 +52,13 @@ class CBackend extends Backend[Payload] {
   override def sparseToHybrid(s: Int): Int = s
   override def denseToHybrid(d: Int): Int = -d
 
-  @native protected def reset0(): Unit
-  @native protected def shhash(s_id: Int, pos: Array[Int]): Int
-  @native protected def sRehash0(s_id: Int, pos: Array[Int]): Int
-  @native protected def d2sRehash0(d_id: Int, pos: Array[Int]): Int
-  @native protected def s2dRehash0(s_id: Int, pos: Array[Int]): Int
-  @native protected def dRehash0(d_id: Int, pos: Array[Int]): Int
-
-  @native protected def sRehashSlice0(s_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long]
-  @native protected def dRehashSlice0(d_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long]
-
-  @native protected def saveAsTrie0(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long)
-  @native protected def loadTrie0(filename: String)
-  @native protected def prepareFromTrie0(query: Array[Int]): Array[(Int, Long)]
-
-  @native protected def mkAll0(n_bits: Int, n_rows: Int): Int
-  @native protected def mk0(n_bits: Int): Int
-
-  @native protected def sSize0(id: Int): Int
-  @native protected def sNumBytes0(id: Int): Long
-
-  @native protected def dFetch0(d_id: Int): Array[Long]
-
-  @native protected def cuboidGC0(id: Int): Unit
-
-  @native protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Byte], v: Long)
-  @native protected def add(s_id: Int, n_bits: Int, key: Array[Byte], v: Long)
-  @native protected def freezePartial(s_id: Int, n_bits: Int)
-  @native protected def freeze(s_id: Int)
-
-
-  @native protected def readMultiCuboid0(filename: String, isSparseArray: Array[Boolean],
-                                         nbitsArray: Array[Int], sizeArray: Array[Int]): Array[Int]
-
-  @native protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int])
-
-
-  override def saveAsTrie(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long): Unit = saveAsTrie0(cuboids, filename, maxSize)
-  override def loadTrie(filename: String): Unit = loadTrie0(filename)
-  override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = prepareFromTrie0(query.sorted.toArray).toSeq
-
   override def reset: Unit = reset0()
 
   override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean], nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = {
     val backend_id_array = readMultiCuboid0(filename, isSparseArray, nbitsArray, sizeArray)
     (0 until idArray.length).map { i =>
-      val cub = isSparseArray(i) match {
-        case true => SparseCuboid(nbitsArray(i), backend_id_array(i))
-        case false => DenseCuboid(nbitsArray(i), backend_id_array(i))
-      }
+      val cub = if (isSparseArray(i)) SparseCuboid(nbitsArray(i), backend_id_array(i))
+      else DenseCuboid(nbitsArray(i), backend_id_array(i))
       idArray(i) -> cub
     }.toMap
   }
@@ -173,19 +160,17 @@ class CBackend extends Backend[Payload] {
   // so we have yet another indirection.
 
   protected def hybridRehash(s_id: Int, bitpos: IndexedSeq[Int]): Int = {
-    shhash(s_id, bitpos.toArray)
+    sRehash0(s_id, bitpos.toArray, 3)
   }
 
   protected def sRehash(s_id: Int, bitpos: IndexedSeq[Int]): Int = {
-    sRehash0(s_id, bitpos.toArray)
+    sRehash0(s_id, bitpos.toArray, 2)
   }
 
-  protected def d2sRehash(n_bits: Int, d_id: Int, bitpos: IndexedSeq[Int]): Int = {
-    d2sRehash0(d_id, bitpos.toArray)
-  }
+  protected def d2sRehash(n_bits: Int, d_id: Int, bitpos: IndexedSeq[Int]): Int = ???
 
   protected def s2dRehash(s_id: Int, d_bits: Int, bitpos: IndexedSeq[Int]): Int = {
-    s2dRehash0(s_id, bitpos.toArray)
+    sRehash0(s_id, bitpos.toArray, 1)
   }
 
   protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, bitpos: IndexedSeq[Int]): Int = {
@@ -206,7 +191,7 @@ class CBackend extends Backend[Payload] {
 
 
 object CBackend {
-  val original = new CBackend
+  val original = new OriginalCBackend
   val rowstore = new RowStoreCBackend
   val default = rowstore
 }

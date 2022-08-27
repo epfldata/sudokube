@@ -205,7 +205,8 @@ class CBackendSpec extends FlatSpec with Matchers {
   }
 */
 
-  "CBackend Trie results" should "be correct " ignore {  //TODO: Test ignored for now
+  "CBackend Trie results" should "be correct " in {
+    val be = CBackend.original
     val cubename = "CBackendTrieTest"
     val filename = "cubedata/" + cubename + "/" + cubename + ".ctrie"
     val file = new File(filename)
@@ -226,7 +227,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     data.foreach{case (BigBinary(k), v) => dataArray(k.toInt) += v }
 
-    val base = CBackend.default.mk(nbits, data.toIterator)
+    val base = be.mk(nbits, data.toIterator)
     val all = 0 until nbits
     val densecub = base.rehash_to_dense(all)
     val densearray = densecub.fetch.map(_.sm )
@@ -234,14 +235,13 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     val denseMoments = Moment1Transformer[Double]().getMoments(densearray)
 
-    CBackend.default.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
-    val trieResult  = CBackend.default.prepareFromTrie((0 until nbits))
+    be.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
+    val trieResult  = be.prepareFromTrie((0 until nbits))
     val trieMomentArray = Array.fill(N)(0.0)
     trieResult.foreach{case (k, v) => trieMomentArray(k) += v.toDouble }
     val total = dataArray.sum
     trieMomentArray.zip(denseMoments).zipWithIndex.foreach{case ((t,d), i) => if(t.toLong != d.toLong) println(s"$i :: trie ${t.toLong}  actual ${d.toLong}")}
     assert(trieMomentArray.sameElements(denseMoments))
-
   }
 }
 

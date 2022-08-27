@@ -1,6 +1,6 @@
 #include<assert.h>
 #include<stdio.h>
-#include "backend_CBackend.h"
+#include "backend_OriginalCBackend.h"
 #include "Keys.h"
 #include "SetTrie.h"
 
@@ -11,8 +11,6 @@ extern void reset();
 extern int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 
 extern unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
-
-extern unsigned int d2srehash(unsigned int d_id, unsigned int *maskpos, unsigned int masksum);
 
 extern unsigned int s2drehash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum);
 
@@ -42,14 +40,6 @@ extern size_t sz(unsigned int id);
 
 extern size_t sNumBytes(unsigned int id);
 
-extern unsigned int readSCuboid(const char *filename, unsigned int n_bits, size_t size);
-
-extern unsigned int readDCuboid(const char *filename, unsigned int n_bits, size_t size);
-
-extern void writeSCuboid(const char *filename, unsigned int s_id);
-
-extern void writeDCuboid(const char *filename, unsigned int d_id);
-
 extern bool addDenseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int d_id);
 
 extern bool addSparseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int s_id);
@@ -68,11 +58,11 @@ extern void readMultiCuboid(const char *filename, int n_bits_array[], int size_a
 extern void writeMultiCuboid(const char *filename, unsigned char isSparse_array[], int ids[], unsigned int numCuboids);
 
 
-JNIEXPORT void JNICALL Java_backend_CBackend_reset0(JNIEnv *env, jobject obj) {
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_reset0(JNIEnv *env, jobject obj) {
     reset();
 }
 
-JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
+JNIEXPORT jintArray JNICALL Java_backend_OriginalCBackend_readMultiCuboid0
         (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JnbitsArray,
          jintArray JsizeArray) {
     jsize numCuboids = env->GetArrayLength(JisSparseArray);
@@ -93,7 +83,7 @@ JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
 
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_writeMultiCuboid0
         (JNIEnv *env, jobject obj, jstring Jfilename, jbooleanArray JisSparseArray, jintArray JidArray) {
     jsize numCuboids = env->GetArrayLength(JisSparseArray);
     const char *filename = env->GetStringUTFChars(Jfilename, 0);
@@ -106,7 +96,7 @@ JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
     env->ReleaseIntArrayElements(JidArray, idArray, 0);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add_1i
         (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jbyteArray key, jlong v) {
     jsize keylen = env->GetArrayLength(key);
     auto ckey =  env->GetByteArrayElements(key, 0);
@@ -116,96 +106,65 @@ JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
     env->ReleaseByteArrayElements(key, ckey, 0);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_add
-        (JNIEnv *env, jobject obj, jint s_id, jint n_bits, jintArray key, jlong v) {
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add
+        (JNIEnv *env, jobject obj, jint s_id, jint n_bits, jbyteArray key, jlong v) {
     jsize keylen = env->GetArrayLength(key);
-    jint *keybody = env->GetIntArrayElements(key, 0);
+    jbyte *keybody = env->GetByteArrayElements(key, 0);
 
     // the key is transmitted as an array of bytes (0 to 255).
 
-    assert(n_bits <= keylen * 8);
-    byte ckey[keylen];
-    for (int i = 0; i < keylen; i++) ckey[i] = keybody[i];
+    add(s_id, n_bits, (byte *) keybody, v);
 
-    add(s_id, n_bits, ckey, v);
-
-    env->ReleaseIntArrayElements(key, keybody, 0);
+    env->ReleaseByteArrayElements(key, keybody, 0);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_freeze
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_freeze
         (JNIEnv *env, jobject obj, jint s_id) {
     freeze(s_id);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_freezePartial
         (JNIEnv *env, jobject obj, jint s_id, jint n_bits) {
     freezePartial(s_id, n_bits);
 }
 
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
+JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_sSize0
         (JNIEnv *env, jobject obj, jint id) {
     return sz(id);
 }
 
-JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
+JNIEXPORT jlong JNICALL Java_backend_OriginalCBackend_sNumBytes0
         (JNIEnv *, jobject, jint id) {
     return sNumBytes(id);
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_mk0
+JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_mk0
         (JNIEnv *env, jobject obj, jint n_bits) {
     return mk(n_bits);
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
+JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_mkAll0
         (JNIEnv *env, jobject obj, jint n_bits, jint n_rows) {
     return mkAll(n_bits, n_rows);
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
-        (JNIEnv *env, jobject obj, jint s_id, jintArray pos) {
+
+JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_sRehash0
+        (JNIEnv *env, jobject obj, jint s_id, jintArray pos, jint mode) {
     jsize poslen = env->GetArrayLength(pos);
     jint *posbody = env->GetIntArrayElements(pos, 0);
-    int id = shybridhash(s_id, (unsigned int *) posbody, poslen);
-    env->ReleaseIntArrayElements(pos, posbody, 0);
-    return id;
-
-}
-
-JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
-        (JNIEnv *env, jobject obj, jint s_id, jintArray pos) {
-    jsize poslen = env->GetArrayLength(pos);
-    jint *posbody = env->GetIntArrayElements(pos, 0);
-    int x = srehash(s_id, (unsigned int *) posbody, poslen);
-
+    int x;
+    if(mode == 1) x = s2drehash(s_id, (unsigned int *) posbody, poslen);
+    else if(mode == 2)  x = srehash(s_id, (unsigned int *) posbody, poslen);
+    else if(mode == 3) x = shybridhash(s_id, (unsigned int *) posbody, poslen);
+    else throw std::runtime_error("Unknown mode for srehash");
     env->ReleaseIntArrayElements(pos, posbody, 0);
     return x;
 }
 
-JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
-        (JNIEnv *env, jobject obj, jint d_id, jintArray pos) {
-    jsize poslen = env->GetArrayLength(pos);
-    jint *posbody = env->GetIntArrayElements(pos, 0);
 
-    int x = d2srehash(d_id, (unsigned int *) posbody, poslen);
-
-    env->ReleaseIntArrayElements(pos, posbody, 0);
-    return x;
-}
-
-JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
-        (JNIEnv *env, jobject obj, jint d_id, jintArray pos) {
-    jsize poslen = env->GetArrayLength(pos);
-    jint *posbody = env->GetIntArrayElements(pos, 0);
-
-    int x = s2drehash(d_id, (unsigned int *) posbody, poslen);
-
-    env->ReleaseIntArrayElements(pos, posbody, 0);
-    return x;
-}
-
-JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
+JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_dRehash0
         (JNIEnv *env, jobject obj, jint d_id, jintArray pos) {
     jsize poslen = env->GetArrayLength(pos);
     jint *posbody = env->GetIntArrayElements(pos, 0);
@@ -217,7 +176,7 @@ JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
 }
 
 
-JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
+JNIEXPORT jlongArray JNICALL Java_backend_OriginalCBackend_sRehashSlice0
         (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos, jbooleanArray jslicemask) {
     jsize bitposlen = env->GetArrayLength(jbitpos);
     jint *bitpos = env->GetIntArrayElements(jbitpos, 0);
@@ -238,7 +197,7 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
     return jresult;
 }
 
-JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
+JNIEXPORT jlongArray JNICALL Java_backend_OriginalCBackend_dRehashSlice0
         (JNIEnv *env, jobject obj, jint d_id, jintArray jbitpos, jbooleanArray jslicemask) {
     jsize bitposlen = env->GetArrayLength(jbitpos);
     jint *bitpos = env->GetIntArrayElements(jbitpos, 0);
@@ -260,7 +219,7 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
 }
 
 
-JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
+JNIEXPORT jlongArray JNICALL Java_backend_OriginalCBackend_dFetch0
         (JNIEnv *env, jobject obj, int d_id) {
     size_t size;
     value_t *p = fetch(d_id, size); // fetch does not copy, but in general, we
@@ -282,13 +241,13 @@ JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
     return result;
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_cuboidGC0
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_cuboidGC0
         (JNIEnv *env, jobject obj, int id) {
     unsigned cuboid_id = id < 0 ? -id : id;
     cuboid_GC(cuboid_id);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_saveAsTrie0
         (JNIEnv *env, jobject obj, jobjectArray array, jstring Jfilename, jlong maxSize) {
     jsize len = env->GetArrayLength(array);
     jobject first = env->GetObjectArrayElement(array, 0);
@@ -319,13 +278,13 @@ JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
     saveTrie(filename);
 }
 
-JNIEXPORT void JNICALL Java_backend_CBackend_loadTrie0
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_loadTrie0
         (JNIEnv *env, jobject obj, jstring Jfilename) {
     const char *filename = env->GetStringUTFChars(Jfilename, 0);
     loadTrie(filename);
 }
 
-JNIEXPORT jobjectArray JNICALL Java_backend_CBackend_prepareFromTrie0
+JNIEXPORT jobjectArray JNICALL Java_backend_OriginalCBackend_prepareFromTrie0
         (JNIEnv *env, jobject obj, jintArray array) {
     jsize len = env->GetArrayLength(array);
     jint *qarray = env->GetIntArrayElements(array, 0);

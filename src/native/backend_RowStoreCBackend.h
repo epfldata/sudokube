@@ -17,35 +17,19 @@ JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_reset0
 
 /*
  * Class:      backend_RowStoreCBackend
- * Method:     shhash
- * Signature:  (I[I)I
+ * Method:     cuboidGC0
+ * Signature:  (I)V
  */
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_shhash
-  (JNIEnv *, jobject, jint, jintArray);
+JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_cuboidGC0
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:      backend_RowStoreCBackend
  * Method:     sRehash0
- * Signature:  (I[I)I
+ * Signature:  (I[II)I
  */
 JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_sRehash0
-  (JNIEnv *, jobject, jint, jintArray);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     d2sRehash0
- * Signature:  (I[I)I
- */
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_d2sRehash0
-  (JNIEnv *, jobject, jint, jintArray);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     s2dRehash0
- * Signature:  (I[I)I
- */
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_s2dRehash0
-  (JNIEnv *, jobject, jint, jintArray);
+  (JNIEnv *, jobject, jint, jintArray, jint);
 
 /*
  * Class:      backend_RowStoreCBackend
@@ -57,58 +41,10 @@ JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_dRehash0
 
 /*
  * Class:      backend_RowStoreCBackend
- * Method:     sRehashSlice0
- * Signature:  (I[I[Z)[J
+ * Method:     dFetch0
+ * Signature:  (I)[J
  */
-JNIEXPORT jlongArray JNICALL Java_backend_RowStoreCBackend_sRehashSlice0
-  (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     dRehashSlice0
- * Signature:  (I[I[Z)[J
- */
-JNIEXPORT jlongArray JNICALL Java_backend_RowStoreCBackend_dRehashSlice0
-  (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     saveAsTrie0
- * Signature:  ([Lscala/Tuple2;Ljava/lang/String;J)V
- */
-JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_saveAsTrie0
-  (JNIEnv *, jobject, jobjectArray, jstring, jlong);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     loadTrie0
- * Signature:  (Ljava/lang/String;)V
- */
-JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_loadTrie0
-  (JNIEnv *, jobject, jstring);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     prepareFromTrie0
- * Signature:  ([I)[Lscala/Tuple2;
- */
-JNIEXPORT jobjectArray JNICALL Java_backend_RowStoreCBackend_prepareFromTrie0
-  (JNIEnv *, jobject, jintArray);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     mkAll0
- * Signature:  (II)I
- */
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mkAll0
-  (JNIEnv *, jobject, jint, jint);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     mk0
- * Signature:  (I)I
- */
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mk0
+JNIEXPORT jlongArray JNICALL Java_backend_RowStoreCBackend_dFetch0
   (JNIEnv *, jobject, jint);
 
 /*
@@ -129,19 +65,11 @@ JNIEXPORT jlong JNICALL Java_backend_RowStoreCBackend_sNumBytes0
 
 /*
  * Class:      backend_RowStoreCBackend
- * Method:     dFetch0
- * Signature:  (I)[J
+ * Method:     mkAll0
+ * Signature:  (II)I
  */
-JNIEXPORT jlongArray JNICALL Java_backend_RowStoreCBackend_dFetch0
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     cuboidGC0
- * Signature:  (I)V
- */
-JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_cuboidGC0
-  (JNIEnv *, jobject, jint);
+JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mkAll0
+  (JNIEnv *, jobject, jint, jint);
 
 /*
  * Class:      backend_RowStoreCBackend
@@ -153,19 +81,19 @@ JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add_1i
 
 /*
  * Class:      backend_RowStoreCBackend
+ * Method:     mk0
+ * Signature:  (I)I
+ */
+JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mk0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:      backend_RowStoreCBackend
  * Method:     add
  * Signature:  (II[BJ)V
  */
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add
   (JNIEnv *, jobject, jint, jint, jbyteArray, jlong);
-
-/*
- * Class:      backend_RowStoreCBackend
- * Method:     freezePartial
- * Signature:  (II)V
- */
-JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_freezePartial
-  (JNIEnv *, jobject, jint, jint);
 
 /*
  * Class:      backend_RowStoreCBackend

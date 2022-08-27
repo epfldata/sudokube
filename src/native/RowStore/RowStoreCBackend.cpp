@@ -8,41 +8,12 @@ JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_reset0
     rowStore.clear();
 }
 
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_shhash
-        (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos) {
-
-    jsize bitposlen = env->GetArrayLength(jbitpos);
-    auto bitpos = env->GetIntArrayElements(jbitpos, 0);
-    std::vector<unsigned int> bitposvec(bitpos, bitpos + bitposlen);
-    auto newid = rowStore.srehash(s_id, bitposvec, 3);
-    env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
-    return newid;
-}
-
-
 JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_sRehash0
-        (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos) {
+        (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos, jint mode) {
     jsize bitposlen = env->GetArrayLength(jbitpos);
     auto bitpos = env->GetIntArrayElements(jbitpos, 0);
     std::vector<unsigned int> bitposvec(bitpos, bitpos + bitposlen);
-    auto newid = rowStore.srehash(s_id, bitposvec, 2);
-    env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
-    return newid;
-}
-
-
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_d2sRehash0
-        (JNIEnv *env, jobject object, jint d_id, jintArray jbitpos) {
-    throw std::runtime_error("DenseToSparse Not implemented in Row Store");
-}
-
-
-JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_s2dRehash0
-        (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos) {
-    jsize bitposlen = env->GetArrayLength(jbitpos);
-    auto bitpos = env->GetIntArrayElements(jbitpos, 0);
-    std::vector<unsigned int> bitposvec(bitpos, bitpos + bitposlen);
-    auto newid = rowStore.srehash(s_id, bitposvec, 1);
+    auto newid = rowStore.srehash(s_id, bitposvec, mode);
     env->ReleaseIntArrayElements(jbitpos, bitpos, 0);
     return newid;
 }

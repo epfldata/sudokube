@@ -304,7 +304,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
 
     val maxsize = 1L << 30
     val dim = 25
-    val be = cuboids.head.backend
+    val be = cuboids.head.backend.asInstanceOf[OriginalCBackend]
     val cubs = index.zipWithIndex.filter(_._1.length <= dim).map { case (cols, cid) =>
       val n = cols.length
       val cuboid = cuboids(cid)
