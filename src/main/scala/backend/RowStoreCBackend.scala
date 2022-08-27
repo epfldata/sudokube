@@ -1,5 +1,6 @@
 package backend
-
+import com.github.sbt.jni.nativeLoader
+@nativeLoader("RowStoreCBackend0") //name + version
 class RowStoreCBackend extends CBackend {
   @native override protected def reset0(): Unit
   @native override protected def shhash(s_id: Int, pos: Array[Int]): Int

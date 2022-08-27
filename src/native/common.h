@@ -37,26 +37,5 @@ struct DenseCuboid : Cuboid {
     DenseCuboid(void *p, uint16_t nc) : Cuboid(p, 1uL << nc, nc, true) {}
 };
 
-struct SparseCuboidRow : Cuboid {
-    uint16_t keySize;
-    uint16_t recSize;
-
-    static inline uint16_t bitsToBytes(uint16_t nc) { return (nc + 8) >> 3; }  //TODO: Change 8 to 7
-    void realloc() {
-        if (!ptr) free(ptr);
-        ptr = calloc(numRows, recSize);
-    }
-
-    SparseCuboidRow() : Cuboid(), keySize(0), recSize(0) {}
-
-    SparseCuboidRow(Cuboid &&that) : SparseCuboidRow(that.ptr, that.numRows, that.numCols) {}
-
-    SparseCuboidRow(Cuboid &that) : SparseCuboidRow(that.ptr, that.numRows, that.numCols) {}
-
-    SparseCuboidRow(void *p, size_t nr, uint16_t nc) : Cuboid(p, nr, nc, false) {
-        keySize = bitsToBytes(numCols);
-        recSize = keySize + sizeof(Value);
-    }
-};
 
 #endif //SUDOKUBECBACKEND_COMMON_H

@@ -1,5 +1,6 @@
 target
 .idea
+.bsp
 *.csuk
 *.dc
 *.txt

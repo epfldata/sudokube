@@ -2,7 +2,7 @@
 package backend
 
 import util._
-
+import com.github.sbt.jni.nativeLoader
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -10,6 +10,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 /** proxy for C implementation; provides access to native functions
  *via JNI.
  */
+@nativeLoader("CBackend0") //name + version
 class CBackend extends Backend[Payload] {
   protected type DENSE_T = Int // index in C registry data structure
   protected type SPARSE_T = Int
@@ -205,8 +206,6 @@ class CBackend extends Backend[Payload] {
 
 
 object CBackend {
-  System.loadLibrary("CBackend")
-  System.loadLibrary("RowStoreCBackend")
   val original = new CBackend
   val rowstore = new RowStoreCBackend
   val default = rowstore

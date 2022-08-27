@@ -8,8 +8,15 @@ ThisBuild / organizationName := "data"
 lazy val root = (project in file("."))
   .settings(
     name := "sudokube",
-    libraryDependencies += scalaTest % Test
-  )
+    libraryDependencies += scalaTest % Test,
+    libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.2" % Test)
+ .settings(javah / target := sourceDirectory.value / "native")
+.dependsOn(originalCBackend % Runtime)
+.dependsOn(rowStoreCBackend % Runtime)
+  .aggregate(originalCBackend, rowStoreCBackend)
+
+
+Test / parallelExecution := false
 
 libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze" % "0.13.2",
@@ -19,10 +26,15 @@ libraryDependencies  ++= Seq(
   "org.apache.commons" % "commons-lang3" % "3.12.0",
   //"org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.5.3",
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8"
-)
+  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8")
 
-Test / parallelExecution := false
+lazy val originalCBackend = (project in file("src") / "native" / "Original")
+  .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .enablePlugins(JniNative)
+
+lazy val rowStoreCBackend = (project in file("src") / "native"/ "RowStore")
+  .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .enablePlugins(JniNative)
 
 enablePlugins(JavaAppPackaging)
 

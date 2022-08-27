@@ -8,185 +8,185 @@
 extern "C" {
 #endif
 /*
- * Class:     backend_CBackend
- * Method:    reset0
- * Signature: ()V
+ * Class:      backend_CBackend
+ * Method:     reset0
+ * Signature:  ()V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_reset0
   (JNIEnv *, jobject);
 
 /*
- * Class:     backend_CBackend
- * Method:    shhash
- * Signature: (I[I)I
+ * Class:      backend_CBackend
+ * Method:     shhash
+ * Signature:  (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_shhash
   (JNIEnv *, jobject, jint, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    sRehash0
- * Signature: (I[I)I
+ * Class:      backend_CBackend
+ * Method:     sRehash0
+ * Signature:  (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_sRehash0
   (JNIEnv *, jobject, jint, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    d2sRehash0
- * Signature: (I[I)I
+ * Class:      backend_CBackend
+ * Method:     d2sRehash0
+ * Signature:  (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_d2sRehash0
   (JNIEnv *, jobject, jint, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    s2dRehash0
- * Signature: (I[I)I
+ * Class:      backend_CBackend
+ * Method:     s2dRehash0
+ * Signature:  (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_s2dRehash0
   (JNIEnv *, jobject, jint, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    dRehash0
- * Signature: (I[I)I
+ * Class:      backend_CBackend
+ * Method:     dRehash0
+ * Signature:  (I[I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_dRehash0
   (JNIEnv *, jobject, jint, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    sRehashSlice0
- * Signature: (I[I[Z)[J
+ * Class:      backend_CBackend
+ * Method:     sRehashSlice0
+ * Signature:  (I[I[Z)[J
  */
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_sRehashSlice0
   (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    dRehashSlice0
- * Signature: (I[I[Z)[J
+ * Class:      backend_CBackend
+ * Method:     dRehashSlice0
+ * Signature:  (I[I[Z)[J
  */
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dRehashSlice0
   (JNIEnv *, jobject, jint, jintArray, jbooleanArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    saveAsTrie0
- * Signature: ([Lscala/Tuple2;Ljava/lang/String;J)V
+ * Class:      backend_CBackend
+ * Method:     saveAsTrie0
+ * Signature:  ([Lscala/Tuple2;Ljava/lang/String;J)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_saveAsTrie0
   (JNIEnv *, jobject, jobjectArray, jstring, jlong);
 
 /*
- * Class:     backend_CBackend
- * Method:    loadTrie0
- * Signature: (Ljava/lang/String;)V
+ * Class:      backend_CBackend
+ * Method:     loadTrie0
+ * Signature:  (Ljava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_loadTrie0
   (JNIEnv *, jobject, jstring);
 
 /*
- * Class:     backend_CBackend
- * Method:    prepareFromTrie0
- * Signature: ([I)[Lscala/Tuple2;
+ * Class:      backend_CBackend
+ * Method:     prepareFromTrie0
+ * Signature:  ([I)[Lscala/Tuple2;
  */
 JNIEXPORT jobjectArray JNICALL Java_backend_CBackend_prepareFromTrie0
   (JNIEnv *, jobject, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    mkAll0
- * Signature: (II)I
+ * Class:      backend_CBackend
+ * Method:     mkAll0
+ * Signature:  (II)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_mkAll0
   (JNIEnv *, jobject, jint, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    mk0
- * Signature: (I)I
+ * Class:      backend_CBackend
+ * Method:     mk0
+ * Signature:  (I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_mk0
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    sSize0
- * Signature: (I)I
+ * Class:      backend_CBackend
+ * Method:     sSize0
+ * Signature:  (I)I
  */
 JNIEXPORT jint JNICALL Java_backend_CBackend_sSize0
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    sNumBytes0
- * Signature: (I)J
+ * Class:      backend_CBackend
+ * Method:     sNumBytes0
+ * Signature:  (I)J
  */
 JNIEXPORT jlong JNICALL Java_backend_CBackend_sNumBytes0
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    dFetch0
- * Signature: (I)[J
+ * Class:      backend_CBackend
+ * Method:     dFetch0
+ * Signature:  (I)[J
  */
 JNIEXPORT jlongArray JNICALL Java_backend_CBackend_dFetch0
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    cuboidGC0
- * Signature: (I)V
+ * Class:      backend_CBackend
+ * Method:     cuboidGC0
+ * Signature:  (I)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_cuboidGC0
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    add_i
- * Signature: (III[BJ)V
+ * Class:      backend_CBackend
+ * Method:     add_1i
+ * Signature:  (III[BJ)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_add_1i
   (JNIEnv *, jobject, jint, jint, jint, jbyteArray, jlong);
 
 /*
- * Class:     backend_CBackend
- * Method:    add
- * Signature: (II[BJ)V
+ * Class:      backend_CBackend
+ * Method:     add
+ * Signature:  (II[BJ)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_add
   (JNIEnv *, jobject, jint, jint, jbyteArray, jlong);
 
 /*
- * Class:     backend_CBackend
- * Method:    freezePartial
- * Signature: (II)V
+ * Class:      backend_CBackend
+ * Method:     freezePartial
+ * Signature:  (II)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_freezePartial
   (JNIEnv *, jobject, jint, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    freeze
- * Signature: (I)V
+ * Class:      backend_CBackend
+ * Method:     freeze
+ * Signature:  (I)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_freeze
   (JNIEnv *, jobject, jint);
 
 /*
- * Class:     backend_CBackend
- * Method:    readMultiCuboid0
- * Signature: (Ljava/lang/String;[Z[I[I)[I
+ * Class:      backend_CBackend
+ * Method:     readMultiCuboid0
+ * Signature:  (Ljava/lang/String;[Z[I[I)[I
  */
 JNIEXPORT jintArray JNICALL Java_backend_CBackend_readMultiCuboid0
   (JNIEnv *, jobject, jstring, jbooleanArray, jintArray, jintArray);
 
 /*
- * Class:     backend_CBackend
- * Method:    writeMultiCuboid0
- * Signature: (Ljava/lang/String;[Z[I)V
+ * Class:      backend_CBackend
+ * Method:     writeMultiCuboid0
+ * Signature:  (Ljava/lang/String;[Z[I)V
  */
 JNIEXPORT void JNICALL Java_backend_CBackend_writeMultiCuboid0
   (JNIEnv *, jobject, jstring, jbooleanArray, jintArray);
