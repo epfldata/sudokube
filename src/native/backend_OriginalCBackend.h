@@ -89,6 +89,14 @@ JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_mkAll0
 
 /*
  * Class:      backend_OriginalCBackend
+ * Method:     add_1i
+ * Signature:  (IIIILjava/nio/ByteBuffer;)V
+ */
+JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add_1i
+  (JNIEnv *, jobject, jint, jint, jint, jint, jobject);
+
+/*
+ * Class:      backend_OriginalCBackend
  * Method:     mk0
  * Signature:  (I)I
  */
@@ -97,19 +105,11 @@ JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_mk0
 
 /*
  * Class:      backend_OriginalCBackend
- * Method:     add_1i
- * Signature:  (III[BJ)V
- */
-JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add_1i
-  (JNIEnv *, jobject, jint, jint, jint, jbyteArray, jlong);
-
-/*
- * Class:      backend_OriginalCBackend
  * Method:     add
- * Signature:  (II[BJ)V
+ * Signature:  (IIILjava/nio/ByteBuffer;)V
  */
 JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add
-  (JNIEnv *, jobject, jint, jint, jbyteArray, jlong);
+  (JNIEnv *, jobject, jint, jint, jint, jobject);
 
 /*
  * Class:      backend_OriginalCBackend

@@ -74,10 +74,10 @@ JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mkAll0
 /*
  * Class:      backend_RowStoreCBackend
  * Method:     add_1i
- * Signature:  (III[BJ)V
+ * Signature:  (IIIILjava/nio/ByteBuffer;)V
  */
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add_1i
-  (JNIEnv *, jobject, jint, jint, jint, jbyteArray, jlong);
+  (JNIEnv *, jobject, jint, jint, jint, jint, jobject);
 
 /*
  * Class:      backend_RowStoreCBackend
@@ -90,10 +90,10 @@ JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_mk0
 /*
  * Class:      backend_RowStoreCBackend
  * Method:     add
- * Signature:  (II[BJ)V
+ * Signature:  (IIILjava/nio/ByteBuffer;)V
  */
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add
-  (JNIEnv *, jobject, jint, jint, jbyteArray, jlong);
+  (JNIEnv *, jobject, jint, jint, jint, jobject);
 
 /*
  * Class:      backend_RowStoreCBackend

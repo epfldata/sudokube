@@ -186,45 +186,45 @@ unsigned int mk(unsigned int n_bits) {
 }
 
 /**
- * appends one record to an appendable (not yet frozen) sparse representation initialized by mk().
+ * appends many records to an appendable (not yet frozen) sparse representation initialized by mk().
    inconsistent storage type with the rest: a cuboid that we can write to
    is to be a vector that we can append to. It is replaced by the standard
    sparse representation when we freeze it.
    Does not support multi-threading
 */
-void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
-    tempRec myrec;
-    unsigned int numbytes = bitsToBytes(n_bits);
-    memcpy(&myrec.key[0], key, numbytes);
-    myrec.val = v;
-
+void add(unsigned int s_id,  byte **recordsToAdd, size_t nrowsToAdd, unsigned int n_bits) {
     //SBJ: Currently no other thread should be running. So no locks
     //Adding to std::vector requires static type. So using tempRec
+    tempRec myrec;
     std::vector<tempRec> *p = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
-    p->push_back(myrec); // makes a copy of myrec
-    globalRegistry.numrows_registry[s_id]++;
+    unsigned int numbytes = bitsToBytes(n_bits);
+    unsigned int recSize = numbytes + sizeof(value_t);
+    for(size_t i = 0; i < nrowsToAdd; i++) {
+        memcpy(&myrec.key[0], getKey(recordsToAdd, i, recSize), numbytes);
+        myrec.val = *getVal(recordsToAdd, i, recSize);
+
+        p->push_back(myrec); // makes a copy of myrec
+        globalRegistry.numrows_registry[s_id]++;
+    }
 }
 
 /**
  * Adds record at specified position to a cuboid initialized by mkAll()
  * Thread-safe, as long as there are no conflicts on the parameter i
- * @param i The index at which new record is to be added
+ * @param startIdx The index from which new records are to be added
  * @param s_id The id of the cuboid (returned by mkAll) to which record is to be added
- * @param key Record key
- * @param v Record value
+ * @param recordsToAdd pointer to records in row format
+ * @param nrowsToAdd number of rows to add
  */
-void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
+void add_i(size_t startIdx, unsigned int s_id, byte **recordsToAdd, size_t nrowsToAdd) {
     unsigned short keySize;
     size_t rows;
     void *ptr;
     globalRegistry.read(s_id, ptr, rows, keySize);
     byte **store = (byte **) ptr;
     unsigned int recSize = keySize + sizeof(value_t);
-
     //can be multithreaded, but there should be no conflicts
-    memcpy(getKey(store, i, recSize), key, keySize);
-    memcpy(getVal(store, i, recSize), &v, sizeof(value_t));
-
+    memcpy(getKey(store, startIdx, recSize), getKey(recordsToAdd, 0, recSize), nrowsToAdd * recSize);
 }
 
 /**

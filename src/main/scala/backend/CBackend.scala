@@ -3,6 +3,8 @@ package backend
 
 import util._
 import com.github.sbt.jni.nativeLoader
+
+import java.nio.{ByteBuffer, ByteOrder}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -33,8 +35,8 @@ abstract class CBackend extends Backend[Payload] {
 
   protected def mkAll0(n_bits: Int, n_rows: Int): Int = ???
   protected def mk0(n_bits: Int): Int = ???
-  protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Byte], v: Long): Unit = ???
-  protected def add(s_id: Int, n_bits: Int, key: Array[Byte], v: Long): Unit = ???
+  protected def add_i(startId: Int, s_id: Int, n_bits: Int, numRecords: Int, records: ByteBuffer): Unit = ???
+  protected def add(s_id: Int, n_bits: Int, numRecords: Int, records: ByteBuffer): Unit = ???
   protected def freezePartial(s_id: Int, n_bits: Int): Unit = ???
   protected def freeze(s_id: Int): Unit = ???
 
@@ -76,14 +78,18 @@ abstract class CBackend extends Backend[Payload] {
   def mkAll(n_bits: Int, kvs: Seq[(BigBinary, Long)]) = {
     val nrows = kvs.size
     val data = mkAll0(n_bits, nrows)
+    val recSize = (BitUtils.bitToBytes(n_bits)) + 8
 
-    var count = 0
+    val byteBuffer = java.nio.ByteBuffer.allocateDirect(nrows * recSize)
+    byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+
     def add_one(x: (BigBinary, Long)) = {
       val ia_key = x._1.toByteArray(n_bits)
-      add_i(count, data, n_bits, ia_key, x._2)
-      count += 1
+      byteBuffer.put(ia_key)
+      byteBuffer.putLong(x._2)
     }
     kvs.foreach(add_one)
+    add_i(0, data, n_bits, nrows, byteBuffer)
     SparseCuboid(n_bits, data)
   }
 
@@ -102,16 +108,19 @@ abstract class CBackend extends Backend[Payload] {
     (1 until its.size).foreach { i => offsets(i) = offsets(i - 1) + sizes(i - 1) }
     val data = mkAll0(n_bits, totalSize)
 
-
+    val recSize = (BitUtils.bitToBytes(n_bits)) + 8
     implicit val ec = ExecutionContext.global
     val futs = its.indices.map(i => Future {
       val offset = offsets(i)
-      var count = 0
+      val numRecs = its(i)._1
+      val byteBuffer = java.nio.ByteBuffer.allocateDirect(numRecs * recSize)
+      byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
       its(i)._2.foreach { x =>
         val ia_key = x._1.toByteArray(n_bits)
-        add_i(count + offset, data, n_bits, ia_key, x._2)
-        count += 1
+        byteBuffer.put(ia_key)
+        byteBuffer.putLong(x._2)
       }
+      add_i(offset, data, n_bits, numRecs, byteBuffer)
       pi.step
       //println(" P"+i+s" from $offset to ${offset + count}")
       //collection.immutable.BitSet((offset until offset + count):_*)
@@ -122,25 +131,42 @@ abstract class CBackend extends Backend[Payload] {
   }
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = {
     val data = mk0(n_bits)
-
-    def add_one(x: (BigBinary, Long)) = {
-      val ia_key = x._1.toByteArray(n_bits)
-      add(data, n_bits, ia_key, x._2)
+    val transferUnits = 64
+    val recSize = (BitUtils.bitToBytes(n_bits)) + 8
+    val byteBuffer = java.nio.ByteBuffer.allocateDirect(transferUnits * recSize)
+    byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+    def addGroup(xs: Seq[(BigBinary, Long)]) = {
+      byteBuffer.clear()
+      xs.foreach { x =>
+        val ia_key = x._1.toByteArray(n_bits)
+        byteBuffer.put(ia_key)
+        byteBuffer.putLong(x._2)
+      }
+      add(data, n_bits, xs.length, byteBuffer)
     }
 
-    it.foreach(add_one(_))
+    it.grouped(transferUnits).foreach(addGroup)
     freeze(data)
     SparseCuboid(n_bits, data)
   }
 
   def addPartial(n_bits: Int, it: Iterator[(BigBinary, Long)], sc: SparseCuboid): SparseCuboid = {
     val data = sc.data
-    def add_one(x: (BigBinary, Long)) = {
-      val ia_key = x._1.toByteArray(n_bits)
-      add(data, n_bits, ia_key, x._2)
+    val transferUnits = 64
+    val recSize = (BitUtils.bitToBytes(n_bits)) + 8
+    val byteBuffer = java.nio.ByteBuffer.allocateDirect(transferUnits * recSize)
+    byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+    def addGroup(xs: Seq[(BigBinary, Long)]) = {
+      byteBuffer.clear()
+      xs.foreach { x =>
+        val ia_key = x._1.toByteArray(n_bits)
+        byteBuffer.put(ia_key)
+        byteBuffer.putLong(x._2)
+      }
+      add(data, n_bits, transferUnits, byteBuffer)
     }
 
-    it.foreach(add_one(_))
+    it.grouped(transferUnits).foreach(addGroup)
     SparseCuboid(n_bits, data)
 
   }

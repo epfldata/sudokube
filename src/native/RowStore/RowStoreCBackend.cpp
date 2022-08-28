@@ -99,19 +99,16 @@ JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_cuboidGC0
 
 
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add_1i
-        (JNIEnv *env, jobject obj, jint idx, jint s_id, jint numCols, jbyteArray jkey, jlong value) {
-
-    auto key = (byte *) env->GetByteArrayElements(jkey, 0);
-    rowStore.addRowAtPosition(idx, s_id, key, value);
-    env->ReleaseByteArrayElements(jkey, (jbyte *) key, 0);
+        (JNIEnv *env, jobject obj, jint startIdx, jint s_id, jint numCols, jint numRecords, jobject jbytebuffer) {
+    auto records = (const byte **) env->GetDirectBufferAddress(jbytebuffer);
+    rowStore.addRowsAtPosition(startIdx, s_id, records, numRecords);
 }
 
 
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add
-        (JNIEnv *env, jobject obj, jint s_id, jint numCols, jbyteArray jkey, jlong value) {
-    auto key = (byte *) env->GetByteArrayElements(jkey, 0);
-    rowStore.addRowToBaseCuboid(s_id, numCols, key, value);
-    env->ReleaseByteArrayElements(jkey, (jbyte *) key, 0);
+        (JNIEnv *env, jobject obj, jint s_id, jint numCols, jint numRecords, jobject jbytebuffer) {
+    auto records = (byte * ) env->GetDirectBufferAddress(jbytebuffer);
+    rowStore.addRowsToCuboid(s_id, (const byte**) records, numRecords, numCols);
 }
 
 

@@ -42,7 +42,7 @@ struct RowStore {
     std::vector<Cuboid> registry;
     /** for synchronization when multiple java threads try to update this registry simulataneously */
     std::mutex registryMutex;
-    std::mutex STMutex;
+
 
     //STL requires a static type. So we use maximum possible key size. We support only 40*8 = 320 bits for those functions.
     static const unsigned int rowStoreTempKeySizeWords = 5;
@@ -64,6 +64,7 @@ struct RowStore {
         }
         return false;
     }
+
     /**
 * Compare two dynamically typed keys of the same size
 * @param numkeybytes Maximum number of bytes to be compared
@@ -77,6 +78,7 @@ struct RowStore {
         }
         return false;
     }
+
 /**
  * Returns the pointer to LSB of key at some idx in a dynamic sized array of records
  * @param array Array representing sparse cuboid
@@ -115,26 +117,46 @@ struct RowStore {
 
 
     //Do not call when unfrozen cuboids are present
-    void clear();
+    inline void clear() {
+        std::lock_guard<std::mutex> lock(registryMutex);
+        for (auto cub: registry)
+            free(cub.ptr);
+        registry.clear();
+    }
 
     /**
     Adds a dense or sparse cuboid to the registry
     @param cuboid Cuboid to be added
     @returns unique id for the added cuboid
 */
-    unsigned int registry_add(const Cuboid &cuboid);
+    inline unsigned int registry_add(const Cuboid &cuboid) {
+        std::lock_guard<std::mutex> lock(registryMutex);
+        unsigned int id = registry.size();
+        registry.push_back(cuboid);
+        return id;
+    }
 
     /**
  * Adds several dense or sparse cuboids to the registry in a batch
     @param cuboids Cuboids to be added
     @param id of the first cuboid that was added
  */
-    unsigned int multi_r_add(const std::vector<Cuboid> &cuboids);
+    unsigned int multi_r_add(const std::vector<Cuboid> &cuboids) {
+        std::lock_guard<std::mutex> lock(registryMutex);
+        unsigned int firstId = registry.size();
+        registry.insert(registry.end(), cuboids.cbegin(), cuboids.cend());
+        return firstId;
+    }
 
-    Cuboid read(unsigned int id);
+    inline Cuboid read(unsigned int id) {
+        std::lock_guard<std::mutex> lock(registryMutex);
+        return registry[id];
+    }
 
     //Must not be called when multiple threads are accessing
-    Cuboid &unsafeRead(unsigned int id);
+    inline Cuboid &unsafeRead(unsigned int id) {
+        return registry[id];
+    }
 
 
     size_t numRowsInCuboid(unsigned int id) {
@@ -160,7 +182,11 @@ struct RowStore {
  * @param numRows Number of rows in the cuboid
  * @return Unique id for the new cuboid
  */
-    unsigned int mkAll(unsigned int numCols, size_t numRows);
+    unsigned int mkAll(unsigned int numCols, size_t numRows) {
+        SparseCuboidRow cuboid(nullptr, numRows, numCols);
+        cuboid.realloc();
+        return registry_add(cuboid);
+    }
 
     /**
  * creates an appendable sparse representation. add to it using add()
@@ -169,16 +195,38 @@ struct RowStore {
    Does not support multi-threading.
    Supports cuboids with maximum of 320 key bits
 */
-    unsigned int mk(unsigned int numCols);
+    unsigned int mk(unsigned int numCols) {
+        SparseCuboidRow cuboid(nullptr, 0, numCols);
+        if (numCols >= (rowStoreTempKeySizeWords - 1) * 64)
+            throw std::runtime_error("Maximum supported bits for mk exceeded");
+        cuboid.ptr = new std::vector<RowStoreTempRec>();
+        return registry_add(cuboid);
+    }
 
     /**
- * appends one record to an appendable (not yet frozen) sparse representation initialized by mk().
+ * appends several records to an appendable (not yet frozen) sparse representation initialized by mk().
    inconsistent storage type with the rest: a cuboid that we can write to
    is to be a vector that we can append to. It is replaced by the standard
    sparse representation when we freeze it.
    Does not support multi-threading
 */
-    void addRowToBaseCuboid(unsigned int s_id, unsigned int n_bits, const Key &key, Value v);
+    void addRowsToCuboid(unsigned int s_id, const byte **records, size_t nrows, unsigned int n_bits) {
+        //SBJ: Currently no other thread should be running. So no locks
+        //Adding to std::vector requires static type. So using tempRec
+        Cuboid c = unsafeRead(s_id);
+        std::vector<RowStoreTempRec> *p = (std::vector<RowStoreTempRec> *) c.ptr;
+        SparseCuboidRow sparse(records, nrows, n_bits);
+        RowStoreTempRec myrec;
+
+        for (int i = 0; i < nrows; i++) {
+            memset(&myrec, 0, sizeof(RowStoreTempRec));
+            memcpy(&myrec.key[0], getKey(sparse.ptr, i, sparse.recSize), sparse.keySize);
+            myrec.val = *getVal(sparse.ptr, i, sparse.recSize);
+
+            p->push_back(myrec); // makes a copy of myrec
+            c.numRows++;
+        }
+    }
 
 
 /**
@@ -189,7 +237,11 @@ struct RowStore {
  * @param key Record key
  * @param v Record value
  */
-    void addRowAtPosition(size_t i, unsigned int s_id, const Key &key, Value v);
+    void addRowsAtPosition(size_t startIdx, unsigned int s_id, const byte **records, size_t nrows) {
+        //can be multithreaded, but there should be no conflicts
+        SparseCuboidRow cuboid(unsafeRead(s_id));
+        memcpy(getKey(cuboid.ptr, startIdx, cuboid.recSize), getKey(records, 0, cuboid.recSize), cuboid.recSize * nrows);
+    }
 
     /**
  * Finalizes cuboid construction intiatied by mk(). Changes internal representation of cuboid that is compatible with rest of the system
@@ -259,15 +311,16 @@ struct RowStore {
      * @param bitpos indexes we want to project to
      * @return Id of the new cuboid. Always sparse
      */
-    unsigned int srehash_sorting(const SparseCuboidRow& sourceCuboid, const BitPos &bitpos);
+    unsigned int srehash_sorting(const SparseCuboidRow &sourceCuboid, const BitPos &bitpos);
 
-    static std::pair<std::vector<uint64_t>, std::vector<uint8_t>> generateMasks(short keySizeWords, const BitPos &bitpos);
+    static std::pair<std::vector<uint64_t>, std::vector<uint8_t>>
+    generateMasks(short keySizeWords, const BitPos &bitpos);
 
-    static inline void projectKeyToKey(uint64_t *srcKey, uint64_t *dstKey,std::vector<uint64_t> & masks,
-                                                const std::vector<uint8_t> &bitCountInWord, short keySizeWords)  {
+    static inline void projectKeyToKey(uint64_t *srcKey, uint64_t *dstKey, std::vector<uint64_t> &masks,
+                                       const std::vector<uint8_t> &bitCountInWord, short keySizeWords) {
         short sumBits = 0;
         short nextSumBits = 0;
-        uint64_t *origDstKey  = dstKey;
+        uint64_t *origDstKey = dstKey;
         for (int k = 0, k7 = 0; k < keySizeWords; k++, k7 += 7) {
             size_t keyWord = srcKey[k]; //may read extra stuff for the last word, but when ANDed with mask, they should be 0 again
             uint64_t x = keyWord & masks[k7];
@@ -295,7 +348,9 @@ struct RowStore {
             *dstKey |= (x << sumBits);
             if (nextSumBits >= 64) {
                 dstKey++;
-                if(sumBits > 0) *dstKey |= (x >> (64 - sumBits));  // >>64 is same as >>0 and we want >>64 to be equal to 0 no matter x
+                if (sumBits > 0)
+                    *dstKey |= (x
+                            >> (64 - sumBits));  // >>64 is same as >>0 and we want >>64 to be equal to 0 no matter x
                 nextSumBits -= 64;
             }
             sumBits = nextSumBits;

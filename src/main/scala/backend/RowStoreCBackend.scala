@@ -1,5 +1,7 @@
 package backend
 import com.github.sbt.jni.nativeLoader
+
+import java.nio.ByteBuffer
 @nativeLoader("RowStoreCBackend0") //name + version
 class RowStoreCBackend extends CBackend {
   @native override protected def reset0(): Unit
@@ -14,10 +16,10 @@ class RowStoreCBackend extends CBackend {
   @native override protected def sNumBytes0(id: Int): Long
 
   @native override protected def mkAll0(n_bits: Int, n_rows: Int): Int
-  @native override protected def add_i(i: Int, s_id: Int, n_bits: Int, key: Array[Byte], v: Long)
+  @native override protected def add_i(startId: Int, s_id: Int, n_bits: Int, numRecords: Int, records: ByteBuffer): Unit
 
   @native override protected def mk0(n_bits: Int): Int
-  @native override protected def add(s_id: Int, n_bits: Int, key: Array[Byte], v: Long)
+  @native override protected def add(s_id: Int, n_bits: Int, numRecords: Int, records: ByteBuffer): Unit
   @native override protected def freeze(s_id: Int)
 
 

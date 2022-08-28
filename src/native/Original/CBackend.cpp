@@ -24,9 +24,9 @@ extern unsigned int mkAll(unsigned int n_bits, size_t n_rows);
 
 extern unsigned int mk(unsigned int n_bits);
 
-extern void add_i(size_t i, unsigned int s_id, byte *key, value_t v);
+extern void add_i(size_t startIdx, unsigned int s_id, byte **records, size_t nrows);
 
-extern void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v);
+extern void add(unsigned int s_id, byte **records, size_t nrows, unsigned int n_bits);
 
 extern void freeze(unsigned int s_id);
 
@@ -78,7 +78,7 @@ JNIEXPORT jintArray JNICALL Java_backend_OriginalCBackend_readMultiCuboid0
     env->ReleaseStringUTFChars(Jfilename, filename);
     env->ReleaseBooleanArrayElements(JisSparseArray, isSparseArray, 0);
     env->ReleaseIntArrayElements(JnbitsArray, nbitsArray, 0);
-    env ->ReleaseIntArrayElements(JsizeArray, sizeArray, 0);
+    env->ReleaseIntArrayElements(JsizeArray, sizeArray, 0);
     return result;
 
 }
@@ -97,25 +97,15 @@ JNIEXPORT void JNICALL Java_backend_OriginalCBackend_writeMultiCuboid0
 }
 
 JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add_1i
-        (JNIEnv *env, jobject obj, jint idx, jint s_id, jint n_bits, jbyteArray key, jlong v) {
-    jsize keylen = env->GetArrayLength(key);
-    auto ckey =  env->GetByteArrayElements(key, 0);
-    // the key is transmitted as an array of signed bytes (should be read as unsigned bytes)
-    assert(n_bits <= keylen * 8);
-    add_i(idx, s_id, (byte *) ckey, v);
-    env->ReleaseByteArrayElements(key, ckey, 0);
+        (JNIEnv *env, jobject obj, jint startIdx, jint s_id, jint numCols, jint numRows, jobject jbytebuffer) {
+    auto records = (byte **) env->GetDirectBufferAddress(jbytebuffer);
+    add_i(startIdx, s_id, records, numRows);
 }
 
 JNIEXPORT void JNICALL Java_backend_OriginalCBackend_add
-        (JNIEnv *env, jobject obj, jint s_id, jint n_bits, jbyteArray key, jlong v) {
-    jsize keylen = env->GetArrayLength(key);
-    jbyte *keybody = env->GetByteArrayElements(key, 0);
-
-    // the key is transmitted as an array of bytes (0 to 255).
-
-    add(s_id, n_bits, (byte *) keybody, v);
-
-    env->ReleaseByteArrayElements(key, keybody, 0);
+        (JNIEnv *env, jobject obj, jint s_id, jint numCols, jint numRecords, jobject jbytebuffer) {
+    auto records = (byte **) env->GetDirectBufferAddress(jbytebuffer);
+    add(s_id, records, numRecords, numCols);
 }
 
 JNIEXPORT void JNICALL Java_backend_OriginalCBackend_freeze
@@ -155,9 +145,9 @@ JNIEXPORT jint JNICALL Java_backend_OriginalCBackend_sRehash0
     jsize poslen = env->GetArrayLength(pos);
     jint *posbody = env->GetIntArrayElements(pos, 0);
     int x;
-    if(mode == 1) x = s2drehash(s_id, (unsigned int *) posbody, poslen);
-    else if(mode == 2)  x = srehash(s_id, (unsigned int *) posbody, poslen);
-    else if(mode == 3) x = shybridhash(s_id, (unsigned int *) posbody, poslen);
+    if (mode == 1) x = s2drehash(s_id, (unsigned int *) posbody, poslen);
+    else if (mode == 2) x = srehash(s_id, (unsigned int *) posbody, poslen);
+    else if (mode == 3) x = shybridhash(s_id, (unsigned int *) posbody, poslen);
     else throw std::runtime_error("Unknown mode for srehash");
     env->ReleaseIntArrayElements(pos, posbody, 0);
     return x;

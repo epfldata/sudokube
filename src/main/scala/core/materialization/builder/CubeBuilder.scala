@@ -44,6 +44,10 @@ trait SingleThreadedCubeBuilder extends CubeBuilder {
   override def build(full_cube: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
 
+    val baseId = build_plan.head._2
+    val projectedFromBase = build_plan.filter(x => x._3 == -1 || x._3 == baseId).size
+    println(s"$projectedFromBase/${build_plan.length} (${projectedFromBase * 100.0 / build_plan.length} %) projected from base")
+
     // puts a ref to the same object into all fields of the array.
     val ab = Util.mkAB[Cuboid](m.projections.length, _ => full_cube)
 
@@ -71,6 +75,9 @@ trait MultiThreadedCubeBuilder extends CubeBuilder {
 
   override def build(full_cube: Cuboid, m: MaterializationStrategy, showProgress: Boolean = false): IndexedSeq[Cuboid] = {
     val build_plan = create_build_plan(m, showProgress)
+    val baseId = build_plan.head._2
+    val projectedFromBase = build_plan.filter(x => x._3 == -1 || x._3 == baseId).size
+    println(s"$projectedFromBase/${build_plan.length} (${projectedFromBase * 100.0 / build_plan.length} %) projected from base")
     val cuboidFutures = Util.mkAB[Future[Cuboid]](m.projections.length, _ => null)
     val numCores = Runtime.getRuntime.availableProcessors()
     val pi = new ProgressIndicator(build_plan.length, s"Projecting with $numCores threads ", showProgress)

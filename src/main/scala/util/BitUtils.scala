@@ -20,6 +20,7 @@ object BitUtils {
     result
   }
 
+  def bitToBytes(n_bits: Int) = (n_bits + 8) >> 3 //TODO: Change to +7
 
   /**  Returns a function for projecting a BigBinary b using a sequence of bit positions we keep (and dropping others)
    * @param bitpos indicates positions of bits that are to be kept

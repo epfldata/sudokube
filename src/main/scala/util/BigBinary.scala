@@ -51,8 +51,8 @@ case class BigBinary(val toBigInt: BigInt) {
       }}}
   */
   def toByteArray(n_bits: Int) : Array[Byte] = {
-    val space = (n_bits + 7) >> 3 //ceil(n_bits.toDouble/8).toInt
-    val ca = Util.mkAB[Byte](space, _ => 0)
+    val space = BitUtils.bitToBytes(n_bits) //ceil(n_bits.toDouble/8).toInt
+    val ca = Array.fill[Byte](space)(0)
 
     var y = toBigInt
     var i = 0
@@ -61,7 +61,7 @@ case class BigBinary(val toBigInt: BigInt) {
       y = y >> 8
       i += 1
     }
-    ca.toArray
+    ca
   }
 
   // converts the number to a binary string of size n with leading zeroes.
