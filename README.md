@@ -2,15 +2,16 @@
 ## Requirements
 This project has the following dependencies:
 - sbt
-- JDK Version 8
+- JDK (version >= 8)
 - gcc
-- make
+- cmake
 
 ## Instructions to build the shared library libCBackend
 - Set the environment variable `JAVA_HOME` to the home directory of the JDK installation. The folder `${JAVA_HOME}/include` must contain the header file `jni.h`
 - Run `make` from the root directory of the project
 
 ## Instructions to run
+- Edit the file `.jvmopts` in the root directory of the project to set the maximum Java heap size to the desirable amount.
 - Run `sbt test` from the root directory of the project to run all the tests
 - Run `sbt "runMain <classname>"` to run some class containing the main method, for example, `example.Demotxt`
 
@@ -27,6 +28,7 @@ that is used in deciding what cuboids are materialized to zero. This can be disa
 
 
 ## Run Experiments from our paper
+Set the Java Maximum Heap size to atleast `250g` in file `.jvmopts`
 - sbt --error 'runMain experiments.Experimenter Fig7'
 - sbt --error 'runMain experiments.Experimenter Tab1'
 - sbt --error 'runMain experiments.Experimenter Fig8-RMS'

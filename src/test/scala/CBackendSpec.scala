@@ -17,7 +17,7 @@ class CBackendSpec extends FlatSpec with Matchers {
   import util._
   import BitUtils._
 
-  "CBackend simple absolute test" should "work" in {
+  "CBackend simple absolute test1" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =
       CBackend.default.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
@@ -36,7 +36,8 @@ class CBackendSpec extends FlatSpec with Matchers {
     val c = my_mk(100, (1 to 20).map(i => (i, i)))
 
     assert(c.size == 20)
-    assert(c.numBytes == 420)
+    val baseBytes = if(CBackend.default == CBackend.colstore) 164 * 8 else 420
+    assert(c.numBytes == baseBytes)
     def toMask(d : Int, pos: Set[Int]) = (0 until d).filter { i => pos.contains(i)}
 
     val m0 = Set(0, 1, 2, 3, 4)
@@ -50,7 +51,8 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     assert(cs1.size == 20)
     assert(cs1.size == cs2.size)
-    assert(cs1.numBytes == 200)
+    val cs1bytes = if(CBackend.default == CBackend.colstore) 74 * 8 else 200
+    assert(cs1.numBytes == cs1bytes)
     assert(cs1.numBytes == cs2.numBytes)
 
 
@@ -134,8 +136,8 @@ class CBackendSpec extends FlatSpec with Matchers {
     val n_bits = 70
     val schema = StaticSchema.mk(n_bits)
 
-    for(it <- 1 to 50) {
-      val R   = TupleGenerator(schema, 100, Sampling.f1).toList
+    for(it <- 1 to 500) {
+      val R   = TupleGenerator(schema, 1000, Sampling.f1).toList
       val c   = CBackend.default.mkAll(n_bits, R)
       val q1  = Util.rnd_choose(n_bits,    6).toIndexedSeq
       val q2  = Util.rnd_choose(q1.length, 3).toIndexedSeq

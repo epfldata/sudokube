@@ -13,7 +13,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  *via JNI.
  */
 
-abstract class CBackend extends Backend[Payload] {
+abstract class CBackend(ext: String) extends Backend[Payload](ext) {
   protected type DENSE_T = Int // index in C registry data structure
   protected type SPARSE_T = Int
   protected type HYBRID_T = Int //positive is sparse, negative is dense
@@ -90,6 +90,7 @@ abstract class CBackend extends Backend[Payload] {
     }
     kvs.foreach(add_one)
     add_i(0, data, n_bits, nrows, byteBuffer)
+    if(this.isInstanceOf[ColumnStoreCBackend]) this.asInstanceOf[ColumnStoreCBackend].freezeMkAll(data)
     SparseCuboid(n_bits, data)
   }
 
@@ -127,6 +128,8 @@ abstract class CBackend extends Backend[Payload] {
     })
     Await.result(Future.sequence(futs), Duration.Inf)
     //assert(ranges.reduce(_ union _).size == totalSize)
+
+    if(this.isInstanceOf[ColumnStoreCBackend]) this.asInstanceOf[ColumnStoreCBackend].freezeMkAll(data)
     SparseCuboid(n_bits, data)
   }
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = {
@@ -219,6 +222,7 @@ abstract class CBackend extends Backend[Payload] {
 object CBackend {
   val original = new OriginalCBackend
   val rowstore = new RowStoreCBackend
-  val default = rowstore
+  val colstore = new ColumnStoreCBackend
+  val default = colstore
 }
 

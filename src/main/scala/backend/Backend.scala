@@ -60,7 +60,7 @@ abstract class Cuboid {
  * @tparam MEASURES_T  Type for the fact values in each cell of the cuboid, currently [[Payload]] that stores sum and interval
  *                     TODO: Change to Long.
  */
-abstract class Backend[MEASURES_T] {
+abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
   /**
    * Identifier for Sparse Cuboid
    */

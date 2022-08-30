@@ -87,7 +87,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
 
     val futures = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
       Future {
-        val filename = parentDir + s"/multicube_$mcid.csuk"
+        val filename = parentDir + s"/multicube_$mcid" + be.cuboidFileExtension
         //WARNING Converting size of cuboid from BigInt to Int
         val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
         cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
@@ -144,7 +144,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
     println(s"Writing cuboids to disk")
     val threadTasks = multiCuboids.zipWithIndex.map { case (mc, mcid) =>
       Future {
-        val filename = file.getParent + s"/multicube_$mcid.csuk"
+        val filename = file.getParent + s"/multicube_$mcid" + be.cuboidFileExtension
         //layout data is written in reverse order, so we reverse it here too
         be.writeMultiCuboid(filename, mc.values.toArray.reverse)
       }
@@ -353,7 +353,7 @@ class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
     //println(s"Reading cuboids from disk")
     val tasks = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
       Future {
-        val filename = parentDir + s"/multicube_$mcid.csuk"
+        val filename = parentDir + s"/multicube_$mcid" + be.cuboidFileExtension
         //WARNING Converting size of cuboid from BigInt to Int
         val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
         cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
@@ -401,7 +401,7 @@ class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
     println(s"Writing cuboids to disk")
     val threadTasks = multiCuboids.zipWithIndex.map { case (mc, mcid) =>
       Future {
-        val filename = file.getParent + s"/multicube_$mcid.csuk"
+        val filename = file.getParent + s"/multicube_$mcid" + be.cuboidFileExtension
         //layout data is written in reverse order, so we reverse it here too
         be.writeMultiCuboid(filename, mc.values.toArray.reverse)
       }

@@ -1,44 +1,58 @@
 //
-// Created by Sachin Basil John on 23.08.22.
+// Created by Sachin Basil John on 27.08.22.
 //
 
-#ifndef SUDOKUBECBACKEND_ROWSTORE_H
-#define SUDOKUBECBACKEND_ROWSTORE_H
+#ifndef SUDOKUBECBACKEND_COLUMNSTORE_H
+#define SUDOKUBECBACKEND_COLUMNSTORE_H
 
 #include "common.h"
 #include <vector>
 #include <mutex>
-#include <algorithm>
 
-
-struct RowStore {
-
-
-    using Key = byte *;
-    using Record = byte *;
+struct ColumnStore {
+    using KeyWord = uint64_t;
     using BitPos = std::vector<unsigned int>;
 
-//    static bool debug;
+    struct SparseCuboidCol : Cuboid {
+        size_t numRowsInWords;
+        uint64_t *keyPtr;
+
+        void realloc() {
+            if (!ptr) free(ptr);
+            /*
+             * assumes sizeof(Value) == sizeof(uint64_t);
+             * for every 64 rows, there are 64 words for values and one word per column
+             */
+            ptr = calloc(numRowsInWords * (64 + numCols), sizeof(uint64_t));
+            keyPtr = (uint64_t *) ptr + (numRowsInWords << 6);
+        }
+
+        SparseCuboidCol() : Cuboid(), numRowsInWords(0) {}
+
+        SparseCuboidCol(void *p, size_t nr, unsigned int nc) : Cuboid(p, nr, nc, false) {
+            numRowsInWords = (nr + 63) >> 6;
+            keyPtr = (uint64_t *) p + (numRowsInWords << 6);
+        }
+
+        SparseCuboidCol(Cuboid &&that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
+
+        SparseCuboidCol(Cuboid &that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
+
+
+        inline uint64_t *getKey(unsigned int c, size_t w) {
+            return keyPtr + c * numRowsInWords + w;
+        }
+
+        inline uint64_t *getVal(size_t i) {
+            return (uint64_t *) ptr + i;
+        }
+    };
+
     std::vector<Cuboid> registry;
     /** for synchronization when multiple java threads try to update this registry simulataneously */
     std::mutex registryMutex;
 
-
-
-
-
-    inline static void print_key(int n_bits, const Key &key) {
-        for (int pos = n_bits - 1; pos >= 0; pos--) {
-            int b = (key[pos >> 3] >> (pos & 0x7)) & 0x1;
-            if (b) printf("1");
-            else printf("0");
-            if ((pos & 0x7) == 0)
-                printf(" ");
-        }
-    }
-
-
-    //Do not call when unfrozen cuboids are present
+//Do not call when unfrozen cuboids are present
     inline void clear() {
         std::lock_guard<std::mutex> lock(registryMutex);
         for (auto cub: registry)
@@ -80,7 +94,6 @@ struct RowStore {
         return registry[id];
     }
 
-
     size_t numRowsInCuboid(unsigned int id) {
         Cuboid c = read(id);
         return c.numRows;
@@ -90,20 +103,38 @@ struct RowStore {
  * Returns number of bytes of storage used by cuboid with specified id.
  * Valid for only sparse cuboids
  */
-    size_t numBytesInSparseCuboid(unsigned int s_id) {
-        SparseCuboidRow c(read(s_id));
-        return c.recSize * c.numRows;
 
+    size_t numBytesInSparseCuboid(unsigned int s_id) {
+        SparseCuboidCol c(read(s_id));
+        return c.numRowsInWords * (c.numCols + 64) * sizeof(uint64_t);
     };
 
+
+    inline void transpose64(uint64_t A[64]) {
+        int j, k;
+        uint64_t m, t;
+        m = 0x00000000FFFFFFFFuLL;
+        for (j = 32; j != 0; j = j >> 1, m = m ^ (m << j)) {
+            for (k = 0; k < 64; k = (k + j + 1) & ~j) {
+                t = (A[k] ^ (A[k + j] >> j)) & m;
+                A[k] = A[k] ^ t;
+                A[k + j] = A[k + j] ^ (t << j);
+            }
+        }
+        //this transpose produces reverse of the order we need //TODO: modify the transpose instead of swapping at the end.
+        //Therefore: Do mapping i -> (64 - i) while reading/writing
+    }
+
+    //------------- WE USE ROWSTORE FROM MK UNTIL FREEZE ---------------------
+
     /**
- * Initialize and pre-allocate new cuboid with a given size. The data is added using add_i method to add specific rows.
- * No need to freeze. Supports multi-threaded insertion of records to different positions using add_i.
- * @see add_i
- * @param numCols Number of binary dimensions in the cuboid (bits in key)
- * @param numRows Number of rows in the cuboid
- * @return Unique id for the new cuboid
- */
+* Initialize and pre-allocate new cuboid with a given size. The data is added using add_i method to add specific rows.
+* No need to freeze. Supports multi-threaded insertion of records to different positions using add_i.
+* @see add_i
+* @param numCols Number of binary dimensions in the cuboid (bits in key)
+* @param numRows Number of rows in the cuboid
+* @return Unique id for the new cuboid
+*/
     unsigned int mkAll(unsigned int numCols, size_t numRows) {
         SparseCuboidRow cuboid(nullptr, numRows, numCols);
         cuboid.realloc();
@@ -168,20 +199,22 @@ struct RowStore {
  * @param s_id Id of the cuboid (retured by mk()) to be finalized.
  */
     void freezePartial(unsigned int s_id, unsigned int n_bits);
-
+    void freezeMkAll(unsigned int s_id); //convert row to col store
     void freeze(unsigned int s_id) {
         freezePartial(s_id, 0);
     }
 
+    //-------------------------------- END  ROW STORE----------------------------:
+
     /**
- * Reads batch of cuboids from file and loads them into RAM
- * @param filename Name of file containing the cuboids
- * @param n_bits_array Number of key bits, one for each cuboid, in an array
- * @param size_array  Number of rows, one for each cuboid, in an array
- * @param isSparse_array Boolean representing whether a cuboid is sparse, one for each cuboid, in an array
- * @param id_array Output parameter : Unique id , one for each cuboid, in an array
- * @param numCuboids Number of cuboids in the file, and also sizes of the input array parameters.
- */
+* Reads batch of cuboids from file and loads them into RAM
+* @param filename Name of file containing the cuboids
+* @param n_bits_array Number of key bits, one for each cuboid, in an array
+* @param size_array  Number of rows, one for each cuboid, in an array
+* @param isSparse_array Boolean representing whether a cuboid is sparse, one for each cuboid, in an array
+* @param id_array Output parameter : Unique id , one for each cuboid, in an array
+* @param numCuboids Number of cuboids in the file, and also sizes of the input array parameters.
+*/
     void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
                          unsigned int id_array[], unsigned int numCuboids);
 
@@ -230,53 +263,8 @@ struct RowStore {
      * @param bitpos indexes we want to project to
      * @return Id of the new cuboid. Always sparse
      */
-    unsigned int srehash_sorting(SparseCuboidRow &sourceCuboid, const BitPos &bitpos);
+    unsigned int srehash_sorting(SparseCuboidCol &sourceCuboid, const BitPos &bitpos);
 
-    static std::pair<std::vector<uint64_t>, std::vector<uint8_t>>
-    generateMasks(short keySizeWords, const BitPos &bitpos);
-
-    static inline void projectKeyToKey(uint64_t *srcKey, uint64_t *dstKey, std::vector<uint64_t> &masks,
-                                       const std::vector<uint8_t> &bitCountInWord, short keySizeWords) {
-        short sumBits = 0;
-        short nextSumBits = 0;
-        uint64_t *origDstKey = dstKey;
-        for (int k = 0, k7 = 0; k < keySizeWords; k++, k7 += 7) {
-            size_t keyWord = srcKey[k]; //may read extra stuff for the last word, but when ANDed with mask, they should be 0 again
-            uint64_t x = keyWord & masks[k7];
-            uint64_t mv0 = masks[k7 + 1];
-            uint64_t mv1 = masks[k7 + 2];
-            uint64_t mv2 = masks[k7 + 3];
-            uint64_t mv3 = masks[k7 + 4];
-            uint64_t mv4 = masks[k7 + 5];
-            uint64_t mv5 = masks[k7 + 6];
-            uint64_t t;
-            t = x & mv0;
-            x = x ^ t | (t >> 1);
-            t = x & mv1;
-            x = x ^ t | (t >> 2);
-            t = x & mv2;
-            x = x ^ t | (t >> 4);
-            t = x & mv3;
-            x = x ^ t | (t >> 8);
-            t = x & mv4;
-            x = x ^ t | (t >> 16);
-            t = x & mv5;
-            x = x ^ t | (t >> 32);
-
-            nextSumBits += bitCountInWord[k];
-            *dstKey |= (x << sumBits);
-            if (nextSumBits >= 64) {
-                dstKey++;
-                if (sumBits > 0)
-                    *dstKey |= (x
-                            >> (64 - sumBits));  // >>64 is same as >>0 and we want >>64 to be equal to 0 no matter x
-                nextSumBits -= 64;
-            }
-            sumBits = nextSumBits;
-        }
-
-
-    }
 
     /**
  * Aggregates a dense cuboid into another dense cuboid.
@@ -286,8 +274,7 @@ struct RowStore {
  */
     unsigned int drehash(unsigned int d_id, const BitPos &bitpos);
 
-
 };
 
 
-#endif //SUDOKUBECBACKEND_ROWSTORE_H
+#endif //SUDOKUBECBACKEND_COLUMNSTORE_H

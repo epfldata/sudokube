@@ -16,8 +16,8 @@ void RowStore::freezePartial(unsigned int s_id, unsigned int n_bits) {
     sparseCuboidRow.realloc();
 
     for (size_t r = 0; r < sparseCuboidRow.numRows; r++) {
-        memcpy(getKey(sparseCuboidRow.ptr, r, sparseCuboidRow.recSize), &(*store)[r].key[0], sparseCuboidRow.keySize);
-        memcpy(getVal(sparseCuboidRow.ptr, r, sparseCuboidRow.recSize), &((*store)[r].val), sizeof(Value));
+        memcpy(sparseCuboidRow.getKey(r), &(*store)[r].key[0], sparseCuboidRow.keySize);
+        memcpy(sparseCuboidRow.getVal(r), &((*store)[r].val), sizeof(Value));
     }
     delete store;
     c.ptr = sparseCuboidRow.ptr;
@@ -112,8 +112,8 @@ Value *RowStore::fetch(unsigned int id, size_t &numRows) {
         Value *array = (Value *) denseCuboid.ptr;
         for (size_t i = 0; i < sparseCuboid.numRows; i++) {
             size_t idx = 0;
-            memcpy(&idx, getKey(sparseCuboid.ptr, i, sparseCuboid.recSize), sparseCuboid.keySize);
-            array[idx] = *getVal(sparseCuboid.ptr, i, sparseCuboid.recSize);
+            memcpy(&idx, sparseCuboid.getKey(i), sparseCuboid.keySize);
+            array[idx] = *sparseCuboid.getVal(i);
         }
         return array;
     }
@@ -152,35 +152,37 @@ RowStore::generateMasks(short keySizeWords, const BitPos &bitpos) {
     return std::make_pair(masks, bitCountInWord);
 }
 
-unsigned int RowStore::srehash_sorting(const SparseCuboidRow &sourceCuboid, const BitPos &bitpos) {
+unsigned int RowStore::srehash_sorting(SparseCuboidRow &sourceCuboid, const BitPos &bitpos) {
 
     SparseCuboidRow destinationCuboid(nullptr, 0, bitpos.size());
+
     short keySizeWords = (sourceCuboid.keySize + 7) >> 3;
     auto [masks, bitCountInWords] = generateMasks(keySizeWords, bitpos);
 
 
     //------------ PROJECT TO TEMP STORE -----------------
-    RowStoreTempRec *tempStore = (RowStoreTempRec *) calloc(sourceCuboid.numRows, sizeof(RowStoreTempRec));
+    SparseCuboidTempRecord tempCuboid(nullptr, sourceCuboid.numRows, sourceCuboid.numCols);
+    tempCuboid.realloc();
     for (size_t r = 0; r < sourceCuboid.numRows; r++) {
-        auto keyInWords = (uint64_t *) getKey(sourceCuboid.ptr, r, sourceCuboid.recSize);
-        auto value = *getVal(sourceCuboid.ptr, r, sourceCuboid.recSize);
-        auto destinationKey = (uint64_t *) (tempStore + r);
+        auto keyInWords = (uint64_t *) sourceCuboid.getKey(r);
+        auto value = *sourceCuboid.getVal(r);
+        auto destinationKey = (uint64_t *) tempCuboid.getKey(r);
         projectKeyToKey(keyInWords, destinationKey, masks, bitCountInWords, keySizeWords);
-        tempStore[r].val = value;
+        *tempCuboid.getVal(r) = value;
     }
 
-    const int keySizeForCmp = destinationCuboid.keySize;
+    const int destKeySizeWords = (destinationCuboid.numCols + 63) >> 6;
     //----------------------- DUPLICATE ELIMINATION BY SORTING ------------------
-    std::sort(tempStore, tempStore + sourceCuboid.numRows, temprec_compare_keys);
+    std::sort(tempCuboid.begin(), tempCuboid.end(), RowStoreTempRec::temprec_compare_keys);
     size_t w = 0;
     for (size_t r = 0; r < sourceCuboid.numRows; r++) {
         if (w < r) {
-            Key kw = getKey(tempStore, w, sizeof(RowStoreTempRec));
-            Key kr = getKey(tempStore, r, sizeof(RowStoreTempRec));
-            Value valueR = *getVal(tempStore, r, sizeof(RowStoreTempRec));
-            Value &valueW = *getVal(tempStore, w, sizeof(RowStoreTempRec));
+            Key kw = tempCuboid.getKey(w);
+            Key kr = tempCuboid.getKey(r);
+            Value valueR = *tempCuboid.getVal(r);
+            Value &valueW = *tempCuboid.getVal(w);
             if (valueR == 0) continue;
-            bool cmp = compare_keys(kw, kr, keySizeForCmp);
+            bool cmp = RowStoreTempRec::compare_keys((uint64_t *)kw, (uint64_t *)kr, destKeySizeWords);
             if (!cmp) {
                 valueW += valueR;
             } else {
@@ -194,17 +196,17 @@ unsigned int RowStore::srehash_sorting(const SparseCuboidRow &sourceCuboid, cons
             }
         }
     }
-    if (*getVal(tempStore, w, sizeof(RowStoreTempRec)) == 0) w--;
+    if (*tempCuboid.getVal(w) == 0) w--;
     destinationCuboid.numRows = w + 1;
     // --------------------- CONVERT TO SPARSE CUBOID -------------------
     destinationCuboid.realloc();
     for (size_t r = 0; r < destinationCuboid.numRows; r++) {
-        memcpy(getKey(destinationCuboid.ptr, r, destinationCuboid.recSize),
-               getKey(tempStore, r, sizeof(RowStoreTempRec)), destinationCuboid.keySize);
-        memcpy(getVal(destinationCuboid.ptr, r, destinationCuboid.recSize),
-               getVal(tempStore, r, sizeof(RowStoreTempRec)), sizeof(Value));
+        memcpy(destinationCuboid.getKey(r),
+               tempCuboid.getKey(r), destinationCuboid.keySize);
+        memcpy(destinationCuboid.getVal(r),
+               tempCuboid.getVal(r), sizeof(Value));
     }
-    free(tempStore);
+    free(tempCuboid.ptr);
     return registry_add(destinationCuboid);
 }
 
@@ -232,8 +234,8 @@ signed int RowStore::srehash(unsigned int s_id, const BitPos &bitpos, short mode
     SparseCuboidRow destinationSparseCuboid(nullptr, 0, bitpos.size());
     for (size_t r = 0; r < sourceCuboid.numRows; r++) {
         uint64_t result = 0; //safe because bitpos size < 32 and result will fit in 32 bits
-        auto keyInWords = (uint64_t *) getKey(sourceCuboid.ptr, r, sourceCuboid.recSize);
-        auto value = *getVal(sourceCuboid.ptr, r, sourceCuboid.recSize);
+        auto keyInWords = (uint64_t *) sourceCuboid.getKey(r);
+        auto value = *sourceCuboid.getVal(r);
         projectKeyToKey(keyInWords, &result, masks, bitCountInWords, keySizeWords);
         if (values[result] == 0 && value > 0) destinationSparseCuboid.numRows++;
         values[result] += value;
@@ -252,9 +254,9 @@ signed int RowStore::srehash(unsigned int s_id, const BitPos &bitpos, short mode
 
         for (size_t r = 0; r < destinationDenseCuboid.numRows; r++) {
             if (values[r] != 0) {
-                memcpy(getKey(destinationSparseCuboid.ptr, w, destinationSparseCuboid.recSize), &r,
+                memcpy(destinationSparseCuboid.getKey(w), &r,
                        destinationSparseCuboid.keySize);
-                memcpy(getVal(destinationSparseCuboid.ptr, w, destinationSparseCuboid.recSize), values + r,
+                memcpy(destinationSparseCuboid.getVal(w), values + r,
                        sizeof(Value));
                 w++;
             }

@@ -5,7 +5,7 @@ import com.github.sbt.jni.nativeLoader
 import java.nio.ByteBuffer
 
 @nativeLoader("OrigCBackend0") //name + version
-class OriginalCBackend extends CBackend {
+class OriginalCBackend extends CBackend(".csuk") {
   @native override protected def reset0(): Unit
   @native override protected def cuboidGC0(id: Int): Unit
 

@@ -10,7 +10,7 @@ import java.io._
 /** a self-contained backend. Here, the data field of the
     DenseCuboid and SparseCuboid instances actually holds the data.
 */
-object ScalaBackend extends Backend[Payload] {
+object ScalaBackend extends Backend[Payload](".ssuk") {
   protected type DENSE_T  = Array[Payload]
   protected type SPARSE_T = Seq[(BigBinary, Payload)]
   protected type HYBRID_T = (DENSE_T, SPARSE_T)
@@ -30,7 +30,7 @@ object ScalaBackend extends Backend[Payload] {
 
   def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
     val ois = new ObjectInputStream(
-      new FileInputStream(s"$name_prefix/cub_" + id + ".ssuk"))
+      new FileInputStream(s"$name_prefix/cub_" + id + cuboidFileExtension))
 
     val c = if(sparse) {
       val data = ois.readObject.asInstanceOf[SPARSE_T]
@@ -46,7 +46,7 @@ object ScalaBackend extends Backend[Payload] {
   }
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
     val oos = new ObjectOutputStream(
-      new FileOutputStream(s"$name_prefix/cub_" + id + ".ssuk"))
+      new FileOutputStream(s"$name_prefix/cub_" + id + cuboidFileExtension))
 
     if(c.isInstanceOf[SparseCuboid])
          oos.writeObject(c.asInstanceOf[SparseCuboid].data)

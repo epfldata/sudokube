@@ -1,8 +1,8 @@
 import Dependencies._
 
-ThisBuild / scalaVersion     := "2.12.7"
-ThisBuild / version          := "0.2.0"
-ThisBuild / organization     := "ch.epfl.data"
+ThisBuild / scalaVersion := "2.12.7"
+ThisBuild / version := "0.2.0"
+ThisBuild / organization := "ch.epfl.data"
 ThisBuild / organizationName := "data"
 
 lazy val root = (project in file("."))
@@ -10,15 +10,16 @@ lazy val root = (project in file("."))
     name := "sudokube",
     libraryDependencies += scalaTest % Test,
     libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.2" % Test)
- .settings(javah / target := sourceDirectory.value / "native")
-.dependsOn(originalCBackend % Runtime)
-.dependsOn(rowStoreCBackend % Runtime)
-  .aggregate(originalCBackend, rowStoreCBackend)
+  .settings(javah / target := sourceDirectory.value / "native")
+  .dependsOn(originalCBackend % Runtime)
+  .dependsOn(rowStoreCBackend % Runtime)
+  .dependsOn(colStoreCBackend % Runtime)
+  .aggregate(originalCBackend, rowStoreCBackend, colStoreCBackend)
 
 
 Test / parallelExecution := false
 
-libraryDependencies  ++= Seq(
+libraryDependencies ++= Seq(
   "org.scalanlp" %% "breeze" % "0.13.2",
   "org.scalanlp" %% "breeze-natives" % "0.13.2",
   "org.scalanlp" %% "breeze-viz" % "0.13.2",
@@ -32,7 +33,11 @@ lazy val originalCBackend = (project in file("src") / "native" / "Original")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
   .enablePlugins(JniNative)
 
-lazy val rowStoreCBackend = (project in file("src") / "native"/ "RowStore")
+lazy val rowStoreCBackend = (project in file("src") / "native" / "RowStore")
+  .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .enablePlugins(JniNative)
+
+lazy val colStoreCBackend = (project in file("src") / "native" / "ColumnStore")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
   .enablePlugins(JniNative)
 
