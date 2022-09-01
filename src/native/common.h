@@ -7,6 +7,7 @@
 
 #include <inttypes.h>
 #include <cstring>
+#include <cassert>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -102,13 +103,11 @@ struct SparseCuboidRow : Cuboid {
 * @param recSize Size of the dynamic typed record (in bytes)
 * @returns pointer to least significant byte of key
 */
-    inline byte *getKey(size_t idx, void *record) {
+    inline byte *getKey(size_t idx) {
         //Convert to byte* because we do byte-sized pointer arithmetic
-        byte *key = (byte *) record + recSize * idx;
+        byte *key = (byte *) ptr + recSize * idx;
         return key;
     }
-
-    inline byte *getKey(size_t idx) { return getKey(idx, ptr); }
 
     /**
  * Returns the pointer to value at some idx in a dynamic sized array of records
@@ -149,4 +148,38 @@ struct SparseCuboidTempRecord : Cuboid {
     }
 };
 
+struct SparseCuboidCol : Cuboid {
+    size_t numRowsInWords;
+    uint64_t *keyPtr;
+
+    void realloc() {
+        if (!ptr) free(ptr);
+        /*
+         * assumes sizeof(Value) == sizeof(uint64_t);
+         * for every 64 rows, there are 64 words for values and one word per column
+         */
+        ptr = calloc(numRowsInWords * (64 + numCols), sizeof(uint64_t));
+        keyPtr = (uint64_t *) ptr + (numRowsInWords << 6);
+    }
+
+    SparseCuboidCol() : Cuboid(), numRowsInWords(0) {}
+
+    SparseCuboidCol(void *p, size_t nr, unsigned int nc) : Cuboid(p, nr, nc, false) {
+        numRowsInWords = (nr + 63) >> 6;
+        keyPtr = (uint64_t *) p + (numRowsInWords << 6);
+    }
+
+    SparseCuboidCol(Cuboid &&that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
+
+    SparseCuboidCol(Cuboid &that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
+
+
+    inline uint64_t *getKey(unsigned int c, size_t w) {
+        return keyPtr + c * numRowsInWords + w;
+    }
+
+    inline uint64_t *getVal(size_t i) {
+        return (uint64_t *) ptr + i;
+    }
+};
 #endif //SUDOKUBECBACKEND_COMMON_H

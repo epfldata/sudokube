@@ -13,40 +13,6 @@ struct ColumnStore {
     using KeyWord = uint64_t;
     using BitPos = std::vector<unsigned int>;
 
-    struct SparseCuboidCol : Cuboid {
-        size_t numRowsInWords;
-        uint64_t *keyPtr;
-
-        void realloc() {
-            if (!ptr) free(ptr);
-            /*
-             * assumes sizeof(Value) == sizeof(uint64_t);
-             * for every 64 rows, there are 64 words for values and one word per column
-             */
-            ptr = calloc(numRowsInWords * (64 + numCols), sizeof(uint64_t));
-            keyPtr = (uint64_t *) ptr + (numRowsInWords << 6);
-        }
-
-        SparseCuboidCol() : Cuboid(), numRowsInWords(0) {}
-
-        SparseCuboidCol(void *p, size_t nr, unsigned int nc) : Cuboid(p, nr, nc, false) {
-            numRowsInWords = (nr + 63) >> 6;
-            keyPtr = (uint64_t *) p + (numRowsInWords << 6);
-        }
-
-        SparseCuboidCol(Cuboid &&that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
-
-        SparseCuboidCol(Cuboid &that) : SparseCuboidCol(that.ptr, that.numRows, that.numCols) {}
-
-
-        inline uint64_t *getKey(unsigned int c, size_t w) {
-            return keyPtr + c * numRowsInWords + w;
-        }
-
-        inline uint64_t *getVal(size_t i) {
-            return (uint64_t *) ptr + i;
-        }
-    };
 
     std::vector<Cuboid> registry;
     /** for synchronization when multiple java threads try to update this registry simulataneously */
@@ -110,7 +76,7 @@ struct ColumnStore {
     };
 
 
-    inline void transpose64(uint64_t A[64]) {
+    inline static void transpose64(uint64_t A[64]) {
         int j, k;
         uint64_t m, t;
         m = 0x00000000FFFFFFFFuLL;

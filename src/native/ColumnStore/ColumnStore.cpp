@@ -3,6 +3,7 @@
 //
 
 #include "ColumnStore.h"
+#include <algorithm>
 
 void ColumnStore::freezePartial(unsigned int s_id, unsigned int n_bits) {
     //SBJ: No other threads. No locks
