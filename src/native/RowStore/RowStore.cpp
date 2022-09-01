@@ -30,7 +30,7 @@ void
 RowStore::readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
                           unsigned int id_array[], unsigned int numCuboids) {
     //printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     assert(fp != NULL);
     std::vector<Cuboid> allCuboids;
     for (unsigned int i = 0; i < numCuboids; i++) {
@@ -65,6 +65,7 @@ RowStore::readMultiCuboid(const char *filename, int n_bits_array[], int size_arr
             allCuboids.push_back(denseCuboid);
         }
     }
+    fclose(fp);
     unsigned int firstId = multi_r_add(allCuboids);
     for (int i = 0; i < numCuboids; i++)
         id_array[i] = firstId + i;

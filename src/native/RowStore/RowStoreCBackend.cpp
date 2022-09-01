@@ -133,7 +133,7 @@ JNIEXPORT jintArray JNICALL Java_backend_RowStoreCBackend_readMultiCuboid0
     jboolean *isSparseArray = env->GetBooleanArrayElements(jIsSparse, 0);
     jint *numColsArray = env->GetIntArrayElements(jNumCols, 0);
     jint *numRowsArray = env->GetIntArrayElements(jNumRows, 0);
-    unsigned int idsArray[numCuboids];
+    unsigned int* idsArray = new unsigned int[numCuboids];
     rowStore.readMultiCuboid(filename, numColsArray, numRowsArray, isSparseArray, idsArray, numCuboids);
     jintArray jids = env->NewIntArray(numCuboids);
     env->SetIntArrayRegion(jids, 0, numCuboids, (jint *) idsArray);
@@ -141,6 +141,7 @@ JNIEXPORT jintArray JNICALL Java_backend_RowStoreCBackend_readMultiCuboid0
     env->ReleaseBooleanArrayElements(jIsSparse, isSparseArray, 0);
     env->ReleaseIntArrayElements(jNumCols, numColsArray, 0);
     env->ReleaseIntArrayElements(jNumRows, numRowsArray, 0);
+    delete[] idsArray;
     return jids;
 }
 

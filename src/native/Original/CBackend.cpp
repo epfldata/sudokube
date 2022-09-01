@@ -70,7 +70,7 @@ JNIEXPORT jintArray JNICALL Java_backend_OriginalCBackend_readMultiCuboid0
     jboolean *isSparseArray = env->GetBooleanArrayElements(JisSparseArray, 0);
     jint *nbitsArray = env->GetIntArrayElements(JnbitsArray, 0);
     jint *sizeArray = env->GetIntArrayElements(JsizeArray, 0);
-    unsigned int idsArray[numCuboids];
+    unsigned int *idsArray = new unsigned int[numCuboids];
     readMultiCuboid(filename, nbitsArray, sizeArray, isSparseArray, idsArray, numCuboids);
     jintArray result = env->NewIntArray(numCuboids);
     if (result == NULL) return NULL; // out of memory error thrown
@@ -79,6 +79,7 @@ JNIEXPORT jintArray JNICALL Java_backend_OriginalCBackend_readMultiCuboid0
     env->ReleaseBooleanArrayElements(JisSparseArray, isSparseArray, 0);
     env->ReleaseIntArrayElements(JnbitsArray, nbitsArray, 0);
     env->ReleaseIntArrayElements(JsizeArray, sizeArray, 0);
+    delete[] idsArray;
     return result;
 
 }
