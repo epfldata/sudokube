@@ -14,7 +14,7 @@ import scala.collection.mutable
  * The experiment to drop out one cuboid at a time and record the resulting time, error, and entropy at each step for both IPF and moment solvers.
  * @author Zhekai Jiang
  * @param ename2 As experiment name.
- * @param policy Dropout policy, either "Dimension" or "Normalized-Entropy".
+ * @param policy Dropout policy, either "Dimension", "Normalized-Entropy" or "InvNormalized-Entropy".
  */
 class DropoutExpt(ename2: String = "", policy: String)(implicit shouldRecord: Boolean) extends Experiment("ipf-moment", ename2, "dropout-ipf-moment") {
 
@@ -207,10 +207,15 @@ class DropoutExpt(ename2: String = "", policy: String)(implicit shouldRecord: Bo
         mutable.PriorityQueue[Cluster]()(Ordering.by(cluster =>
           - cluster.numVariables // low dimensionality to high dimensionality in case of tie
         )) ++ clusters
-      else
+      else if (policy == "Normalized-Entropy")
         mutable.PriorityQueue[Cluster]()(Ordering.by(cluster => (
           normalizedEntropy(cluster), // high to low entropy
           - cluster.numVariables // low dimensionality to high dimensionality in case of tie
+        ))) ++ clusters
+      else
+        mutable.PriorityQueue[Cluster]()(Ordering.by(cluster => (
+          - normalizedEntropy(cluster), // low to high entropy
+          cluster.numVariables // high dimensionality to low dimensionality in case of tie
         ))) ++ clusters
     val skippedClusters = mutable.Queue[Cluster]() // Skip when cuboid contains some variables not covered by any other cuboid.
     var totalCoverage = clusters.toList.map(_.numVariables).sum
