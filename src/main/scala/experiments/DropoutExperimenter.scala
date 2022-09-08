@@ -30,40 +30,50 @@ object DropoutExperimenter {
   def main(args: Array[String]): Unit = {
     implicit val shouldRecord: Boolean = true
 
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 0, "InvNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Dimension")
 
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 12, "InvNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 12, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 12, "Dimension")
 
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Dimension")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 0, "InvNormalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Normalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Dimension")
 
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 1, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 1, "Dimension")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 12, "InvNormalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 12, "Normalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 18, queryIndex = 12, "Dimension")
 
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 5, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 5, "Dimension")
-
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 21, queryIndex = 0, "invNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 21, queryIndex = 0, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 21, queryIndex = 0, "Dimension")
 
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 0, "InvNormalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Normalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Dimension")
+
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 21, queryIndex = 0, "invNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Dimension")
 
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 1, "invNormalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 1, "Normalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 1, "Dimension")
+
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 5, "invNormalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 5, "Normalized-Entropy")
+    runDropoutExperiment(isSMS = true, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 21, queryIndex = 5, "Dimension")
+
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 24, queryIndex = 0, "invNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 24, queryIndex = 0, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 24, queryIndex = 0, "Dimension")
 
+    runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 24, queryIndex = 0, "invNormalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 24, queryIndex = 0, "Normalized-Entropy")
     runDropoutExperiment(isSMS = true, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 24, queryIndex = 0, "Dimension")
 
-    runDropoutExperiment(isSMS = false, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = false, cubeGenerator = "SSB", minNumDimensions = 14, querySize = 18, queryIndex = 0, "Dimension")
 
-    runDropoutExperiment(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 21, queryIndex = 0, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 6, querySize = 21, queryIndex = 0, "Dimension")
-
-    runDropoutExperiment(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Normalized-Entropy")
-    runDropoutExperiment(isSMS = false, cubeGenerator = "NYC", minNumDimensions = 14, querySize = 21, queryIndex = 0, "Dimension")
   }
 }
