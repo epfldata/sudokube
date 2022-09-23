@@ -27,6 +27,7 @@ that is used in deciding what cuboids are materialized to zero. This can be disa
 
 
 ## Run Experiments from our paper
+The complete reproducibility package can be found under [https://github.com/epfldata/sudokube/blob/main/experiments/vldb2022_ sudokube_reproducibility.zip]{https://github.com/epfldata/sudokube/blob/main/experiments/vldb2022_ sudokube_reproducibility.zip.}
 - sbt --error 'runMain experiments.Experimenter Fig7'
 - sbt --error 'runMain experiments.Experimenter Tab1'
 - sbt --error 'runMain experiments.Experimenter Fig8-RMS'
