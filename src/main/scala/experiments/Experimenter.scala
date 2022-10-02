@@ -145,7 +145,7 @@ object Experimenter {
       val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query $i/$ql")
+        println(s"Dim=$qs Batch Query $i/$ql")
         expt.run(dc, fullname, q, null, true, sliceValues = Vector())
       }
     }
@@ -173,7 +173,7 @@ object Experimenter {
       val queries = mq.loadQueries(qs).take(numIters)
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s" Query ${i + 1}/$ql")
+        println(s"Dim=$qs Query ${i + 1}/$ql")
         val trueResult = mq.loadQueryResult(qs, i)
         expt.run(dc, fullname, q, trueResult, true, sliceValues = Vector(1, 0, 0, 0, 1, 1, 0, 0))
       }
@@ -193,14 +193,14 @@ object Experimenter {
     val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt("fixedtotal")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
-    val sss = List(0, 4, 8, 12, 16, 20)
+    val sss = List(24)
     //val sss = List( 18, 21)
     val qs = 24
     val queries = mq.loadQueries(qs).take(numIters)
     val ql = queries.length
     println(s"\n\nMoment Solver Strategy Comparison Fixed Total Experiment for MS = $ms")
     queries.zipWithIndex.foreach { case (q, i) =>
-      println(s" Query ${i + 1}/$ql")
+      println(s"Dim=$qs Query ${i + 1}/$ql")
       val trueResult = mq.loadQueryResult(qs, i)
       sss.foreach { ss =>
         val svs = if(ss == 0) Vector()  else {
@@ -215,17 +215,17 @@ object Experimenter {
   }
 
   def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-
+    val be = CBackend.original
     val cg = SSB(100)
     val param = "15_14_30"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName)
+    val dc = PartialDataCube.load(fullname, cg.baseName, be)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
-    CBackend.b.loadTrie(trie_filename)
+    be.loadTrie(trie_filename)
     val sch = cg.schema()
 
     def momentSolve(q: IndexedSeq[Int]) = {
@@ -260,11 +260,12 @@ object Experimenter {
     }
 
     def trieSolve(q: IndexedSeq[Int]) = {
+      val be = CBackend.original
       val pm = Profiler("Trie Prepare pm") {
         SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
       }
       val moments = Profiler("Trie Moments") {
-        CBackend.b.prepareFromTrie(q)
+        be.prepareFromTrie(q)
       }
       val result2 = Profiler(s"Trie Solve") {
         val s = Profiler(s"TrieMoment Constructor") {
@@ -350,12 +351,12 @@ object Experimenter {
       println(s"Moment Solver Experiment for MS = $ms Query Dimensionality = $qs")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query ${i + 1}/$ql")
+        println(s"Dim=$qs Batch Query ${i + 1}/$ql")
         exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Online Query ${i + 1}/$ql")
+        println(s"Dim=$qs Online Query ${i + 1}/$ql")
         exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
     }
@@ -388,12 +389,12 @@ object Experimenter {
       println(s"Moment Solver Materialization Parameters Experiment for $fullname")
       val ql = queries.length
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Batch Query ${i + 1}/$ql")
+        println(s"Dim=$qs Batch Query ${i + 1}/$ql")
         exptfull.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
       queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Online Query ${i + 1}/$ql")
+        println(s"Dim=$qs Online Query ${i + 1}/$ql")
         exptonline.run(dc, fullname, q, null, sliceValues = Vector())
       }
 
@@ -411,13 +412,13 @@ object Experimenter {
       val fullname = cg.inputname + "_all"
 
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"Dim=$nb Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
@@ -442,7 +443,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -462,13 +463,13 @@ object Experimenter {
       val cg = MicroBench(10, 100000, stddev, 0.25)
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"stddev=$stddev Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -487,13 +488,13 @@ object Experimenter {
       val cg = MicroBench(10, 100000, 0.5, prob)
       val fullname = cg.inputname + "_all"
       (1 to numIters).foreach { i =>
-        println(s"Trial $i/$numIters")
+        println(s"prob=$prob Trial $i/$numIters")
         val r_its = cg.generatePartitions()
         val sch = cg.schemaInstance
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -631,7 +632,7 @@ object Experimenter {
       queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
-        println(s"  Query $i :: $qname   length = $qsize")
+        println(s"Query $i :: $qname   length = $qsize")
         expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
@@ -674,7 +675,7 @@ object Experimenter {
       queries.zipWithIndex.foreach { case ((cs, qname), i) =>
         val q = cs.reduce(_ ++ _)
         val qsize = q.length
-        println(s"  Query $i :: $qname   length = $qsize ")
+        println(s"Query $i :: $qname   length = $qsize ")
         expt.run(dc, fullname, q, null, true, qname + s" ($qsize-D)", Vector())
       }
     }
@@ -694,16 +695,19 @@ object Experimenter {
         cuboid_distribution(false)
         cuboid_distribution(true)
       case "Tab1" => storage_overhead()
-      case "Fig8" | "lpp" =>
+      case "Fig8-RMS" =>
         lpp_query_dimensionality(false)
+      case "Fig8-SMS" =>
         lpp_query_dimensionality(true)
-      case "Fig9" | "qdims" =>
+      case "Fig9-RMS" =>
         moment_query_dimensionality(strategy, false)
+      case "Fig9-SMS" =>
         moment_query_dimensionality(strategy, true)
-      case "Fig10" | "matparams" =>
+      case "Fig10-RMS" =>
         moment_mat_params(strategy, false)
+      case "Fig10-SMS" =>
         moment_mat_params(strategy, true)
-      case "Fig11" | "microbench" =>
+      case "Fig11"  =>
         mb_dims()
         mb_stddev()
         mb_prob()
@@ -711,10 +715,11 @@ object Experimenter {
         schemas()
       case "moment01" => moment01[Rational]()
       case "momentcompare" =>
-        momentCompareFixedSlice()
+        //momentCompareFixedSlice()
         momentCompareFixedTotal()
-      case "Fig12" | "manual" =>
+      case "Fig12-SSB" =>
         manualSSB(strategy, true)
+      case "Fig12-NYC" =>
         manualNYC(strategy, true)
       case expt =>
         throw new IllegalArgumentException("Unknown experiment name "+ expt)

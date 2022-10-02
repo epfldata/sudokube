@@ -14,7 +14,7 @@ object Warmup {
     val name = "Warmup"
     val dc = new DataCube(name)
     val m = new RandomizedMaterializationStrategy(nbits, 6, 5)
-    val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+    val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.primaryMoments = SolverTools.primaryMoments(dc, false)
     dc.save()

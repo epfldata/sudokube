@@ -56,7 +56,7 @@ object Tools {
            base: Double,
            n_rows: Long,
            sampling_f: Int => Int = Sampling.f1,
-           be: Backend[_] = CBackend.b,
+           be: Backend[_] = CBackend.default,
            vg: ValueGenerator = RandomValueGenerator(10)
           ) = {
     val sch = schema.StaticSchema.mk(n_bits)

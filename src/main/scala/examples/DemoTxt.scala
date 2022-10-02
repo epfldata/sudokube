@@ -31,7 +31,7 @@ object DemoTxt {
     //0 and 1D moments are required for MomentSolver that we precompute here
     val pm = List(0 -> 17, 1 -> 4, 2 -> 7, 4 -> 12).map(x => x._1 -> num.fromInt(x._2))
     val total = 3 //total query bits
-    val slice = Vector(1, 0)  //slicing for the top k-bits in the order of least significant to most significant
+    val slice = Vector(1,1,1).reverse  //slicing for the top k-bits in the order of least significant to most significant
     val agg = total - slice.length //how many bits for aggregation
 
     val solver = new CoMoment5SliceSolver2[T](total ,slice,true, Moment1Transformer(), pm)
@@ -226,7 +226,7 @@ object DemoTxt {
     val query_size = 5
     val rnd = new Random(1L)
     val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
-    val fullcub = CBackend.b.mk(n_bits, data.toIterator)
+    val fullcub = CBackend.default.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
     val dc = new DataCube()
     val m = new RandomizedMaterializationStrategy(n_bits, 6, 2)

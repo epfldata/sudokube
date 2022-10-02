@@ -46,22 +46,22 @@ case class BigBinary(val toBigInt: BigInt) {
       {{{
       scala> val x = (10 << 16) + (3<<8) + 255
       x: Int = 656383
-      scala> BigBinary(x).toCharArray(24).map(_.toInt)
-      res0: Array[Int] = Array(255, 3, 10)
+      scala> BigBinary(x).toByteArray(24)
+      res0: Array[Byte] = Array(-1, 3, 10)
       }}}
   */
-  def toCharArray(n_bits: Int) : Array[Char] = {
-    val space = math.ceil(n_bits.toDouble/8).toInt
-    val ca = Util.mkAB[Char](space, _ => 0)
+  def toByteArray(n_bits: Int) : Array[Byte] = {
+    val space = BitUtils.bitToBytes(n_bits) //ceil(n_bits.toDouble/8).toInt
+    val ca = Array.fill[Byte](space)(0)
 
     var y = toBigInt
     var i = 0
     while(y > 0) {
-      ca(i) = (y % 256).toInt.toChar
-      y = y / 256
+      ca(i) = (y & 0xff).toByte
+      y = y >> 8
       i += 1
     }
-    ca.toArray
+    ca
   }
 
   // converts the number to a binary string of size n with leading zeroes.

@@ -59,12 +59,12 @@ object MaterializedQueryResult {
     qss.foreach { qs =>
       SSBQueries.generateAndSaveQueries(nq, qs)
     }
-    CBackend.b.reset
+    CBackend.default.reset
 
     val nycQueries = new MaterializedQueryResult(NYC)
     qss.foreach { qs =>
       nycQueries.generateAndSaveQueries(nq, qs)
     }
-    CBackend.b.reset
+    CBackend.default.reset
   }
 }

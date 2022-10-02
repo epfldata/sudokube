@@ -39,11 +39,14 @@ class PrepareSpec extends FlatSpec with Matchers {
 
       isSameAs(idx1po, idx2po)
       isSameAs(idx1po, idx3po)
-
+      val ord = NewProjectionMetaData.ordering
       //Check if smaller ones appear first
-      assert(idx1po.sortBy(ps => ps.sortID(nbits)) sameElements idx1po)
-      assert(idx2po.sortBy(ps => ps.sortID(nbits)) sameElements idx2po)
-      assert(idx3po.sortBy(ps => ps.sortID(nbits)) sameElements idx3po)
+      val head = idx1po.head
+      val last = idx1po.last
+      assert((head.queryIntersectionSize <= last.queryIntersectionSize) && (head.cuboidCost <= last.cuboidCost))
+      assert(idx1po.sorted(ord) sameElements idx1po.reverse)
+      assert(idx2po.sorted(ord) sameElements idx2po.reverse)
+      assert(idx3po.sorted(ord) sameElements idx3po.reverse)
     }
     println("\nTime for Online")
     Profiler.print()
@@ -66,10 +69,14 @@ class PrepareSpec extends FlatSpec with Matchers {
       isSameAs(idx2pb, idx1pb)
       isSameAs(idx3pb, idx1pb)
 
+      val ord = NewProjectionMetaData.ordering
       //Check if larger ones appear first
-      assert(idx1pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx1pb)
-      assert(idx2pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx2pb)
-      assert(idx3pb.sortBy(ps => -ps.sortID(nbits)) sameElements idx3pb)
+      val head = idx1pb.head
+      val last = idx1pb.last
+      assert((head.queryIntersectionSize >= last.queryIntersectionSize) && (head.cuboidCost >= last.cuboidCost))
+      assert(idx1pb.sorted(ord) sameElements idx1pb)
+      assert(idx2pb.sorted(ord) sameElements idx2pb)
+      assert(idx3pb.sorted(ord) sameElements idx3pb)
 
     }
     println(s"\nTime for Batch qs=$qs")

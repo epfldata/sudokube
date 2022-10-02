@@ -1,3 +1,2 @@
 -Xmx8g
--Djava.library.path=.
 -XX:+UseConcMarkSweepGC

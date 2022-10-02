@@ -18,7 +18,7 @@ abstract class CubeGenerator(val inputname: String) {
     val m = MaterializationStrategy.only_base_cuboid(schemaInstance.n_bits)
     val dc = new DataCube(baseName)
     //sch.save(inputname)
-    val baseCuboid = CBackend.b.mkParallel(schemaInstance.n_bits, r_its)
+    val baseCuboid = CBackend.default.mkParallel(schemaInstance.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.save()
     dc.primaryMoments = SolverTools.primaryMoments(dc)

@@ -26,8 +26,8 @@ echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> /root/.profile
 mkdir -p /var/data/sudokube/sudokube
 cd /var/data/sudokube/sudokube
 mkdir tabledata expdata
-rclone copy skRW:12327-755e92f906ff1f273f45a3a76785476f/new  cubedata -P --multi-thread-streams 20 --transfers=4   --cache-workers=16 --checkers=16
-rclone copy --include "*.uniq" skRW:12327-755e92f906ff1f273f45a3a76785476f/tabledata tabledata   -P --multi-thread-streams 20 --transfers=10 --cache-workers=16 --checkers=16
+rclone copy skRW:12327-755e92f906ff1f273f45a3a76785476f/newSeed0  cubedata -P
+rclone copy --include "*.uniq" skRW:12327-755e92f906ff1f273f45a3a76785476f/tabledata tabledata   -P
 #sync
 #sbt compile
 #make shared lib !

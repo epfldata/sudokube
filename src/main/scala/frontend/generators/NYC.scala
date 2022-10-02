@@ -13,13 +13,13 @@ object NYC extends CubeGenerator("NYC") {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
       val n2 = "all.part" + num + ".tsv"
-        val size = read(n2).size
-      size ->read(n2).map(r => schemaInstance.encode_tuple(r) -> 1L)
+      val size = read(n2).size
+      size -> read(n2).map(r => schemaInstance.encode_tuple(r) -> 1L)
     }
     join
   }
 
-  override def schema(): Schema2 =  {
+  override def schema(): Schema2 = {
 
     def uniq(i: Int) = s"tabledata/nyc/uniq/all.$i.uniq"
     import StaticDateCol._
@@ -72,7 +72,7 @@ object NYC extends CubeGenerator("NYC") {
     val from_hours_in_effect = LD2[String]("From Hours In Effect", new LazyMemCol(uniq(32)))
     val to_hours_in_effect = LD2[String]("To Hours In Effect", new LazyMemCol(uniq(33)))
     val vehicle_color = LD2[String]("Vehicle Color", new LazyMemCol(uniq(34)))
-   val unregistered_vehicle = LD2[String]("Unregistered Vehicle?", new LazyMemCol(uniq(35)))
+    val unregistered_vehicle = LD2[String]("Unregistered Vehicle?", new LazyMemCol(uniq(35)))
     val vehicle_year = LD2[Date]("Vehicle Year", StaticDateCol.fromFile(uniq(36), simpleDateFormat("yyyy"), true))
     val meter_number = LD2[String]("Meter Number", new LazyMemCol(uniq(37)))
     val feet_from_curb = LD2[Int]("Feet From Curb", StaticNatCol.fromFile(uniq(38)))
@@ -90,7 +90,7 @@ object NYC extends CubeGenerator("NYC") {
 
   def read(file: String) = {
     val filename = s"tabledata/nyc/$file"
-    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").tail)  //ignore summons_number
+    val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").tail) //ignore summons_number
     data
   }
 
@@ -98,15 +98,30 @@ object NYC extends CubeGenerator("NYC") {
     println("Loading Schema")
     val cg = this
 
-    cg.saveBase()
+    val resetSeed = true //for reproducing the same set of materialization decisions
+    val seedValue = 0L
 
-    val maxD = 30 // >15+14, so never passes threshold for any of the cuboids
-    List(
-      (17, 10),(13, 10),
+    val arg = args.lift(0).getOrElse("all")
+    val params = List(
+      (17, 10), (13, 10),
       (15, 6), (15, 10), (15, 14)
-    ).map { case (logN, minD) =>
-      cg.saveRMS(logN, minD, maxD)
-      cg.saveSMS(logN, minD, maxD)
+    )
+    val maxD = 30 // >15+14, so never passes threshold for any of the cuboids
+
+
+    if ((arg equals "base") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      cg.saveBase()
+    }
+
+    if ((arg equals "RMS") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
+    }
+
+    if ((arg equals "SMS") || (arg equals "all")) {
+      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
     }
 
   }

@@ -37,4 +37,4 @@ ssh datadell "scp ~/.ssh/id* $nickname:/root/.ssh"
 
 ssh $nickname 'chmod +x ./init.sh && ./init.sh'
 scripts/sync.sh $nickname
-ssh $nickname 'PATH=/opt/sbt/bin:$PATH;JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64;cd /var/data/sudokube/sudokube && make'
+ssh $nickname 'PATH=/opt/sbt/bin:$PATH;JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 bash -c "cd /var/data/sudokube/sudokube &&  sbt nativeCompile "'

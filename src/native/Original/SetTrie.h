@@ -9,7 +9,6 @@
 #include <string>
 #include <iostream>
 
-using namespace std;
 
 
 struct Node {
@@ -30,7 +29,7 @@ struct Node {
 };
 
 
-inline size_t pupInt(const vector<int> bits, size_t i) {
+inline size_t pupInt(const std::vector<int> bits, size_t i) {
     size_t result = 0;
     for (int b: bits) {
         int ibit = i & 0x1;
@@ -53,7 +52,7 @@ inline int bitsFromInt(size_t i, int keyarray[]) {
     return count;
 }
 
-inline void momentTransform(vector<value_t> &values) {
+inline void momentTransform(std::vector<value_t> &values) {
     size_t N = values.size();
     size_t h = 1;
     while (h < N) {
@@ -106,7 +105,7 @@ struct SetTrie {
         }
     }
 
-    void insert(const vector<int> &keypath, value_t value) {
+    void insert(const std::vector<int> &keypath, value_t value) {
         Node *n = nodes;
         if (count < maxSize) {
             if (keypath.size() == 0 && count == 0) {
@@ -119,22 +118,22 @@ struct SetTrie {
                 }
             }
             if(n->value != value) {
-                cout <<"NewValue " << value << "contradicts existing value " << n->value << " for path ";
-                for(const int k: keypath) cout << k << " ";
-                cout << endl;
+                std::cout <<"NewValue " << value << "contradicts existing value " << n->value << " for path ";
+                for(const int k: keypath) std::cout << k << " ";
+                std::cout << std::endl;
             }
         }
     }
 
 
-    void insertAll(const vector<int> &cuboidDims, const vector<value_t> &values) {
+    void insertAll(const std::vector<int> &cuboidDims, const std::vector<value_t> &values) {
         size_t cuboidDimSize = cuboidDims.size();
         int tempKey[cuboidDimSize];
         size_t i = 0;
         for (const auto value: values) {
             if (count >= maxSize) break;
             int n = bitsFromInt(i, tempKey);
-            vector<int> key(tempKey, tempKey + n);
+            std::vector<int> key(tempKey, tempKey + n);
             for (int x = 0; x < n; x++) key[x] = cuboidDims[key[x]];
             insert(key, value);
             i++;
@@ -142,7 +141,7 @@ struct SetTrie {
     }
 
     void
-    getNormalizedSubset(const vector<int> &query, map<int, value_t> &result, size_t queryIdx, size_t keyPathNumber,
+    getNormalizedSubset(const std::vector<int> &query, std::map<int, value_t> &result, size_t queryIdx, size_t keyPathNumber,
                         Node *n) const {
         result.emplace(keyPathNumber, n->value);
         size_t childID = n->firstChild;

@@ -14,11 +14,11 @@ import scala.concurrent.{ExecutionContext, Future}
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
   def bits: IndexedSeq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
-  def bitsMin : Int
-  def isRange: Boolean
-  def encode_locally(v: T) : Int
-  def decode_locally(i: Int): T
-  def maxIdx : Int
+  def bitsMin : Int  //equivalent to bits.min
+  def isRange: Boolean //equivalent to bits.isInstanceOf[Range]
+  def encode_locally(v: T) : Int // 0 for NULL, 1...maxIdx for valid values
+  def decode_locally(i: Int): T //i must be between 0 and maxIdx
+  def maxIdx : Int  //maximum possible value returned by encode_locally. Count is given by maxIdx+1
   def queries(): Set[IndexedSeq[Int]]
   def initializeBeforeEncoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
   def initializeBeforeDecoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit

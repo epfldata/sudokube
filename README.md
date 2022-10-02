@@ -2,19 +2,22 @@
 ## Requirements
 This project has the following dependencies:
 - sbt
-- JDK Version 8
+- JDK (version >= 8)
 - gcc
-- make
+- cmake
 
 ## Instructions to build the shared library libCBackend
 - Set the environment variable `JAVA_HOME` to the home directory of the JDK installation. The folder `${JAVA_HOME}/include` must contain the header file `jni.h`
 - Run `make` from the root directory of the project
 
 ## Instructions to run
+- Edit the file `.jvmopts` in the root directory of the project to set the maximum Java heap size to the desirable amount.
 - Run `sbt test` from the root directory of the project to run all the tests
 - Run `sbt "runMain <classname>"` to run some class containing the main method, for example, `example.Demotxt`
 
 ## Generate data and build data cube
+In order to reproduce the experiment with fixed queries (Fig 12) exactly, we have fixed the seed of the random generator
+that is used in deciding what cuboids are materialized to zero. This can be disabled by editing the files `src/main/scala/frontend/generators/NYC.scala` and  `src/main/scala/frontend/generators/SSB.scala` before generating the data cube.
 - [New York Parking Violations Dataset](https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2021/kvfd-bves)
 	+ Run `dataloading-scripts/nyc.sh`
 - [Star Schema Benchmark](https://github.com/eyalroz/ssb-dbgen)
@@ -23,12 +26,17 @@ This project has the following dependencies:
 - Warmup Dataset
 	+ Run `sbt "runMain frontend.generators.Warmup"`
 
+
 ## Run Experiments from our paper
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig7"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Tab1"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig8"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig9"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig10"
-- sbt --error 'set showSuccess := false' "runMain experiments.Experimenter Fig11"
-
-
+Set the Java Maximum Heap size to atleast `250g` in file `.jvmopts`
+- sbt --error 'runMain experiments.Experimenter Fig7'
+- sbt --error 'runMain experiments.Experimenter Tab1'
+- sbt --error 'runMain experiments.Experimenter Fig8-RMS'
+- sbt --error 'runMain experiments.Experimenter Fig8-SMS'
+- sbt --error 'runMain experiments.Experimenter Fig9-RMS'
+- sbt --error 'runMain experiments.Experimenter Fig9-SMS'
+- sbt --error 'runMain experiments.Experimenter Fig10-RMS'
+- sbt --error 'runMain experiments.Experimenter Fig10-SMS'
+- sbt --error 'runMain experiments.Experimenter Fig11'
+- sbt --error 'runMain experiments.Experimenter Fig12-NYC'
+- sbt --error 'runMain experiments.Experimenter Fig12-SSB'

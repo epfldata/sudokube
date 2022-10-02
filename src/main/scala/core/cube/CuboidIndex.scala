@@ -67,9 +67,10 @@ abstract class CuboidIndex(val n_bits: Int) extends IndexedSeq[IndexedSeq[Int]] 
   protected def prepare(query: IndexedSeq[Int], cheap_size: Int, max_fetch_dim: Int) = {
     val cname = getClass.getCanonicalName
 
-    val cubs0 = Profiler(cname + " QP") { qproject(query, max_fetch_dim) }
-    val cubs = Profiler(cname + " sort") { cubs0.sortBy(p => -p.sortID(query.size)) } //sorting by larger cuboids first and then smaller
-    val cubsER = Profiler(cname + " ER") { eliminateRedundant(cubs, cheap_size).toList }
+    val cubs0 =  qproject(query, max_fetch_dim)
+
+    val cubs =  cubs0.sorted(NewProjectionMetaData.ordering)  //sorting by larger cuboids first and then smaller
+    val cubsER = eliminateRedundant(cubs, cheap_size).toList
 
     //MUST return List, otherwise it returns Stream which computes it lazily affecting Time measurements
 

@@ -2,7 +2,6 @@
 #include <cstdio>
 #include "SetTrie.h"
 
-using namespace std;
 
 bool verifyQueryTest1(const SetTrie &trie, const vector<int> &query) {
     map<int, value_t> moments;

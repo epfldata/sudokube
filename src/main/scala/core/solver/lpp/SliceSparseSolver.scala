@@ -311,7 +311,7 @@ class SliceSparseSolver[T](
     //  vars
     //}
 
-    val pi = new ProgressIndicator(vars.length, "Simplex")
+    val pi = new ProgressIndicator(vars.length, "Simplex", false)
     Profiler.noprofile("RunSimplex") {
       for (i <- simplex_obj_vars) yield {
         run_my_simplex(i, false)

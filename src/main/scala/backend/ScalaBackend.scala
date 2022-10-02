@@ -3,13 +3,14 @@ package backend
 import combinatorics.Big
 import util._
 import BitUtils._
+
 import java.io._
 
 
 /** a self-contained backend. Here, the data field of the
     DenseCuboid and SparseCuboid instances actually holds the data.
 */
-object ScalaBackend extends Backend[Payload] {
+object ScalaBackend extends Backend[Payload](".ssuk") {
   protected type DENSE_T  = Array[Payload]
   protected type SPARSE_T = Seq[(BigBinary, Payload)]
   protected type HYBRID_T = (DENSE_T, SPARSE_T)
@@ -29,7 +30,7 @@ object ScalaBackend extends Backend[Payload] {
 
   def readCuboid(id: Int, sparse: Boolean, n_bits: Int, size: BigInt, name_prefix: String): Cuboid = {
     val ois = new ObjectInputStream(
-      new FileInputStream(s"$name_prefix/cub_" + id + ".ssuk"))
+      new FileInputStream(s"$name_prefix/cub_" + id + cuboidFileExtension))
 
     val c = if(sparse) {
       val data = ois.readObject.asInstanceOf[SPARSE_T]
@@ -45,7 +46,7 @@ object ScalaBackend extends Backend[Payload] {
   }
   def writeCuboid(id: Int, c: Cuboid, name_prefix: String) {
     val oos = new ObjectOutputStream(
-      new FileOutputStream(s"$name_prefix/cub_" + id + ".ssuk"))
+      new FileOutputStream(s"$name_prefix/cub_" + id + cuboidFileExtension))
 
     if(c.isInstanceOf[SparseCuboid])
          oos.writeObject(c.asInstanceOf[SparseCuboid].data)
@@ -53,11 +54,6 @@ object ScalaBackend extends Backend[Payload] {
 
     oos.close
   }
-
-
-  override def saveAsTrie(cuboids: Array[(Array[Int], (Array[Payload], Seq[(BigBinary, Payload)]))], filename: String, maxSize: Long): Unit = ???
-  override def loadTrie(filename: String): Unit = ???
-  override def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)] = ???
 
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = mkAll(n_bits, it.toSeq)
   def mkAll(n_bits: Int, kvs: Seq[(BigBinary, Long)]) : SparseCuboid = {
@@ -124,6 +120,9 @@ object ScalaBackend extends Backend[Payload] {
     dedup(a.map{ case (i, v) => (hash_f(i), v) })
   }
 
+
+  override protected def sRehashSlice(a: Seq[(BigBinary, Payload)], BITPOS_T: ScalaBackend.BITPOS_T, maskArray: Array[Boolean]): Array[Long] = ???
+  override protected def dRehashSlice(a: Array[Payload], BITPOS_T: ScalaBackend.BITPOS_T, maskArray: Array[Boolean]): Array[Long] = ???
   override protected def hybridRehash(a: Seq[(BigBinary, Payload)], bitpos: BITPOS_T) : HYBRID_T = {
       val res_n_bits = bitpos.length
       val n0 = (math.log(a.size.toDouble)/math.log(2)).toInt

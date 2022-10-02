@@ -53,7 +53,7 @@ SetTrie globalSetTrie;
  * Various registries storing in-memory cuboids and their meta-information.
  */
 
-struct {
+struct globalRegistry_t {
     /**pointer to dense or sparse cuboid*/
     std::vector<void *> ptr_registry;
 
@@ -141,8 +141,12 @@ struct {
         keySize = keysz_registry[id];
     }
 
-} globalRegistry;
+};
+globalRegistry_t globalRegistry;
 
+void readRegistry(unsigned int id, void *&ptr, size_t &size, unsigned short &keySize) {
+    globalRegistry.read(id, ptr, size, keySize);
+}
 /**
  * Resets the backend by unloading all cuboids from memory and clearing the registry
  */
@@ -182,45 +186,45 @@ unsigned int mk(unsigned int n_bits) {
 }
 
 /**
- * appends one record to an appendable (not yet frozen) sparse representation initialized by mk().
+ * appends many records to an appendable (not yet frozen) sparse representation initialized by mk().
    inconsistent storage type with the rest: a cuboid that we can write to
    is to be a vector that we can append to. It is replaced by the standard
    sparse representation when we freeze it.
    Does not support multi-threading
 */
-void add(unsigned int s_id, unsigned int n_bits, byte *key, value_t v) {
-    tempRec myrec;
-    unsigned int numbytes = bitsToBytes(n_bits);
-    memcpy(&myrec.key[0], key, numbytes);
-    myrec.val = v;
-
+void add(unsigned int s_id,  byte **recordsToAdd, size_t nrowsToAdd, unsigned int n_bits) {
     //SBJ: Currently no other thread should be running. So no locks
     //Adding to std::vector requires static type. So using tempRec
+    tempRec myrec;
     std::vector<tempRec> *p = (std::vector<tempRec> *) globalRegistry.ptr_registry[s_id];
-    p->push_back(myrec); // makes a copy of myrec
-    globalRegistry.numrows_registry[s_id]++;
+    unsigned int numbytes = bitsToBytes(n_bits);
+    unsigned int recSize = numbytes + sizeof(value_t);
+    for(size_t i = 0; i < nrowsToAdd; i++) {
+        memcpy(&myrec.key[0], getKey(recordsToAdd, i, recSize), numbytes);
+        myrec.val = *getVal(recordsToAdd, i, recSize);
+
+        p->push_back(myrec); // makes a copy of myrec
+        globalRegistry.numrows_registry[s_id]++;
+    }
 }
 
 /**
  * Adds record at specified position to a cuboid initialized by mkAll()
  * Thread-safe, as long as there are no conflicts on the parameter i
- * @param i The index at which new record is to be added
+ * @param startIdx The index from which new records are to be added
  * @param s_id The id of the cuboid (returned by mkAll) to which record is to be added
- * @param key Record key
- * @param v Record value
+ * @param recordsToAdd pointer to records in row format
+ * @param nrowsToAdd number of rows to add
  */
-void add_i(size_t i, unsigned int s_id, byte *key, value_t v) {
+void add_i(size_t startIdx, unsigned int s_id, byte **recordsToAdd, size_t nrowsToAdd) {
     unsigned short keySize;
     size_t rows;
     void *ptr;
     globalRegistry.read(s_id, ptr, rows, keySize);
     byte **store = (byte **) ptr;
     unsigned int recSize = keySize + sizeof(value_t);
-
     //can be multithreaded, but there should be no conflicts
-    memcpy(getKey(store, i, recSize), key, keySize);
-    memcpy(getVal(store, i, recSize), &v, sizeof(value_t));
-
+    memcpy(getKey(store, startIdx, recSize), getKey(recordsToAdd, 0, recSize), nrowsToAdd * recSize);
 }
 
 /**
@@ -347,7 +351,7 @@ void dense_print(unsigned int d_id, unsigned int n_bits) {
 void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[], unsigned char isSparse_array[],
                      unsigned int id_array[], unsigned int numCuboids) {
     //printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     assert(fp != NULL);
     byte **buffer_array = new byte *[numCuboids];
     for (unsigned int i = 0; i < numCuboids; i++) {
@@ -400,6 +404,7 @@ void readMultiCuboid(const char *filename, int n_bits_array[], int size_array[],
 #endif
         }
     }
+    fclose(fp);
     globalRegistry.multi_r_add(buffer_array, size_array, n_bits_array, id_array, numCuboids);
     delete[] buffer_array;
 }
@@ -552,11 +557,13 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
             print_key(masklen, key2);
             printf("  ==> %d \n", cmp);
 #endif
+            value_t  value = *getVal((byte **) tempstore, r, tempRecSize);
+            if (value == 0) continue;
             if (!cmp) { // same keys
                 //printf("Merge %lu into %lu\n", r, watermark);
-                *getVal((byte **) tempstore, watermark, tempRecSize) += *getVal((byte **) tempstore, r, tempRecSize);
+                *getVal((byte **) tempstore, watermark, tempRecSize) += value;
             } else {
-                watermark++;
+                if(*getVal((byte **) tempstore, watermark, tempRecSize) > 0) watermark++; //overwrite 0 vals
                 if (watermark < r) {
                     //printf("Copy %lu into %lu\n", r, watermark);
                     memcpy(getKey((byte **) tempstore, watermark, tempRecSize),
@@ -565,7 +572,7 @@ unsigned int srehash(unsigned int s_id, unsigned int *maskpos, unsigned int mask
                 }
             }
         }
-
+    if(*getVal((byte **) tempstore, watermark, tempRecSize) == 0) watermark--;
     size_t new_rows = watermark + 1;
     //printf("End srehash (compressing from %lu to %d)\n", rows, new_rows);
 
@@ -818,19 +825,19 @@ int shybridhash(unsigned int s_id, unsigned int *maskpos, unsigned int masksum) 
     }
 }
 
-bool addDenseCuboidToTrie(const vector<int> &cuboidDims, unsigned int d_id) {
-    cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
+bool addDenseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int d_id) {
+    std::cout << "DenseCuboid "<< d_id << " of dimensionality " << cuboidDims.size();
     size_t len;
     value_t *values = fetch(d_id, len);
-    vector<value_t> valueVec(values, values + len);
+    std::vector<value_t> valueVec(values, values + len);
     momentTransform(valueVec);
     globalSetTrie.insertAll(cuboidDims, valueVec);
-    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    std::cout << "  TrieCount = " << globalSetTrie.count << std::endl;
     return globalSetTrie.count < globalSetTrie.maxSize;
 }
 
-bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
-    cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
+bool addSparseCuboidToTrie(const std::vector<int> &cuboidDims, unsigned int s_id) {
+    std::cout << "SparseCuboid" << s_id << " of dimensionality " << cuboidDims.size();
     size_t rows;
     void *ptr;
     unsigned short keySize;
@@ -852,17 +859,108 @@ bool addSparseCuboidToTrie(const vector<int> &cuboidDims, unsigned int s_id) {
 //    printf(" %lld %d\n", i, newstore[i]);
     }
 
-    vector<value_t> valueVec(newstore, newstore + newsize);
+    std::vector<value_t> valueVec(newstore, newstore + newsize);
     momentTransform(valueVec);
 
     globalSetTrie.insertAll(cuboidDims, valueVec);
-    cout << "  TrieCount = " << globalSetTrie.count << endl;
+    std::cout << "  TrieCount = " << globalSetTrie.count << std::endl;
     free(newstore);
     return globalSetTrie.count < globalSetTrie.maxSize;
+}
+
+byte* slice_mask_to_index(unsigned int bitposlength, bool * sm) {
+    size_t sourceSize = 1 << bitposlength;
+    size_t destSize = sourceSize << 1;
+    auto idx = new byte[destSize];
+    //idx starts from 1. the last sourceSize entries is the original array
+    memcpy(idx + sourceSize, sm , sourceSize);
+    for(size_t i = sourceSize - 1; i > 0; i --) {
+        auto leftChild = i << 1;
+        auto rightChild = leftChild + 1;
+        byte left = idx[leftChild];
+        byte right = idx[rightChild];
+        if(left == right) {
+            idx[i] = left;
+        } else {
+            idx[i] = 2;
+        }
+    }
+//    fprintf(stderr, "Tree index ");
+//    for(int logh = 0; logh <= bitposlength; ++logh) {
+//        fprintf(stderr, "\n");
+//        for(int i = 1 << logh; i < 1 << (logh + 1); i++) {
+//            fprintf(stderr, "%u ", idx[i]);
+//        }
+//    }
+    return idx;
+}
+value_t* s2drehashSlice(unsigned int s_id, unsigned int *bitpos, unsigned int bitposlength, bool* sliceMask) {
+
+    auto sliceIdx = slice_mask_to_index(bitposlength, sliceMask);
+    size_t rows;
+    void *ptr;
+    unsigned short keySize;
+    globalRegistry.read(s_id, ptr, rows, keySize);
+    unsigned int recSize = keySize + sizeof(value_t);
+
+    byte **store = (byte **) ptr;
+
+    size_t newsize = 1LL << bitposlength;
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ns2drehashSlice calloc : %lu MB\n", numMB);
+
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+    for (size_t r = 0; r < rows; r++) {
+//    print_key(masklen, getKey(store, r, recSize));
+        size_t i = project_Key_to_Long_WithSlice(bitposlength, bitpos, getKey(store, r, recSize), sliceIdx);
+        if(i < newsize) {
+            newstore[i] += *getVal(store, r, recSize);
+//            fprintf(stderr, " newstore[%lld] = %d\n", i, newstore[i]);
+        }
+    }
+    return newstore;
+}
+
+value_t* drehashSlice(unsigned int d_id, unsigned int *bitpos, unsigned int bitposlength, bool* sliceMask) {
+
+//   fprintf(stderr, "Making tree index... ");
+    auto sliceIdx = slice_mask_to_index(bitposlength, sliceMask);
+//    fprintf(stderr, "   Done\n");
+    size_t size;
+    unsigned short keySize;
+    void *ptr;
+    globalRegistry.read(d_id, ptr, size, keySize);
+
+    value_t *store = (value_t *) ptr;
+
+    unsigned int newsize = 1 << bitposlength;
+
+    value_t *newstore = (value_t *) calloc(newsize, sizeof(value_t));
+    assert(newstore);
+    size_t numMB = newsize * sizeof(value_t) / (1000 * 1000);
+    if (numMB > 100) fprintf(stderr, "\ndrehash calloc : %lu MB\n", numMB);
+
+    // all intervals are initially invalid -- no constraint
+    memset(newstore, 0, sizeof(value_t) * newsize);
+
+
+    unsigned int newKeySize = bitsToBytes(bitposlength);
+    for (size_t r = 0; r < size; r++) {
+        size_t i = project_Long_to_Long_WithSlice(bitposlength, bitpos, r, sliceIdx);
+        if (i < newsize) {
+            newstore[i] += store[r];
+//            fprintf(stderr, " newstore[%lld] = %d\n", i, newstore[i]);
+        }
+    }
+    return newstore;
 }
 
 void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
 void saveTrie(const char *filename) { globalSetTrie.saveToFile(filename); }
 void loadTrie(const char *filename) { globalSetTrie.loadFromFile(filename); }
 
-void prepareFromTrie(const vector<int>& query, map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}
+void prepareFromTrie(const std::vector<int>& query, std::map<int, value_t>& result) { globalSetTrie.getNormalizedSubset(query, result, 0, 0, globalSetTrie.nodes);}
