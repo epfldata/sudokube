@@ -1,5 +1,6 @@
 package experiments
 
+import backend.CBackend
 import core.solver.SolverTools
 import core.{MaterializedQueryResult, PartialDataCube}
 import frontend.generators.{CubeGenerator, NYC, SSB}
@@ -15,8 +16,9 @@ import java.time.format.DateTimeFormatter
  * @author Zhekai Jiang
  */
 object CuboidEntropyExperimenter {
+  implicit val backend = CBackend.default
   def printCuboidEntropies(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC else SSB(100)
+    val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC() else SSB(100)
     val param = s"15_${minNumDimensions}_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"

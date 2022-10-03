@@ -1,5 +1,6 @@
 package experiments
 
+import backend.CBackend
 import core.{MaterializedQueryResult, PartialDataCube}
 import frontend.generators.{CubeGenerator, NYC, SSB}
 
@@ -8,8 +9,10 @@ import frontend.generators.{CubeGenerator, NYC, SSB}
  * @author Zhekai Jiang
  */
 object IPFExperimenter {
+  implicit val backend = CBackend.original
   def ipf_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC else SSB(100)
+    val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC() else SSB(100)
+    val backendName = "original"
     val param = s"15_${minNumDimensions}_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"
@@ -17,7 +20,7 @@ object IPFExperimenter {
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
 
-    val expname2 = s"query-dim-$cubeGenerator-$ms-dmin-$minNumDimensions"
+    val expname2 = s"query-dim-$cubeGenerator-$ms-dmin-$minNumDimensions-$backendName"
     val exptfull = new IPFMomentBatchExpt(expname2)
     if (shouldRecord) exptfull.warmup()
     val materializedQueries = new MaterializedQueryResult(cg)

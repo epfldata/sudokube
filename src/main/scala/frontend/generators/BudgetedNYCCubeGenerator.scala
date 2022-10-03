@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import core.PartialDataCube
 import core.materialization.BudgetedSingleSizeMaterializationStrategy
 import core.materialization.builder.AlwaysBaseCuboidBuilderMT
@@ -17,9 +18,10 @@ import util.Profiler
  */
 object BudgetedNYCCubeGenerator {
   def main(args: Array[String]): Unit = {
+    implicit val backend = CBackend.default
     val d0 = 27
     val b = 0.025
-    val cg = NYC
+    val cg = NYC()
     // cg.saveBase()
 
 

@@ -107,9 +107,9 @@ trait Schema extends Serializable {
    * The size of the buffers is defined by the bufferSize argument and it is possible to delay each reading of the stream, using the delay argument (in milliseconds).
    */
   def readFromStream(measure_key: Option[String] = None, map_value : Object => Long = _.asInstanceOf[Long], url : String, bufferSize : Int = 7, delay : Int = 0): DataCube = {
-
+    implicit val backend = CBackend.default
      ///Initiates the partial cuboid
-     @volatile var sc = CBackend.default.initPartial()
+     @volatile var sc =  backend.initPartial()
 
       val threadWrite  = new Thread {
 
@@ -196,7 +196,7 @@ trait Schema extends Serializable {
                 new Thread {
                     override def run {
                         var r = read(pathRead, measure_key, map_value)
-                        sc = CBackend.default.addPartial(n_bits, r.toIterator, sc)
+                        sc = backend.addPartial(n_bits, r.toIterator, sc)
                     }
                 }
             }
@@ -229,9 +229,10 @@ trait Schema extends Serializable {
     threadWrite.stopRunning()
     threadWrite.join()
     val  m = new RandomizedMaterializationStrategy(n_bits, 8, 4)
+
     val dc = new DataCube()
     //converts the partial cuboid into a cuboid
-    sc = CBackend.default.finalisePartial(sc)
+    sc = backend.finalisePartial(sc)
     dc.build(sc,  m)
     dc
  }

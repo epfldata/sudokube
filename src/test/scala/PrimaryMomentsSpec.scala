@@ -12,10 +12,11 @@ import scala.reflect.io.Directory
 class PrimaryMomentsSpec extends FlatSpec with Matchers {
 
   "Primary Moments" should "match naive eval " in {
+    implicit val backend = CBackend.default
     val nbits = 13
     val qsize = 5
 
-    val dc = mkDC(nbits, 1, 1.5, 4096, Sampling.f1, CBackend.default)
+    val dc = mkDC(nbits, 1, 1.5, 4096, Sampling.f1, backend)
     val (t1, m1) = SolverTools.primaryMoments(dc)
 
     val m2 = Array.fill(nbits)(0L)

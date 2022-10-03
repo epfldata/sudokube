@@ -36,8 +36,8 @@ class SchemaSpec extends FreeSpec with Matchers {
       val l2 = List("date" -> List(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), "company" -> List(0, 12))
       assert(l1.sameElements(l2))
     }
-
-    val basecuboid = CBackend.default.mk(sch.n_bits, R.toIterator)
+    implicit val backend = CBackend.default
+    val basecuboid = backend.mk(sch.n_bits, R.toIterator)
 
     val matstrat = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4)
     val dc = new DataCube()

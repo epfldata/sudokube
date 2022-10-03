@@ -7,6 +7,7 @@ import core.solver.SolverTools
 object Warmup {
   def main(args: Array[String]): Unit = {
     val nbits = 10
+    implicit val backend = CBackend.default
     val cg = MicroBench(nbits, 100000, 0.5, 0.25)
     val r_its = cg.generatePartitions()
     val sch = cg.schemaInstance
@@ -14,7 +15,7 @@ object Warmup {
     val name = "Warmup"
     val dc = new DataCube(name)
     val m = new RandomizedMaterializationStrategy(nbits, 6, 5)
-    val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
+    val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.primaryMoments = SolverTools.primaryMoments(dc, false)
     dc.save()

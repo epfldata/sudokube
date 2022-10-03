@@ -1,6 +1,7 @@
 //package ch.epfl.data.sudokube
 package util
 
+import backend.CBackend
 import core.PartialDataCube
 
 
@@ -70,7 +71,7 @@ object Util {
   }
 
   //Displays storage statistics per cuboid size
-  def stats(dcname: String, basename: String) = {
+  def stats(dcname: String, basename: String)(implicit backend: CBackend) = {
     val dc = PartialDataCube.load(dcname, basename)
     dc.cuboids.map { c => (c.n_bits, c.numBytes) }.groupBy(_._1).mapValues { cs =>
       val count = cs.length

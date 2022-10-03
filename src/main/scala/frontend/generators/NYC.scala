@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
@@ -7,7 +8,7 @@ import util.BigBinary
 import java.util.Date
 import scala.io.Source
 
-object NYC extends CubeGenerator("NYC") {
+case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
 
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
@@ -93,10 +94,14 @@ object NYC extends CubeGenerator("NYC") {
     val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").tail) //ignore summons_number
     data
   }
+}
+
+object NYC {
+  implicit val backend = CBackend.default
 
   def main(args: Array[String]): Unit = {
     println("Loading Schema")
-    val cg = this
+    val cg = new NYC
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
@@ -110,17 +115,17 @@ object NYC extends CubeGenerator("NYC") {
 
 
     if ((arg equals "base") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
     }
 

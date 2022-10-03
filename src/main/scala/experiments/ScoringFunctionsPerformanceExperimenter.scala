@@ -1,5 +1,6 @@
 package experiments
 
+import backend.CBackend
 import frontend.generators.{CubeGenerator, NYC, RandomCubeGenerator}
 
 
@@ -10,6 +11,7 @@ import frontend.generators.{CubeGenerator, NYC, RandomCubeGenerator}
  * @author Thomas Depian
  */
 object ScoringFunctionsPerformanceExperimenter {
+  implicit val backend = CBackend.default
 
   /**
    * Run the experiment for a specific setup.
@@ -24,7 +26,7 @@ object ScoringFunctionsPerformanceExperimenter {
    * @param runs States how many runs (=queries) should be performed with that setup
    */
   def runScoringFunctionsPerformanceExperiment(cgName: String, d: Int, d0: Int, b: Double, q: Int, runs: Int, mode: String)(implicit shouldRecord: Boolean): Unit = {
-    val cg: CubeGenerator = if (cgName.equals("NYC")) NYC else RandomCubeGenerator(d, d0)
+    val cg: CubeGenerator = if (cgName.equals("NYC")) NYC() else RandomCubeGenerator(d, d0)
     val base = cg.loadBase()
     val expname2 = s"scoring-functions-performance-$cgName-$d-$d0-$b-$q-${runs}_$mode"
     val queries = Array.ofDim[IndexedSeq[Int]](runs)

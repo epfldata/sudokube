@@ -174,11 +174,11 @@ class CBackendSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
-    val be = Vector(CBackend.default, ScalaBackend)
-    val full_cube = be.map(_.mkAll(n_bits, R))
+    val bes = Vector(CBackend.default, ScalaBackend)
+    val full_cube = bes.map(be => be -> be.mkAll(n_bits, R))
     val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
-    val dcs = full_cube.map { fc =>
-      val dc = new DataCube()
+    val dcs = full_cube.map { case(be, fc) =>
+      val dc = new DataCube()(be)
       dc.build(fc, m)
       dc
     }

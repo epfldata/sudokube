@@ -1,5 +1,6 @@
 package experiments
 
+import backend.{Backend, Payload}
 import combinatorics.Combinatorics
 import core.{DataCube, PartialDataCube}
 import core.solver.SolverTools
@@ -246,7 +247,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param qname Name of the query (not used).
    * @param sliceValues Values for the slicing operation (not used).
    */
-  def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: IndexedSeq[Int]): Unit = {
+  def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: IndexedSeq[Int])(implicit backend: Backend[Payload]): Unit = {
     val runs = qus.length
     (2 to d0).foreach(k => {
       println(s"Run for Dimensionality $k")

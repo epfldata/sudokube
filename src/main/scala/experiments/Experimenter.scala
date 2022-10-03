@@ -17,9 +17,9 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 object Experimenter {
-
+  implicit val backend = CBackend.default
   def schemas(): Unit = {
-    List(NYC, SSB(100)).foreach { cg =>
+    List(NYC(), SSB(100)).foreach { cg =>
       val sch = cg.schemaInstance
       println(cg.inputname)
       sch.columnVector.map(c => c.name + ", " + c.encoder.bits.size).foreach(println)
@@ -29,7 +29,7 @@ object Experimenter {
 
   def cuboid_distribution(isSMS: Boolean) = {
     val ms = if (isSMS) "sms3" else "rms3"
-    val cg = NYC
+    val cg = NYC()
     val maxD = 30
     val nycmaxD = 30
     val cubes = List(
@@ -47,6 +47,7 @@ object Experimenter {
       println(s"Getting cuboid distribution for $n")
       val logN = names(2).toInt
       val minD = names(3).toInt
+
       val dc = PartialDataCube.load(n, cg.baseName)
       val projMap = dc.index.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
@@ -92,7 +93,6 @@ object Experimenter {
       val minD = names(1).toInt
       val rmsname = cgname + "_rms3_" + cubename
       val smsname = cgname + "_sms3_" + cubename
-
       println(s"Getting storage overhead for $rmsname")
       val dcrms = PartialDataCube.load(rmsname, cgname + "_base")
       val basesize = dcrms.cuboids.last.numBytes
@@ -125,7 +125,6 @@ object Experimenter {
 
   def lpp_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
     val cg = SSB(100)
-
     val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
@@ -221,7 +220,7 @@ object Experimenter {
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName, be)
+    val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
@@ -364,7 +363,7 @@ object Experimenter {
   }
 
   def moment_mat_params(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
-    val cg = NYC
+    val cg = NYC()
     val params = List(
       (13, 10),
       (15, 6), (15, 10), (15, 14),
@@ -418,7 +417,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
@@ -443,7 +442,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -469,7 +468,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -494,7 +493,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.default.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -639,7 +638,7 @@ object Experimenter {
   }
 
   def manualNYC(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg = NYC
+    val cg = NYC()
     val sch = cg.schema()
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
 

@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import breeze.io.CSVReader
 import frontend.schema.encoders.{DateCol, MemCol}
 import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
@@ -8,7 +9,7 @@ import util.BigBinary
 import java.io.FileReader
 import java.util.Date
 
-object Brazil extends CubeGenerator("Brazil") {
+case class Brazil()(implicit backend: CBackend) extends CubeGenerator("Brazil") {
   lazy val schemaAndData = generate()
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val data = schemaAndData._2

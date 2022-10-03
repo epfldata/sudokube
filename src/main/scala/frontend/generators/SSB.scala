@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import breeze.io.CSVReader
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
@@ -9,7 +10,7 @@ import java.io.FileReader
 import java.util.Date
 import scala.concurrent.ExecutionContext
 
-case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
+case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
   override def schema(): Schema2 = {
@@ -175,6 +176,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
 object SSBGen {
   def main(args: Array[String])  {
+    implicit val backend = CBackend.default
     val cg = SSB(100)
 
     val resetSeed = true //for reproducing the same set of materialization decisions

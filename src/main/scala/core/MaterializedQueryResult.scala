@@ -52,6 +52,7 @@ class MaterializedQueryResult(cg: CubeGenerator) {
 
 object MaterializedQueryResult {
   def main(args: Array[String]): Unit = {
+    implicit val backend = CBackend.default
     val nq = 100
     val qss = List(6, 9, 12, 15, 18, 21, 24)
 
@@ -59,12 +60,12 @@ object MaterializedQueryResult {
     qss.foreach { qs =>
       SSBQueries.generateAndSaveQueries(nq, qs)
     }
-    CBackend.default.reset
+    backend.reset
 
-    val nycQueries = new MaterializedQueryResult(NYC)
+    val nycQueries = new MaterializedQueryResult(new NYC)
     qss.foreach { qs =>
       nycQueries.generateAndSaveQueries(nq, qs)
     }
-    CBackend.default.reset
+    backend.reset
   }
 }

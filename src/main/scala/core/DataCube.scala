@@ -30,7 +30,7 @@ import scala.reflect.ClassTag
   * to the data held in the backend.
   */
 @SerialVersionUID(2L)
-class DataCube(var cubeName: String = "") extends Serializable {
+class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
 
   /* protected */
   var cuboids = Array[Cuboid]()
@@ -80,16 +80,16 @@ class DataCube(var cubeName: String = "") extends Serializable {
     * @param multicuboidLayout List of layout information, one per file. For each  file, we have
     *                          List[CuboidId], List[isSparse], List[NBits], List[NRows]
     */
-  def load(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
+  def load(multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
 
     val futures = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
       Future {
-        val filename = parentDir + s"/multicube_$mcid" + be.cuboidFileExtension
+        val filename = parentDir + s"/multicube_$mcid" + backend.cuboidFileExtension
         //WARNING Converting size of cuboid from BigInt to Int
-        val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
+        val cmap = backend.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
         cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
       }
     }
@@ -111,7 +111,6 @@ class DataCube(var cubeName: String = "") extends Serializable {
   def save() {
     val filename = cubeName
     assert(!filename.isEmpty)
-    val be = cuboids(0).backend
     val file = new File("cubedata/" + filename + "/" + filename + ".mcl")
     if (!file.exists())
       file.getParentFile.mkdirs()
@@ -130,7 +129,7 @@ class DataCube(var cubeName: String = "") extends Serializable {
     def extractCuboidData(mc: MultiCuboid) = {
       mc.foldLeft((List[Int](), List[Boolean](), List[Int](), List[BigInt]())) {
         case ((idList, sparseList, nbitsList, sizeList), (id, cub)) =>
-          (id :: idList, cub.isInstanceOf[be.SparseCuboid] :: sparseList, cub.n_bits :: nbitsList, cub.size :: sizeList)
+          (id :: idList, cub.isInstanceOf[backend.SparseCuboid] :: sparseList, cub.n_bits :: nbitsList, cub.size :: sizeList)
       }
     }
 
@@ -144,9 +143,9 @@ class DataCube(var cubeName: String = "") extends Serializable {
     println(s"Writing cuboids to disk")
     val threadTasks = multiCuboids.zipWithIndex.map { case (mc, mcid) =>
       Future {
-        val filename = file.getParent + s"/multicube_$mcid" + be.cuboidFileExtension
+        val filename = file.getParent + s"/multicube_$mcid" + backend.cuboidFileExtension
         //layout data is written in reverse order, so we reverse it here too
-        be.writeMultiCuboid(filename, mc.values.toArray.reverse)
+        backend.writeMultiCuboid(filename, mc.values.toArray.reverse)
       }
     }
     Await.result(Future.sequence(threadTasks), Duration.Inf)
@@ -342,20 +341,20 @@ class DataCube(var cubeName: String = "") extends Serializable {
     @param cubeName the name for this data cube
   * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
   */
-class PartialDataCube(cn: String, basename: String) extends DataCube(cn) {
+class PartialDataCube(cn: String, basename: String)(implicit val backend: Backend[Payload]) extends DataCube(cn) {
   lazy val base = DataCube.load(basename)
 
    def buildPartial(m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)
 
-  override def load(be: Backend[Payload], multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
+  override def load(multicuboidLayout: List[(List[Int], List[Boolean], List[Int], List[BigInt])], parentDir: String): Unit = {
     cuboids = new Array[Cuboid](index.length)
     implicit val ec = ExecutionContext.global
     //println(s"Reading cuboids from disk")
     val tasks = multicuboidLayout.zipWithIndex.map { case ((idList, sparseList, nbitsList, sizeList), mcid) =>
       Future {
-        val filename = parentDir + s"/multicube_$mcid" + be.cuboidFileExtension
+        val filename = parentDir + s"/multicube_$mcid" + backend.cuboidFileExtension
         //WARNING Converting size of cuboid from BigInt to Int
-        val cmap = be.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
+        val cmap = backend.readMultiCuboid(filename, idList.toArray, sparseList.toArray, nbitsList.toArray, sizeList.map(_.toInt).toArray)
         cmap.foreach { case (cid, cub) => cuboids(cid) = cub }
       }
     }
@@ -415,32 +414,32 @@ object DataCube {
      @param cubeName is the name of the metadata file.
     */
 
-  def load(cubeName: String, be: Backend[Payload] = CBackend.default): DataCube = {
+  def load(cubeName: String)(implicit backend: Backend[Payload]): DataCube = {
     val file = new File("cubedata/" + cubeName + "/" + cubeName + ".mcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new DataCube(cubeName)
+    val dc = new DataCube(cubeName)(backend)
     dc.index = CuboidIndexFactory.loadFromFile(cubeName)
-    dc.load(be, multiCuboidLayoutData, file.getParent)
+    dc.load(multiCuboidLayoutData, file.getParent)
 
     dc
   }
 }
 
 object PartialDataCube {
-  def load(cubeName: String, basename: String, be: Backend[Payload] = CBackend.default) = {
+  def load(cubeName: String, basename: String)(implicit backend : Backend[Payload]) = {
     val file = new File("cubedata/" + cubeName + "/" + cubeName + ".pmcl")
     val ois = new ObjectInputStream(new FileInputStream(file))
     //println("Loading MultiCuboidLayout...")
     val multiCuboidLayoutData = ois.readObject.asInstanceOf[List[(List[Int], List[Boolean], List[Int], List[BigInt])]]
     ois.close
     //println("MultiCuboidLayout loaded")
-    val dc = new PartialDataCube(cubeName, basename)
+    val dc = new PartialDataCube(cubeName, basename)(backend)
     dc.index = CuboidIndexFactory.loadFromFile(cubeName)
-    dc.load(be, multiCuboidLayoutData, file.getParent)
+    dc.load(multiCuboidLayoutData, file.getParent)
     dc
   }
 }

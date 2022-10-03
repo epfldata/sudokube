@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import breeze.io.CSVReader
 import core.DataCube
 import frontend.schema.StructuredDynamicSchema
@@ -10,7 +11,7 @@ import java.time.temporal.ChronoField._
 import scala.util.Random
 
 object Migros {
-
+  implicit val backend = CBackend.default
   def readCSV(name: String, cols: Vector[String]) = {
     val folder = "tabledata/migros"
     val csv = CSVReader.read(new FileReader(s"$folder/${name}.csv"))

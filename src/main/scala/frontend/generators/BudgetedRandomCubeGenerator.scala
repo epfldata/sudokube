@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import core.PartialDataCube
 import core.materialization.BudgetedSingleSizeMaterializationStrategy
 
@@ -16,6 +17,7 @@ import core.materialization.BudgetedSingleSizeMaterializationStrategy
  */
 object BudgetedRandomCubeGenerator {
   def main(args: Array[String]): Unit = {
+    implicit val backend = CBackend.default
     val nbits = 100
     val d0 = 16
     val b = 0.85

@@ -38,7 +38,8 @@ object StreamProcessingDemo {
     //od.l_run(q, 2)*/
     val sch = new schema.IsNullSchema
     val R = sch.read("random.json")
-    val basecuboid = CBackend.default.mk(sch.n_bits, R.toIterator)
+    implicit val backend = CBackend.default
+    val basecuboid = backend.mk(sch.n_bits, R.toIterator)
 
     val matstrat = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4)
     val dc = new DataCube()

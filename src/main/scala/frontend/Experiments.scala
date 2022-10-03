@@ -44,7 +44,7 @@ object Tools {
   class JailBrokenDataCube(
     m: MaterializationStrategy,
     fc: Cuboid
-  ) extends DataCube with Serializable {
+  ) extends DataCube()(CBackend.default) with Serializable {
     build(fc, m)
 
     /// here one can access the cuboids directly
@@ -56,7 +56,7 @@ object Tools {
            base: Double,
            n_rows: Long,
            sampling_f: Int => Int = Sampling.f1,
-           be: Backend[_] = CBackend.default,
+           be: Backend[Payload] = CBackend.default,
            vg: ValueGenerator = RandomValueGenerator(10)
           ) = {
     val sch = schema.StaticSchema.mk(n_bits)
@@ -65,7 +65,7 @@ object Tools {
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
     val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
-    val dc = new DataCube();
+    val dc = new DataCube()(be);
     Profiler("Projections"){dc.build(fc, m)}
     //    val dc = new JailBrokenDataCube(m, fc)
     //    assert(dc.getCuboids.last == fc)

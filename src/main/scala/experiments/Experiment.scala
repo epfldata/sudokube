@@ -1,5 +1,6 @@
 package experiments
 
+import backend.{Backend, Payload}
 import core.DataCube
 import frontend.experiments.Tools
 
@@ -26,7 +27,7 @@ abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: St
 
   def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: IndexedSeq[Int]): Unit
 
-  def warmup(nw: Int = 10) = {
+  def warmup(nw: Int = 10)(implicit backend: Backend[Payload]) = {
     val name = "Warmup"
     val dcwarm = DataCube.load(name)
     dcwarm.loadPrimaryMoments(name)

@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import core.DataCube
 import frontend.schema.encoders.StaticNatCol
 import frontend.schema.encoders.StaticNatCol.defaultToInt
@@ -8,7 +9,7 @@ import util.BigBinary
 
 import scala.util.Random
 
-case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double) extends CubeGenerator(s"microbench_${n_bits}_${total}_${stddev}_${prob}") {
+case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double)(implicit backend: CBackend) extends CubeGenerator(s"microbench_${n_bits}_${total}_${stddev}_${prob}") {
 
   //println("\n\n----------------------\n" + inputname)
   override def schema(): Schema2 = {

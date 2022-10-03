@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import core.PartialDataCube
 import core.materialization.SingleSizeMaterializationStrategy
 import frontend.Sampling
@@ -7,7 +8,7 @@ import frontend.schema.encoders.StaticNatCol
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
 
-case class RandomCubeGenerator(n_bits: Int, d0: Int) extends CubeGenerator(s"Random-$n_bits-$d0") {
+case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend) extends CubeGenerator(s"Random-$n_bits-$d0") {
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val numRows = 1 << d0
     val numPartsWith1000 = numRows / 1000
@@ -26,6 +27,7 @@ case class RandomCubeGenerator(n_bits: Int, d0: Int) extends CubeGenerator(s"Ran
 
 object RandomCubeGenerator {
   def main(args: Array[String]) = {
+    implicit val backend = CBackend.default
     val nbits = 100
     val cg = RandomCubeGenerator(nbits, 20)
     cg.saveBase()

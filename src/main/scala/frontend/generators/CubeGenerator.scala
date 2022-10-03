@@ -1,12 +1,12 @@
 package frontend.generators
-import backend.CBackend
+import backend.{Backend, CBackend}
 import core.materialization.{MaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import core.solver.SolverTools
 import core.{DataCube, PartialDataCube}
 import frontend.schema.Schema2
 import util.BigBinary
 
-abstract class CubeGenerator(val inputname: String) {
+abstract class CubeGenerator(val inputname: String)(implicit val backend: CBackend) {
   lazy val schemaInstance = schema()
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])]
 
@@ -18,7 +18,7 @@ abstract class CubeGenerator(val inputname: String) {
     val m = MaterializationStrategy.only_base_cuboid(schemaInstance.n_bits)
     val dc = new DataCube(baseName)
     //sch.save(inputname)
-    val baseCuboid = CBackend.default.mkParallel(schemaInstance.n_bits, r_its)
+    val baseCuboid = backend.mkParallel(schemaInstance.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.save()
     dc.primaryMoments = SolverTools.primaryMoments(dc)
