@@ -86,7 +86,7 @@ ColumnStore::readMultiCuboid(const char *filename, int n_bits_array[], int size_
                              unsigned int id_array[], unsigned int numCuboids) {
     //printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "rb");
-    assert(fp != NULL);
+    if(fp == NULL) throw std::runtime_error(std::string("Error while opening file") + filename);
     std::vector<Cuboid> allCuboids;
     for (unsigned int i = 0; i < numCuboids; i++) {
         bool sparse = isSparse_array[i];
@@ -269,19 +269,13 @@ signed int ColumnStore::srehash(unsigned int s_id, const BitPos &bitpos, short m
     size_t tempSize = sourceCuboid.numRows * sizeof(RowStoreTempRec);
     size_t denseSize = destinationDenseCuboid.numRows * sizeof(Value); //WARNING : denseSize may overflow
 
-    bool debug = false;
 
     //If projection is not fixed to dense cuboid, we use sorting based rehashing for large sparse cuboids. We don't want to allocate gigantic dense cuboids
     if (mode > 1 && (tempSize < denseSize || destinationDenseCuboid.numCols >= 40)) {
-        if (debug) printf("Sorting based srehash \n");
-        return srehash_sorting(sourceCuboid, bitpos);
+      return srehash_sorting(sourceCuboid, bitpos);
     }
 
 
-    if (debug) {
-        printf("Dense based srehash bitpos = ");
-        for (auto c: bitpos) { printf(" %d ", c); }
-    }
     if (bitpos.size() > 32) {
         throw std::runtime_error("Projection to dense supported for only upto 32 bits");
     }
@@ -296,15 +290,12 @@ signed int ColumnStore::srehash(unsigned int s_id, const BitPos &bitpos, short m
         unsigned int c0 = 0;
         for (auto c: bitpos) { //assuming bitpos.size < 64
             memcpy(array + (63 - c0), sourceCuboid.getKey(c, rw), sizeof(uint64_t));
-            if (debug)
-                printf("s_id = %d s2d OrigColkey[%u][%zu] =  %llx \n", s_id, c, rw, *sourceCuboid.getKey(c, rw));
             c0++;
         }
         transpose64(array);
         //accessing rw*64 to (rw+1)*64 bits. Safe to access, but contains garbage
         for (size_t r0 = 0; r0 < 64; r0++) {
             uint64_t result = array[63 - r0]; //safe because bitpos size < 32 and result will fit in 32 bits
-            if (debug) printf("s_id = %d s2d ProjectedRowKey[%zu][%zu] =  %llx \n", s_id, rw, r0, result);
             Value value = *sourceCuboid.getVal((rw << 6) + r0);
             if (values[result] == 0 && value > 0) uniqueCount++;
             values[result] += value;
@@ -329,16 +320,12 @@ signed int ColumnStore::srehash(unsigned int s_id, const BitPos &bitpos, short m
             if (values[i] != 0) {
                 memcpy(destinationSparseCuboid.getVal(r), values + i, sizeof(Value));
                 array[63 - r0] = i;
-                if (debug) printf("s_id = %d d2s ProjRowKey[%zu] = %zx \n", s_id, r, i);
                 r0++;
                 if (r0 == 64 || r == destinationSparseCuboid.numRows - 1) {
                     transpose64(array);
                     r0 = 0;
                     for (unsigned int c0 = 0; c0 < destinationSparseCuboid.numCols; c0++) { // numCols < 64
                         memcpy(destinationSparseCuboid.getKey(c0, r >> 6), array + (63 - c0), sizeof(uint64_t));
-                        if (debug)
-                            printf("s_id = %d d2s ProjColKey[%u][%zu] = %llx \n", s_id, c0, r >> 6,
-                                   *destinationSparseCuboid.getKey(c0, r >> 6));
                     }
                 }
                 r++;
