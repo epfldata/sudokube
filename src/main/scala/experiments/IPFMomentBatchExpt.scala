@@ -4,7 +4,7 @@ import core.DataCube
 import core.solver.SolverTools
 import core.solver.SolverTools.{entropy, error}
 import core.solver.iterativeProportionalFittingSolver._
-import core.solver.moment.{CoMoment5Solver, Moment1Transformer}
+import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer, Moment1TransformerDouble}
 import util.{BitUtils, Profiler}
 import BitUtils.sizeOfSet
 
@@ -67,7 +67,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
    * @param q Sequence of queried dimensions.
    * @return Tuple consisting of the result and the maximum dimension fetched.
    */
-  def moment_solve(dc: DataCube, q: IndexedSeq[Int]): (CoMoment5Solver[Double], Int) = {
+  def moment_solve(dc: DataCube, q: IndexedSeq[Int]) = {
     val (l, pm) = Profiler("Moment Prepare") {
       dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
@@ -80,8 +80,8 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
 
     val result = Profiler("Moment Solve") {
       val s = Profiler("Moment Constructor") {
-        new CoMoment5Solver(q.length, true, Moment1Transformer[Double](), pm)
-      }
+        new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+       }
       Profiler("Moment Add") {
         fetched.foreach { case (bits, array) => s.add(bits, array) }
       }

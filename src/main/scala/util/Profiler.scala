@@ -7,12 +7,14 @@ object Profiler {
   def noprofile[T](name: String)(func: => T): T = func
   def profile[T](name: String)(func: => T): T = {
     val startTime = System.nanoTime()
-    startTimers += (name -> startTime)
+    //startTimers += (name -> startTime)
     val res = func
     val endTime = System.nanoTime()
-    val curDur = durations(name)
-    val newDur = (curDur._1 + 1, curDur._2 + (endTime - startTime))
-    durations += name -> newDur
+    this.synchronized {
+      val curDur = durations(name)
+      val newDur = (curDur._1 + 1, curDur._2 + (endTime - startTime))
+      durations += name -> newDur
+    }
     res
   }
   /*
@@ -48,7 +50,7 @@ object Profiler {
       println
       val L = durations.keys.map(_.length).max + 2
       val sorted_durations = if(byDuration) durations.toList.sortBy{_._2._2} else durations.toList.sortBy{_._1}
-        sorted_durations.map{ case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c)} ns" }.foreach(println)
+        sorted_durations.map{ case (n, (c, s)) => s"${padString(n, L)} :: Count = $c  Total = ${s / (1000 * 1000)} ms  Avg = ${s / (c * 1000)} us" }.foreach(println)
       println
     }
   }

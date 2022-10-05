@@ -2,21 +2,19 @@ package core.solver.moment
 
 import util.{BitUtils, Profiler}
 
-import scala.reflect.ClassTag
-
-class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver(qsize, batchmode, transformer, primaryMoments) {
+class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)]) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
+  type T = Double
   override val solverName: String = "Comoment5"
   var pmMap: Map[Int, T] = null
 
   override def init(): Unit = {}
 
   init2()
-  def init2(): Unit = {
+   def init2(): Unit = {
     moments = Array.fill(N)(num.zero) //using moments array for comoments
     val total = primaryMoments.head._2
     moments(0) = total
     assert(primaryMoments.head._1 == 0)
-    assert(transformer.isInstanceOf[Moment1Transformer[_]])
     pmMap = primaryMoments.map { case (i, m) => i -> num.div(m, total) }.toMap
 
     knownSet += 0
@@ -27,7 +25,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
   override def fillMissing(): Unit = if (batchmode) fillMissingBatch() else fillMissingOnline()
 
 
-  override def add(eqnColSet: Int, values: Array[T]): Unit = {
+  override def add(eqnColSet: Int, values: Array[T]) : Unit =  {
     val colsLength = BitUtils.sizeOfSet(eqnColSet)
     val n0 = 1 << colsLength
 
@@ -40,7 +38,7 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
     }
     else {
       //need more than log(n0) moments -- do moment transform and filter
-      val projectedMomentProduct = (0 until colsLength).map { case b =>
+      val projectedMomentProduct =  (0 until colsLength).map{ case b =>
         val i0 = 1 << b
         val i = BitUtils.unprojectIntWithInt(i0, eqnColSet)
         i0 -> pmMap(i)
@@ -60,18 +58,12 @@ class CoMoment5Solver[T: ClassTag : Fractional](qsize: Int, batchmode: Boolean, 
         moments(i) = mu
       }
       var h = 1
-      var i = 0
-      var j = 0
       while (h < N) {
-        i = 0
         val ph = pmMap(h)
-        while (i < N) {
-          j = i
-          while (j < i + h) {
+        (0 until N by h * 2).foreach { i =>
+          (i until i + h).foreach { j =>
             moments(j + h) = num.plus(moments(j + h), num.times(ph, moments(j)))
-            j += 1
           }
-          i += (h << 1)
         }
         h <<= 1
       }
