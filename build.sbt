@@ -32,14 +32,17 @@ libraryDependencies ++= Seq(
 
 lazy val originalCBackend = (project in file("src") / "native" / "Original")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .settings(nativeCompile / target :=  target.value)
   .enablePlugins(JniNative)
 
 lazy val rowStoreCBackend = (project in file("src") / "native" / "RowStore")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .settings(nativeCompile / target :=  target.value)
   .enablePlugins(JniNative)
 
 lazy val colStoreCBackend = (project in file("src") / "native" / "ColumnStore")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .settings(nativeCompile / target := target.value)
   .enablePlugins(JniNative)
 
 enablePlugins(JavaAppPackaging)

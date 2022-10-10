@@ -4,7 +4,7 @@ import com.github.sbt.jni.nativeLoader
 
 import java.nio.ByteBuffer
 
-@nativeLoader("ColumnStoreCBackend0")
+//@nativeLoader("ColumnStoreCBackend0")
 class ColumnStoreCBackend extends CBackend(".csukcs") {
   @native override protected def reset0(): Unit
   @native override protected def cuboidGC0(id: Int): Unit

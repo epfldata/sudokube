@@ -220,6 +220,9 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
 
 
 object CBackend {
+  System.loadLibrary("OrigCBackend0")
+  System.loadLibrary("RowStoreCBackend0")
+  System.loadLibrary("ColumnStoreCBackend0")
   val original = new OriginalCBackend
   val rowstore = new RowStoreCBackend
   val colstore = new ColumnStoreCBackend

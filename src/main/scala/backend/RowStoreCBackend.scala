@@ -2,7 +2,7 @@ package backend
 import com.github.sbt.jni.nativeLoader
 
 import java.nio.ByteBuffer
-@nativeLoader("RowStoreCBackend0") //name + version
+//@nativeLoader("RowStoreCBackend0") //name + version
 class RowStoreCBackend extends CBackend(".csuk") {
   @native override protected def reset0(): Unit
   @native override protected def cuboidGC0(id: Int): Unit
