@@ -44,22 +44,23 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) ex
   /**
    * This is to roughly visualize the relationship between runtime and error rate for the vanilla IPF.
    */
-  val ipfTimeErrorFileout: PrintStream = {
-    val isFinal = true
-    val (timestamp, folder) = {
-      if (isFinal) ("final", ".")
-      else if (shouldRecord) {
-        val datetime = LocalDateTime.now
-        (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
-      } else ("dummy", "dummy")
-    }
-    val file = new File(s"expdata/$folder/${ename2}_ipf-moment-time-error_$timestamp.csv")
-    if (!file.exists())
-      file.getParentFile.mkdirs()
-    new PrintStream(file)
-  }
-
-  ipfTimeErrorFileout.println("CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr")
+  val ipfTimeErrorFileout: PrintStream = null
+  //val ipfTimeErrorFileout: PrintStream = {
+  //  val isFinal = true
+  //  val (timestamp, folder) = {
+  //    if (isFinal) ("final", ".")
+  //    else if (shouldRecord) {
+  //      val datetime = LocalDateTime.now
+  //      (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
+  //    } else ("dummy", "dummy")
+  //  }
+  //  val file = new File(s"expdata/$folder/${ename2}_ipf-moment-time-error_$timestamp.csv")
+  //  if (!file.exists())
+  //    file.getParentFile.mkdirs()
+  //  new PrintStream(file)
+  //}
+  //
+  //ipfTimeErrorFileout.println("CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr")
 
   /**
    * Same as the experimentation for moment solver.

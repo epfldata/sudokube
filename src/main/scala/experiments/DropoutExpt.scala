@@ -81,6 +81,7 @@ class DropoutExpt(ename2: String = "", policy: String)(implicit shouldRecord: Bo
     val solver = Profiler("Effective IPF Constructor + Add + Solve") {
       val solver = Profiler("Effective IPF Constructor") { new EffectiveIPFSolver(q.length) }
       Profiler("Effective IPF Add One Dimensional Marginals and Grand Total") {
+        //TODO: Use the 1D marginals pre-computed and returned by prepare
         solver.oneDimMarginals = oneDimMarginals
         solver.normalizationFactor = grandTotal
       }

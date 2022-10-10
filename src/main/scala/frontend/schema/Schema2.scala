@@ -223,7 +223,7 @@ abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
 
   def queriesUpto(qSize: Int) = root.queriesUpto(qSize).groupBy(_.length)
 
-  def initBeforeEncode() = {
+  def initBeforeEncode() {
     //println("Starting to load dictionary values")
     implicit val ec = ExecutionContext.global
     val futs = columnVector.map {
@@ -233,7 +233,7 @@ abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
     //println("Dictionary loading complete")
   }
 
-  def initBeforeDecode() = {
+  def initBeforeDecode() {
     //println("Starting to load dictionary values")
     implicit val ec = ExecutionContext.global
     val futs = columnVector.map {

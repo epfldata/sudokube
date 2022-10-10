@@ -160,6 +160,16 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   override def decode_locally(i: Int): Date = ???
   override def maxIdx: Int = ???
 
+  override def decode(b: BigBinary): Date = {
+    val yD = yearCol.decode(b)
+    val m = monthCol.decode(b)
+    val d = dayCol.decode(b)
+    val hrs = hourCol.decode(b)
+    val min = minuteCol.decode(b)
+    val sec = secondsCol.decode(b)
+    new Date(yD , m, d, hrs, min, sec)
+  }
+
   def queries(): Set[IndexedSeq[Int]] = {
     val ybits = yearCol.bits
     val ymbits = monthCol.bits ++ ybits

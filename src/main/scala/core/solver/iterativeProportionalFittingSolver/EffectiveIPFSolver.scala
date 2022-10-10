@@ -41,6 +41,6 @@ class EffectiveIPFSolver(override val querySize: Int, override val solverName: S
       junctionGraph.fixOneDimensionalMarginals(oneDimMarginals)
     }
 
-    junctionGraph.printAllCliquesAndSeparators()
+    //junctionGraph.printAllCliquesAndSeparators()
   }
 }

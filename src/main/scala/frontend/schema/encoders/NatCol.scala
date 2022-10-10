@@ -29,8 +29,8 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
 }
 
 //Encodes difference from min_value-1. Error or empty values are encoded as 0
-class StaticNatCol(min_value: Int, max_value: Int, map_f : Any => Option[Int]) extends StaticColEncoder[Int] {
-  override def encode_locally(v: Int): Int = (v-min_value+1)
+class StaticNatCol(min_value: Int, max_value: Int, map_f: Any => Option[Int]) extends StaticColEncoder[Int] {
+  override def encode_locally(v: Int): Int = (v - min_value + 1)
   override def decode_locally(i: Int): Int = i + min_value - 1
   override def encode_any(v: Any): BigBinary = map_f(v).map(x => encode(x)).getOrElse(BigBinary(0))
   override def maxIdx: Int = if(max_value >= min_value) max_value - min_value + 1 else 0
@@ -48,7 +48,7 @@ object StaticNatCol {
       case s: String => Try{s.toDouble}.toOption
       case d: Double => Some(d)
     }
-    dval.map(d => math.round(d * mult))
+    dval.map(d => math.round(d * mult).toInt)
   }
   def fromFile(filename: String, map_f: Any => Option[Int] = defaultToInt) = {
     val lines = Source.fromFile(filename).getLines().map(map_f).flatten.toSeq

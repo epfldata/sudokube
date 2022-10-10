@@ -88,6 +88,7 @@ class JunctionGraph {
     val variables = BitUtils.SetToInt((node.adjacencyList.keySet.map(_.variable) + node.variable).toSeq)
     val clusters =
       node.adjacencyList.map { case (_, edge) => // all clusters in all edges
+        //SBJ: This filter probably also removes clusters already assigned to previous cliques
         edge.clusters.filter(cluster => IPFUtils.isVariablesContained(cluster.variables, variables)) // fully contained in clique
       }.foldLeft(node.clusters.clone())(_ ++ _)
     // If there is a cluster with the node only (1 single marginal variable), add here

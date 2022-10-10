@@ -16,7 +16,7 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
 
   val graphicalModel = new IPFGraphicalModel(querySize)
   val junctionGraph = new JunctionGraph()
-
+  var numIterations: Int = 0
   /**
    * Create graphical model for elimination.
    */
@@ -31,20 +31,20 @@ abstract class GraphicalIPFSolver(override val querySize: Int, override val solv
    */
   def solveWithJunctionGraph(): Array[Double] = {
     val totalNumUpdates: Long = junctionGraph.cliques.foldLeft(0L)((acc, clique) => acc + 1L * clique.N * clique.clusters.size)
-    println(s"\t\t\t$solverName number of entries (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
+    //println(s"\t\t\t$solverName number of entries (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
 
     var totalDelta: Double = 0
-    var numIterations: Int = 0
+    numIterations = 0
     Profiler(s"$solverName Iterations") {
       do {
         numIterations += 1
-        println(s"\t\t\t$solverName Iteration $numIterations")
+        //println(s"\t\t\t$solverName Iteration $numIterations")
         totalDelta = iterativeUpdate()
       } while (totalDelta > Math.max(convergenceThreshold * totalNumUpdates, 1e-5) /* in case of 0 clusters */)
         // There may be alternative ways to define the convergence criteria,
         // e.g. compare directly with previous distribution, compare to given marginal distributions, max of all deltas, etc.
     }
-    println(s"\t\t\t$solverName number of iterations $numIterations")
+    //println(s"\t\t\t$solverName number of iterations $numIterations")
 
     Profiler(s"$solverName Solution Derivation") {
       getTotalDistribution

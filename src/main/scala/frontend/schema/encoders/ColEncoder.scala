@@ -26,17 +26,20 @@ abstract class ColEncoder[T] extends Serializable {
   def prefixUpto(size: Int) : Set[IndexedSeq[Int]] = queriesUpto(size) //override for non-prefix columns such as MemCol
   def samplePrefix(size: Int): IndexedSeq[Int] = bits.takeRight(size) //override for nested columns such as Date
   def encode(v: T): BigBinary = { //overriden by nested encoders
-    val v0 = encode_locally(v)
-    if (isRange) {
-      val v1 = BigInt(v0)
-      val v2 = if (v1 > 0) {
-        v1 << bitsMin
-      } else BigInt(0)
-      BigBinary(v2)
-    }
+    if (bits.isEmpty) BigBinary(0)
     else {
-      val v2 = BigBinary(v0).pup(bits)
-      v2
+      val v0 = encode_locally(v)
+      if (isRange) {
+        val v1 = BigInt(v0)
+        val v2 = if (v1 > 0) {
+          v1 << bitsMin
+        } else BigInt(0)
+        BigBinary(v2)
+      }
+      else {
+        val v2 = BigBinary(v0).pup(bits)
+        v2
+      }
     }
   }
 

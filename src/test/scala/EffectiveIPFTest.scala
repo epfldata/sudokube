@@ -234,5 +234,18 @@ class EffectiveIPFTest {
 
   }
 
+  @Test
+  def testDisconnectedCliques() = {
+    val solver = new EffectiveIPFSolver(6)
+    solver.add(Seq(0, 1), Array(0.25, 0.25, 0.25, 0.25))
+    solver.add(Seq(1, 2), Array(0.25, 0.25, 0.25, 0.25))
+    solver.add(Seq(0, 2), Array(0.25, 0.25, 0.25, 0.25))
+    solver.add(Seq(3, 4), Array(0.25, 0.25, 0.25, 0.25))
+    solver.add(Seq(4, 5), Array(0.25, 0.25, 0.25, 0.25))
+    solver.add(Seq(3, 5), Array(0.25, 0.25, 0.25, 0.25))
+    solver.solve()
+    assert(true)
+  }
+
   private def assertApprox: (Double, Double) => Unit = (a, b) => assert((a - b).abs < eps)
 }

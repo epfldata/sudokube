@@ -136,7 +136,8 @@ case class BigBinary(val toBigInt: BigInt) {
    * }}}
    */
   def unpup(bit_indexes: Seq[Int]): BigBinary = {
-    val bi = if (bit_indexes.isInstanceOf[Range]) {
+    val bi = if(bit_indexes.isEmpty) BigInt(0)
+    else if (bit_indexes.isInstanceOf[Range]) {
       toBigInt >> bit_indexes.head & ((1 << bit_indexes.size) - 1)
     }
     else {
