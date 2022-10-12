@@ -29,7 +29,7 @@ abstract class CubeGenerator(val inputname: String)(implicit val backend: CBacke
     DataCube.load(baseName)
   }
   def saveRMS(logN: Int, minD: Int, maxD: Int) = {
-    val rms = new RandomizedMaterializationStrategy(schemaInstance.n_bits, logN, minD)
+    val rms = new RandomizedMaterializationStrategy(schemaInstance.n_bits, logN, minD, maxD)
     val rmsname = s"${inputname}_rms3_${logN}_${minD}_${maxD}"
     val dc2 = new PartialDataCube(rmsname, baseName)
     println(s"Building DataCube $rmsname")
@@ -44,7 +44,7 @@ abstract class CubeGenerator(val inputname: String)(implicit val backend: CBacke
   }
 
   def saveSMS(logN: Int, minD: Int, maxD: Int) = {
-    val sms = new SchemaBasedMaterializationStrategy(schemaInstance, logN, minD)
+    val sms = new SchemaBasedMaterializationStrategy(schemaInstance, logN, minD, maxD)
     val smsname = s"${inputname}_sms3_${logN}_${minD}_${maxD}"
     val dc3 = new PartialDataCube(smsname, baseName)
     println(s"Building DataCube $smsname")

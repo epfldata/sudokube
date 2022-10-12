@@ -4,7 +4,7 @@ import backend.CBackend
 import core.PartialDataCube
 import core.materialization.SingleSizeMaterializationStrategy
 import frontend.Sampling
-import frontend.schema.encoders.StaticNatCol
+import frontend.schema.encoders.BinaryCol
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
 
@@ -20,7 +20,7 @@ case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend)
   }
   override protected def schema(): Schema2 = {
     //StaticNatCol with both max and min 1 stores either 0 or 1
-    val dims = (0 until n_bits).map(i => LD2(s"d$i", new StaticNatCol(1, 1, StaticNatCol.defaultToInt))).toVector
+    val dims = (0 until n_bits).map(i => LD2(s"d$i", BinaryCol)).toVector
     new StaticSchema2(dims)
   }
 }

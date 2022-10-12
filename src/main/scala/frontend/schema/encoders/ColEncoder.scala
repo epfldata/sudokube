@@ -29,6 +29,8 @@ abstract class ColEncoder[T] extends Serializable {
     if (bits.isEmpty) BigBinary(0)
     else {
       val v0 = encode_locally(v)
+      if(v0 > maxIdx) throw new RuntimeException(s"Local encoding $v0 of value $v exceeds expected maximum $maxIdx for encoder of type ${this.getClass.getCanonicalName} and bits ${bits}")
+      if(v0 < 0) throw new RuntimeException(s"Local encoding $v0 of value $v exceeds is negative for encoder of type ${this.getClass.getCanonicalName} and bits ${bits}")
       if (isRange) {
         val v1 = BigInt(v0)
         val v2 = if (v1 > 0) {

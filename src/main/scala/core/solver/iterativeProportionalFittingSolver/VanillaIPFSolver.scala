@@ -23,23 +23,23 @@ class VanillaIPFSolver(override val querySize: Int,
                        val timeErrorFileOut: PrintStream = null, /* for experimentation only */
                        val cubeName: String = "", val query: String = "" /* for experimentation only */)
   extends IPFSolver(querySize, "Vanilla IPF") {
-
+  var numIterations = 0
   /**
    * Obtain the solution, un-normalized
    * @return solution as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double] = {
-    println(s"\t\t\tVanilla IPF number of entries (|C| 2^|Q|): ${clusters.size << querySize}")
+    //println(s"\t\t\tVanilla IPF number of entries (|C| 2^|Q|): ${clusters.size << querySize}")
 
     var totalDelta: Double = 0.0
-    var numIterations = 0
+    numIterations = 0
 
     if (printErrorForEachIteration || printErrorForEachUpdate)
       printExperimentTimeErrorDataToFile(0)
 
     do {
       numIterations += 1
-      println(s"\t\t\tIteration $numIterations")
+      //println(s"\t\t\tIteration $numIterations")
       totalDelta = iterativeUpdate(numIterations)
 
       if (printErrorForEachIteration) {
@@ -51,7 +51,7 @@ class VanillaIPFSolver(override val querySize: Int,
     } while (totalDelta >= convergenceThreshold * N * clusters.size)
       // There may be alternative ways to define the convergence criteria,
       // e.g. compare directly with previous distribution, compare to given marginal distributions, max of all deltas, etc.
-    println(s"\t\t\tVanilla IPF number of iterations: $numIterations")
+    //println(s"\t\t\tVanilla IPF number of iterations: $numIterations")
     getSolution
   }
 

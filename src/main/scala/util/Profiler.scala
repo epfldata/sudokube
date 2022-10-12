@@ -4,6 +4,7 @@ object Profiler {
   var startTimers = collection.mutable.Map[String, Long]()
   var durations = collection.mutable.Map[String, (Long, Long)]() withDefaultValue((0L, 0L))
   def apply[T](name: String)(func : => T): T = profile(name)(func)
+  def getDurationMicro(name: String) = Profiler.durations(name)._2 / 1000
   def noprofile[T](name: String)(func: => T): T = func
   def profile[T](name: String)(func: => T): T = {
     val startTime = System.nanoTime()

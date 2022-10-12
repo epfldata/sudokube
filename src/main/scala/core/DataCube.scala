@@ -46,6 +46,7 @@ class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
     * Builds this cube using the base_cuboid of another DataCube
     */
   def buildFrom(that: DataCube, m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default): Unit = {
+    assert(m.n_bits == that.index.n_bits)
     val full_cube = that.cuboids.last
     build(full_cube, m, indexFactory, cb)
   }

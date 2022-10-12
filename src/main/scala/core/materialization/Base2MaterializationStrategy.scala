@@ -15,7 +15,7 @@ import util.Util
  */
 abstract class Base2MaterializationStrategy(nb: Int, logN: Double, minD: Int, maxD: Int) extends MaterializationStrategy(nb) {
   //get number of materialized cuboids with d dims
-  def n_proj_d(d: Int) = if (d >= minD && d <= maxD) {
+  def n_proj_d(d: Int) = if (d >= minD && d <= maxD && d <= (logN - 1 + minD)) {
     val n = math.pow(2, logN - 1 + minD - d)
     val c = Combinatorics.comb(n_bits, d).toDouble
     if (n < c) n.toInt else c.toInt

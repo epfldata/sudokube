@@ -57,6 +57,19 @@ object SolverTools {
     num.toDouble(deviation)/sum
   }
 
+  def entropyBase2(result: Array[Double]) = {
+    import math.log
+    val sum = result.sum
+    val ps = result.map(x => x / sum).map(p => if (p == 0.0) 0.0 else p * log(p)/log(2))
+    -ps.sum
+  }
+  def normalizedEntropyBase2(result: Array[Double]) = {
+    import math.log
+    val sum = result.sum
+    val ps = result.map(x => x / sum).map(p => if (p == 0.0) 0.0 else p * log(p) / log(2))
+    val maxEntropy = log(result.size)/log(2)
+    -ps.sum/maxEntropy
+  }
   def entropy(result: Array[Double]) = {
     val sum = result.sum
     val ps = result.map(x => x/sum).map(p => if(p == 0.0) 0.0 else p * math.log(p))
