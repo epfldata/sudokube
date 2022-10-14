@@ -9,17 +9,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.util.Random
 
-abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: String = ".")(implicit shouldRecord: Boolean) {
+abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: String = ".")(implicit timestampedFolder: String = "latest") {
   val fileout = {
-    val isFinal = true
-    val (timestamp, folder) = {
-      if (isFinal) ("final", f"$dataSubfolder/.")
-      else if (shouldRecord) {
-        val datetime = LocalDateTime.now
-        (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), dataSubfolder + "/" + DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
-      } else ("dummy", "dummy")
-    }
-    val file = new File(s"expdata/$folder/${exptname2}_${exptname}_${timestamp}.csv")
+    val file = new File(s"expdata/$dataSubfolder/$timestampedFolder/${exptname2}_${exptname}.csv")
     if (!file.exists())
       file.getParentFile.mkdirs()
     new PrintStream(file)
@@ -38,5 +30,12 @@ abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: St
 
     qs.foreach(q => run(dcwarm, name, q, null, false, sliceValues = Vector()))
     println("Warmup Complete")
+  }
+}
+
+object Experiment {
+  def now() = {
+    val formatter = DateTimeFormatter.ofPattern("yyyyMM/dd/HHmmss")
+    formatter.format(LocalDateTime.now())
   }
 }

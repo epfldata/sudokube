@@ -8,7 +8,7 @@ import core.solver.moment.{CoMoment3Solver, CoMoment5SolverDouble, Moment1Transf
 import core.solver.simple.{AverageSolver, OneDProductSolver}
 import util.{BitUtils, Profiler}
 
-class IPFMomentBatchExpt2(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"ipf-moment-simple-batch", ename2, "ipf-expts") {
+class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"ipf-moment-simple-batch", ename2, "ipf-expts") {
   var queryCounter = 0
 
   val header = "CubeName,Query,QSize,  " +

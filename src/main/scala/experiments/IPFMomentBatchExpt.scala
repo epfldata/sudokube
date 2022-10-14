@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
  * Currently the loopy IPFs are not run (commented out) because the error tends to be very high and they may not converge.
  * @author Zhekai Jiang
  */
-class IPFMomentBatchExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment(s"ipf-moment-batch", ename2, "ipf-time-error") {
+class IPFMomentBatchExpt(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"ipf-moment-batch", ename2, "ipf-time-error") {
   fileout.println(
     "CubeName, MomentSolverName, Query, QSize, NCubesFetched, CubeSizes, DOF, TrueEntropy, " +
 
