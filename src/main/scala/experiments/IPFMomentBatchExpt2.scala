@@ -29,7 +29,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit shouldRecord: Boolean) e
     val cm3cutoff = 17
     val CM3Solver = Profiler("CM3 Solve") {
       val s = new CoMoment3Solver[Double](q.length, true, Moment1Transformer(), pm)
-      if(q.length < cm3cutoff) {
+      if (q.length < cm3cutoff) {
         fetched.foreach { case (bits, array) => s.add(bits, array) }
         s.fillMissing()
         s.solve()
@@ -89,15 +89,8 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit shouldRecord: Boolean) e
     val oneDSolveTime = Profiler.getDurationMicro("OneD Solve")
     val avgSolveTime = Profiler.getDurationMicro("Avg Solve")
 
-    val cm3Error = if(q.length < cm3cutoff) error(trueResult, CM3Solver.solution) else " "
-    val cm5NoFixError = error(trueResult, CM5SolverNoFix.solution)
-    val cm5WithFixError = error(trueResult, CM5SolverWithFix.solution)
-    val vIPFError = error(trueResult, vIPFSolver.solution)
-    val eIPFError = error(trueResult, eIPFSolver.solution)
-    val oneDError = error(trueResult, oneDSolver.solution)
-    val avgError = error(trueResult, avgSolver.solution)
 
-    val cm3Entropy = if(q.length < cm3cutoff) entropy(CM3Solver.solution) else " "
+    val cm3Entropy = if (q.length < cm3cutoff) entropy(CM3Solver.solution) else " "
     val cm5NoFixEntropy = entropy(CM5SolverNoFix.solution)
     val cm5WithFixEntropy = entropy(CM5SolverWithFix.solution)
     val vIPFEntropy = entropy(vIPFSolver.solution)
@@ -105,38 +98,28 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit shouldRecord: Boolean) e
     val oneDEntropy = entropy(oneDSolver.solution)
     val avgEntropy = entropy(avgSolver.solution)
 
+
     if (output) {
+
+      val cm3Error = if (q.length < cm3cutoff) error(trueResult, CM3Solver.solution) else " "
+      val cm5NoFixError = error(trueResult, CM5SolverNoFix.solution)
+      val cm5WithFixError = error(trueResult, CM5SolverWithFix.solution)
+      val vIPFError = error(trueResult, vIPFSolver.solution)
+      val eIPFError = error(trueResult, eIPFSolver.solution)
+      val oneDError = error(trueResult, oneDSolver.solution)
+      val avgError = error(trueResult, avgSolver.solution)
+
+
       val total = trueResult.sum
       val cliques = eIPFSolver.junctionGraph.cliques.toList
       val allmus = Moment1TransformerDouble().getCoMoments(trueResult, CM5SolverWithFix.pmMap)
       val dof = CM5SolverWithFix.dof
-      val unknownMus = allmus.indices.filter(i => !CM5SolverWithFix.knownSet.contains(i)).map(i => allmus(i)/total)
-      val muCounts = Array.fill(11)(0)
-      /* 0 : -1 <= mu < - 0.1
-         1 : -0.1 <= mu < -0.01
-         2 : -0.01 <= mu < -0.001
-         3 : -0.001 <= mu < -0.0001
-         4 : -0.0001 <= mu < 0
-         5 : mu = 0
-         6 : 0 < mu <= 0.0001
-         7 : 0.0001 < mu <= 0.001
-         8 : 0.001 < m  <= 0.01
-         9 : 0.01 < m <= 0.1
-         10: 0.1 < m <= 1
-       */
-      def pow(i: Int) = math.pow(10, i)
-      unknownMus.foreach{ mu =>
-        val idx = if(mu < -pow(-1)) 0
-        else if(mu < -pow(-2)) 1
-        else if(mu < -pow(-3)) 2
-        else if(mu < -pow(-4)) 3
-        else if(mu < 0) 4
-        else if(mu == 0) 5
-        else if(mu <= pow(-4)) 6
-        else if(mu <= pow(-3)) 7
-        else if(mu <= pow(-2)) 8
-        else if(mu <= pow(-1)) 9
-        else 10
+      val unknownMus = allmus.indices.filter(i => !CM5SolverWithFix.knownSet.contains(i)).map(i => math.abs(allmus(i) / total))
+      val countMax = 16
+      val muCounts = Array.fill(countMax)(0)
+      unknownMus.foreach { mu =>
+        val log = -math.floor(math.log10(mu))
+        val idx = if (log >= countMax ) countMax - 1 else log.toInt
         muCounts(idx) += 1
       }
       val resultRow = s"$dcname,${qu.mkString(":")},${q.length},  " +
@@ -145,7 +128,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit shouldRecord: Boolean) e
         s"$cm3Error,$cm5NoFixError,$cm5WithFixError,$vIPFError,$eIPFError,$oneDError,$avgError,  " +
         s"$cm3Entropy,$cm5NoFixEntropy,$cm5WithFixEntropy,$vIPFEntropy,$eIPFEntropy,$oneDEntropy,$avgEntropy,  " +
         s"${vIPFSolver.numIterations},${eIPFSolver.numIterations},  " +
-        s"${cliques.size},${cliques.map(_.numVariables).mkString(":")},${cliques.map(_.clusters.size).mkString(":")},    "+
+        s"${cliques.size},${cliques.map(_.numVariables).mkString(":")},${cliques.map(_.clusters.size).mkString(":")},    " +
         s"$dof,${muCounts.mkString(":")}"
       fileout.println(resultRow)
     }

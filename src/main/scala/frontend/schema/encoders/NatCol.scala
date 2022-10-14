@@ -43,7 +43,7 @@ class StaticNatCol(min_value: Int, max_value: Int, map_f: Any => Option[Int], nu
 object BinaryCol extends StaticNatCol(0, 1, defaultToInt, false)
 
 object StaticNatCol {
-  var nullOffset : Int = 0
+
   def defaultToInt(v: Any) = v match {
     case i: Int => Some(i)
     case s: String => Try(s.toInt).toOption

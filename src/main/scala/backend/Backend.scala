@@ -177,6 +177,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
    */
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
 
+  protected def sFetch64(n_bits: Int, data: SPARSE_T, wordID: Int): Vector[(BigBinary, Long)] = ???
   /**
    * Unload cuboid from memory.
    * Experimental feature used in CBackend
@@ -242,6 +243,8 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
 
     override def rehashWithSliceAndFetch(bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = sRehashSlice(data, bitpos, maskArray)
     def backend = be_this
+
+    def fetch64(wordId: Int): Vector[(BigBinary, Long)] = sFetch64(n_bits, data, wordId)
   }
 
   /**

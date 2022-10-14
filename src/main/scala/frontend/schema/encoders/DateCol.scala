@@ -88,14 +88,14 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
 }
 @SerialVersionUID(2557280452500488239L)
 class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  allocateMonth: Boolean = false, allocateDay: Boolean = false, allocateHr: Boolean = false, allocateMin: Boolean = false, allocateSec: Boolean = false) extends StaticColEncoder[Date] {
-  val yearCol = new StaticNatCol(minYear, maxYear, _.asInstanceOf[Option[Date]].map(_.getYear), true)
+  val yearCol = new StaticNatCol(minYear, maxYear, _.asInstanceOf[Option[Date]].map(_.getYear))
   val quarterCol = new StaticNatCol(0, 3, _.asInstanceOf[Option[Date]].map(_.getMonth/4), false) //we want exactly 2 bits for quarter
-  val monthCol = new StaticNatCol(0, 11, _.asInstanceOf[Option[Date]].map(_.getMonth), true)
-  val dayCol = new StaticNatCol(1, 31, _.asInstanceOf[Option[Date]].map(_.getDate), true)
+  val monthCol = new StaticNatCol(0, 11, _.asInstanceOf[Option[Date]].map(_.getMonth))
+  val dayCol = new StaticNatCol(1, 31, _.asInstanceOf[Option[Date]].map(_.getDate))
   //val dayOfWeekCol = new StaticNatCol(0, 6, _.asInstanceOf[Option[Date]].map(_.getDay))
-  val hourCol = new StaticNatCol(0, 23 ,_.asInstanceOf[Option[Date]].map(_.getHours), true)
-  val minuteCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getMinutes), true)
-  val secondsCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getSeconds), true)
+  val hourCol = new StaticNatCol(0, 23 ,_.asInstanceOf[Option[Date]].map(_.getHours))
+  val minuteCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getMinutes))
+  val secondsCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getSeconds))
 
 
   override def set_bits(offset: Int): Int = {
@@ -199,7 +199,7 @@ object StaticDateCol {
   def simpleDateFormat(f: String) = {
     val parser = new SimpleDateFormat(f)
     (v: Any) => v match {
-      case s: String => Try(parser.parse(s)).toOption
+      case s: String => parser.synchronized{Try(parser.parse(s))}.toOption
     }
   }
 

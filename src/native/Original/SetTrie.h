@@ -168,15 +168,17 @@ struct SetTrie {
     void saveToFile(const char *filename) {
         FILE *fp = fopen(filename, "wb");
         fprintf(fp, "%lu", count);
-        fwrite(nodes, sizeof(Node), count, fp);
+        int wroteElems = fwrite(nodes, sizeof(Node), count, fp);
+        assert(wroteElems == count);
         fclose(fp);
     }
 
     void loadFromFile(const char *filename) {
         FILE *fp = fopen(filename, "rb");
-        fscanf(fp, "%lu", &count);
+        int b = fscanf(fp, "%lu", &count);
         init(count);
-        fread(nodes, sizeof(Node), count, fp);
+        int readElems = fread(nodes, sizeof(Node), count, fp);
+        assert(readElems == count);
         fclose(fp);
     }
 };

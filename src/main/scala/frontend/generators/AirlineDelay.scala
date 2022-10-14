@@ -167,23 +167,42 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
 
 
 object AirlineDelay {
-  implicit val backend = CBackend.default
+  implicit val backend = CBackend.colstore
   def main(args: Array[String]): Unit = {
     println("Loading Schema")
     val cg = new AirlineDelay()
 
-    val resetSeed = true
+
+    val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
-    val maxD = 30
+
+    val arg = args.lift(0).getOrElse("all")
     val params = List(
-      (17, 10), (13, 10),
-      (15, 6), (15, 10)// (15, 14)
+      (15, 18),
+      (15, 14), (15, 10), (15, 6),
+      (12, 18), (9, 18), (6, 18)
     )
-    if(resetSeed) scala.util.Random.setSeed(seedValue)
-    //cg.saveBase()
-    params.foreach { case (logN, minD) =>
-      cg.saveRMS(logN, minD, maxD)
-    cg.saveSMS(logN, minD, maxD)
+    val maxD = 40
+
+    if ((arg equals "base") || (arg equals "all")) {
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
+      cg.saveBase()
+    }
+
+    if ((arg equals "RMS") || (arg equals "all")) {
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) =>
+        cg.saveRMS(logN, minD, maxD)
+        backend.reset
+      }
+    }
+
+    if ((arg equals "SMS") || (arg equals "all")) {
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) =>
+        cg.saveSMS(logN, minD, maxD)
+        backend.reset
+      }
     }
   }
 }

@@ -97,7 +97,7 @@ case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
 }
 
 object NYC {
-  implicit val backend = CBackend.default
+  implicit val backend = CBackend.colstore
 
   def main(args: Array[String]): Unit = {
     println("Loading Schema")
@@ -108,11 +108,11 @@ object NYC {
 
     val arg = args.lift(0).getOrElse("all")
     val params = List(
-      (17, 10), (13, 10),
-      (15, 6), (15, 10), (15, 14)
+      (15, 18),
+      (15, 14), (15, 10), (15, 6),
+      (12, 18), (9, 18), (6, 18)
     )
-    val maxD = 30 // >15+14, so never passes threshold for any of the cuboids
-
+    val maxD = 40
 
     if ((arg equals "base") || (arg equals "all")) {
       if (resetSeed) scala.util.Random.setSeed(seedValue)
@@ -121,12 +121,18 @@ object NYC {
 
     if ((arg equals "RMS") || (arg equals "all")) {
       if (resetSeed) scala.util.Random.setSeed(seedValue)
-      params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
+      params.foreach { case (logN, minD) =>
+        cg.saveRMS(logN, minD, maxD)
+      backend.reset
+      }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
       if (resetSeed) scala.util.Random.setSeed(seedValue)
-      params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
+      params.foreach { case (logN, minD) =>
+        cg.saveSMS(logN, minD, maxD)
+      backend.reset
+      }
     }
 
   }

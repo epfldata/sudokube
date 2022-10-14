@@ -2,9 +2,8 @@ package frontend.generators
 
 import backend.CBackend
 import core.DataCube
-import frontend.schema.encoders.{BinaryCol, StaticNatCol}
-import frontend.schema.encoders.StaticNatCol.defaultToInt
-import frontend.schema.{LD2, Schema2, StaticSchema2, StructuredDynamicSchema}
+import frontend.schema.encoders.BinaryCol
+import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
 
 import scala.util.Random

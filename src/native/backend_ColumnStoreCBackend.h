@@ -49,6 +49,14 @@ JNIEXPORT jlongArray JNICALL Java_backend_ColumnStoreCBackend_dFetch0
 
 /*
  * Class:      backend_ColumnStoreCBackend
+ * Method:     sFetch640
+ * Signature:  (IILjava/nio/ByteBuffer;)V
+ */
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sFetch640
+  (JNIEnv *, jobject, jint, jint, jobject);
+
+/*
+ * Class:      backend_ColumnStoreCBackend
  * Method:     sSize0
  * Signature:  (I)I
  */

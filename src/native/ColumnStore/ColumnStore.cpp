@@ -51,6 +51,7 @@ void ColumnStore::freezeMkAll(unsigned int s_id) {
 
     uint64_t array[64];
     for (size_t r = 0; r < baseCuboid.numRows; r += 64) {
+
         for (size_t r0 = 0; r0 < 64 && r + r0 < baseCuboid.numRows; r0++) {
             *baseCuboid.getVal(r + r0) = *rowBaseCuboid.getVal(r + r0);
 //            printf("FreezeAll Value[%zu] = %zu -> %zu \n", r + r0, *rowBaseCuboid.getVal(r + r0),
@@ -86,7 +87,7 @@ ColumnStore::readMultiCuboid(const char *filename, int n_bits_array[], int size_
                              unsigned int id_array[], unsigned int numCuboids) {
     //printf("readMultiCuboid(\"%s\", %d)\n", filename, numCuboids);
     FILE *fp = fopen(filename, "rb");
-    if(fp == NULL) throw std::runtime_error(std::string("Error while opening file") + filename);
+    if (fp == NULL) throw std::runtime_error(std::string("Error while opening file") + filename);
     std::vector<Cuboid> allCuboids;
     for (unsigned int i = 0; i < numCuboids; i++) {
         bool sparse = isSparse_array[i];
@@ -170,6 +171,40 @@ Value *ColumnStore::fetch(unsigned int id, size_t &numRows) {
     }
 }
 
+SparseCuboidRow ColumnStore::fetch64Sparse(unsigned int id, size_t wordId, void *resultPtr) {
+    Cuboid c = read(id);
+    if (c.isDense) {
+        throw std::runtime_error("FetchSparse was called on dense cuboid\n");
+    } else {
+        SparseCuboidCol sparseCuboid(c);
+        SparseCuboidRow result(resultPtr, 64, sparseCuboid.numCols);
+        size_t r = wordId << 6;
+        for (size_t r0 = 0; r0 < 64 && r + r0 < sparseCuboid.numRows; r0++) {
+            *result.getVal(r0) = *sparseCuboid.getVal(r + r0);
+        }
+        uint64_t array[64];
+        for (unsigned int c = 0; c < sparseCuboid.numCols; c += 64) {
+            memset(array, 0, sizeof(array));
+            for (size_t c0 = 0; c0 < 64 && c + c0 < sparseCuboid.numCols; c0++) {
+                array[63 - c0] = *sparseCuboid.getKey(c + c0, wordId);
+
+            }
+            transpose64(array);
+            for (size_t r0 = 0; r0 < 64; r0++) {
+                //copy from c to min(c + 64, numCols)
+                uint64_t key64 = array[63 - r0];
+
+//                fprintf(stderr, "Row %d  col %d-%d = %zx \n", r0, c, c+64, key64);
+                byte *byteptr = (byte *) &key64;
+                for (int c0 = 0; c0 < 64 && c + c0 < sparseCuboid.numCols; c0 += 8) {
+                    memcpy(result.getKey(r0) + ((c + c0) >> 3), byteptr + (c0 >> 3), 1);
+                }
+
+            }
+        }
+        return result;
+    }
+}
 
 unsigned int ColumnStore::srehash_sorting(SparseCuboidCol &sourceCuboid, const BitPos &bitpos) {
 
@@ -272,7 +307,7 @@ signed int ColumnStore::srehash(unsigned int s_id, const BitPos &bitpos, short m
 
     //If projection is not fixed to dense cuboid, we use sorting based rehashing for large sparse cuboids. We don't want to allocate gigantic dense cuboids
     if (mode > 1 && (tempSize < denseSize || destinationDenseCuboid.numCols >= 40)) {
-      return srehash_sorting(sourceCuboid, bitpos);
+        return srehash_sorting(sourceCuboid, bitpos);
     }
 
 

@@ -23,6 +23,7 @@ class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends StaticColEncoder[T
   def maxIdx = (1 << bits.length) - 1
 }
 
+//WARNING: map_f must be thread_safe
 class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf[String]) extends StaticColEncoder[String] {
   type T = String
   var encode_map: Map[T, Int] = null

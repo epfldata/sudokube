@@ -94,6 +94,11 @@ JNIEXPORT jlongArray JNICALL Java_backend_ColumnStoreCBackend_dFetch0
     return result;
 }
 
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sFetch640
+        (JNIEnv *env, jobject obj, jint s_id, jint word_id, jobject byteBuffer) {
+    void* ptr = env->GetDirectBufferAddress(byteBuffer);
+    colStore.fetch64Sparse(s_id, word_id, ptr);
+}
 
 JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_cuboidGC0
         (JNIEnv *env, jobject obj, jint id) {

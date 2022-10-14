@@ -208,7 +208,15 @@ abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
     val tsize = tup.size
     val tupmap = Profiler("E1") {
       columnVector.indices.map {
-        case i if i < tsize => encode_column(i, tup(i))
+        case i if i < tsize => try {
+          encode_column(i, tup(i))
+        } catch {
+          case e: RuntimeException => this.synchronized {
+            println(s"Exception for column $i with value ${tup(i)} " + e)
+            println(tup.mkString(" | "))
+          }
+            throw e
+        }
         case j => encode_column(j, "")
       }
     }

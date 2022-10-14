@@ -16,6 +16,9 @@ case "$nickname" in
 "kube4")
   line=33
   ;;
+"kube5")
+  line=41
+  ;;
 *)
   echo "First argument must be kube1 or kube2"
   exit

@@ -202,7 +202,7 @@ struct ColumnStore {
  * @return Pointer to array containing the data of the specified dense cuboid
  */
     Value *fetch(unsigned int id, size_t &numRows);
-
+    SparseCuboidRow fetch64Sparse(unsigned int id, size_t wordId, void* resultPtr);
     /**
  *  Unloads cuboid from RAM
  *  Does not free up the ID !
