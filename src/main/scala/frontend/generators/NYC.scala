@@ -123,7 +123,7 @@ object NYC {
       if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) =>
         cg.saveRMS(logN, minD, maxD)
-      backend.reset
+        backend.reset
       }
     }
 
@@ -131,7 +131,7 @@ object NYC {
       if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) =>
         cg.saveSMS(logN, minD, maxD)
-      backend.reset
+        backend.reset
       }
     }
 

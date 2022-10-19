@@ -81,7 +81,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
     val prepareTime = Profiler.getDurationMicro("Prepare")
     val fetchTime = Profiler.getDurationMicro("Fetch")
 
-    val cm3SolveTime = if(q.length < cm3cutoff) Profiler.getDurationMicro("CM3 Solve") else " "
+    val cm3SolveTime = if (q.length < cm3cutoff) Profiler.getDurationMicro("CM3 Solve") else " "
     val cm5NoFixSolveTime = Profiler.getDurationMicro("CM5NoFix Solve")
     val cm5WithFixSolveTime = Profiler.getDurationMicro("CM5WithFix Solve")
     val vIPFSolveTime = Profiler.getDurationMicro("VIPF Solve")
@@ -119,7 +119,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
       val muCounts = Array.fill(countMax)(0)
       unknownMus.foreach { mu =>
         val log = -math.floor(math.log10(mu))
-        val idx = if (log >= countMax ) countMax - 1 else log.toInt
+        val idx = if (log >= countMax) countMax - 1 else log.toInt
         muCounts(idx) += 1
       }
       val resultRow = s"$dcname,${qu.mkString(":")},${q.length},  " +
@@ -143,9 +143,19 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
     val (l, pm) = Profiler("Prepare") {
       dc.index.prepareBatch(q) -> SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments)
     }
+
+    //Add any missing 1-D marginals if any, for fair comparison for IPF as other solvers have separate access to them anyway
+    val unionOfBits = l.map { _.queryIntersection }.reduce(_ | _)
+    val total = pm.head._2
+    val missing1Dmarginals = pm.tail.flatMap{ case (h, m) =>
+      if ((unionOfBits & h) == 0)
+        Some(h -> Array(total - m, m))
+      else None
+    }
+
     val maxDimFetch = l.last.cuboidCost
     val fetched = Profiler(s"Fetch") { // Same as moment for now
-      l.map { pm => (pm.queryIntersection, dc.fetch2[Double](List(pm))) }
+      missing1Dmarginals ++ l.map { pmd => (pmd.queryIntersection, dc.fetch2[Double](List(pmd)))  }
     }
     //println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes (counts): " + s"${
     //  fetched.map { case (bits, _) => BitUtils.sizeOfSet(bits) }

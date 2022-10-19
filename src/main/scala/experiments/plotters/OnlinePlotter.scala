@@ -15,9 +15,9 @@ object OnlinePlotter {
 
   import KEY._
 
-  def getData(name: String, seriesKey: Int, Xkey: Int, Ykey: Int) = {
+  def getData(folder: String, name: String, seriesKey: Int, Xkey: Int, Ykey: Int) = {
 
-    val data = CSVReader.read(new FileReader(s"expdata/$name")).tail
+    val data = CSVReader.read(new FileReader(s"expdata/$folder/$name")).tail
     val iterKey = QUERYID.id
 
 
@@ -66,13 +66,13 @@ object OnlinePlotter {
   }
 
 
-  def myplot(name: String, xkey: KEY.Value, ykey: KEY.Value, seriesKey: KEY.Value) = {
+  def myplot(folder: String, name: String, xkey: KEY.Value, ykey: KEY.Value, seriesKey: KEY.Value) = {
 
     val isLPP = name.startsWith("LP")
 
     import KEY._
 
-    val data = getData(name, seriesKey.id, xkey.id, ykey.id)
+    val data = getData(folder, name, seriesKey.id, xkey.id, ykey.id)
 
     def avgf(vs: Seq[Double]) = vs.sum / vs.size
 
@@ -95,7 +95,7 @@ object OnlinePlotter {
 
     val t1 = "Mean " + ykey
     //plt.title = t1 + (if(isQuerySize) " for cube log(rf) = -16" else " for query size 10")
-    val csvout = new PrintStream(s"expdata/${name.dropRight(4)}-$ykey.csv")
+    val csvout = new PrintStream(s"expdata/$folder/${name.dropRight(4)}-$ykey.csv")
 
     data.map { case (n, d1) =>
       //val (n,d1) = data.head
@@ -147,14 +147,16 @@ object OnlinePlotter {
       case "entropy" => ENTROPY
     }
 
-    val name = args(0)
-    val seriesKey = args.lift(1).map(argsMap).getOrElse(QSIZE)
-    val xkey = args.lift(2).map(argsMap).getOrElse(TIME)
-    val ykey = args.lift(3).map(argsMap).getOrElse(ERROR)
+    val folder = args.lift(0).getOrElse("vldb2022")
+    val name = args(1)
+    val seriesKey = args.lift(2).map(argsMap).getOrElse(QSIZE)
+    val xkey = args.lift(3).map(argsMap).getOrElse(TIME)
+    val ykey = args.lift(4).map(argsMap).getOrElse(ERROR)
+
 
     //myplot(name3, DOF, true)
     //myplot(name3, MAXDIM, true)
-    myplot(name, xkey, ykey, seriesKey)
+    myplot(folder, name, xkey, ykey, seriesKey)
 
   }
 }
