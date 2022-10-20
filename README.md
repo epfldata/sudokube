@@ -27,16 +27,5 @@ that is used in deciding what cuboids are materialized to zero. This can be disa
 	+ Run `sbt "runMain frontend.generators.Warmup"`
 
 
-## Run Experiments from our paper
-Set the Java Maximum Heap size to atleast `250g` in file `.jvmopts`
-- sbt --error 'runMain experiments.Experimenter Fig7'
-- sbt --error 'runMain experiments.Experimenter Tab1'
-- sbt --error 'runMain experiments.Experimenter Fig8-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig8-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig9-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig9-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig10-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig10-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig11'
-- sbt --error 'runMain experiments.Experimenter Fig12-NYC'
-- sbt --error 'runMain experiments.Experimenter Fig12-SSB'
+## Run Experiments from our VLDB 2022 paper
+The complete reproducibility package can be found under [experiments/vldb2022_sudokube_reproducibility.zip.](experiments/vldb2022_sudokube_reproducibility.zip)
