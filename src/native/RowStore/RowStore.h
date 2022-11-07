@@ -139,10 +139,11 @@ struct RowStore {
         std::vector<RowStoreTempRec> *p = (std::vector<RowStoreTempRec> *) c.ptr;
 
         for (int i = 0; i < rowsToAdd.numRows; i++) {
-            RowStoreTempRec &myrec = p->emplace_back();
+            RowStoreTempRec myrec;
             memset(&myrec, 0, sizeof(RowStoreTempRec));
             memcpy(&myrec.key[0], rowsToAdd.getKey(i), rowsToAdd.keySize);
             myrec.val = *rowsToAdd.getVal(i);
+            p->emplace_back(std::move(myrec));
             c.numRows++;
         }
     }

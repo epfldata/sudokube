@@ -28,16 +28,16 @@ object IPFExperimenter {
     val baseTotal = dc.cuboids.head.numBytes
     backend.reset
     val file = new File(s"expdata/ipf-expts/latest/${cg.inputname}-$ms-cuboids.csv")
-    if(!file.exists())
+    if (!file.exists())
       file.getParentFile.mkdirs()
     val fileout = new PrintStream(file)
     fileout.println("Dataset,MS,logn,dmin,maxD,TotalBytes,Ratio")
-    params.foreach{ case (logn, dmin) =>
+    params.foreach { case (logn, dmin) =>
       val cubeName = s"${cg.inputname}_${ms}_${logn}_${dmin}_$maxD"
       println(s"Getting size of datacube  $cubeName")
       val dc = PartialDataCube.load(cubeName, cg.baseName)
-      val bytes = dc.cuboids.filter(_.n_bits <  nbits).map(_.numBytes).sum
-      val ratio = bytes.toDouble/baseTotal
+      val bytes = dc.cuboids.filter(_.n_bits < nbits).map(_.numBytes).sum
+      val ratio = bytes.toDouble / baseTotal
       fileout.println(s"${cg.inputname},${ms},${logn},${dmin},${maxD},$bytes,$ratio")
       backend.reset
     }
@@ -241,6 +241,24 @@ object IPFExperimenter {
     dc.cuboids.head.backend.reset
   }
 
+  def error_analysis()(implicit timestampedFolder: String): Unit = {
+    val cg = NYC()
+    val sch = cg.schemaInstance
+    //val query = sch.root.samplePrefix(15).sorted
+    val query = Vector(37,49,50,51,52,53,54,55,138,139,219,365,366,404,405)
+    val param = s"15_18_40"
+    val ms = if (true) "sms3" else "rms3"
+    val name = s"_${ms}_$param"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load(fullname, cg.baseName)
+    assert(dc.index.n_bits == sch.n_bits)
+    dc.loadPrimaryMoments(cg.baseName)
+
+    val expt = new ErrorAnalysis(cg.inputname)
+    val trueResult = dc.naive_eval(query)
+    expt.run(dc, dc.cubeName, query, trueResult)
+  }
+
   def main(args: Array[String]): Unit = {
     implicit val numIters: Int = 100
     val maxdim = 40
@@ -279,6 +297,7 @@ object IPFExperimenter {
       case "Airline-RMS-stats" => cuboid_stats(false, airline)
 
       case "Airline-online" => manual_online("Airline")
+      case "error" => error_analysis()
       //case s => println(s"Unknown Expt $s with timestamp $timestampedFolder")
 
     }

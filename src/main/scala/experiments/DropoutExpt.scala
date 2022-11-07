@@ -16,7 +16,7 @@ import scala.collection.mutable
  * @param ename2 As experiment name.
  * @param policy Dropout policy, either "Dimension", "Normalized-Entropy" or "InvNormalized-Entropy".
  */
-class DropoutExpt(ename2: String = "", policy: String)(implicit shouldRecord: Boolean) extends Experiment("ipf-moment", ename2, "dropout-ipf-moment") {
+class DropoutExpt(ename2: String = "", policy: String) extends Experiment("ipf-moment", ename2, "dropout-ipf-moment") {
 
   // To see the moments lost with each dropout
   var prevMomentKnownSet: collection.mutable.BitSet = null
