@@ -183,7 +183,7 @@ object Experimenter {
         expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
       }
     }
-
+   backend.reset
   }
 
   def momentCompareFixedTotal()(implicit timestampedFolder: String, numIters: Int): Unit = {
@@ -217,6 +217,7 @@ object Experimenter {
         expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
       }
     }
+    backend.reset
   }
 
   def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {

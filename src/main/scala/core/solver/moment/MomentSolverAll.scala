@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 
 object Strategy extends Enumeration {
   type Strategy = Value
-  val Avg, Avg2, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, CoMoment4, CoMoment5, CoMoment5Slice, CoMoment5Slice2, CoMoment5Slice3,  Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
+  val Avg, Avg2, Cumulant, Cumulant2, CoMoment, CoMomentFrechet, CoMoment3, MeanProduct, CoMoment4, CoMoment5, CoMoment5Slice,  Zero, HalfPowerD, FrechetUpper, FrechetMid, LowVariance = Value
 }
 
 /**
