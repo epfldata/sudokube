@@ -691,7 +691,7 @@ object Experimenter {
 
   def main(args: Array[String]) {
     implicit val shouldRecord = true
-    implicit val numIters = 2
+    implicit val numIters = 100
     implicit val timestampedFolder = args.lift(1).getOrElse(Experiment.now())
     import RationalTools._
     val strategy = CoMoment3
