@@ -9,8 +9,7 @@ import util.Profiler
  * @author Zhekai Jiang
  */
 class VanillaIIPFErrorEvolutionExpt(ename2: String = "")(implicit shouldRecord: Boolean) extends Experiment("vanilla-ipf-error-evolution", ename2, "ipf-time-error") {
-  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double],
-                   output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     fileout.println("CubeName, Query, QSize, Iteration, IPFTotalTime(us), IPFSolveTime(us), IPFErr")
       // Time may actually not be useful here, because it includes the time to calculate error.
     val q = qu.sorted

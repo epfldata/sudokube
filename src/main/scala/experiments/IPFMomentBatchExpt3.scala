@@ -2,12 +2,11 @@ package experiments
 
 import core.DataCube
 import core.solver.SolverTools
-import core.solver.SolverTools.{entropy, error}
-import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, VanillaIPFSolver}
-import core.solver.moment.{CoMoment3Solver, CoMoment5SolverDouble, Moment1Transformer, Moment1TransformerDouble}
-import core.solver.simple.{AverageSolver, OneDProductSolver}
+import core.solver.SolverTools.error
+import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
+import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer}
 import planning.NewProjectionMetaData
-import util.{BitUtils, Profiler}
+import util.Profiler
 
 class IPFMomentBatchExpt3(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"ipf-moment-batch-partial", ename2, "ipf-expts") {
   var queryCounter = 0
@@ -17,7 +16,7 @@ class IPFMomentBatchExpt3(ename2: String = "")(implicit timestampedFolder: Strin
   "IPFPrepare,IPFFetch,IPFCheckMissing,IPFSolve,IPFFetchSolve,IPFTotal,IPFError"
   fileout.println(header)
 
-  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
 
     List(0.1, 0.3, 1.0).foreach { f =>
@@ -69,7 +68,7 @@ class IPFMomentBatchExpt3(ename2: String = "")(implicit timestampedFolder: Strin
     }
 
     val solver = Profiler(s"Moment Solve $fractionOfCuboids") {
-      val s = new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+      val s = new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
       fetched.foreach { case (bits, array) => s.add(bits, array) }
       s.fillMissing()
       s.solve(true)

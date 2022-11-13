@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 object Experimenter {
-  implicit val backend = CBackend.default
+  implicit val backend = CBackend.original
   def schemas(): Unit = {
     List(NYC(), SSB(100)).foreach { cg =>
       val sch = cg.schemaInstance
@@ -154,33 +154,7 @@ object Experimenter {
   }
 
 
-  def momentCompareFixedSlice()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg = SSB(100)
-    val param = "15_14_30"
-    val ms = "sms3"
-    val name = s"_${ms}_${param}"
-    val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName)
-    dc.loadPrimaryMoments(cg.inputname + "_base")
-
-    val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedslice")
-    //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
-    val qss = List(9, 12, 15, 18, 21, 24)
-    qss.foreach { qs =>
-      println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Slice for MS = $ms Query Dimensionality = $qs")
-      val queries = mq.loadQueries(qs).take(numIters)
-      val ql = queries.length
-      queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Dim=$qs Query ${i + 1}/$ql")
-        val trueResult = mq.loadQueryResult(qs, i)
-        expt.run(dc, fullname, q, trueResult, true, sliceValues = Vector(1, 0, 0, 0, 1, 1, 0, 0))
-      }
-    }
-
-  }
-
-  def momentCompareFixedTotal()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
+  def momentCompareFixedAgg()(implicit timestampedFolder: String, numIters: Int): Unit = {
     val cg = SSB(100)
     val param = "15_14_30"
     val ms = "sms3"
@@ -189,28 +163,60 @@ object Experimenter {
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
 
-    val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedtotal")
+    //val mq = new MaterializedQueryResult(cg)
+    val expt = new MomentSolverCompareBatchExpt("fixedagg", "slicing-expt")
+    //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
+
+    val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
+    val aggsize = 10
+    sss.foreach { ss =>
+      println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Aggregation for MS = $ms  Dimensionality = $ss + $aggsize")
+      val qs = ss + aggsize
+      val queries = (0 until numIters).map(i => cg.schemaInstance.root.samplePrefix(qs)).distinct //mq.loadQueries(qs).take(numIters)
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Dim=$qs Query ${i + 1}/$ql")
+        val trueResult = dc.naive_eval(q.sorted) //mq.loadQueryResult(qs, i)
+        val svs = if (ss == 0) Nil else {
+          Util.collect_n(ss, () => Random.nextInt(qs)).sorted.map(i => i -> Random.nextInt(2))
+        }
+        expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
+      }
+    }
+
+  }
+
+  def momentCompareFixedTotal()(implicit timestampedFolder: String, numIters: Int): Unit = {
+    val cg = SSB(100)
+    val param = "15_14_30"
+    val ms = "sms3"
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load(fullname, cg.baseName)
+    dc.loadPrimaryMoments(cg.baseName)
+
+    //val mq = new MaterializedQueryResult(cg)
+    val expt = new MomentSolverCompareBatchExpt("fixedtotal", "slicing-expt")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
-    val sss = List(24)
+    //expt.warmup() //Warmup does not have true result, NULLpointerException
+    val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
     //val sss = List( 18, 21)
     val qs = 24
-    val queries = mq.loadQueries(qs).take(numIters)
+
+    val queries = (0 until numIters).map(i => cg.schemaInstance.root.samplePrefix(qs)).distinct //mq.loadQueries(qs).take(numIters)
     val ql = queries.length
     println(s"\n\nMoment Solver Strategy Comparison Fixed Total Experiment for MS = $ms")
     queries.zipWithIndex.foreach { case (q, i) =>
-      println(s"Dim=$qs Query ${i + 1}/$ql")
-      val trueResult = mq.loadQueryResult(qs, i)
+      println(s"Dim=$qs Query ${i + 1}/$ql ${q.mkString(" ")}")
+      val trueResult = dc.naive_eval(q.sorted) //mq.loadQueryResult(qs, i)
       sss.foreach { ss =>
-        val svs = if(ss == 0) Vector()  else {
-          BitUtils.intToMask(ss, Random.nextInt(1 << ss))
+        val svs = if (ss == 0) Nil else {
+          Util.collect_n(ss, () => Random.nextInt(qs)).sorted.map(i => i -> Random.nextInt(2))
         }
         println(s" Slice Dimensionality = $ss  slice=${svs.mkString(":")}")
         expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
       }
     }
-
-
   }
 
   def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
@@ -686,7 +692,8 @@ object Experimenter {
 
   def main(args: Array[String]) {
     implicit val shouldRecord = true
-    implicit val numIters = 100
+    implicit val numIters = 2
+    implicit val timestampedFolder = args.lift(1).getOrElse(Experiment.now())
     import RationalTools._
     val strategy = CoMoment3
     args.lift(0).getOrElse("debug") match {
@@ -706,7 +713,7 @@ object Experimenter {
         moment_mat_params(strategy, false)
       case "Fig10-SMS" =>
         moment_mat_params(strategy, true)
-      case "Fig11"  =>
+      case "Fig11" =>
         mb_dims()
         mb_stddev()
         mb_prob()
@@ -714,14 +721,14 @@ object Experimenter {
         schemas()
       case "moment01" => moment01[Rational]()
       case "momentcompare" =>
-        //momentCompareFixedSlice()
+        momentCompareFixedAgg()
         momentCompareFixedTotal()
       case "Fig12-SSB" =>
         manualSSB(strategy, true)
       case "Fig12-NYC" =>
         manualNYC(strategy, true)
       case expt =>
-        throw new IllegalArgumentException("Unknown experiment name "+ expt)
+        throw new IllegalArgumentException("Unknown experiment name " + expt)
     }
   }
 }

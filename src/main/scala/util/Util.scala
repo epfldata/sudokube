@@ -4,6 +4,8 @@ package util
 import backend.CBackend
 import core.PartialDataCube
 
+import scala.reflect.ClassTag
+
 
 class ProgressIndicator(num_steps: Int, name: String = "", showProgress: Boolean = true) {
   private val one_percent = num_steps.toDouble / 100
@@ -57,10 +59,18 @@ object SloppyFractionalInt {
 
 
 object Util {
-  def slice[T](a: Array[T], sliceValues: IndexedSeq[Int]) = {
-    val start = BitUtils.maskToInt(sliceValues)
-    val aggN = a.length >> sliceValues.length
-    a.slice(aggN * start, aggN * (start + 1))
+  def slice[T: ClassTag](a: Array[T], slice: Seq[(Int, Int)]) = {
+    val allCols = a.length - 1
+    val sliceCols = slice.map(x => 1 << x._1).sum
+    val sliceInt = slice.map(x => x._2 << x._1).sum
+    val aggCols = allCols - sliceCols
+    val aggN = a.length >> slice.length
+    val result = new Array[T](aggN)
+    (0 until aggN).map { i0 =>
+      val i = BitUtils.unprojectIntWithInt(i0, aggCols)
+      result(i0) = a(i + sliceInt)
+    }
+    result
   }
 
   //converts long to type T
@@ -122,8 +132,8 @@ object Util {
     var inter_int = 0
     var index = 1
     var result = List[Int]()
-    while(x != Nil && y != Nil) {
-      if(x.head > y.head)
+    while (x != Nil && y != Nil) {
+      if (x.head > y.head)
         y = y.tail
       else if (x.head < y.head) {
         index = index << 1

@@ -70,7 +70,7 @@ object IPFExperimenter {
     dc.loadPrimaryMoments(cg.baseName)
     val expt = new IPFMomentOnlineExpt(cg.inputname)
     val trueResult = dc.naive_eval(query)
-    expt.run(dc, dc.cubeName, query, trueResult, sliceValues = Vector(), qname = qName)
+    expt.run(dc, dc.cubeName, query, trueResult, qname = qName, sliceValues = Nil)
   }
 
 

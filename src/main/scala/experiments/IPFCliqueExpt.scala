@@ -1,10 +1,10 @@
 package experiments
 import core.DataCube
 import core.solver.SolverTools
-import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
-import util.{BitUtils, Profiler}
 import core.solver.SolverTools.{entropy, error}
-import core.solver.moment.{CoMoment5SolverDouble, Moment1TransformerDouble}
+import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
+import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer}
+import util.{BitUtils, Profiler}
 class IPFCliqueExpt (ename2: String)(implicit shouldRecord: Boolean) extends Experiment("ipf-clique", ename2, "ipf-expts"){
   var queryCounter = 0
   val header = "CubeName,Query,Qsize,  " +
@@ -14,7 +14,7 @@ class IPFCliqueExpt (ename2: String)(implicit shouldRecord: Boolean) extends Exp
     "NumCliques,NumSeparators,CliqueSizes,CliqueClusterSizes,  " +
     "DOF,MuHistogram,  "
   fileout.println(header)
-  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
     val (fetched, pm, maxDimFetch) = momentPrepareFetch("Any", dc, q)
 
@@ -26,7 +26,7 @@ class IPFCliqueExpt (ename2: String)(implicit shouldRecord: Boolean) extends Exp
     }
     val momentResult = Profiler("Moment Solve") {
       val s = Profiler("Moment Constructor") {
-        new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+        new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
       }
       Profiler("Moment Add") {
         fetched.foreach { case (bits, array) => s.add(bits, array) }
@@ -40,8 +40,15 @@ class IPFCliqueExpt (ename2: String)(implicit shouldRecord: Boolean) extends Exp
       s
     }
     val total = trueResult.sum
-    val pmMap = pm.map { case (i, m) => i -> m/total }.toMap
-    val trueMus = Moment1TransformerDouble().getCoMoments(trueResult, pmMap)
+    var logh = 0
+
+    val pmArray = new Array[Double](q.length)
+    pm.tail.foreach { case (i, m) =>
+      assert((1 << logh) == i)
+      pmArray(logh) = (m / total)
+      logh += 1
+    }
+    val trueMus = Moment1Transformer[Double]().getCoMoments(trueResult, pmArray)
     import math._
     def gbyfnc(mu: Double) = signum(mu).toInt -> (log(abs(mu)) / log(10)).toInt
     val unknownMus = (trueMus.indices.toSet.diff(momentResult.knownSet.toSet)).map(i => trueMus(i)/total)

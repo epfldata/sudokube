@@ -196,7 +196,7 @@ class DropoutExpt(ename2: String = "", policy: String) extends Experiment("ipf-m
    * @param qname Name of the query.
    * @param sliceValues For slicing.
    */
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
     println(s"$policy-Based")
 

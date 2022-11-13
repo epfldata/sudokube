@@ -11,8 +11,8 @@ abstract class MomentTransformer[T](implicit val num: Fractional[T]) {
 
   def from1Moment(moments: Array[T]): Array[T]
 
-  def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T]
-  def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T
+  def getCoMoments(values: Array[T], pm: Array[T]): Array[T]
+  def getCoMoment(i0: Int, values: Array[T], pm: Array[T]): T
 
   def fromComplementaryMoment(moments: Array[T]) = {
     val result = moments.clone()
@@ -76,28 +76,31 @@ case class Moment1Transformer[T: Fractional]() extends MomentTransformer[T] {
   }
 
 
-  override def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T = ???
+  override def getCoMoment(i0: Int, values: Array[T], pm: Array[T]): T = ???
 
-  override def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T] = {
+  override def getCoMoments(values: Array[T], pm: Array[T]): Array[T] = {
     val result = values.clone()
     val N = values.length
     var h = 1
+    var logh = 0
     /*
     Kronecker product with matrix
         1 1
         -p 1-p
      */
     while (h < N) {
+      val p = pm(logh)
       (0 until N by h * 2).foreach { i =>
         (i until i + h).foreach { j =>
           val first = num.plus(result(j), result(j + h))
-          val p = pm(h)
+
           val second = num.minus(result(j + h), num.times(p, first))
           result(j) = first
           result(j + h) = second
         }
       }
-      h *= 2
+      h <<= 1
+      logh += 1
     }
     result
   }
@@ -135,9 +138,9 @@ case class Moment0Transformer[T: Fractional]() extends MomentTransformer[T] {
   }
 
 
-  override def getCoMoment(i0: Int, values: Array[T], pm: Map[Int, T]): T = ???
+  override def getCoMoment(i0: Int, values: Array[T], pm: Array[T]): T = ???
 
-  override def getCoMoments(values: Array[T], pm: Map[Int, T]): Array[T] = ???
+  override def getCoMoments(values: Array[T], pm: Array[T]): Array[T] = ???
 
   override def from1Moment(moments: Array[T]): Array[T] = fromComplementaryMoment(moments)
 

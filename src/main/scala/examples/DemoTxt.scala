@@ -3,23 +3,19 @@ package examples
 import backend._
 import breeze.linalg.DenseMatrix
 import core._
-import core.cube.OptimizedArrayCuboidIndex
-import core.ds.settrie.SetTrieForMoments
 import core.materialization._
 import core.solver.RationalTools._
 import core.solver.SolverTools.error
 import core.solver._
 import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, IPFUtils, VanillaIPFSolver}
-import core.solver.moment.Strategy._
 import core.solver.moment._
 import frontend._
 import frontend.experiments.Tools
 import frontend.generators._
-import frontend.gui.{FeatureFrame, FeatureFrameSSB}
-import frontend.schema.encoders.StaticNatCol
-import frontend.schema.{LD2, StaticSchema2}
+import frontend.gui.FeatureFrameSSB
+import util.BitUtils._
 import util._
-import BitUtils._
+
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -31,10 +27,10 @@ object DemoTxt {
     //0 and 1D moments are required for MomentSolver that we precompute here
     val pm = List(0 -> 17, 1 -> 4, 2 -> 7, 4 -> 12).map(x => x._1 -> num.fromInt(x._2))
     val total = 3 //total query bits
-    val slice = Vector(1,1,1).reverse  //slicing for the top k-bits in the order of least significant to most significant
+    val slice = Vector(2->1, 1->0).reverse //slicing for the top k-bits in the order of least significant to most significant
     val agg = total - slice.length //how many bits for aggregation
 
-    val solver = new CoMoment5SliceSolver2[T](total ,slice,true, Moment1Transformer(), pm)
+    val solver = new CoMoment5SliceSolver[T](total, slice, true, Moment1Transformer(), pm)
     //val solver = new CoMoment5SliceSolver[T](total ,slice,true, Moment1Transformer(), pm)
     //val solver = new CoMoment5Solver[T](total ,true, Moment1Transformer(), pm)
 
@@ -81,7 +77,7 @@ object DemoTxt {
 
     val solver = new EffectiveIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
@@ -103,7 +99,7 @@ object DemoTxt {
 
     val solver = new VanillaIPFSolver(6, true, false, actual)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
@@ -125,10 +121,10 @@ object DemoTxt {
 
     val solver = new MomentSolverAll[Rational](6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
-    implicit def listToInt =SetToInt(_)
+    implicit def listToInt = SetToInt(_)
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
       solver.add(marginalVariables, clustersDistribution.map(n => Rational(BigInt(n.toInt), 1)))
     }
@@ -165,7 +161,7 @@ object DemoTxt {
     println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
     println(tuple._3.mkString("values\n(", ", ", ")\n \n"))
 
-  //can query for array of tuples with bit format
+    //can query for array of tuples with bit format
     var array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
@@ -200,7 +196,7 @@ object DemoTxt {
       str1.toString.equals("cheap") && !str2.toString.equals("Dish")
     }
 
-    def transformForGroupBy(src : String): String = {
+    def transformForGroupBy(src: String): String = {
       src match {
         case "Europe" | "Italy" | "France" => "European"
         case _ => "Non-European"
@@ -249,7 +245,7 @@ object DemoTxt {
     val minD = 14
     val maxD = 30
 
-    /** WARNING: This cube must have been built already. See [[frontend.generators.SSBGen]] **/
+    /** WARNING: This cube must have been built already. See [[frontend.generators.SSBGen]] * */
     val dc = cg.loadSMS(logN, minD, maxD)
     val display = FeatureFrameSSB(sf, dc, 50)
   }

@@ -54,7 +54,18 @@ object SolverTools {
     import Util.fromLong
     val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).sum
     val sum = naive.sum
-    num.toDouble(deviation)/sum
+    if(sum == 0) num.toDouble(deviation) else num.toDouble(deviation)/sum
+  }
+
+
+  def errorTT[T](naive: Array[T], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
+    val length = naive.length
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(naive(i), solver(i)))).sum
+    val sum = naive.sum
+    if( sum equals num.zero) 0.0 else num.toDouble(num.div(deviation, sum))
   }
 
   def entropyBase2(result: Array[Double]) = {

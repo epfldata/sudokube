@@ -26,7 +26,7 @@ class MomentTransformerSpec extends FlatSpec with Matchers {
   }
 
   "Moment1 Transformer CoMoment" should "be correct" in {
-    val result = Moment1Transformer().getCoMoments(actual, momentProduct1.zipWithIndex.map{case (m, i) =>  (i, m)}.toMap)
+    val result = Moment1Transformer().getCoMoments(actual, (0 until 3).map(i => momentProduct1(1 << i)).toArray)
     assert(result.sameElements(comoment1))
   }
 

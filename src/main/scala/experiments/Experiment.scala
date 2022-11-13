@@ -17,7 +17,7 @@ abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: St
     new PrintStream(file)
   }
 
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: IndexedSeq[Int]): Unit
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit
 
   def warmup(nw: Int = 10)(implicit backend: Backend[Payload]) = {
     val name = "Warmup"

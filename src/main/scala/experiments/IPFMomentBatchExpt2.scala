@@ -4,7 +4,7 @@ import core.DataCube
 import core.solver.SolverTools
 import core.solver.SolverTools.{entropy, error}
 import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, VanillaIPFSolver}
-import core.solver.moment.{CoMoment3Solver, CoMoment5SolverDouble, Moment1Transformer, Moment1TransformerDouble}
+import core.solver.moment.{CoMoment3Solver, CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer}
 import core.solver.simple.{AverageSolver, OneDProductSolver}
 import util.{BitUtils, Profiler}
 
@@ -21,7 +21,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
     "DOF,unknownMuDist"
   fileout.println(header)
 
-  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     val (fetched, pm, maxDimFetch) = prepareFetch(dc, q)
@@ -37,14 +37,14 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
       s
     }
     val CM5SolverNoFix = Profiler("CM5NoFix Solve") {
-      val s = new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+      val s = new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
       fetched.foreach { case (bits, array) => s.add(bits, array) }
       s.fillMissing()
       s.solve(false)
       s
     }
     val CM5SolverWithFix = Profiler("CM5WithFix Solve") {
-      val s = new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+      val s = new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
       fetched.foreach { case (bits, array) => s.add(bits, array) }
       s.fillMissing()
       s.solve(true)
@@ -112,7 +112,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
 
       val total = trueResult.sum
       val cliques = eIPFSolver.junctionGraph.cliques.toList
-      val allmus = Moment1TransformerDouble().getCoMoments(trueResult, CM5SolverWithFix.pmMap)
+      val allmus = Moment1Transformer[Double]().getCoMoments(trueResult, CM5SolverWithFix.pmArray)
       val dof = CM5SolverWithFix.dof
       val unknownMus = allmus.indices.filter(i => !CM5SolverWithFix.knownSet.contains(i)).map(i => math.abs(allmus(i) / total))
       val countMax = 16

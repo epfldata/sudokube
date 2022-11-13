@@ -206,7 +206,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param qname The name of the query (not used).
    * @param sliceValues Values for the slicing (not used).
    */
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String, sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)]): Unit = {
     val query = qu.sorted
     val q = query.size
 
@@ -247,7 +247,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param qname Name of the query (not used).
    * @param sliceValues Values for the slicing operation (not used).
    */
-  def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: IndexedSeq[Int])(implicit backend: Backend[Payload]): Unit = {
+  def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)])(implicit backend: Backend[Payload]): Unit = {
     val runs = qus.length
     (2 to d0).foreach(k => {
       println(s"Run for Dimensionality $k")

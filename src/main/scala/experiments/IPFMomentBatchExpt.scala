@@ -4,13 +4,11 @@ import core.DataCube
 import core.solver.SolverTools
 import core.solver.SolverTools.{entropy, error}
 import core.solver.iterativeProportionalFittingSolver._
-import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer, Moment1TransformerDouble}
+import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer}
+import util.BitUtils.sizeOfSet
 import util.{BitUtils, Profiler}
-import BitUtils.sizeOfSet
 
-import java.io.{File, PrintStream}
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.io.PrintStream
 
 /**
  * Compare the time and error for IPF solvers and moment solver.
@@ -81,7 +79,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit timestampedFolder: String
 
     val result = Profiler("Moment Solve") {
       val s = Profiler("Moment Constructor") {
-        new CoMoment5SolverDouble(q.length, true, Moment1TransformerDouble(), pm)
+        new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
        }
       Profiler("Moment Add") {
         fetched.foreach { case (bits, array) => s.add(bits, array) }
@@ -282,7 +280,7 @@ class IPFMomentBatchExpt(ename2: String = "")(implicit timestampedFolder: String
 
 
 
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
 
     val q = qu.sorted
 

@@ -4,22 +4,28 @@ import core.DataCube
 import core.solver.SolverTools
 import core.solver.SolverTools.{entropyBase2, error, normalizedEntropyBase2}
 import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, IPFUtils}
-import core.solver.moment.{CoMoment5SolverDouble, Moment1TransformerDouble}
+import core.solver.moment.{CoMoment5Solver, CoMoment5SolverDouble, Moment1Transformer}
 import util.{BitUtils, Profiler, ProgressIndicator}
 
 class IPFMomentOnlineExpt(ename2: String)(implicit timestampedFolder: String) extends Experiment("ipf-moment-online", ename2, "ipf-expts") {
   fileout.println("QueryName,QuerySize,OrderByCol,FetchID,CuboidID,CuboidDim,Mu,Entropy,NormalizedEntropy,IPFError,CM5Error,IPFSolveTime,CM5SolveTime,IPFIterations")
 
-  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val query = qu.sorted
     val primaryMoments = SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
     val total = primaryMoments.head._2
     assert(primaryMoments.head._1 == 0)
-    val pmMap = primaryMoments.map { case (i, m) => i -> m / total }.toMap
+    var logh = 0
+    val pmArray = new Array[Double](qu.length)
+    primaryMoments.tail.foreach { case (i, m) =>
+      assert((1 << logh) == i)
+      pmArray(logh) = (m / total)
+      logh += 1
+    }
     val trueResult = dc.naive_eval(query)
     println(s"Online experiment for $dcname Query size = ${query.size}")
     println("Computing Marginals")
-    val mus = Moment1TransformerDouble().getCoMoments(trueResult, pmMap)
+    val mus = Moment1Transformer[Double]().getCoMoments(trueResult, pmArray)
     val marginals = trueResult.indices.map { i =>
       val size = BitUtils.sizeOfSet(i)
       val res = IPFUtils.getMarginalDistribution(query.length, trueResult, size, i)
@@ -61,7 +67,7 @@ class IPFMomentOnlineExpt(ename2: String)(implicit timestampedFolder: String) ex
         }
 
         val cm5 = Profiler("CM5 Solve") {
-          val cm5solver = new CoMoment5SolverDouble(query.length, true, Moment1TransformerDouble(), primaryMoments)
+          val cm5solver = new CoMoment5SolverDouble(query.length, true, Moment1Transformer(), primaryMoments)
           cumulativeFetched.foreach { case (bits, values) =>
             cm5solver.add(bits, values)
           }

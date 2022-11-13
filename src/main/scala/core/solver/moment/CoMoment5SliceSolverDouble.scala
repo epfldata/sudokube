@@ -4,8 +4,6 @@ import core.DataCube
 import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler}
 
-import scala.reflect.ClassTag
-
 /**
  * @param totalsize Total dimensionality of query including both aggregation and slice
  * @param sliceList List of slice dimensions (index relative to query) along with value. MUST be in increasing order of positions
@@ -13,31 +11,32 @@ import scala.reflect.ClassTag
  * @param transformer NOT USED
  * @param primaryMoments Total sum and 1-D moments in the increasing order of dims
  */
-class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: Seq[(Int, Int)], batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver[T](totalsize - sliceList.size, batchmode, transformer, primaryMoments) {
+class CoMoment5SliceSolverDouble(totalsize: Int, sliceList: Seq[(Int, Int)], batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)]) extends MomentSolver[Double](totalsize - sliceList.size, batchmode, transformer, primaryMoments) {
   //transformer is not used
+  type T = Double
   val solverName = "Comoment5Slice2"
-  var pmArray = new Array[T](totalsize)
+  var pmArray = new Array[Double](totalsize)
   override def init(): Unit = {}
 
   init2()
 
   def init2(): Unit = {
-    moments = Array.fill[T](N)(num.zero) //using moments array for comoments. We only allocate for final result
+    moments = Array.fill[Double](N)(0) //using moments array for comoments. We only allocate for final result
     val total = primaryMoments.head._2
     assert(primaryMoments.head._1 == 0)
     //assert(transformer.isInstanceOf[Moment1Transformer[_]])
     var logh = 0
     primaryMoments.tail.foreach { case (i, m) =>
       assert((1 << logh) == i)
-      pmArray(logh) = num.div(m, total)
+      pmArray(logh) = m / total
       logh += 1
     }
     // moments(0) is known, but we need it to be present in momentsToAdd
 
   }
 
-  override def solve(handleNegative: Boolean): Array[T] = {
-    val result = moments.clone()
+  override def solve(handleNegative: Boolean): Array[Double] = {
+    val result: Array[Double] = moments.clone()
     var h = 1
     var i = 0
     var j = 0
@@ -50,14 +49,14 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
       while (i < N) {
         j = i
         while (j < i + h) {
-          val diff = num.minus(result(j), result(j + h))
-          if (!handleNegative || (num.gteq(diff, num.zero) && num.gteq(result(j + h), num.zero)))
+          val diff = result(j) - result(j + h)
+          if (!handleNegative || ((diff >= 0) && (result(j + h) >= 0)))
             result(j) = diff
-          else if (num.lt(diff, num.zero)) {
+          else if (diff < 0) {
             result(j + h) = result(j)
-            result(j) = num.zero
+            result(j) = 0
           } else {
-            result(j + h) = num.zero
+            result(j + h) = 0
           }
           j += 1
         }
@@ -73,11 +72,12 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
     ???
   }
 
-  override def add(eqnColSet: Int, values: Array[T]) {
+  override def add(eqnColSet: Int, values: Array[Double]) {
+
     val (colsLength, cols, n0, mn0, sliceMP, sliceDimInCuboid, aggColSet, aggColSetInCuboid) = Profiler("Solve.Add.Init") {
       val colsLength = BitUtils.sizeOfSet(eqnColSet)
       val cols = BitUtils.IntToSet(eqnColSet).reverse.toVector
-      var sliceMP = num.fromInt(1)
+      var sliceMP = 1.0
       var colsOffsetInCuboid = 0
       var aggcolsOffsetInQuery = 0
       var curDim = 0
@@ -105,8 +105,8 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
           logm0 += 1
         } else { //slicedim not in cuboid
           val p = pmArray(dim)
-          val pq = if (sv == 1) p else num.minus(num.fromInt(1), p)
-          sliceMP = num.times(sliceMP, pq)
+          val pq = if (sv == 1) p else (1 - p)
+          sliceMP *= pq
         }
 
         if ((twoPowercurDim & eqnColSet) != 0) {
@@ -133,7 +133,6 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
 
       (colsLength, cols, n0, mn0, sliceMP, sliceDimInCuboid, aggColSet, aggColSetInCuboid)
     }
-
     val pupIndices = Profiler("Solve.Add.NewMomentIndices.PUP") {
       (0 until mn0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet))
     }
@@ -159,8 +158,8 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
         while (i0 < mn0) {
           j0 = i0
           while (j0 < i0 + h0) {
-            val first = num.plus(result(j0), result(j0 + h0))
-            val second = num.minus(result(j0 + h0), num.times(p, first))
+            val first = result(j0) + result(j0 + h0)
+            val second = result(j0 + h0) - (p * first)
             result(j0) = first
             result(j0 + h0) = second
             j0 += 1
@@ -174,7 +173,7 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
     }
     Profiler("Solve.Add.ClearKnownMoments") {
       //set known ones to 0 to avoid double counting
-      knownIndices.foreach { case (i0, i) => cuboid_moments(i0) = num.zero }
+      knownIndices.foreach { case (i0, i) => cuboid_moments(i0) = 0 }
     }
 
     //Convert to conditional moments by applying transformations on slice dims of this cudoid
@@ -195,18 +194,17 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
         var i0 = 0
         while (i0 < mn0) {
           val h0 = 1 << logh0
-          //if ((i0 & localsliceCols) == 0) { //only consider those that agree with slice; we move everything to 0-slot.
-          var j0 = i0
-          while (j0 < i0 + h0) {
-            val result = if (sv == 1) {
-              num.plus(num.times(cuboid_moments(j0), p), cuboid_moments(j0 + h0))
-            } else {
-              num.minus(num.times(cuboid_moments(j0), num.minus(num.fromInt(1), p)), cuboid_moments(j0 + h0))
+          if ((i0 & localsliceCols) == 0) { //only consider those that agree with slice; we move everything to 0-slot.
+            var j0 = i0
+            while (j0 < i0 + h0) {
+              val result = if (sv == 1) {
+                cuboid_moments(j0) * p + cuboid_moments(j0 + h0)
+              } else
+                cuboid_moments(j0) * (1 - p) - cuboid_moments(j0 + h0)
+              cuboid_moments(j0) = result //always put in 0-slot
+              j0 += 1
             }
-            cuboid_moments(j0) = result //always put in 0-slot
-            j0 += 1
           }
-          //}
           i0 += (h0 << 1)
         }
         localsliceCols |= (1 << logh0)
@@ -222,9 +220,8 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
         val i0agg = BitUtils.unprojectIntWithInt(i0, aggColSetInCuboid)
         val iagg = BitUtils.unprojectIntWithInt(i0, aggColSet)
         val v = cuboid_moments(i0agg)
-        if (v != num.zero) {
-          momentsToAdd += iagg -> num.times(v, sliceMP)
-        }
+        if (v != 0.0)
+          momentsToAdd += iagg -> (v * sliceMP)
       }
     }
   }
@@ -235,7 +232,7 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
     Profiler("SliceMomentsAdd") {
       momentsToAdd.foreach {
         case (i, m) =>
-          moments(i) = num.plus(moments(i), m)
+          moments(i) += m
       }
     }
 
@@ -249,7 +246,7 @@ class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: 
         while (i < N) {
           var j = i
           while (j < i + h) {
-            moments(j + h) = num.plus(moments(j + h), num.times(p, moments(j)))
+            moments(j + h) += (p * moments(j))
             j += 1
           }
           i += (h << 1)
