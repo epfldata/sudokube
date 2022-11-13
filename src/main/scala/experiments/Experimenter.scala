@@ -148,8 +148,6 @@ object Experimenter {
         expt.run(dc, fullname, q, null, true, sliceValues = Vector())
       }
     }
-
-
     dc.cuboids.head.backend.reset
   }
 
