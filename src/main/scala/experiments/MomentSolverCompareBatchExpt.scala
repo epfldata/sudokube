@@ -9,7 +9,9 @@ import util.{Profiler, Util}
 class MomentSolverCompareBatchExpt(ename2: String = "", subfolder: String)(implicit timestampedFolder: String) extends Experiment(s"momentcompare-batch", ename2, subfolder) {
   {
     val header = "CubeName, Query, QSize, SliceValues, SliceSize," +
-      "MStrategy, MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveTime(us), MErr"
+      "MStrategy, MTotalTime(us), MPrepareTime(us), MFetchTime(us), MSolveTime(us), " +
+      "TrueUnslicedTotal, TrueSliceTotal, SolverSliceTotal, TotalDeviation, MErr,  " +
+    "MaxDevTrueValue, MaxDevSolverValue, MaxDev, MaxNormalizedDev"
     fileout.println(header)
   }
   type T = Double
@@ -51,13 +53,14 @@ class MomentSolverCompareBatchExpt(ename2: String = "", subfolder: String)(impli
     val trueResultSlice = Util.slice(trueResult0, sliceValues)
     val sol2 = Util.slice(result2.solution, sliceValues)
     val sol4 = result4.solution
+    val fulltotal = trueResult0.sum
 
-    val err2 = SolverTools.error(trueResultSlice, sol2)
-    val err4 = SolverTools.error(trueResultSlice, sol4)
+    val err2 = SolverTools.errorPlus(trueResultSlice, sol2)
+    val err4 = SolverTools.errorPlus(trueResultSlice, sol4)
     if (output) {
-      val common = s"$dcname, ${qu.mkString(":")}, ${q.size}, ${sliceValues.mkString(":")}, ${sliceValues.length}"
-      fileout.println(s"$common, $s2stats, $err2")
-      fileout.println(s"$common, $s4stats, $err4")
+      val common = s"$dcname, ${qu.mkString(":")}, ${q.size}, ${sliceValues.map(x => x._1+":"+x._2).mkString(";")}, ${sliceValues.length}"
+      fileout.println(s"$common, $s2stats, $fulltotal, $err2")
+      fileout.println(s"$common, $s4stats, $fulltotal, $err4")
     }
 
 

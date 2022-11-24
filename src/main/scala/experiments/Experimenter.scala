@@ -8,7 +8,7 @@ import core.solver.moment.Strategy._
 import core.solver.moment._
 import core.solver.{Rational, RationalTools, SolverTools}
 import frontend.experiments.Tools
-import frontend.generators.{MicroBench, NYC, SSB}
+import frontend.generators.{AirlineDelay, MicroBench, NYC, SSB}
 import frontend.schema.encoders._
 import util.{BitUtils, Profiler, Util}
 
@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 object Experimenter {
-  implicit val backend = CBackend.original
+  implicit val backend = CBackend.colstore
   def schemas(): Unit = {
     List(NYC(), SSB(100)).foreach { cg =>
       val sch = cg.schemaInstance
@@ -153,8 +153,8 @@ object Experimenter {
 
 
   def momentCompareFixedAgg()(implicit timestampedFolder: String, numIters: Int): Unit = {
-    val cg = SSB(100)
-    val param = "15_14_30"
+    val cg = new AirlineDelay()
+    val param = "15_18_40"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -162,11 +162,11 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.baseName)
 
     //val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedagg", "slicing-expt")
+    val expt = new MomentSolverCompareBatchExpt(s"fixedagg-${cg.inputname}", "slicing-expt")
     //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
 
     val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
-    val aggsize = 10
+    val aggsize = 14
     sss.foreach { ss =>
       println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Aggregation for MS = $ms  Dimensionality = $ss + $aggsize")
       val qs = ss + aggsize
@@ -185,8 +185,8 @@ object Experimenter {
   }
 
   def momentCompareFixedTotal()(implicit timestampedFolder: String, numIters: Int): Unit = {
-    val cg = SSB(100)
-    val param = "15_14_30"
+    val cg = new AirlineDelay()
+    val param = "15_18_40"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
@@ -194,7 +194,7 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.baseName)
 
     //val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedtotal", "slicing-expt")
+    val expt = new MomentSolverCompareBatchExpt(s"fixedtotal-${cg.inputname}", "slicing-expt")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
     //expt.warmup() //Warmup does not have true result, NULLpointerException
     val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
