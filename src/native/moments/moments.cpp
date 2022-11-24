@@ -1,8 +1,14 @@
 #include "moments.h"
 #include <cmath>
+#include <libcuckoo/cuckoohash_map.hh>
+#include <thread>
+#include <pthread.h>
+#include <sched.h>
+#include <inttypes.h>
 
 using namespace std::chrono;
 const int sampleFactor = 4;
+
 extern void computeCUDA(TypedCuboid &moments, const TypedCuboid &data);
 //extern void computeCUDASimulation(TypedCuboid &moments, const TypedCuboid &data);
 
@@ -49,12 +55,132 @@ std::vector<int> byteArrayToSet(int *key) {
 }
 
 void setToByteArray(int *key, const std::vector<int> &bits) {
-    memset(key, 0, KEY_SIZE_WORDS * sizeof(int));
+    memset(key, 0, REC_SIZE_WORDS * sizeof(int));
     for (auto b: bits) {
         size_t i = b >> 5;
         size_t j = b & 31;
         key[i] |= (1U << j);
     }
+}
+
+struct MyHash {
+    size_t operator()(const std::vector<int> &vec) const {
+        std::size_t seed = vec.size();
+        for (auto x: vec) {
+            x = ((x >> 16) ^ x) * 0x45d9f3b;
+            x = ((x >> 16) ^ x) * 0x45d9f3b;
+            x = (x >> 16) ^ x;
+            seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
+
+int main1(int argc, char **argv) {
+    libcuckoo::cuckoohash_map<std::vector<int>, bool, MyHash> sbjmap;
+    uint32_t numQ, qs;
+    std::string path = "/root/moments/15_32k/";
+    FILE *queryFile = fopen((path + "queries.bin").c_str(), "rb");
+    if (!queryFile) throw std::runtime_error("Cannot open file " + path + std::string("queries.bin"));
+    fread(&qs, sizeof(uint32_t), 1, queryFile);
+    fread(&numQ, sizeof(uint32_t), 1, queryFile);
+    std::cout << "Qs = " << qs << "  numQ = " << numQ << std::endl;
+    uint32_t *queries = (uint32_t *) calloc(numQ, qs * sizeof(uint32_t));
+    auto readElems = fread(queries, qs * sizeof(uint32_t), numQ, queryFile);
+    if (readElems != numQ) throw std::runtime_error("Incorrect elements read from query file");
+    fclose(queryFile);
+
+    std::cout << "Top 5" << std::endl;
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < qs; j++) {
+            std::cout << queries[i * qs + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "Last 5" << std::endl;
+    for (int i = numQ - 5; i < numQ; i++) {
+        for (int j = 0; j < qs; j++) {
+            std::cout << queries[i * qs + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    const int maxSubsetSize = 6;
+    const int numThreads = 24;
+
+    const size_t powersetSize = 1 << qs;
+    std::vector<std::thread> threadVec;
+    auto start = high_resolution_clock::now();
+    for (size_t id = 0; id < numThreads; id++) {
+        threadVec.emplace_back([id, &sbjmap, queries, &threadVec, numQ, qs, powersetSize] {
+            std::vector<int> localchild;
+            cpu_set_t cpuset;
+            CPU_ZERO(&cpuset);
+            CPU_SET(id, &cpuset);
+            int rc = pthread_setaffinity_np(threadVec[id].native_handle(), sizeof(cpu_set_t), &cpuset);
+            const size_t countPerThread = numQ / numThreads;
+            const size_t start = id * countPerThread;
+            size_t end = (id + 1) * countPerThread;
+            if (id == (numThreads - 1)) end = numQ;
+            for (size_t qid = start; qid < end; qid++) {
+                const uint32_t *parent = queries + (qid * qs);
+                for (size_t i = 0; i < powersetSize; i++) {
+                    size_t j = i;
+                    size_t b = 0;
+                    localchild.clear();
+                    size_t count = 0;
+                    int64_t prev = -1;
+
+                    while (j > 0 && count < maxSubsetSize) {
+                        if (j & 1) {
+                            localchild.emplace_back(parent[b]);
+                            count++;
+                        }
+                        j >>= 1;
+                        b++;
+                    }
+                    if (j == 0) {
+                        sbjmap.insert(localchild, true);
+                    }
+                }
+            }
+        });
+    }
+    for (auto &t: threadVec) t.join();
+    auto end = high_resolution_clock::now();
+    size_t duration = duration_cast<seconds>(end - start).count();
+    std::cout << "Time for " << numQ << " sets using " << numThreads << " threads = " << duration << " seconds"
+              << std::endl;
+    auto tbl = sbjmap.lock_table();
+
+    size_t myMax = 0;
+    std::vector<std::vector<int>> test;
+//    for(const auto& v: tbl){
+//        if(v.first.size() > myMax) myMax = v.first.size();
+//        if(v.first.size() == 2 && v.first[0] >= v.first[1]) {
+//            test.emplace_back(v.first);
+//        for(const auto b: v.first) std::cout << b << " ";
+//        std::cout << std::endl;
+//        }
+//    }
+//    std::sort(test.begin(), test.end());
+    const int numMoments = tbl.size();
+    std::cout << "Count = " << numMoments << std::endl;
+    TypedCuboid typedMoments(nullptr, numMoments, nbits);
+    typedMoments.realloc();
+    auto it = tbl.cbegin();
+    size_t count = 0;
+    while (it != tbl.cend()) {
+        setToByteArray(typedMoments.getKey(count), it->first);
+        it++;
+        count++;
+    }
+    FILE* momentsFile = fopen((path + "momentsempty.bin").c_str(), "wb");
+    if(!momentsFile) throw std::runtime_error("Cannot open file " + path + std::string("momentsempty.bin"));
+    auto numWrite = fwrite(typedMoments.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsFile);
+    if(numWrite != numMoments) throw std::runtime_error("Wrong number of entries written\n");
+    fclose(momentsFile);
+    tbl.clear();
 }
 
 int main(int argc, char **argv) {
@@ -83,7 +209,7 @@ int main(int argc, char **argv) {
     if (fread(primaryMoments, sizeof(uint64_t), nbits, fp) != nbits)
         throw std::runtime_error("Fewer number of primary moments read");
 
-    size_t numMoments = 30 * 1000;
+    size_t numMoments = 1024 * 100; //145277295;
 
     TypedCuboid typedMoments(nullptr, numMoments, nbits);
     typedMoments.realloc();
@@ -91,26 +217,33 @@ int main(int argc, char **argv) {
     TypedCuboid typedMoments_GPU(nullptr, numMoments, nbits);
     typedMoments_GPU.realloc();
 
-    size_t count = 0;
-    for (int i = 0; i < nbits; i++) {
-        for (int j = i + 1; j < nbits; j++) {
-            for(int k = j + 1; k < nbits; k++) {
-                std::vector<int> bits = {i, j, k};
-                setToByteArray(typedMoments.getKey(count), bits);
-                count++;
-                if(count >= numMoments) break;
-            }
-            if (count >= numMoments) break;
-        }
-        if (count >= numMoments) break;
-    }
+    FILE * momentsfile = fopen("/root/moments/15_32k/momentsempty.bin", "rb");
+    auto readElems = fread(typedMoments.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsfile);
+    if(readElems != numMoments) throw std::runtime_error("Incorrect number of moments read");
+    fclose(momentsfile);
+
+//    size_t count = 0;
+//    for (int i = 0; i < nbits; i++) {
+//        for (int j = i + 1; j < nbits; j++) {
+//            for (int k = j + 1; k < nbits; k++) {
+//                std::vector<int> bits = {i, j, k};
+//                setToByteArray(typedMoments.getKey(count), bits);
+//                count++;
+//                if (count >= numMoments) break;
+//            }
+//            if (count >= numMoments) break;
+//        }
+//        if (count >= numMoments) break;
+//    }
+
     memcpy(typedMoments_GPU.ptr, typedMoments.ptr, typedMoments.numRows * REC_SIZE_WORDS * sizeof(int));
     TypedCuboid typedData(base);
     printf("Setting moments complete\n");
 
     computeCUDA(typedMoments_GPU, typedData);
+//    exit(0);
     compute(typedMoments, typedData);
-
+    printf("\n");
     bool allkeyequal = true;
     bool allvalequal = true;
     size_t checkInterval = std::max(1UL, numMoments / 100);
@@ -124,8 +257,8 @@ int main(int argc, char **argv) {
 
         bool valequals = (*typedMoments.getVal(i) == *typedMoments_GPU.getVal(i));
         allvalequal = allvalequal && valequals;
-        if (!keyequals || !valequals) {
-            printf("%d %d  \t ", keyequals, valequals);
+        if (true || !keyequals || !valequals) {
+            printf("%d %d  i=%d \t ", keyequals, valequals, i);
             printf("Key CPU: {");
             for (auto b: keyCPU) printf(" %d ", b);
             printf("}  Value CPU: %lu \t", (size_t) *typedMoments.getVal(i));
