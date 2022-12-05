@@ -1,9 +1,13 @@
 package core.solver.moment
 
 import util.BitUtils
-class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)]) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
+
+import scala.collection.mutable
+
+class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)], handleZeroes: Boolean = false) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
   override val solverName: String = "Comoment5"
   val pmArray = new Array[Double](qsize)
+  val zeros = collection.mutable.BitSet()
   override def init(): Unit = {}
   init2()
   def init2(): Unit = {
@@ -29,9 +33,18 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
     val colsLength = BitUtils.sizeOfSet(eqnColSet)
     val n0 = 1 << colsLength
     val cols = BitUtils.IntToSet(eqnColSet).reverse.toVector
-    val newMomentIndices = (0 until n0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet)).
-      filter({ case (i0, i) => !knownSet.contains(i) })
+    val indicesMap = (0 until n0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet))
+    val newMomentIndices = indicesMap.filter({ case (i0, i) => !knownSet.contains(i) })
 
+    if (handleZeroes) {
+      val localZeroes = values.indices.filter(i => values(i) == 0.0)
+      val nonEqnColSet = (N - 1) - eqnColSet
+      val projectedEntries = (0 until 1 << (qsize - colsLength)).map(k0 => BitUtils.unprojectIntWithInt(k0, nonEqnColSet))
+      localZeroes.foreach { i0 =>
+        val i = indicesMap(i0)._2
+        zeros ++= projectedEntries.map { k => i + k }
+      }
+    }
     if (false) {
       // need less than log(n0) moments -- find individually
       //TODO: Optimized method to find comoments
@@ -74,18 +87,21 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
   }
 
   def fillMissingBatch(): Unit = {
-    momentsToAdd.foreach { case (i, m) =>
-      val mu = m
-      moments(i) = mu
+    momentsToAdd.foreach {
+      case (i, m) =>
+        val mu = m
+        moments(i) = mu
     }
     var h = 1
     var logh = 0
     while (h < N) {
       val ph = pmArray(logh)
-      (0 until N by h << 1).foreach { i =>
-        (i until i + h).foreach { j =>
-          moments(j + h) = moments(j + h) + ph * moments(j)
-        }
+      (0 until N by h << 1).foreach {
+        i =>
+          (i until i + h).foreach {
+            j =>
+              moments(j + h) = moments(j + h) + ph * moments(j)
+          }
       }
       h <<= 1
       logh += 1
@@ -126,6 +142,12 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
       }
       h = h << 1
     }
+    if (handleZeroes) {
+      result.indices.filter(i => zeros(i)).foreach {
+        i => result(i) = 0.0
+      }
+    }
+
     solution = result
     solution
   }

@@ -93,7 +93,7 @@ object IPFExperimenter {
     val expt = new IPFMomentBatchExpt2(expname2)
     expt.warmup()
     //val materializedQueries = new MaterializedQueryResult(cg)
-    val qss = List(8, 10, 12, 14, 16, 18)
+    val qss = List(8, 10, 12, 14, 16) //, 18)
     qss.foreach { qs =>
       //val queries = materializedQueries.loadQueries(qs).take(numIters)
       val queries = (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct

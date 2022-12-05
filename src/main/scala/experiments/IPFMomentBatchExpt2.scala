@@ -13,8 +13,8 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
 
   val header = "CubeName,Query,QSize,  " +
     "Prepare(us),Fetch(us),NumFetched,FetchedSizes,  " +
-    "CM3Solve(us),CM5NoFixSolve(us),CM5WithFixSolve(us),vIPFSolve(us),eIPFSolve(us),oneDSolve(us),avgSolve(us),  " +
-    "CM3Error,CM5NoFixError,CM5WithFixError,vIPFError,eIPFError,oneDError,avgError,  " +
+    "CM3Solve(us),CM5NoFixSolve(us),CM5WithFixSolve(us),CM5WithFixZeroesSolve(us),vIPFSolve(us),eIPFSolve(us),oneDSolve(us),avgSolve(us),  " +
+    "CM3Error,CM5NoFixError,CM5WithFixError,CM5WithFixZeroesError,vIPFError,eIPFError,oneDError,avgError,  " +
     "CM3Entropy,CM5NoFixEntropy,CM5WithFixEntropy,vIPFEntropy,eIPFEntropy,oneDEntropy,avgEntropy,   " +
     "vIPFNumIterations,eIPFNumIterations,  " +
     "eIPFNumCliques,eIPFCliqueSizes,eIPFCliqueClusterSizes,  " +
@@ -45,6 +45,14 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
     }
     val CM5SolverWithFix = Profiler("CM5WithFix Solve") {
       val s = new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm)
+      fetched.foreach { case (bits, array) => s.add(bits, array) }
+      s.fillMissing()
+      s.solve(true)
+      s
+    }
+
+    val CM5SolverWithFixZeroes = Profiler("CM5WithFixZeroes Solve") {
+      val s = new CoMoment5SolverDouble(q.length, true, Moment1Transformer(), pm, true)
       fetched.foreach { case (bits, array) => s.add(bits, array) }
       s.fillMissing()
       s.solve(true)
@@ -84,6 +92,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
     val cm3SolveTime = if (q.length < cm3cutoff) Profiler.getDurationMicro("CM3 Solve") else " "
     val cm5NoFixSolveTime = Profiler.getDurationMicro("CM5NoFix Solve")
     val cm5WithFixSolveTime = Profiler.getDurationMicro("CM5WithFix Solve")
+    val cm5WithFixZeroesSolveTime = Profiler.getDurationMicro("CM5WithFixZeroes Solve")
     val vIPFSolveTime = Profiler.getDurationMicro("VIPF Solve")
     val eIPFSolveTime = Profiler.getDurationMicro("EIPF Solve")
     val oneDSolveTime = Profiler.getDurationMicro("OneD Solve")
@@ -104,6 +113,7 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
       val cm3Error = if (q.length < cm3cutoff) error(trueResult, CM3Solver.solution) else " "
       val cm5NoFixError = error(trueResult, CM5SolverNoFix.solution)
       val cm5WithFixError = error(trueResult, CM5SolverWithFix.solution)
+      val cm5WithFixZeroesError = error(trueResult, CM5SolverWithFixZeroes.solution)
       val vIPFError = error(trueResult, vIPFSolver.solution)
       val eIPFError = error(trueResult, eIPFSolver.solution)
       val oneDError = error(trueResult, oneDSolver.solution)
@@ -124,8 +134,8 @@ class IPFMomentBatchExpt2(ename2: String = "")(implicit timestampedFolder: Strin
       }
       val resultRow = s"$dcname,${qu.mkString(":")},${q.length},  " +
         s"$prepareTime,$fetchTime,${fetched.length},${fetched.map(x => BitUtils.sizeOfSet(x._1)).mkString(":")},   " +
-        s"$cm3SolveTime,$cm5NoFixSolveTime,$cm5WithFixSolveTime,$vIPFSolveTime,$eIPFSolveTime,$oneDSolveTime,$avgSolveTime,    " +
-        s"$cm3Error,$cm5NoFixError,$cm5WithFixError,$vIPFError,$eIPFError,$oneDError,$avgError,  " +
+        s"$cm3SolveTime,$cm5NoFixSolveTime,$cm5WithFixSolveTime,$cm5WithFixZeroesSolveTime,$vIPFSolveTime,$eIPFSolveTime,$oneDSolveTime,$avgSolveTime,    " +
+        s"$cm3Error,$cm5NoFixError,$cm5WithFixError,$cm5WithFixZeroesError,$vIPFError,$eIPFError,$oneDError,$avgError,  " +
         s"$cm3Entropy,$cm5NoFixEntropy,$cm5WithFixEntropy,$vIPFEntropy,$eIPFEntropy,$oneDEntropy,$avgEntropy,  " +
         s"${vIPFSolver.numIterations},${eIPFSolver.numIterations},  " +
         s"${cliques.size},${cliques.map(_.numVariables).mkString(":")},${cliques.map(_.clusters.size).mkString(":")},    " +

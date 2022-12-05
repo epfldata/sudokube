@@ -87,14 +87,14 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
     //skip delay15
     //skip delaygroups
     //skip deptimeblk
-    alldims += BD2("DepartureTime", Vector(crsDepTime, depTime, depDifference), true)
+    alldims += BD2("DepartureTime", Vector(crsDepTime, depTime, depDifference), false)
 
 
     val taxiOut = LD2[Int]("TaxiOut", StaticNatCol.fromFile(uniq(36), floatToInt))
     val wheelsOff = LD2[Date]("WheelsOff", StaticDateCol.fromFile(uniq(37), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
     val wheelsOn = LD2[Date]("WheelsOn", StaticDateCol.fromFile(uniq(38), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
     val taxiIn = LD2[Int]("TaxiIn", StaticNatCol.fromFile(uniq(39), floatToInt))
-    alldims += BD2("Taxi", Vector(taxiOut, wheelsOff, wheelsOn, taxiIn), true)
+    alldims += BD2("Taxi", Vector(taxiOut, wheelsOff, wheelsOn, taxiIn), false)
 
     val crsArrTime = LD2[Date]("CRSArrTime", StaticDateCol.fromFile(uniq(40), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
     val arrTime = LD2[Date]("ArrTime", StaticDateCol.fromFile(uniq(41), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
@@ -103,17 +103,17 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
     //del15
     //delaygroup
     //arrivaltimeblk
-    alldims += BD2("ArrivalTime", Vector(crsArrTime, arrTime, arrDiff), true)
+    alldims += BD2("ArrivalTime", Vector(crsArrTime, arrTime, arrDiff), false)
 
     val cancelled = LD2[String]("Cancelled", new LazyMemCol(uniq(47)))
     val cancellationCode = LD2[String]("CancellationCode", new LazyMemCol(uniq(48)))
     val diverted = LD2[String]("Diverted", new LazyMemCol(uniq(49)))
-    alldims += BD2("FlightStatus", Vector(cancelled, cancellationCode, diverted), true)
+    alldims += BD2("FlightStatus", Vector(cancelled, cancellationCode, diverted), false)
 
     val crsElapsedTime = LD2[Int]("CRSElapsedTime", StaticNatCol.fromFile(uniq(50), floatToInt))
     val actualElapsedTime = LD2[Int]("ActualElapsedTime", StaticNatCol.fromFile(uniq(51), floatToInt))
     val airTime = LD2[Int]("AirTime", StaticNatCol.fromFile(uniq(52), floatToInt))
-    alldims += BD2("ElapsedTime", Vector(crsElapsedTime, actualElapsedTime, airTime), true)
+    alldims += BD2("ElapsedTime", Vector(crsElapsedTime, actualElapsedTime, airTime), false)
 
     val flights = LD2[String]("Flights", new LazyMemCol(uniq(53)))
     alldims += flights
@@ -127,19 +127,19 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
     val nasDelay = LD2[Int]("NASDelay", StaticNatCol.fromFile(uniq(58), floatToInt))
     val securityDelay = LD2[Int]("SecurityDelay", StaticNatCol.fromFile(uniq(59), floatToInt))
     val lateAircraftDelay = LD2[Int]("LateAircraftDelay", StaticNatCol.fromFile(uniq(60), floatToInt))
-    alldims += BD2("Delays", Vector(carrierDelay, weatherDelay, nasDelay, securityDelay, lateAircraftDelay), true)
+    alldims += BD2("Delays", Vector(carrierDelay, weatherDelay, nasDelay, securityDelay, lateAircraftDelay), false)
 
     val firstDepTime = LD2[Date]("FirstDepTime", StaticDateCol.fromFile(uniq(61), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
     val totaladdGtime = LD2[Int]("TotalAddGTime", StaticNatCol.fromFile(uniq(62), floatToInt))
     val longestaddGtime = LD2[Int]("LongestAddGTime", StaticNatCol.fromFile(uniq(63), floatToInt))
-    alldims += BD2("FirstDeparture", Vector(firstDepTime, totaladdGtime, longestaddGtime), true)
+    alldims += BD2("FirstDeparture", Vector(firstDepTime, totaladdGtime, longestaddGtime), false)
 
     val divAirportLandings = LD2[Int]("DivAirportLandings", StaticNatCol.fromFile(uniq(64)))
     val divReachedDest = LD2[String]("DivReachedDest", new LazyMemCol(uniq(65)))
     val divActualElapsedTime= LD2[Int]("DivActualElapsedTime", StaticNatCol.fromFile(uniq(66), floatToInt))
     val divArrivalDelay = LD2[Int]("DivArrivalDelay", StaticNatCol.fromFile(uniq(67), floatToInt))
     val divDistance = LD2[Int]("DivDistance", StaticNatCol.fromFile(uniq(68), floatToInt))
-    alldims += BD2("Diversions", Vector(divAirportLandings, divReachedDest, divActualElapsedTime, divArrivalDelay, divDistance), true)
+    alldims += BD2("Diversions", Vector(divAirportLandings, divReachedDest, divActualElapsedTime, divArrivalDelay, divDistance), false)
     def divairport(num: Int) = {
       val startId = 69 + (num-1) * 8
       val divXAiport = LD2[String](s"Div${num}Airport", new LazyMemCol(uniq(startId)))
@@ -151,7 +151,7 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
       val divXWheelsOff = LD2[Date](s"Div${num}WheelsOff", StaticDateCol.fromFile(uniq(startId + 6), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
       val divXTailNum = LD2[String](s"Div${num}TailNum", new LazyMemCol(uniq(startId + 7)))
       val dims = Vector(divXAiport,divXAiportID,divXAiportSeqID,divXWheelsOn,divXTotalGTime,divXLongestGTime,divXWheelsOff,divXTailNum)
-      BD2(s"Div$num", dims, true)
+      BD2(s"Div$num", dims, false)
     }
     alldims += divairport(1)
     alldims += divairport(2)
