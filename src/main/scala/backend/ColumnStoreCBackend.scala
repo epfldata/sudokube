@@ -8,7 +8,6 @@ import java.nio.{ByteBuffer, ByteOrder}
 //@nativeLoader("ColumnStoreCBackend0")
 class ColumnStoreCBackend extends CBackend(".csukcs") {
   @native override protected def reset0(): Unit
-  @native override protected def cuboidGC0(id: Int): Unit
 
   @native override protected def sRehash0(s_id: Int, pos: Array[Int], mode: Int): Int
   @native override protected def dRehash0(d_id: Int, pos: Array[Int]): Int

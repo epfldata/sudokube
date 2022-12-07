@@ -85,7 +85,6 @@ object ScalaBackend extends Backend[Payload](".ssuk") {
 
   protected def dFetch(data: DENSE_T) : Array[Payload] = data
 
-  override protected def cuboidGC(data: (Array[Payload], Seq[(BigBinary, Payload)])): Unit = ???
 
   protected def sSize(data: SPARSE_T) : BigInt = data.length
   protected def sNumBytes(data: SPARSE_T) : Long = ???

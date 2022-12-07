@@ -24,7 +24,7 @@ struct Node {
         key = k;
         value = v;
         firstChild = -1;
-        ns = nextSibling;
+        nextSibling = ns;
     }
 };
 

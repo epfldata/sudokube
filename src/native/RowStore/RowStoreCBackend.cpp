@@ -92,10 +92,6 @@ JNIEXPORT jlongArray JNICALL Java_backend_RowStoreCBackend_dFetch0
 }
 
 
-JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_cuboidGC0
-        (JNIEnv *env, jobject obj, jint id) {
-    rowStore.unloadCuboid(id);
-}
 
 
 JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_add_1i

@@ -17,14 +17,6 @@ JNIEXPORT void JNICALL Java_backend_OriginalCBackend_reset0
 
 /*
  * Class:      backend_OriginalCBackend
- * Method:     cuboidGC0
- * Signature:  (I)V
- */
-JNIEXPORT void JNICALL Java_backend_OriginalCBackend_cuboidGC0
-  (JNIEnv *, jobject, jint);
-
-/*
- * Class:      backend_OriginalCBackend
  * Method:     sRehash0
  * Signature:  (I[II)I
  */

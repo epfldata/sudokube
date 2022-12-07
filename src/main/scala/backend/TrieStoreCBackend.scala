@@ -1,9 +1,19 @@
 package backend
 
-class TrieStoreCBackend extends CBackend(".ctrie") {
-  @native protected def saveAsTrie0(cuboids: Array[(Array[Int], Int)], filename: String, maxSize: Long)
-  @native protected def loadTrie0(filename: String)
-  @native protected def prepareFromTrie0(query: Array[Int]): Array[(Int, Long)]
+import util.ProgressIndicator
+
+
+//TODO: Reusing rowstore extension
+class TrieStoreCBackend extends CBackend(".csukcs") {
+  @native protected def saveTrie0(filename: String)
+  @native protected def loadTrie0(filename: String): Unit
+  @native protected def initTrie0(maxSize: Long)
+  @native protected def setPrimaryMoments0(ps: Array[Double]): Unit
+  @native protected def prepareFromTrie0(query: Array[Int], slice: Array[Int]): Array[Double]
+  @native protected def saveCuboid0(dims: Array[Int], hybridId: Int): Boolean
+
+  @native override protected def readMultiCuboid0(filename: String, isSparseArray: Array[Boolean],
+                                                  nbitsArray: Array[Int], sizeArray: Array[Int]): Array[Int]
 
   /**
    * Saves the contents of given cuboids using a Trie that stores its moments
@@ -13,7 +23,21 @@ class TrieStoreCBackend extends CBackend(".ctrie") {
    * @param filename Name of file
    * @param maxSize Maximum node size in the trie. Once the trie capapcity is reached, no additional moments are stored
    */
-  def saveAsTrie(cuboids: Array[(Array[Int], HYBRID_T)], filename: String, maxSize: Long): Unit = saveAsTrie0(cuboids, filename, maxSize)
+  def saveAsTrie(cuboids: Seq[(Seq[Int], HYBRID_T)], pm: Array[Double], filename: String, maxSize: Long): Unit = {
+    initTrie0(maxSize)
+    setPrimaryMoments0(pm)
+    val pi = new ProgressIndicator(cuboids.size)
+    var continue = true
+    cuboids.zipWithIndex.foreach { case ((ar, hid), cid) =>
+      if (continue) {
+        continue = saveCuboid0(ar.toArray, hid)
+        if (!continue)
+          println(s"Terminating early due to lack of space in trie. Progress=${pi.done}/${cuboids.size}")
+        pi.step
+      }
+    }
+    saveTrie0(filename)
+  }
 
   /**
    * Loads Trie representation of Cuboids from a file into memory
@@ -21,12 +45,7 @@ class TrieStoreCBackend extends CBackend(".ctrie") {
    * @param filename Name of the file
    */
   def loadTrie(filename: String): Unit = loadTrie0(filename)
-  /**
-   * Finds moments relevant to a given query from the trie storing moments of several cuboids
-   * @return Map containing the value of the moment for the available projections of the query (normalized and encoded using Int)
-   *         TODO: Change to MEASURE_T
-   *         @see [[core.solver.SolverTools.preparePrimaryMomentsForQuery]]
-   */
-  def prepareFromTrie(query: IndexedSeq[Int]): Seq[(Int, Long)]=  prepareFromTrie0(query.sorted.toArray).toSeq
 
+  //slice 0, 1 or -1 (for agg)
+  def prepareFromTrie(query: IndexedSeq[Int], slice: IndexedSeq[Int]): Array[Double] = prepareFromTrie0(query.toArray, slice.toArray)
 }

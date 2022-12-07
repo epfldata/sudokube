@@ -100,10 +100,6 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sFetch640
     colStore.fetch64Sparse(s_id, word_id, ptr);
 }
 
-JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_cuboidGC0
-        (JNIEnv *env, jobject obj, jint id) {
-    colStore.unloadCuboid(id);
-}
 
 
 JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_add_1i

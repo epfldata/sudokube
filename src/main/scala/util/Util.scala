@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
 
 class ProgressIndicator(num_steps: Int, name: String = "", showProgress: Boolean = true) {
   private val one_percent = num_steps.toDouble / 100
-  private var done = 0
+  var done = 0
   private val startTime = System.nanoTime()
   if (showProgress) {
     print(name + "  ")

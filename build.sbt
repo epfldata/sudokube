@@ -14,7 +14,8 @@ lazy val root = (project in file("."))
   .dependsOn(originalCBackend % Runtime)
   .dependsOn(rowStoreCBackend % Runtime)
   .dependsOn(colStoreCBackend % Runtime)
-  .aggregate(originalCBackend, rowStoreCBackend, colStoreCBackend)
+  .dependsOn(trieStoreCBackend % Runtime)
+  .aggregate(originalCBackend, rowStoreCBackend, colStoreCBackend, trieStoreCBackend)
 
 
 Test / parallelExecution := false
@@ -41,6 +42,11 @@ lazy val rowStoreCBackend = (project in file("src") / "native" / "RowStore")
   .enablePlugins(JniNative)
 
 lazy val colStoreCBackend = (project in file("src") / "native" / "ColumnStore")
+  .settings(nativeCompile / sourceDirectory := baseDirectory.value)
+  .settings(nativeCompile / target := target.value)
+  .enablePlugins(JniNative)
+
+lazy val trieStoreCBackend = (project in file("src") / "native" / "TrieStore")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
   .settings(nativeCompile / target := target.value)
   .enablePlugins(JniNative)

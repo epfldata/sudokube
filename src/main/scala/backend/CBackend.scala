@@ -211,8 +211,6 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
   protected def dFetch(data: DENSE_T): Array[Payload] =
     Payload.decode_fetched(dFetch0(data))
 
-  protected def cuboidGC(id: HYBRID_T) = cuboidGC0(id)
-
   /** size of spare cuboid, in rows. */
   protected def sSize(data: SPARSE_T): BigInt = sSize0(data)
   protected def sNumBytes(data: SPARSE_T): Long = sNumBytes0(data)
@@ -223,9 +221,11 @@ object CBackend {
   System.loadLibrary("OrigCBackend0")
   System.loadLibrary("RowStoreCBackend0")
   System.loadLibrary("ColumnStoreCBackend0")
+  System.loadLibrary("TrieStoreCBackend0")
   val original = new OriginalCBackend
   val rowstore = new RowStoreCBackend
   val colstore = new ColumnStoreCBackend
+  val triestore = new TrieStoreCBackend
   val default = colstore
 }
 

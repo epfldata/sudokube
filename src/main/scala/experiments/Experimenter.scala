@@ -153,13 +153,15 @@ object Experimenter {
 
 
   def momentCompareFixedAgg()(implicit timestampedFolder: String, numIters: Int): Unit = {
-    val cg = new AirlineDelay()
+    val cg = new NYC()
     val param = "15_18_40"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
+
+    CBackend.triestore.loadTrie("triestore/NYC_sms3_15_18_40_CS.trie")
 
     //val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt(s"fixedagg-${cg.inputname}", "slicing-expt")
@@ -185,13 +187,15 @@ object Experimenter {
   }
 
   def momentCompareFixedTotal()(implicit timestampedFolder: String, numIters: Int): Unit = {
-    val cg = new AirlineDelay()
+    val cg = new NYC()
     val param = "15_18_40"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
+
+    CBackend.triestore.loadTrie("triestore/NYC_sms3_15_18_40_CS.trie")
 
     //val mq = new MaterializedQueryResult(cg)
     val expt = new MomentSolverCompareBatchExpt(s"fixedtotal-${cg.inputname}", "slicing-expt")

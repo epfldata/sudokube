@@ -22,10 +22,7 @@ abstract class Cuboid {
    */
   def numBytes: Long
 
-  /**
-   * Garbage collect this cuboid and de-allocate space (only for CBackend)
-   */
-  def gc: Unit
+
 
   /**
    * Type to specify what dimensions we want to keep after projection. For example, if a cuboid contains dimensions
@@ -178,11 +175,6 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
 
   protected def sFetch64(n_bits: Int, data: SPARSE_T, wordID: Int): Vector[(BigBinary, Long)] = ???
-  /**
-   * Unload cuboid from memory.
-   * Experimental feature used in CBackend
-   */
-  protected def cuboidGC(data: HYBRID_T): Unit
 
   /**
    * Number of non-zero cells of a SparseCuboid
@@ -221,9 +213,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
 
     def size = sSize(data)
     def numBytes: Long = sNumBytes(data)
-    override def gc = {
-      cuboidGC(sparseToHybrid(data))
-    }
+
     override def rehash(bitpos: BITPOS_T): Cuboid = {
       val h = hybridRehash(data, bitpos)
       if(isDense(h))
@@ -274,7 +264,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
 
     /** Returns the contents of cuboid as an array. Only available for [[DenseCuboid]] */
     def fetch: Array[MEASURES_T] = dFetch(data)
-    override def gc: Unit = cuboidGC(denseToHybrid(data))
+
     def backend = be_this
   }
 }
