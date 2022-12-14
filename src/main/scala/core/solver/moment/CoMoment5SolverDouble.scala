@@ -80,8 +80,8 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
       }
       val cuboid_moments = result
       newMomentIndices.foreach { case (i0, i) =>
-        momentsToAdd += i -> cuboid_moments(i0)
-        knownSet += i
+          momentsToAdd += i -> cuboid_moments(i0)
+          knownSet += i
       }
     }
   }
@@ -96,12 +96,14 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
     var logh = 0
     while (h < N) {
       val ph = pmArray(logh)
-      (0 until N by h << 1).foreach {
-        i =>
-          (i until i + h).foreach {
-            j =>
-              moments(j + h) = moments(j + h) + ph * moments(j)
-          }
+      var i = 0
+      while (i < N) {
+        var j = i
+        while (j < i + h) {
+          moments(j + h) = moments(j + h) + ph * moments(j)
+          j += 1
+        }
+        i += (h << 1)
       }
       h <<= 1
       logh += 1
