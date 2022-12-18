@@ -147,6 +147,66 @@ object IPFExperimenter {
     }
   }
 
+  def trie_expt(cubeGenerator: String)(implicit numIters: Int, timestampedFolder: String) = {
+    backendName = "colstore"
+    backend = CBackend.colstore
+
+    val cg = if (cubeGenerator == "NYC") {
+      CBackend.triestore.loadTrie("triestore/NYC_sms3_15_18_40_CS.trie")
+      NYC()
+    } else {
+      ???
+      new AirlineDelay()
+    }
+
+    val sch = cg.schemaInstance
+
+    val ms = "sms3"
+    val maxD = 40
+    val logn = 15
+    val params = List(18, 14, 10, 6)
+    //val materializedQueries = new MaterializedQueryResult(cg)
+    //val queries = materializedQueries.loadQueries(qs).take(numIters)
+    val qss = List(8, 10, 12, 14, 16)
+    val queriesAll = qss.map { qs => qs -> (0 until numIters).map(_ => sch.root.samplePrefix(qs)).distinct }
+    val expname2 = s"$cubeGenerator"
+    val expt = new BackendExpt(expname2)
+    expt.warmup()
+
+    params.foreach { dmin =>
+      val fullname = s"${cg.inputname}_${ms}_${logn}_${dmin}_$maxD"
+      val dc = PartialDataCube.load(fullname, cg.baseName)
+      dc.loadPrimaryMoments(cg.inputname + "_base")
+      assert(dc.index.n_bits == sch.n_bits)
+      println(s"Backend Experiment for ${cg.inputname} dataset MS = $ms NumCuboids=2^{${logn}}, dmin=${dmin}")
+      queriesAll.foreach { case (qs, queries) =>
+        println(s"Query dimensionality $qs")
+        val ql = queries.length
+        queries.zipWithIndex.foreach { case (q, i) =>
+          println(s"\tBatch Query ${i + 1}/$ql")
+          //val trueResult = materializedQueries.loadQueryResult(qs, i)
+          val trueResult = dc.naive_eval(q.sorted)
+          expt.run(dc, fullname, q, trueResult, sliceValues = Vector())
+        }
+      }
+      backend.reset
+    }
+
+    val base = cg.loadBase()
+    base.loadPrimaryMoments(cg.baseName)
+    println("Trie expt")
+    queriesAll.foreach { case (qs, queries) =>
+      println(s"Query dimensionality $qs")
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"\tBatch Query ${i + 1}/$ql")
+        //val trueResult = materializedQueries.loadQueryResult(qs, i)
+        val trueResult = base.naive_eval(q.sorted)
+        expt.runTrie(base.primaryMoments, "Trie", q, trueResult, true, "", Vector())
+      }
+    }
+  }
+
   def ipf_moment_expt_dmin(isSMS: Boolean, cubeGenerator: String, qs: Int)(implicit numIters: Int, timestampedFolder: String) = {
     backendName = "colstore"
     backend = CBackend.colstore
@@ -245,7 +305,9 @@ object IPFExperimenter {
     val cg = NYC()
     val sch = cg.schemaInstance
     //val query = sch.root.samplePrefix(15).sorted
-    val query = Vector(37,49,50,51,52,53,54,55,138,139,219,365,366,404,405)
+    //println(query)
+    //val query = Vector(91, 125, 140, 141, 142, 143, 144, 148, 149, 150, 165, 184, 185, 186, 192) //SSB
+    val query = Vector(37, 49, 50, 51, 52, 53, 54, 55, 138, 139, 219, 365, 366, 404, 405) //NYC
     val param = s"15_18_40"
     val ms = if (true) "sms3" else "rms3"
     val name = s"_${ms}_$param"
@@ -273,6 +335,7 @@ object IPFExperimenter {
       case "NYC-SMS-qsize" => ipf_moment_expt_qsize(true, "NYC", 15, 18, maxdim)
       case "NYC-SMS-logn" => ipf_moment_expt_logn(true, "NYC", 15)
       case "NYC-SMS-dmin" => ipf_moment_expt_dmin(true, "NYC", 15)
+      case "trie" => trie_expt("NYC")
       case "NYC-SMS-partial" => ipf_moment_partial(true, "NYC", partialQS, 15, 18, maxdim)
       case "NYC-SMS-stats" => cuboid_stats(true, nyc)
 

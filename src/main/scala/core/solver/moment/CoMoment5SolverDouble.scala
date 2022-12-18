@@ -2,9 +2,7 @@ package core.solver.moment
 
 import util.BitUtils
 
-import scala.collection.mutable
-
-class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)], handleZeroes: Boolean = false) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
+class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)], handleZeroes: Boolean = false, secondOrder: Boolean = false) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
   override val solverName: String = "Comoment5"
   val pmArray = new Array[Double](qsize)
   val zeros = collection.mutable.BitSet()
@@ -91,6 +89,25 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
       case (i, m) =>
         val mu = m
         moments(i) = mu
+    }
+    if (secondOrder) {
+      val total = moments(0)
+      val sqrtN = (2 << (qsize >> 1)) //2 times sqrtN
+      val sortedMoments = moments.zipWithIndex.sortBy { case (mu, i) => -math.abs(mu) }
+      val topSortedMoments = sortedMoments.take(sqrtN)
+      val processed = collection.mutable.BitSet()
+      topSortedMoments.foreach { case (mu1, i1) =>
+        topSortedMoments.foreach { case (mu2, i2) =>
+          if (((i1 & i2) == 0) && (i1 < i2)) {
+            val i = i1 + i2
+            processed += i
+            if (!knownSet(i)) {
+              assert(processed(i) || moments(i) == 0.0, s"Nonzero initial moment for $i")
+              moments(i) += (mu1 * mu2) / total
+            }
+          }
+        }
+      }
     }
     var h = 1
     var logh = 0

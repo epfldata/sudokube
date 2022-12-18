@@ -30,7 +30,6 @@ class VanillaIPFSolver(override val querySize: Int,
    */
   def solve(): Array[Double] = {
     //println(s"\t\t\tVanilla IPF number of entries (|C| 2^|Q|): ${clusters.size << querySize}")
-
     var totalDelta: Double = 0.0
     numIterations = 0
 
@@ -49,8 +48,8 @@ class VanillaIPFSolver(override val querySize: Int,
       }
 
     } while (totalDelta >= convergenceThreshold * N * clusters.size)
-      // There may be alternative ways to define the convergence criteria,
-      // e.g. compare directly with previous distribution, compare to given marginal distributions, max of all deltas, etc.
+    // There may be alternative ways to define the convergence criteria,
+    // e.g. compare directly with previous distribution, compare to given marginal distributions, max of all deltas, etc.
     //println(s"\t\t\tVanilla IPF number of iterations: $numIterations")
     getSolution
   }
@@ -64,16 +63,16 @@ class VanillaIPFSolver(override val querySize: Int,
     var totalDelta: Double = 0.0
 
     clusters.foreach { case Cluster(marginalVariables: Int, expectedMarginalDistribution: Array[Double]) =>
-      totalDelta += IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution)
+      totalDelta +=  Profiler("UpdateMarginal Old"){IPFUtils.updateTotalDistributionBasedOnMarginalDistribution(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution)}
       if (printErrorForEachUpdate) {
         println(s"\t\t\tUpdating ${BitUtils.IntToSet(marginalVariables).mkString(":")}")
         printExperimentTimeErrorDataToFile(iteration)
         println(s"\t\t\tError: ${error(trueResult, getSolution)}")
-//      clusters.foreach(cluster => {
-//        print(s"${error(cluster.distribution, IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables))}, ")
-//        println(s"Expected ${cluster.distribution.mkString(",")}, got ${IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables).mkString(",")}")
-//      })
-//      println()
+        //      clusters.foreach(cluster => {
+        //        print(s"${error(cluster.distribution, IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables))}, ")
+        //        println(s"Expected ${cluster.distribution.mkString(",")}, got ${IPFUtils.getMarginalDistributionFromTotalDistribution(querySize, totalDistribution, cluster.variables).mkString(",")}")
+        //      })
+        //      println()
       }
     }
 
@@ -85,8 +84,27 @@ class VanillaIPFSolver(override val querySize: Int,
     val totalTime = (currentTime - Profiler.startTimers("Vanilla IPF Total")) / 1000
     val solveTime = (currentTime - Profiler.startTimers("Vanilla IPF Solve")) / 1000
     val currentError = error(trueResult, getSolution)
-//    println(s"\t\tTotal Time: $totalTime, solveTime: $solveTime, Error: $currentError")
+    //    println(s"\t\tTotal Time: $totalTime, solveTime: $solveTime, Error: $currentError")
     // CubeName, Query, QSize, IPFTotalTime(us), IPFSolveTime(us), IPFErr
     timeErrorFileOut.println(s"$cubeName, $query, $querySize, $iteration, $totalTime, $solveTime, $currentError")
+  }
+}
+
+
+class NewVanillaIPFSolver(override val querySize: Int,
+                          override val printErrorForEachIteration: Boolean = false,
+                          override val printErrorForEachUpdate: Boolean = false,
+                          override val trueResult: Array[Double] = null, /* for experimentation only */
+                          override val timeErrorFileOut: PrintStream = null, /* for experimentation only */
+                          override val cubeName: String = "", override val query: String = "" /* for experimentation only */) extends
+  VanillaIPFSolver(querySize, printErrorForEachIteration, printErrorForEachUpdate, trueResult, timeErrorFileOut, cubeName, query) {
+  val temp = new Array[Double](1 << querySize)
+  override def iterativeUpdate(iteration: Int): Double = {
+     var totalDelta: Double = 0.0
+    clusters.foreach { case Cluster(marginalVariables: Int, expectedMarginalDistribution: Array[Double]) =>
+      totalDelta += Profiler("UpdateMarginal New"){IPFUtils.updateTotalDistributionBasedOnMarginalDistributionNew2(querySize, totalDistribution, marginalVariables, expectedMarginalDistribution, temp)}
+    }
+
+    totalDelta
   }
 }

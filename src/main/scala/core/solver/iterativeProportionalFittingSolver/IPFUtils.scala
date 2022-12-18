@@ -1,6 +1,7 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.BitUtils
+import util.BitUtils.hwZeroOne
+import util.{BitUtils, Profiler, PupIterator}
 
 /**
  * Some helper methods useful for IPF solvers.
@@ -46,9 +47,9 @@ object IPFUtils {
         marginalVariables, marginalVariablesValues,
         if (currentMarginalProbability.abs < 1e-9)
           0
-          // Avoids division by 0
-          // If the marginal probability is 0, it must come from a 0 entry in the given marginal distribution
-          // Simply set to 0 (cannot sum to 0 marginal probability if any entry in total distribution is non-zero)
+        // Avoids division by 0
+        // If the marginal probability is 0, it must come from a 0 entry in the given marginal distribution
+        // Simply set to 0 (cannot sum to 0 marginal probability if any entry in total distribution is non-zero)
         else
           expectedMarginalDistribution(marginalVariablesValues) / currentMarginalProbability
       )
@@ -57,6 +58,70 @@ object IPFUtils {
     totalDelta
   }
 
+  def updateTotalDistributionBasedOnMarginalDistributionNew2(totalNumVariables: Int, totalDistribution: Array[Double],
+                                                             marginalVariables: Int,
+                                                             expectedMarginalDistribution: Array[Double], temp: Array[Double]): Double = {
+    var totalDelta: Double = 0.0
+    val N = totalDistribution.length
+    var h = 1
+    val (numMarginalVariables, zeroPos, onePos) = Profiler("New.hw01"){hwZeroOne(marginalVariables, totalNumVariables)} //sorted in reverse order of positions
+    val encodedMarginalVariables = Profiler("New.pup") { new PupIterator(zeroPos.map(1 << _).toVector, totalNumVariables).toArray }
+    Profiler("New.Find Marginal") {
+      while (h < N) {
+        if ((h & marginalVariables) == 0) { //do transform only for non-marginal dimensions
+          var i = 0
+          while (i < N) {
+            var j = i
+            while (j < i + h) {
+              totalDistribution(j) += totalDistribution(j + h)
+              j += 1
+            }
+            i += (h << 1)
+          }
+        }
+        h <<= 1
+      }
+    }
+
+    Profiler("New.Factors") {
+      expectedMarginalDistribution.indices.foreach { i0 =>
+        val i = encodedMarginalVariables(i0)
+        val f = if (totalDistribution(i).abs < 1e-9) 0 else
+          expectedMarginalDistribution(i0) / totalDistribution(i)
+        totalDelta += (expectedMarginalDistribution(i0) - totalDistribution(i)).abs
+        temp(i) = f
+      }
+    }
+
+    Profiler("New.multiply factor") {
+      var j = 0
+      while (j < N) {
+        val k = j & marginalVariables
+        val f = temp(k)
+        totalDistribution(j) *= f
+        j += 1
+      }
+    }
+
+    h = N >> 1
+    Profiler(s"New.update Marginal $h") {
+      while (h > 0) {
+        if ((h & marginalVariables) == 0) { //do transform only for non-marginal dimensions
+          var i = 0
+          while (i < N) {
+            var j = i
+            while (j < i + h) {
+              totalDistribution(j) -= totalDistribution(j + h)
+              j += 1
+            }
+            i += (h << 1)
+          }
+        }
+        h >>= 1
+      }
+    }
+    totalDelta
+  }
   /**
    * Obtain the marginal distribution of certain variables based on the total distribution.
    * The array marginalDistribution will be modified to contain the marginal probabilities.

@@ -54,12 +54,15 @@ class MomentSolverCompareBatchExpt(ename2: String = "", subfolder: String)(impli
     stg = CoMoment5SliceTrieStore
     val result5 = Profiler(stg + "Moment Total") {
       val ts = CBackend.triestore
-      val slice2 = Array.fill[Int](qs)(-1)
-      sliceValues.foreach { case (i, v) => slice2(i) = v }
-      val pm = Profiler(stg + "Moment Fetch") { SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments) }
+      val pm = Profiler(stg + "Moment Prepare") { SolverTools.preparePrimaryMomentsForQuery[Double](q, dc.primaryMoments) }
+      val moments = Profiler(stg + "Moment Fetch") {
+        val slice2 = Array.fill[Int](qs)(-1)
+        sliceValues.foreach { case (i, v) => slice2(i) = v }
+        ts.prepareFromTrie(q, slice2)
+      }
       Profiler(stg + "Moment Solve") {
         val s = new CoMoment5SliceSolverDouble(qs, sliceValues, true, Moment1Transformer(), pm)
-        s.moments = ts.prepareFromTrie(q, slice2)
+        s.moments = moments
         s.fillMissing()
         s.solve(true)
         s
