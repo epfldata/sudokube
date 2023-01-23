@@ -59,6 +59,7 @@ object SloppyFractionalInt {
 
 
 object Util {
+  //slice position relative to query
   def slice[T: ClassTag](a: Array[T], slice: Seq[(Int, Int)]) = {
     val allCols = a.length - 1
     val sliceCols = slice.map(x => 1 << x._1).sum

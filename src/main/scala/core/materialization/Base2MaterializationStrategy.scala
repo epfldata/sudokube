@@ -1,7 +1,7 @@
 package core.materialization
 
 import combinatorics.Combinatorics
-import frontend.schema.Schema2
+import frontend.schema.{DynamicSchema, Schema2}
 import util.Util
 
 /**
@@ -65,5 +65,14 @@ class RandomizedMaterializationStrategy(override val n_bits: Int, logN: Double, 
     Util.collect_n[IndexedSeq[Int]](n_proj, () =>
       Util.collect_n[Int](d, () =>
         scala.util.Random.nextInt(n_bits)).toIndexedSeq.sorted).toVector
+  }
+}
+
+case class DynamicSchemaMaterializationStrategy(sch: DynamicSchema, logN: Double, minD: Int, maxD: Int) extends Base2MaterializationStrategy(sch.n_bits, logN, minD, maxD) {
+  def this(sch: DynamicSchema, logN: Double, minD: Int) = this(sch, logN, minD, (minD + logN - 1).toInt)
+  override def getCuboidsForD(d: Int): Vector[IndexedSeq[Int]] = {
+    val n_proj = n_proj_d(d)
+    //println(s"Dimensionality ${d}")
+    Util.collect_n[IndexedSeq[Int]](n_proj, () => sch.samplePrefix(d).sorted).toVector
   }
 }

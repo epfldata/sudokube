@@ -1,9 +1,10 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
-import frontend.schema.encoders.{ColEncoder, MemCol, NatCol}
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, MemCol, NatCol}
 import util._
 
 import java.io.{File, FileOutputStream, ObjectOutputStream}
+import scala.util.Random
 
 
 /** A schema that can grow dynamically.
@@ -94,11 +95,41 @@ class DynamicSchema extends Schema {
       c.encode_any(math.abs(vi)) + sgn_enc
     }
     else {
-      val c = columns.getOrElse(key, new MemCol[Option[String]]( List[Option[String]](None)))
+      val c = columns.getOrElse(key, new MemCol[String]())
       columns(key) = c
-      c.encode_any(Some(v))
+      c.encode_any(v)
     }
+  def samplePrefix(total: Int) = {
+    import math._
+    val count = collection.mutable.HashMap[Int, Int]().withDefaultValue(0)
+    var remaining = total
+    val cols = columnList
+    while(remaining > 0) {
+      val prob = Random.nextDouble()
+      val factor = if(prob < 0.5)
+        1.0
+      else if(prob < 0.75)
+        0.75
+      else if(prob < 0.875)
+        0.5
+      else
+        0.25
 
+      val index  = Random.nextInt(cols.size)
+      val nbits = ceil(factor * remaining).toInt min (cols(index)._2.bits.size - count(index))
+      count(index) += nbits
+      remaining -= nbits
+    }
+    val bitsCollection = count.map { case (idx, nbits) =>
+      val col = cols(idx)._2.asInstanceOf[DynamicColEncoder[_]]
+      val bits = Util.collect_n(nbits-1, () => col.bits(Random.nextInt(col.bits.size))).toVector
+      //val bits =  col.bits.takeRight(nbits - 1)
+       bits:+ col.isNotNullBit
+    }
+    //println(bitsCollection)
+    bitsCollection.reduce(_ ++ _)
+  }
+  override def decode_dim(q_bits: IndexedSeq[Int]): Seq[Seq[String]] = super.decode_dim(q_bits)
 }
 
 

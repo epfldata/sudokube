@@ -29,6 +29,7 @@ libraryDependencies ++= Seq(
   //"org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.5.3",
   "com.github.tototoshi" %% "scala-csv" % "1.3.10",
+  "org.apache.xmlgraphics" % "batik-all" % "1.16",
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8")
 
 lazy val originalCBackend = (project in file("src") / "native" / "Original")

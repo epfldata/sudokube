@@ -21,7 +21,7 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
     case s: String if Try(s.toInt).isSuccess => encode(s.toInt)
     case _ => BigBinary(0)
   }
-  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet //bits are stored in highest to lowest order
+  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l):+ isNotNullBit).toSet //bits are stored in highest to lowest order
   def encode_locally(v: Int): Int = {
     assert(v >= 0)
     register.registerIdx(v); v

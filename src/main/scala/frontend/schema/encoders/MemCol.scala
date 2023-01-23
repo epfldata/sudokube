@@ -20,7 +20,7 @@ class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends StaticColEncoder[T
   def encode_locally(key: T) : Int = encode_map(key)
   def decode_locally(i: Int) : T   = decode_map(i)
 
-  def maxIdx = (1 << bits.length) - 1
+  val maxIdx = vals.length - 1
 }
 
 //WARNING: map_f must be thread_safe
@@ -28,7 +28,7 @@ class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf
   type T = String
   var encode_map: Map[T, Int] = null
   var decode_map: Vector[T] = null
-  val maxIdx =  Source.fromFile(filename).getLines().size
+  val maxIdx =  Source.fromFile(filename).getLines().size-1
 
   override def initializeBeforeEncoding(implicit ec: ExecutionContext) = {
       Future {
@@ -64,7 +64,7 @@ class MemCol[T](init_size: Int = 8
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 
 
-  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
+  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), Vector(isNotNullBit), bits:+ isNotNullBit)
 
   /* protected */
   var encode_map = new mutable.HashMap[T, Int]
