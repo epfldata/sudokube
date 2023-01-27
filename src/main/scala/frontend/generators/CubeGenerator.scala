@@ -10,7 +10,7 @@ abstract class CubeGenerator(val inputname: String)(implicit val backend: CBacke
   lazy val schemaInstance = schema()
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])]
 
-  val baseName = inputname + "_base"
+  lazy val baseName = inputname + "_base"
   def saveBase() = {
     val r_its = generatePartitions()
     schemaInstance.initBeforeEncode()

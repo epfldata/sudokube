@@ -174,6 +174,18 @@ object Util {
     s.toList
   }
 
+  def collect_n_withAbort[T](n: Int, sample: () => T, factor: Double): List[T] = {
+    val s = collection.mutable.Set[T]()
+    var totalAttempts = 0
+    var successAttemps = 0
+    while (s.size < n && totalAttempts <= factor * n) {
+      if(s.add(sample()))
+        successAttemps += 1
+      totalAttempts += 1
+    }
+    s.toList
+  }
+
   def rnd_choose(n: Int, k: Int): List[Int] =
     collect_n[Int](k, () => scala.util.Random.nextInt(n)).sorted
 

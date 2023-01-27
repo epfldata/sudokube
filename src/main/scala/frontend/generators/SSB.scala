@@ -174,6 +174,24 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
   }
 }
 
+class SSBSample(d0: Int)(implicit backend: CBackend) extends SSB(1) {
+  override val inputname: String = "SSBSample_"+d0
+  val numlines = (1 << d0) / 10
+  assert(d0 >= 4 && d0 < 23)
+  override def readTbl(name: String, colIdx: Vector[Int]) = {
+    if (name.startsWith("lineorder")) {
+      Profiler.noprofile(s"readTbl$name") {
+        val size = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').take(numlines).size
+        val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').take(numlines)
+        size -> tbl.map { r => colIdx.map(i => r(i)) }
+      }
+    } else {
+      val size = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').size
+      val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|')
+      size -> tbl.map { r => colIdx.map(i => r(i)) }
+    }
+  }
+}
 object SSBGen {
   def main(args: Array[String])  {
     implicit val backend = CBackend.default

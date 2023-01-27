@@ -2,7 +2,7 @@ package frontend.generators
 
 import backend.CBackend
 import core.PartialDataCube
-import core.materialization.BudgetedSingleSizeMaterializationStrategy
+import core.materialization.{BudgetedSingleSizeMaterializationStrategy, BudgetedSingleSizePrefixMaterializationStrategy}
 import core.materialization.builder.AlwaysBaseCuboidBuilderMT
 import util.Profiler
 
@@ -19,25 +19,28 @@ import util.Profiler
 object BudgetedNYCCubeGenerator {
   def main(args: Array[String]): Unit = {
     implicit val backend = CBackend.default
-    val d0 = 27
-    val b = 0.025
-    val cg = NYC()
-    // cg.saveBase()
+    //val b = 0.25
+    val d0 = 20
+    val cg = new SSBSample(d0)
+    //println(cg.baseName)
+    cg.saveBase()
 
-
-    Profiler("NYC-Generator") {
-      (1 to d0).foreach(k => {
-        Profiler(s"NYC-Generator-$k") {
-          val m = BudgetedSingleSizeMaterializationStrategy(cg.schemaInstance.n_bits, d0, k, b)
-          val cubename = s"${cg.inputname}_${b}_$k"
-          val dc = new PartialDataCube(cubename, cg.baseName)
-          println(s"Building DataCube $cubename")
-          dc.buildPartial(m, cb = AlwaysBaseCuboidBuilderMT)
-          println(s"Saving DataCube $cubename")
-          dc.save()
+    Profiler(s"${cg.inputname}-Generator b=") {
+      (1 to d0).foreach { k =>
+        Profiler(s"${cg.inputname}-Generator-Dim$k") {
+          Vector(0.25, 1, 4, 16).foreach { b =>
+            val m = BudgetedSingleSizeMaterializationStrategy(cg.schemaInstance.n_bits, d0, k, b)
+            //println(k -> m.projections.size)
+            val cubename = s"${cg.inputname}_random_${b}_$k"
+            val dc = new PartialDataCube(cubename, cg.baseName)
+            println(s"Building DataCube $cubename")
+            dc.buildPartial(m, cb = AlwaysBaseCuboidBuilderMT)
+            println(s"Saving DataCube $cubename")
+            dc.save()
+          }
         }
-      })
+      }
+      Profiler.print()
     }
-    Profiler.print()
   }
 }

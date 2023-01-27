@@ -1,7 +1,7 @@
 package experiments
 
 import backend.CBackend
-import frontend.generators.{CubeGenerator, NYC, RandomCubeGenerator}
+import frontend.generators.{CubeGenerator, NYC, RandomCubeGenerator, SSB, SSBSample}
 
 
 /**
@@ -26,13 +26,18 @@ object ScoringFunctionsPerformanceExperimenter {
    * @param runs States how many runs (=queries) should be performed with that setup
    */
   def runScoringFunctionsPerformanceExperiment(cgName: String, d: Int, d0: Int, b: Double, q: Int, runs: Int, mode: String)(implicit shouldRecord: Boolean): Unit = {
-    val cg: CubeGenerator = if (cgName.equals("NYC")) NYC() else RandomCubeGenerator(d, d0)
+    val cg: CubeGenerator = cgName match {
+      case "NYC" => new NYC()
+      case "RANDOM" => RandomCubeGenerator(d, d0)
+      case "SSB-1" => new SSB(1)
+      case "SSBSample" => new SSBSample(d0)
+    }
     val base = cg.loadBase()
-    val expname2 = s"scoring-functions-performance-$cgName-$d-$d0-$b-$q-${runs}_$mode"
+    val expname2 = s"scoring-functions-performance-$cgName-prefix-$d-$d0-$b-$q-${runs}_$mode"
     val queries = Array.ofDim[IndexedSeq[Int]](runs)
     val trueResults = Array.ofDim[Array[Double]](runs)
     (0 until runs).foreach(r => {
-      val query = scala.util.Random.shuffle((0 until d).toList).take(q).toIndexedSeq.sorted
+      val query = cg.schemaInstance.root.samplePrefix(q).sorted//scala.util.Random.shuffle((0 until d).toList).take(q).toIndexedSeq.sorted
       val trueResult = base.naive_eval(query)
       queries(r) = query
       trueResults(r) = trueResult
@@ -44,26 +49,38 @@ object ScoringFunctionsPerformanceExperimenter {
   def main(args: Array[String]): Unit = {
     implicit val shouldRecord: Boolean = true
 
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 20, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
+    //
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 16, runs = 50, "score_no_subsumption_solver_subsumption")
+    //
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
+    //
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
 
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 120, d0 = 22, b = 0.75, q = 16, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSBSample", d = 188, d0 = 4, b = 0.25, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSBSample", d = 188, d0 = 8, b = 0.25, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 9, runs = 50, "score_no_subsumption_solver_subsumption")
+    runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 18, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSBSample", d = 188, d0 = 16, b = 0.25, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSBSample", d = 188, d0 = 20, b = 0.25, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
 
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 100, d0 = 16, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
-
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 8, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 10, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 12, runs = 50, "score_no_subsumption_solver_subsumption")
-    runScoringFunctionsPerformanceExperiment("RANDOM", d = 150, d0 = 20, b = 0.85, q = 14, runs = 50, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 8, runs = 20, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 10, runs = 20, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 12, runs = 20, "score_no_subsumption_solver_subsumption")
+    //runScoringFunctionsPerformanceExperiment("SSB-1", d = 188, d0 = 23, b = 0.25, q = 14, runs = 20, "score_no_subsumption_solver_subsumption")
 
 //    runScoringFunctionsPerformanceExperiment("NYC", d = NYC.schemaInstance.n_bits, d0 = 27, b = 0.005, q = 10, runs = 50, "no_subsumption_check")
 //    runScoringFunctionsPerformanceExperiment("NYC", d = NYC.schemaInstance.n_bits, d0 = 27, b = 0.005, q = 12, runs = 50, "no_subsumption_check")

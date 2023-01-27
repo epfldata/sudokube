@@ -1,6 +1,7 @@
 package core.materialization
 
 import combinatorics.Combinatorics
+import frontend.schema.Schema2
 import util.Util
 
 /**
@@ -21,6 +22,16 @@ case class BudgetedSingleSizeMaterializationStrategy(_n_bits: Int, d0: Int, k: I
     val cubD = Util.collect_n[IndexedSeq[Int]](n_proj, () =>
       Util.collect_n[Int](k, () =>
         scala.util.Random.nextInt(n_bits)).toIndexedSeq.sorted).toVector
+    cubD ++ Vector(0 until n_bits)
+  }
+}
+
+case class BudgetedSingleSizePrefixMaterializationStrategy(sch: Schema2, d0: Int, k: Int, b: Double) extends MaterializationStrategy(sch.n_bits) {
+  override val projections: IndexedSeq[IndexedSeq[Int]] = {
+    val N0 = (b * (math.pow(2, d0) / math.pow(2, k + 3)) * ((n_bits + 64.0) / 8.0).ceil).floor
+    val c = Combinatorics.comb(n_bits, k).toDouble
+    val n_proj = (c min N0).toInt
+    val cubD = Util.collect_n_withAbort[IndexedSeq[Int]](n_proj, () => sch.root.samplePrefix(k).sorted, 10).toVector
     cubD ++ Vector(0 until n_bits)
   }
 }

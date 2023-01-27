@@ -2,6 +2,7 @@ package experiments
 
 import backend.{Backend, Payload}
 import combinatorics.Combinatorics
+import core.cube.OptimizedArrayCuboidIndex
 import core.{DataCube, PartialDataCube}
 import core.solver.SolverTools
 import core.solver.SolverTools.entropy
@@ -9,7 +10,7 @@ import core.solver.iterativeProportionalFittingSolver._
 import core.solver.moment.{CoMoment5Solver, Moment1Transformer}
 import frontend.generators.CubeGenerator
 import planning.NewProjectionMetaData
-import util.{BitUtils, Profiler}
+import util.{BitUtils, Profiler, ProgressIndicator}
 
 import scala.collection.mutable
 
@@ -32,7 +33,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
   fileout.println(
     "k, EntropyEffectiveIPF, TimeEffectiveIPF, ErrorEffectiveIPF, "
       + "EntropyMoment, TimeMoment, ErrorMoment, "
-      + "PowerScore, WeightedPowerScore, "
+      + "PowerScore, MultiSetPowerScore, WeightedPowerScore, "
       + "DiffToQueryScore, InclusionExclusionScore, UncoveredScore, "
       + "MaterializedCuboids, UsedCuboids, IntersectionSize"
   )
@@ -45,6 +46,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
   var momentError = 0.0
   var momentSolveTime = 0.0
   var scorePower = 0.0
+  var scoreMultiSetPower = 0.0
   var scoreWeightedPower = 0.0
   var scoreDiffQuery = 0.0
   var scoreInclusionExclusion = 0.0
@@ -64,11 +66,11 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
     val fetched = Profiler(s"Scoring Fetch") {
       l.map { pm => (pm.queryIntersection, dc.fetch2[Double](List(pm))) }
     }
-    println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes (counts): " + s"${
-      fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }
-        .groupBy(identity).mapValues(_.size).toList.sorted
-        .map { case (cubeSizes, count) => s"$cubeSizes ($count)" }.mkString(", ")
-    }")
+    //println(s"\t\t\tNumber of cubes fetched: ${fetched.length}, Cube sizes (counts): " + s"${
+    //  fetched.map{ case (bits, _) => BitUtils.sizeOfSet(bits) }
+    //    .groupBy(identity).mapValues(_.size).toList.sorted
+    //    .map { case (cubeSizes, count) => s"$cubeSizes ($count)" }.mkString(", ")
+    //}")
     (fetched.toList, maxDimFetch)
   }
 
@@ -97,7 +99,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param trueResult True result of the query.
    */
   def effectiveIPF_solve(clusters: List[Cluster], query: IndexedSeq[Int], trueResult: Array[Double]): Unit = {
-    println(s"\tRunning ipf solver")
+    //println(s"\tRunning ipf solver")
     Profiler.resetAll()
     val solver = Profiler("Effective IPF Constructor + Add + Solve") {
       val solver = Profiler("Effective IPF Constructor") { new EffectiveIPFSolver(query.length) }
@@ -109,7 +111,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
     val solveTime = Profiler.durations("Effective IPF Solve")._2 / 1000
     val error = SolverTools.error(trueResult, solver.getSolution)
     val solutionEntropy = entropy(solver.getSolution)
-    println(s"\t\tSolve time: $solveTime, solution error $error, entropy $solutionEntropy")
+    //println(s"\t\tSolve time: $solveTime, solution error $error, entropy $solutionEntropy")
     ipfSolutionEntropy += solutionEntropy
     ipfError += error
     ipfSolveTime += solveTime
@@ -126,7 +128,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param trueResult True result of the query.
    */
   def moment_solve(clusters: List[Cluster], primaryMoments: Seq[(Int, Double)], query: IndexedSeq[Int], trueResult: Array[Double]): Unit = {
-    println(s"\tRunning moment solver")
+    //println(s"\tRunning moment solver")
     Profiler.resetAll()
 
 
@@ -149,7 +151,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
     val solveTime = Profiler.durations("Moment Solve")._2 / 1000
     val error = SolverTools.error(trueResult, solver.solution)
     val solutionEntropy = entropy(solver.solution)
-    println(s"\t\tSolve time: $solveTime, solution error $error, entropy $solutionEntropy")
+    //println(s"\t\tSolve time: $solveTime, solution error $error, entropy $solutionEntropy")
     momentSolutionEntropy += solutionEntropy
     momentError += error
     momentSolveTime += solveTime
@@ -188,6 +190,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
     momentError = 0.0
     momentSolveTime = 0.0
     scorePower = 0.0
+    scoreMultiSetPower = 0.0
     scoreWeightedPower = 0.0
     scoreDiffQuery = 0.0
     scoreInclusionExclusion = 0.0
@@ -210,26 +213,30 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
     val query = qu.sorted
     val q = query.size
 
-    // in this setup, we assume that the prepare statement from the SudoKube system DOES NOT eliminate subsumed cuboids
-    // fetch without subsumption
-    val (cubeMetaData, fetched, _, primaryMoments) = momentPrepareFetch(dc, query)
-    val clusters = List[Cluster]() ++ fetched.map { case (bits, array) => Cluster(bits, array) }
-
-    println("\tScores")
-    computeScores(clusters, q, query)
+    // in this setup, we inline the contents of prepare() from the SudoKube system without eliminating subsumed cuboids
+    val primaryMoments = SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
+    val withRed = dc.index.qproject(query, dc.index.n_bits - 1).sorted(NewProjectionMetaData.ordering)
+    //println("\tScores")
+    //multiset power score does not use the clusters for query, but directly all cuboids from the index
+    //FIXME: Assuming OptimizedArrayCuboidIndex is used
+    val dcindex = dc.index.asInstanceOf[OptimizedArrayCuboidIndex]
+    scoreMultiSetPower += dc.index.map{ cub =>
+      val intersectionSize = dcindex.intersect(query, cub)._2.size
+    1 << intersectionSize}.sum
+    computeScores(withRed.toList.map{pm => Cluster(pm.queryIntersection, null)}, q, query)
 
     // eliminate now redundant stuff for the solvers
-    val noRed = dc.index.eliminateRedundant(cubeMetaData, dc.index.n_bits - 1)
+    val noRed = dc.index.eliminateRedundant(withRed, dc.index.n_bits - 1)
     val (fetchedNoRed, _) = actualFetch(noRed, dc)
     val clustersNoRed = List[Cluster]() ++ fetchedNoRed.map { case (bits, array) => Cluster(bits, array) }
 
     intersectionSizes += "//" + clustersNoRed.map(c => c.numVariables).mkString(";")
 
-    println("\tIPF")
+    //println("\tIPF")
     effectiveIPF_solve(clustersNoRed, query, trueResult)
-    println("\tMoment")
+    //println("\tMoment")
     moment_solve(clustersNoRed, primaryMoments, query, trueResult)
-    println("\tCuboid Info")
+    //println("\tCuboid Info")
     usedCuboids += clustersNoRed.size
   }
 
@@ -249,17 +256,19 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    */
   def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)])(implicit backend: Backend[Payload]): Unit = {
     val runs = qus.length
+    println(s"Scoring experiment for ${cg.inputname}, d0=$d0 b=$b querySize = ${qus.head.size}  numQueries = ${qus.length}")
     (2 to d0).foreach(k => {
-      println(s"Run for Dimensionality $k")
+      val pi = new ProgressIndicator(qus.size, s"Run for Dimensionality $k")
       fileout.print(k)
       resetEverything()
-      val fullname = cg.inputname + s"_${b}_$k"
+      val fullname = cg.inputname + s"_prefix_${b}_$k"
       val dc = PartialDataCube.load(fullname, cg.baseName)
       dc.loadPrimaryMoments(cg.baseName)
       qus.indices.foreach(r => {
         run(dc, dcname, qus(r), trueResults(r), output, qname, sliceValues)
+        pi.step
       })
-      fileout.println(s", ${ipfSolutionEntropy / runs}, ${ipfSolveTime / runs}, ${ipfError / runs}, ${momentSolutionEntropy / runs}, ${momentSolveTime / runs}, ${momentError / runs}, ${scorePower / runs}, ${scoreWeightedPower / runs}, ${scoreDiffQuery / runs}, ${scoreInclusionExclusion / runs}, ${scoreUncovered / runs}, ${dc.cuboids.length}, ${usedCuboids / runs}, $intersectionSizes")
+      fileout.println(s", ${ipfSolutionEntropy / runs}, ${ipfSolveTime / runs}, ${ipfError / runs}, ${momentSolutionEntropy / runs}, ${momentSolveTime / runs}, ${momentError / runs}, ${scorePower / runs}, ${scoreMultiSetPower / runs}, ${scoreWeightedPower / runs}, ${scoreDiffQuery / runs}, ${scoreInclusionExclusion / runs}, ${scoreUncovered / runs}, ${dc.cuboids.length}, ${usedCuboids / runs}, $intersectionSizes")
       dc.cuboids.head.backend.reset
     })
 
