@@ -203,6 +203,7 @@ struct ColumnStore {
  */
     Value *fetch(unsigned int id, size_t &numRows);
     SparseCuboidRow fetch64Sparse(unsigned int id, size_t wordId, void* resultPtr);
+    void projectAndfetch64Sparse(unsigned int id, size_t wordId, uint64_t * resultArray, const BitPos& bitpos);
     /**
  *  Unloads cuboid from RAM
  *  Does not free up the ID !

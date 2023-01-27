@@ -49,6 +49,14 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sFetch640
 
 /*
  * Class:      backend_ColumnStoreCBackend
+ * Method:     sProjectAndFetch640
+ * Signature:  (II[I)[J
+ */
+JNIEXPORT jlongArray JNICALL Java_backend_ColumnStoreCBackend_sProjectAndFetch640
+  (JNIEnv *, jobject, jint, jint, jintArray);
+
+/*
+ * Class:      backend_ColumnStoreCBackend
  * Method:     sSize0
  * Signature:  (I)I
  */

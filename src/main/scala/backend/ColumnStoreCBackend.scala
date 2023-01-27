@@ -14,6 +14,7 @@ class ColumnStoreCBackend extends CBackend(".csukcs") {
 
   @native override protected def dFetch0(d_id: Int): Array[Long]
   @native def sFetch640(s_id: Int, word_Id: Int, result: ByteBuffer): Unit
+  @native def sProjectAndFetch640(s_id: Int, word_id: Int, pos: Array[Int]) : Array[Long]
 
   @native override protected def sSize0(id: Int): Int
   @native override protected def sNumBytes0(id: Int): Long
@@ -31,6 +32,9 @@ class ColumnStoreCBackend extends CBackend(".csukcs") {
 
   @native override protected def writeMultiCuboid0(filename: String, isSparseArray: Array[Boolean], CIdArray: Array[Int])
 
+  override def sProjectAndFetch64(data: Int, wordID: Int, bitpos: BITPOS_T): Array[Long] = {
+    sProjectAndFetch640(data, wordID, bitpos.toArray)
+  }
   override def sFetch64(n_bits: Int, s_id: Int, word_id: Int): Vector[(BigBinary, Long)] = {
     val keySize = BitUtils.bitToBytes(n_bits)
     val recSize = keySize + 8

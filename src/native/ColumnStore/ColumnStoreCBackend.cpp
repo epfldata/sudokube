@@ -100,6 +100,18 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sFetch640
     colStore.fetch64Sparse(s_id, word_id, ptr);
 }
 
+JNIEXPORT jlongArray JNICALL Java_backend_ColumnStoreCBackend_sProjectAndFetch640
+        (JNIEnv *env, jobject obj, jint s_id, jint word_id, jintArray jbitpos) {
+    jsize bitposlen = env->GetArrayLength(jbitpos);
+    auto bitpos = env->GetIntArrayElements(jbitpos, 0);
+    std::vector<unsigned int> bitposvec(bitpos, bitpos + bitposlen);
+    uint64_t tempresult[128];
+    memset(tempresult, 0, sizeof(tempresult));
+    colStore.projectAndfetch64Sparse(s_id, word_id, tempresult, bitposvec);
+    jlongArray result = env->NewLongArray(128);
+    env->SetLongArrayRegion(result, 0, 128, (jlong*) tempresult);
+    return result;
+}
 
 
 JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_add_1i

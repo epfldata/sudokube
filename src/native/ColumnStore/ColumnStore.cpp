@@ -170,13 +170,39 @@ Value *ColumnStore::fetch(unsigned int id, size_t &numRows) {
         throw std::runtime_error("Fetch was called on sparse cuboid\n");
     }
 }
-
-SparseCuboidRow ColumnStore::fetch64Sparse(unsigned int id, size_t wordId, void *resultPtr) {
-    Cuboid c = read(id);
-    if (c.isDense) {
+void  ColumnStore::projectAndfetch64Sparse(unsigned int id, size_t wordId, uint64_t *resultArray,
+                                                      const BitPos &bitpos) {
+    Cuboid cub = read(id);
+    if (cub.isDense) {
         throw std::runtime_error("FetchSparse was called on dense cuboid\n");
     } else {
-        SparseCuboidCol sparseCuboid(c);
+        SparseCuboidCol sparseCuboid(cub);
+        size_t r = wordId << 6;
+        if(wordId >= sparseCuboid.numRowsInWords) return;
+        if (bitpos.size() >= 64) throw std::runtime_error("Projection supported only upto 64 bits");
+        for (size_t r0 = 0; r0 < 64 && r + r0 < sparseCuboid.numRows; r0++) {
+            resultArray[(r0 << 1) + 1] = *sparseCuboid.getVal(r + r0);
+        }
+        uint64_t array[64];
+        memset(array, 0, sizeof(array));
+        unsigned int c0 = 0;
+        for (size_t c: bitpos) {
+            array[63 - c0] = *sparseCuboid.getKey(c, wordId);
+            c0++;
+        }
+        transpose64(array);
+        for (size_t r0 = 0; r0 < 64; r0++) {
+            resultArray[r0 << 1] = array[63 - r0];
+        }
+    }
+}
+
+SparseCuboidRow ColumnStore::fetch64Sparse(unsigned int id, size_t wordId, void *resultPtr) {
+    Cuboid cub = read(id);
+    if (cub.isDense) {
+        throw std::runtime_error("FetchSparse was called on dense cuboid\n");
+    } else {
+        SparseCuboidCol sparseCuboid(cub);
         SparseCuboidRow result(resultPtr, 64, sparseCuboid.numCols);
         size_t r = wordId << 6;
         for (size_t r0 = 0; r0 < 64 && r + r0 < sparseCuboid.numRows; r0++) {

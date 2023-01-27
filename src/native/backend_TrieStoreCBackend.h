@@ -50,7 +50,7 @@ JNIEXPORT jdoubleArray JNICALL Java_backend_TrieStoreCBackend_prepareFromTrie0
 /*
  * Class:      backend_TrieStoreCBackend
  * Method:     saveCuboid0
- * Signature:  ([II)V
+ * Signature:  ([II)Z
  */
 JNIEXPORT jboolean JNICALL Java_backend_TrieStoreCBackend_saveCuboid0
   (JNIEnv *, jobject, jintArray, jint);

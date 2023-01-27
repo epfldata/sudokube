@@ -175,6 +175,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
 
   protected def sFetch64(n_bits: Int, data: SPARSE_T, wordID: Int): Vector[(BigBinary, Long)] = ???
+  protected def sProjectAndFetch64(data: SPARSE_T, wordID: Int, bitpos: BITPOS_T): Array[Long] = ???
 
   /**
    * Number of non-zero cells of a SparseCuboid
@@ -235,6 +236,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
     def backend = be_this
 
     def fetch64(wordId: Int): Vector[(BigBinary, Long)] = sFetch64(n_bits, data, wordId)
+    def projectFetch64(wordId: Int, bitpos: BITPOS_T) : Array[Long] = sProjectAndFetch64(data, wordId, bitpos)
   }
 
   /**
