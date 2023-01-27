@@ -1,4 +1,11 @@
 # Sudokube
+Sudokube is a data cube system that supports fast aggregation queries on high-dimensional data. Like traditional data cubes,
+Sudokube supports OLAP operations such as roll-up, drill-down, slicing and dicing, but even on high-dimensional data that cannot be supported at interactive
+speeds using previous technology. For high-dimensional data, the full materialization involving all possible projections is not possible due to storage and compute limitations.
+When only some projections can be materialized, current approaches evaluate queries from the smallest materialized projection that contains the query, which in practice can be slow for large volumes of data.
+Sudokube, on the other hand, tries to approximate query results from all available projections, incrementally improving the results as more projections are processed in an online fashion.
+
+Technical details can be found in our VLDB'22 paper, [High-dimensional Data Cubes](https://vldb.org/pvldb/volumes/15/paper/High-dimensional%20Data%20Cubes)
 ## Requirements
 This project has the following dependencies:
 - sbt
