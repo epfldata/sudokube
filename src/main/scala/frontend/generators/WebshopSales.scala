@@ -37,7 +37,7 @@ class WebshopSales(implicit backend: CBackend)  extends CubeGenerator("WebshopSa
     val month = LD2[Int]("Month", new StaticNatCol(1, 12, StaticNatCol.defaultToInt, nullable = false))
     //skip week
     val day = LD2[Int]("Day", new StaticNatCol(1, 31, StaticNatCol.defaultToInt, nullable = false))
-    val timeDims = BD2("Time", Vector(year, quarter, month, day), false, true)
+    val timeDims = BD2("Time", Vector(year, quarter, month, day), false)
 
     val customer = LD2[String]("Customer", new LazyMemCol(uniq(7)))
 

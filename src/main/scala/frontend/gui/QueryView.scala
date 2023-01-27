@@ -142,7 +142,7 @@ case class QueryView(sch: Schema2, dc: DataCube) {
   }
 
   def rec(dim: Dim2): Vector[DimHierarchy] = dim match {
-    case BD2(name, children, cross, _) => if (cross) {
+    case BD2(name, children, cross) => if (cross) {
       children.map(c => rec(c)).reduce(_ ++ _)
     } else {
       //assuming all children are LD2 here
