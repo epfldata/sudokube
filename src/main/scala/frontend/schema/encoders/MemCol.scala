@@ -47,7 +47,7 @@ class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf
   }
 
   override def encode_locally(v: T): Int = encode_map(v)
-  override def decode_locally(i: Int): T = decode_map(i)
+  override def decode_locally(i: Int): T = if(i < maxIdx) decode_map(i) else null.asInstanceOf[T]
   override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
 
   override def prefixUpto(size: Int): Set[IndexedSeq[Int]] = {

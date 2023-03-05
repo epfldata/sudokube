@@ -58,6 +58,16 @@ object SolverTools {
     if (sum == 0) num.toDouble(deviation) else num.toDouble(deviation) / sum
   }
 
+  def errorMax[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
+    val length = naive.length
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).max
+    //val sum = naive.sum
+    num.toDouble(deviation)
+  }
+
   def errorPlus[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
     //assumes naive values can fit in Long without any fraction or overflow
     val length = naive.length

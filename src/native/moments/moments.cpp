@@ -76,13 +76,13 @@ struct MyHash {
     }
 };
 
-/*
-int main1(int argc, char **argv) {
+int momentsFromPrefixes(int qsize, int logn) {
     libcuckoo::cuckoohash_map<std::vector<int>, bool, MyHash> sbjmap;
     uint32_t numQ, qs;
-    std::string path = "/root/moments/15_32k/";
-    FILE *queryFile = fopen((path + "queries.bin").c_str(), "rb");
-    if (!queryFile) throw std::runtime_error("Cannot open file " + path + std::string("queries.bin"));
+    std::string path = "/root/moments/";
+    std::string qfilename = path + "queries_" + std::to_string(qsize) + "_" + std::to_string(logn) + ".bin";
+    FILE *queryFile = fopen(qfilename.c_str(), "rb");
+    if (!queryFile) throw std::runtime_error("Cannot open file " + qfilename);
     fread(&qs, sizeof(uint32_t), 1, queryFile);
     fread(&numQ, sizeof(uint32_t), 1, queryFile);
     std::cout << "Qs = " << qs << "  numQ = " << numQ << std::endl;
@@ -132,7 +132,7 @@ int main1(int argc, char **argv) {
                     size_t count = 0;
                     int64_t prev = -1;
 
-                    while (j > 0 && count < maxSubsetSize) {
+                    while (j > 0) { //&& count < maxSubsetSize) {
                         if (j & 1) {
                             localchild.emplace_back(parent[b]);
                             count++;
@@ -152,6 +152,7 @@ int main1(int argc, char **argv) {
     size_t duration = duration_cast<seconds>(end - start).count();
     std::cout << "Time for " << numQ << " sets using " << numThreads << " threads = " << duration << " seconds"
               << std::endl;
+    free(queries);
     auto tbl = sbjmap.lock_table();
 
     size_t myMax = 0;
@@ -176,15 +177,20 @@ int main1(int argc, char **argv) {
         it++;
         count++;
     }
-    FILE *momentsFile = fopen((path + "momentsempty.bin").c_str(), "wb");
-    if (!momentsFile) throw std::runtime_error("Cannot open file " + path + std::string("momentsempty.bin"));
+    std::string momentsEmptyFileName = path + "momentsempty_" +std::to_string(qsize) + "_" + std::to_string(logn) + ".bin";
+    FILE *momentsFile = fopen(momentsEmptyFileName.c_str(), "wb");
+    if (!momentsFile) throw std::runtime_error("Cannot open file " + momentsEmptyFileName);
+    fwrite(&numMoments, sizeof(int), 1, momentsFile);
     auto numWrite = fwrite(typedMoments.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsFile);
-    if (numWrite != numMoments) throw std::runtime_error("Wrong number of entries written\n");
+    if (numWrite != numMoments) throw std::runtime_error(std::to_string(numWrite) + " instead of " + std::to_string(numMoments) + " Wrong number of entries written \n");
+    else std::cout << numMoments << " written to file " << momentsEmptyFileName << std::endl;
     fclose(momentsFile);
-    tbl.clear();
-}*/
+    std::cout << "Closed File " << std::endl;
+    tbl.unlock();
+    sbjmap.clear();
+}
 
-int main2(int argc, char **argv) {
+int fillMoments(int qsize, int logn) {
     RowStore rowStore;
     uint64_t totalSum = 0;
     uint64_t primaryMoments[nbits];
@@ -209,8 +215,13 @@ int main2(int argc, char **argv) {
     double invTotalSum = std::pow((double) totalSum, -1.0);
     if (fread(primaryMoments, sizeof(uint64_t), nbits, fp) != nbits)
         throw std::runtime_error("Fewer number of primary moments read");
+    std::string path = "/root/moments/";
+    std::string momentsfileName = path + "momentsempty_" +std::to_string(qsize) + "_" + std::to_string(logn) + ".bin";
+    FILE *momentsfile = fopen(momentsfileName.c_str(), "rb");
+    unsigned int numMoments;
+    fread(&numMoments, sizeof(int), 1, momentsfile);
+    printf("NumMoments = %zu in file %s\n", numMoments, momentsfileName.c_str());
 
-    size_t numMoments = 145277295L;
 
     TypedCuboid typedMoments(nullptr, numMoments, nbits);
     typedMoments.realloc();
@@ -218,7 +229,6 @@ int main2(int argc, char **argv) {
     TypedCuboid typedMoments_GPU(nullptr, numMoments, nbits);
     typedMoments_GPU.realloc();
 
-    FILE *momentsfile = fopen("/root/moments/15_32k/momentsempty.bin", "rb");
     auto readElems = fread(typedMoments.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsfile);
     if (readElems != numMoments) throw std::runtime_error("Incorrect number of moments read");
     fclose(momentsfile);
@@ -247,7 +257,7 @@ int main2(int argc, char **argv) {
     printf("\n");
     bool allkeyequal = true;
     bool allvalequal = true;
-    size_t checkInterval = std::max(1UL, numMoments / 100);
+    size_t checkInterval = std::max(1U, numMoments / 100);
     std::vector<int> keyCPU, keyGPU;
     for (int i = 0; i < numMoments; i++) {
         //Check only for 25 samples
@@ -272,8 +282,10 @@ int main2(int argc, char **argv) {
     }
     printf("ALL KEY EQUAL = %d , ALL VALUE EQUAL = %d \n", allkeyequal, allvalequal);
 
-    FILE *momentsOut = fopen("/root/moments/15_32k/moments_filled.bin", "wb");
-    fwrite(typedMoments_GPU.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsOut);
+    std::string momentsOutName =  path + "momentsempty_" +std::to_string(qsize) + "_" + std::to_string(logn) + ".bin";
+    FILE *momentsOut = fopen(momentsOutName.c_str(), "wb");
+    int numWrite = fwrite(typedMoments_GPU.ptr, REC_SIZE_WORDS * sizeof(int), numMoments, momentsOut);
+    if(numWrite != numMoments) throw std::runtime_error("Could not write all moments to disk");
     fclose(momentsOut);
 }
 
@@ -304,15 +316,22 @@ int main3() {
 int main() {
 //    main2(0, 0);
 //    main3();
-    SetTrie trie;
-    trie.loadFromFile("/root/moments/15_32k/trie.bin");
-    std::vector<int> query = {115, 116, 117, 118, 119, 120, 121, 132, 133, 134, 197, 198, 199, 200, 201, 202, 203, 204, 205, 366};
 
-    auto start = high_resolution_clock::now();
-    std::map<int, value_t> momentResult;
-    trie.getNormalizedSubset(query, momentResult, 0, 0, trie.nodes);
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(end-start).count();
-    printf("Duration = %lu us  Number of moments = %lu \n", duration, momentResult.size());
+
+//    momentsFromPrefixes(15, 12);
+//    momentsFromPrefixes(12, 15);
+//    momentsFromPrefixes(9, 18);
+
+    fillMoments(15, 12);
+//    SetTrie trie;
+//    trie.loadFromFile("/root/moments/15_32k/trie.bin");
+//    std::vector<int> query = {115, 116, 117, 118, 119, 120, 121, 132, 133, 134, 197, 198, 199, 200, 201, 202, 203, 204, 205, 366};
+//
+//    auto start = high_resolution_clock::now();
+//    std::map<int, value_t> momentResult;
+//    trie.getNormalizedSubset(query, momentResult, 0, 0, trie.nodes);
+//    auto end = high_resolution_clock::now();
+//    auto duration = duration_cast<microseconds>(end-start).count();
+//    printf("Duration = %lu us  Number of moments = %lu \n", duration, momentResult.size());
 
 }

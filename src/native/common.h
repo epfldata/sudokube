@@ -95,6 +95,15 @@ struct SparseCuboidRow : Cuboid {
         keySize = bitsToBytes(numCols);
         recSize = keySize + sizeof(Value);
     }
+    void randomShuffle() {
+        byte tempRec[recSize];
+        for(size_t r = numRows-1; r > 0 ; r--) {
+            size_t r2 = rand() % r;
+            memcpy(tempRec, getKey(r), recSize);
+            memcpy(getKey(r), getKey(r2), recSize);
+            memcpy(getKey(r2), tempRec, recSize);
+        }
+    }
 
     /**
 * Returns the pointer to LSB of key at some idx in a dynamic sized array of records

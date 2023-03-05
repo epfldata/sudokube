@@ -1,12 +1,13 @@
 package experiments
 
 import backend.CBackend
+import combinatorics.Combinatorics
 import core.solver.SolverTools
 import core.solver.SolverTools.error
 import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
 import core.solver.moment.{CoMoment5SolverDouble, Moment1Transformer}
 import core.{DataCube, PartialDataCube}
-import frontend.generators.SSBSample
+import frontend.generators.{CubeGenerator, SSBSample}
 import util.{Profiler, ProgressIndicator, Util}
 
 class MaterializationErrorExpt(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"ipf-moment-batch", ename2, "materialization") {
@@ -111,6 +112,41 @@ class MaterializationErrorExpt(ename2: String = "")(implicit timestampedFolder: 
     solver
   }
 }
+class MaterializationStatsExpt(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"single-dim", ename2, "materialization") {
+  val header = "CubeName,Budget,DimLevel,MS,  " +
+    "TotalCuboids,NumMaterializedCuboids,NumDenseCuboids,NumSparseCuboids,ByteSizeCuboids,ActualBudgetRatio"
+  fileout.println(header)
+  def budgetDimLevelAndMSFromName(name: String) = {
+    val pieces = name.split("_")
+    val kIdx = pieces.length - 1
+    val bIdx = kIdx - 1
+    val k = pieces(kIdx).toInt
+    val b = pieces(bIdx).toDouble
+    val ms = pieces(bIdx-1)
+    (b, k, ms)
+  }
+  def run2(dc: DataCube, dcname: String, cg: CubeGenerator): Unit = {
+    val (b, k, ms) = budgetDimLevelAndMSFromName(dcname)
+    val n = cg.schemaInstance.n_bits
+    val total = if(ms == "random")
+      Combinatorics.comb(n, k).toDouble
+    else {
+      cg.schemaInstance.root.numPrefixUpto(k).last.toDouble
+    }
+    val projections = dc.cuboids.dropRight(1)
+    val numMat = projections.size
+    val be = projections.head.backend
+    val numDense = projections.count(_.isInstanceOf[be.DenseCuboid])
+    val numSparse = projections.count(_.isInstanceOf[be.SparseCuboid])
+    val byteSize = projections.map(_.numBytes).sum
+    val baseSize = dc.cuboids.last.numBytes
+    val ratio = byteSize.toDouble/baseSize
+    val outputrow = s"$dcname,$b,$k,$ms, " +
+      s"$total,$numMat,$numDense,$numSparse,$byteSize,$ratio"
+    fileout.println(outputrow)
+  }
+  override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)]): Unit = ???
+}
 
 object MaterializationErrorExpt {
   def main(args: Array[String]) = {
@@ -121,14 +157,15 @@ object MaterializationErrorExpt {
     val cg = new SSBSample(d0)
     val base = cg.loadBase()
     val sch = cg.schemaInstance
-    val strategy = "random"
+    val strategy = "prefix"
     val queries = Vector(5, 10, 15).flatMap { qs =>
       //Util.collect_n_withAbort(numIters, () => sch.root.samplePrefix(qs).sorted, 10).toVector.map {
       Util.collect_n(numIters, () => scala.util.Random.shuffle((0 until sch.n_bits).toList).take(qs).toIndexedSeq.sorted).toVector.map{
         q => q -> base.naive_eval(q)
       }
     }.toMap
-    val expt = new MaterializationErrorExpt(cg.inputname + "_"+strategy)
+    //val expt = new MaterializationErrorExpt(cg.inputname + "_"+strategy)
+    val expt2 = new MaterializationStatsExpt(cg.inputname + "_"+strategy)
     Vector(0.25, 1, 4, 16).foreach{ b =>
       println(s"Budget $b")
       (2 to d0).foreach { k =>
@@ -136,13 +173,15 @@ object MaterializationErrorExpt {
         val cubename = cg.inputname + s"_${strategy}_${b}_$k"
         val dc = PartialDataCube.load(cubename, cg.baseName)
         dc.loadPrimaryMoments(cg.baseName)
-        queries.foreach{ case(q, trueRes) =>
-          expt.run(dc, cubename, q, trueRes, sliceValues = Nil)
-          pi.step
-        }
+        //queries.foreach{ case(q, trueRes) =>
+        //  expt.run(dc, cubename, q, trueRes, sliceValues = Nil)
+        //  pi.step
+        //}
+        expt2.run2(dc, cubename, cg)
         pi.step
         be.reset
       }
     }
   }
 }
+

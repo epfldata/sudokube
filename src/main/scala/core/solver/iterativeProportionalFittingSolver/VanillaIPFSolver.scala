@@ -116,7 +116,7 @@ class MSTVanillaIPFSolver(querySize: Int) extends IPFSolver(querySize, "MST IPF"
 
   def constructMST() = {
     val clustersArray = clusters.toVector
-    clustersArray.take(5).foreach(println)
+    //clustersArray.take(5).foreach(println)
     //println("Clusters: " + clustersArray.indices.map(i => s"$i:${BitUtils.IntToSet(clustersArray(i).variables)}").mkString("\n"))
     val adjacencyMatrix = Array.fill(clustersArray.size)(Array.fill(clustersArray.size)(0))
     var i = 0
