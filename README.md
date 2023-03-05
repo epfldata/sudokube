@@ -29,3 +29,7 @@ that is used in deciding what cuboids are materialized to zero. This can be disa
 
 ## Run Experiments from our VLDB 2022 paper
 The complete reproducibility package can be found under [experiments/vldb2022_sudokube_reproducibility.zip.](experiments/vldb2022_sudokube_reproducibility.zip)
+
+
+## Run Experiments comparing Graphical Model Solvers and Moment Solvers
+- See file [IPF Experimenter](src/main/scala/experiments/IPFExperimenter.scala)
