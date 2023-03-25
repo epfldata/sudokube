@@ -12,10 +12,13 @@ import core.solver.moment._
 import frontend._
 import frontend.experiments.Tools
 import frontend.generators._
-import frontend.gui.FeatureFrameSSB
+import frontend.gui.{FeatureFrameSSB, MaterializationView, QueryView}
+import frontend.schema.DynamicSchema
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder}
 import util.BitUtils._
 import util._
 
+import java.io.PrintStream
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -250,8 +253,101 @@ object DemoTxt {
     val display = FeatureFrameSSB(sf, dc, 50)
   }
 
+  def demo(): Unit = {
+    import frontend.schema._
+    implicit val be = backend.CBackend.colstore
+    val cg = new WebshopSales()
+    cg.saveBase()
+    val dc = cg.loadBase()
+    val sch = cg.schemaInstance
+     println("NumRows = " + dc.cuboids.last.size)
+    println("NumBits = " + sch.n_bits + "   " + dc.index.n_bits)
+    sch.columnVector.foreach{case LD2(n, e) => println(n + " -> " + e.bits.mkString(","))}
+    println(dc.naive_eval(Vector(0, 26, 27)).mkString(" "))
+    val display = new QueryView(sch, dc)
+    val d2 = new MaterializationView()
+  }
+  def demo2() = {
+    implicit val be  = CBackend.rowstore
+    val sch = new DynamicSchema
+    val data = sch.read("multi7.json" )
+    val m = new DynamicSchemaMaterializationStrategy(sch, 10, 5, 15)
+    val basename = "multischema"
+    val dc = new DataCube(basename)
+    val baseCuboid = be.mkAll(sch.n_bits, data)
+    dc.build(baseCuboid, m)
+    dc.save()
+    dc.primaryMoments = SolverTools.primaryMoments(dc)
+    dc.savePrimaryMoments(basename)
+    println("nbits = " + sch.n_bits)
+    println("nrows = " + data.size)
+    dc.cuboids.groupBy(_.n_bits).mapValues(_.map(_.numBytes).sum).toList.sortBy(_._1).foreach{println}
+
+    implicit def toDynEncoder[T](c: ColEncoder[T]) = c.asInstanceOf[DynamicColEncoder[T]]
+    val alltimebits = sch.columns("ID").bits
+    val numallTimeBits = alltimebits.size
+    val n = "col1.col8"
+    val en = sch.columns(n)
+    println("Time bits = " + sch.columns("ID").bits + s"[${sch.columns("ID").isNotNullBit}]")
+    //sch.columnList.foreach{ case (n, en) =>
+      println("Col " + n + " :: " + en.bits + s"[${en.isNotNullBit}] =  " + (en.bits.size+1) + " bits")
+     var continue = true
+      var numsliceTimeBits = 0
+      val slice  = collection.mutable.ArrayBuffer[(Int, Int)]()
+      slice += en.isNotNullBit -> 1
+      while(continue) {
+        val end =  numallTimeBits-numsliceTimeBits
+        val q =  ((end - 1) until end).map(alltimebits(_))
+        val slicedims = slice.map(_._1)
+        println("Current sliceDimensions = " + slicedims.mkString(" "))
+        println("Current sliceValue = " + slice.map(_._2).mkString(" "))
+        println("Current query = " + q)
+        val qsorted = (q ++ slicedims).sorted
+        println("Full query = " + qsorted)
+        val qres = dc.naive_eval(qsorted)
+        val slice2 = slice.map{case (b, v) => qsorted.indexOf(b) -> v}.sortBy(_._1)
+
+        val list = dc.index.prepareBatch(qsorted)
+        list.foreach{pm =>
+          val present = BitUtils.IntToSet(pm.queryIntersection).map(i => qsorted(i))
+          val missing = qsorted.diff(present)
+          println(s"Present = ${present.mkString(" ")}  Missing = ${missing.mkString(" ")}  Cost = ${pm.cuboidCost} #Present=${pm.queryIntersectionSize}")
+        }
+
+        val qresslice = Util.slice(qres, slice2)
+        //println("True result = " + qres.mkString("  "))
+        println("True Slice result = " + qresslice.mkString("  "))
+
+
+        val fetched = list.map{ pm =>(pm.queryIntersection, dc.fetch2[Double](List(pm)))}
+
+        val ipfsolver = new VanillaIPFSolver(qsorted.size)
+        fetched.foreach { case (bits, array) => ipfsolver.add(bits, array) }
+        val ipfres = ipfsolver.solve()
+        val ipfslice = Util.slice(ipfres, slice2)
+        //println("IPF result = " + ipfres.mkString("  "))
+        println("IPF Slice result = " + ipfslice.mkString("  "))
+        val ipferror = SolverTools.error(qres, ipfres)
+        //println("IPF error =" + ipferror)
+
+        val primaryMoments = SolverTools.preparePrimaryMomentsForQuery[Double](qsorted, dc.primaryMoments)
+        val momentsolver = new CoMoment5SliceSolver[Double](qsorted.size, slice2, true, new Moment1Transformer, primaryMoments)
+        fetched.foreach{ case (bits, array) => momentsolver.add(bits, array) }
+        momentsolver.fillMissing()
+        val momentres = momentsolver.solve()
+        println("Moment Slice result = " + momentres.mkString("  "))
+
+        println("Enter slice bit: ")
+        val sbit: Int = scala.io.StdIn.readLine().toInt
+        continue = sbit < 2
+        slice += q.max -> sbit
+        numsliceTimeBits += 1
+      }
+    //}
+  }
+
   def main(args: Array[String]): Unit = {
-    momentSolver()
+    //momentSolver()
     //backend_naive()
     //ssb_demo()
     //cooking_demo()
@@ -259,5 +355,6 @@ object DemoTxt {
     //effectiveIPFSolver()
     //vanillaIPFSolver2()
     //momentSolver3()
+    demo()
   }
 }
