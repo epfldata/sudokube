@@ -9,9 +9,9 @@ import RemoveIcon from '@mui/icons-material/Remove';
 export function InChipButton({ icon }: { icon: ReactNode }) {
   return (
     <Button style={{
-      padding: "0px", border: "0px", margin: "0px", 
-      height: "23px", minWidth: "16px", maxWidth: "16px", 
-      display: "inline"
+      padding: '0px', border: '0px', margin: '0px', 
+      height: '23px', minWidth: '16px', maxWidth: '16px', 
+      display: 'inline'
     }}>
       {icon}
     </Button>
@@ -19,43 +19,43 @@ export function InChipButton({ icon }: { icon: ReactNode }) {
 }
   
 export const chipStyle = {
-  height: "22px",
-  marginLeft: "0px", marginRight: "5px", marginTop: "0px", marginBottom: "5px"
+  height: '22px',
+  marginLeft: '0px', marginRight: '5px', marginTop: '0px', marginBottom: '5px'
 }
 
 export function DimensionChip({ type, text, onDelete }: {
-  type: "Horizontal" | "Series", 
+  type: 'Horizontal' | 'Series', 
   text: ReactNode, 
   onDelete: ((event: any) => void) | undefined
 }) {
   return (<Chip
     style={chipStyle}
-    variant="outlined"
+    variant='outlined'
     icon = { 
-      type == "Horizontal" 
-        ? <ArrowForwardIcon style = {{ height: "15px" }} /> 
-        : <SsidChartIcon style = {{ height: "15px" }} />
+      type == 'Horizontal' 
+        ? <ArrowForwardIcon style = {{ height: '15px' }} /> 
+        : <SsidChartIcon style = {{ height: '15px' }} />
     }
     label = { <span>
       {text} 
-      <InChipButton icon = { <AddIcon style = {{ width: "16px", height: "16px", marginTop: "3px" }} /> } />
-      <InChipButton icon = { <RemoveIcon style = {{ width: "16px", height: "16px", marginTop: "3px" }} /> } />
+      <InChipButton icon = { <AddIcon style = {{ width: '16px', height: '16px', marginTop: '3px' }} /> } />
+      <InChipButton icon = { <RemoveIcon style = {{ width: '16px', height: '16px', marginTop: '3px' }} /> } />
     </span> }
     onDelete = {onDelete}
   />)
 }
 
-export function AddDimensionChip({ type }: { type: "Horizontal" | "Series"}) {
+export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
   return (<Chip
     style={chipStyle}
-    variant="outlined"
+    variant='outlined'
     icon = { 
-      type == "Horizontal" 
-        ? <ArrowForwardIcon style = {{ height: "15px" }} /> 
-        : <SsidChartIcon style = {{ height: "15px" }} />
+      type == 'Horizontal' 
+        ? <ArrowForwardIcon style = {{ height: '15px' }} /> 
+        : <SsidChartIcon style = {{ height: '15px' }} />
     }
-    label = "Add ..."
-    color = "primary"
+    label = 'Add ...'
+    color = 'primary'
     onClick = {() => {}}
   />)
 }
@@ -65,8 +65,8 @@ export function FilterChip({ text, onDelete }: {
 }) {
   return (<Chip
     style = {chipStyle}
-    variant = "outlined"
-    icon = { <FilterAltIcon style = {{ height: "18px" }} /> }
+    variant = 'outlined'
+    icon = { <FilterAltIcon style = {{ height: '18px' }} /> }
     label = {text} 
     onDelete = {onDelete}
   />)
@@ -77,7 +77,7 @@ export function SelectionChip({ keyText, valueText }: {
 }) {
   return (<Chip 
     style = {chipStyle}
-    variant="outlined"
+    variant='outlined'
     label={<span><b>{keyText} </b>{valueText}</span>}
     onClick={()=>{}} 
   />)
