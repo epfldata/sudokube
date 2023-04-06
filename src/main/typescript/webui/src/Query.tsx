@@ -5,14 +5,14 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DimensionChip, AddDimensionChip, FilterChip, SelectionChip, chipStyle } from './Chips';
 import { ResponsiveLine } from '@nivo/line';
 
-const data = require('./example-data.json');
+const data = require('./sales-data.json');
 
 export function Query() {
   return (
     <Container style={{ paddingTop: '20px' }}>
       <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
         <Grid item xs={6}>
-          <DimensionChip type='Horizontal' text='Time / Month' onDelete={() => { }} />
+          <DimensionChip type='Horizontal' text='Time / Quarter' onDelete={() => { }} />
           <AddDimensionChip type='Horizontal' />
         </Grid>
         <Grid item xs={6}>
@@ -27,7 +27,7 @@ export function Query() {
           />
         </Grid>
         <Grid item xs={6}>
-          <DimensionChip type='Series' text='Location / Country' onDelete={() => { }} />
+          <DimensionChip type='Series' text='Location / Continent' onDelete={() => { }} />
           <AddDimensionChip type='Series' />
         </Grid>
         <Grid item xs={6}>
@@ -46,7 +46,7 @@ export function Query() {
       <div style={{ width: '100%', height: '80vh', paddingTop: '20px' }}>
         <ResponsiveLine
           data={data.data}
-          margin={{ top: 5, right: 100, bottom: 25, left: 30 }}
+          margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
           xScale={{ type: 'point' }}
           yScale={{
             type: 'linear',

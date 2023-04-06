@@ -1,0 +1,269 @@
+{
+  "data": [
+    {
+      "id": "Japan",
+      "data": [
+        {
+          "x": "January",
+          "y": 209
+        },
+        {
+          "x": "February",
+          "y": 55
+        },
+        {
+          "x": "March",
+          "y": 143
+        },
+        {
+          "x": "April",
+          "y": 94
+        },
+        {
+          "x": "May",
+          "y": 206
+        },
+        {
+          "x": "June",
+          "y": 205
+        },
+        {
+          "x": "July",
+          "y": 44
+        },
+        {
+          "x": "August",
+          "y": 191
+        },
+        {
+          "x": "September",
+          "y": 245
+        },
+        {
+          "x": "October",
+          "y": 254
+        },
+        {
+          "x": "November",
+          "y": 166
+        },
+        {
+          "x": "December",
+          "y": 272
+        }
+      ]
+    },
+    {
+      "id": "France",
+      "data": [
+        {
+          "x": "January",
+          "y": 231
+        },
+        {
+          "x": "February",
+          "y": 117
+        },
+        {
+          "x": "March",
+          "y": 287
+        },
+        {
+          "x": "April",
+          "y": 131
+        },
+        {
+          "x": "May",
+          "y": 15
+        },
+        {
+          "x": "June",
+          "y": 82
+        },
+        {
+          "x": "July",
+          "y": 174
+        },
+        {
+          "x": "August",
+          "y": 78
+        },
+        {
+          "x": "September",
+          "y": 79
+        },
+        {
+          "x": "October",
+          "y": 99
+        },
+        {
+          "x": "November",
+          "y": 63
+        },
+        {
+          "x": "December",
+          "y": 23
+        }
+      ]
+    },
+    {
+      "id": "US",
+      "data": [
+        {
+          "x": "January",
+          "y": 20
+        },
+        {
+          "x": "February",
+          "y": 165
+        },
+        {
+          "x": "March",
+          "y": 12
+        },
+        {
+          "x": "April",
+          "y": 107
+        },
+        {
+          "x": "May",
+          "y": 182
+        },
+        {
+          "x": "June",
+          "y": 35
+        },
+        {
+          "x": "July",
+          "y": 91
+        },
+        {
+          "x": "August",
+          "y": 31
+        },
+        {
+          "x": "September",
+          "y": 240
+        },
+        {
+          "x": "October",
+          "y": 285
+        },
+        {
+          "x": "November",
+          "y": 236
+        },
+        {
+          "x": "December",
+          "y": 137
+        }
+      ]
+    },
+    {
+      "id": "Germany",
+      "data": [
+        {
+          "x": "January",
+          "y": 196
+        },
+        {
+          "x": "February",
+          "y": 193
+        },
+        {
+          "x": "March",
+          "y": 242
+        },
+        {
+          "x": "April",
+          "y": 154
+        },
+        {
+          "x": "May",
+          "y": 23
+        },
+        {
+          "x": "June",
+          "y": 30
+        },
+        {
+          "x": "July",
+          "y": 231
+        },
+        {
+          "x": "August",
+          "y": 84
+        },
+        {
+          "x": "September",
+          "y": 170
+        },
+        {
+          "x": "October",
+          "y": 52
+        },
+        {
+          "x": "November",
+          "y": 128
+        },
+        {
+          "x": "December",
+          "y": 193
+        }
+      ]
+    },
+    {
+      "id": "Norway",
+      "data": [
+        {
+          "x": "January",
+          "y": 156
+        },
+        {
+          "x": "February",
+          "y": 12
+        },
+        {
+          "x": "March",
+          "y": 255
+        },
+        {
+          "x": "April",
+          "y": 92
+        },
+        {
+          "x": "May",
+          "y": 173
+        },
+        {
+          "x": "June",
+          "y": 296
+        },
+        {
+          "x": "July",
+          "y": 174
+        },
+        {
+          "x": "August",
+          "y": 258
+        },
+        {
+          "x": "September",
+          "y": 165
+        },
+        {
+          "x": "October",
+          "y": 221
+        },
+        {
+          "x": "November",
+          "y": 140
+        },
+        {
+          "x": "December",
+          "y": 10
+        }
+      ]
+    }
+  ]
+}
