@@ -2,31 +2,31 @@ package core.solver.wavelet
 
 import util.{BitUtils, Profiler}
 
-class SingleCuboidWaveletSolver(override val querySize: Int, val debug: Boolean = false)
+class SingleCuboidWaveletSolver(override val querySize: Int,
+                                override val debug: Boolean = false)
   extends
-    WaveletSolver("SingleCuboidWaveletSolver", querySize, new HaarTransformer[Double]()) {
+    WaveletSolver("SingleCuboidWaveletSolver", querySize, new HaarTransformer[Double](), debug) {
 
   override def solve(): Array[Double] = {
     assert(cuboids.size == 1, "SingleCuboidWaveletSolver can only solve a single cuboid")
     val (variables, cuboid) = cuboids.head
 
-    var wavelet: Array[Double] = null
-    Profiler(s"$solverName Forward Transform") {
+    val wavelet: Array[Double] = Profiler(s"$solverName Forward Transform") {
       // transform cuboid to wavelet
-      wavelet = transformer.forward(cuboid)
+      transformer.forward(cuboid)
     }
 
-    var extrapolatedWavelet: Array[Double] = null
-    Profiler(s"$solverName Extrapolation") {
+    val extrapolatedWavelet: Array[Double] = Profiler(s"$solverName Extrapolation") {
       // extrapolate wavelet to the correct size, by filling the missing values with 0
-      extrapolatedWavelet = Array.fill(N)(0.0)
+      val extrapolatedWavelet = Array.fill(N)(0.0)
       System.arraycopy(wavelet, 0, extrapolatedWavelet, 0, wavelet.length)
+
+      extrapolatedWavelet
     }
 
-    var extrapolatedCuboid: Array[Double] = null
-    Profiler(s"$solverName Reverse Transform") {
+    val extrapolatedCuboid: Array[Double] = Profiler(s"$solverName Reverse Transform") {
       // transform wavelet of size N to resulting cuboid
-      extrapolatedCuboid = transformer.reverse(extrapolatedWavelet)
+      transformer.reverse(extrapolatedWavelet)
     }
 
     // permute cuboid to the correct position
@@ -34,15 +34,17 @@ class SingleCuboidWaveletSolver(override val querySize: Int, val debug: Boolean 
     // target order is ascending bit positions
     val targetOrder = sourceOrder.sorted(Ordering[Int])
 
-    var permutedCuboid: Array[Double] = null
-    Profiler(s"$solverName Permutation") {
-      val sourceIndex = BitUtils.permute_bits(querySize, sourceOrder.toArray)
+    val permutedCuboid: Array[Double] = Profiler(s"$solverName Permutation") {
+      val permuteIndex = BitUtils.permute_bits(querySize, sourceOrder.toArray)
 
       // map values at sourceIndex in extrapolatedCuboid to targetIndex in permutedCuboid
-      permutedCuboid = Array.fill(N)(0.0)
+      val permutedCuboid = Array.fill(N)(0.0)
       for (i <- 0 until N) {
-        permutedCuboid(sourceIndex(i)) = extrapolatedCuboid(i)
+        val targetIndex = permuteIndex(i)
+        permutedCuboid(targetIndex) = extrapolatedCuboid(i)
       }
+
+      permutedCuboid
     }
 
     if (debug) {

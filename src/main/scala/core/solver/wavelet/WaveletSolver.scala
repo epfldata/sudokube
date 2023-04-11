@@ -1,6 +1,9 @@
 package core.solver.wavelet
 
-abstract class WaveletSolver(val solverName: String, val querySize: Int, val transformer: Transformer[Double]) {
+abstract class WaveletSolver(val solverName: String,
+                             val querySize: Int,
+                             val transformer: Transformer[Double],
+                             val debug: Boolean = false) {
   /* N is the size of the dataset */
   val N: Int = 1 << querySize
   /**
