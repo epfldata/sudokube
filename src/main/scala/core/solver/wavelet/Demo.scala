@@ -23,7 +23,7 @@ object Demo {
     // List of cuboids represented as (column indices -> flattened array of values)
     val cuboids: Map[Seq[Int], Array[Double]] =
       Seq(
-        Seq(1),
+        Seq(0),
       ).map(columnIndices =>
         columnIndices -> IPFUtils.getMarginalDistribution(querySize, actual, columnIndices.size, SetToInt(columnIndices))
       ).toMap
@@ -58,5 +58,28 @@ object Demo2 {
 
     val a_ = t.reverse(w)
     println(s"Reversed: ${PrintUtils.toString(a_)}")
+  }
+}
+
+object Demo3 {
+  def main(args: Array[String]): Unit = {
+    val solver3 = new SingleCuboidWaveletSolver(3, debug = true)
+    val ca = (Seq(0, 2), Array(14.0, 20.0, 5.0, 20.0))
+    solver3.addCuboid(ca._1, ca._2)
+    solver3.solve()
+
+    println("\n================================\n")
+
+    val solver2 = new SingleCuboidWaveletSolver(3, debug = true)
+    val cb = (Seq(0, 1), Array(5.0, 26.0, 14.0, 14.0))
+    solver2.addCuboid(cb._1, cb._2)
+    solver2.solve()
+
+    println("\n================================\n")
+
+    val solver = new SingleCuboidWaveletSolver(3, debug = true)
+    val cba = (Seq(0, 1, 2), Array(1.0, 19.0, 13.0, 1.0, 4.0, 7.0, 1.0, 13.0))
+    solver.addCuboid(cba._1, cba._2)
+    solver.solve()
   }
 }

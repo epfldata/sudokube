@@ -2,7 +2,9 @@ package core.solver.wavelet
 
 import util.{BitUtils, Profiler}
 
-class SingleCuboidWaveletSolver(val querysize: Int) extends WaveletSolver("SingleCuboidWaveletSolver", querysize, new HaarTransformer[Double]()) {
+class SingleCuboidWaveletSolver(override val querySize: Int, val debug: Boolean = false)
+  extends
+    WaveletSolver("SingleCuboidWaveletSolver", querySize, new HaarTransformer[Double]()) {
 
   override def solve(): Array[Double] = {
     assert(cuboids.size == 1, "SingleCuboidWaveletSolver can only solve a single cuboid")
@@ -27,27 +29,32 @@ class SingleCuboidWaveletSolver(val querysize: Int) extends WaveletSolver("Singl
       extrapolatedCuboid = transformer.reverse(extrapolatedWavelet)
     }
 
-    var result: Array[Double] = null
+    // permute cuboid to the correct position
+    val sourceOrder = (0 until querySize).filterNot(i => variables.contains(i)).toList ++ variables
+    // target order is ascending bit positions
+    val targetOrder = sourceOrder.sorted(Ordering[Int])
+
+    var permutedCuboid: Array[Double] = null
     Profiler(s"$solverName Permutation") {
-      // permute cuboid to the correct position
-      val sourceOrder = variables ++ (0 until querysize).filterNot(i => variables.contains(i))
+      val sourceIndex = BitUtils.permute_bits(querySize, sourceOrder.toArray)
 
-      // target order is descending bit positions
-      val targetOrder = sourceOrder.sorted(Ordering[Int].reverse)
-
-      val sourceIndex = BitUtils.permute_bits(querysize, sourceOrder.toArray)
-      val targetIndex = BitUtils.permute_bits(querysize, targetOrder.toArray)
-
-      // map values at sourceIndex in extrapolatedCuboid to targetIndex in result
-      result = Array.fill(N)(0.0)
+      // map values at sourceIndex in extrapolatedCuboid to targetIndex in permutedCuboid
+      permutedCuboid = Array.fill(N)(0.0)
       for (i <- 0 until N) {
-        result(targetIndex(i)) = extrapolatedCuboid(sourceIndex(i))
+        permutedCuboid(sourceIndex(i)) = extrapolatedCuboid(i)
       }
     }
 
+    if (debug) {
+      println(s"cuboid: $variables ::  ${cuboid.mkString(", ")}")
+      println(s"extrapolated wavelet: $sourceOrder ::  ${extrapolatedWavelet.mkString(", ")}")
+      println(s"extrapolated cuboid: $sourceOrder ::  ${extrapolatedCuboid.mkString(", ")}")
+      println(s"permuted into result: $targetOrder ::  ${permutedCuboid.mkString(", ")}")
+      println(s"result as wavelet: $targetOrder ::  ${transformer.forward(permutedCuboid).mkString(", ")}")
+    }
 
-    solution = Some(((0 until N).reverse, result))
-    result
+    solution = Some((targetOrder, permutedCuboid))
+    permutedCuboid
   }
 }
 
