@@ -15,7 +15,7 @@ abstract class WaveletSolver(val solverName: String,
    *
    * Seq(0, 1) represents the bit positions, from LSB to MSB, which index the marginal value matrix
    */
-  var cuboids: Set[(Seq[Int], Array[Double])] = Set.empty
+  var cuboids: Map[Seq[Int], Array[Double]] = Map.empty
 
   var solution: Option[(Seq[Int], Array[Double])] = None
 

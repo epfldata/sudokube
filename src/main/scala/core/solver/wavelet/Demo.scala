@@ -18,9 +18,6 @@ object Demo1 {
     // Generate random result
     val actual: Array[Double] = Array.fill(1 << querySize)(rng.nextInt(100))
 
-    // Create solver
-    val solver = new MutuallyExclusiveWaveletSolver(querySize, debug = true)
-
     // List of cuboids represented as (column indices -> flattened array of values)
     val cuboids: Map[Seq[Int], Array[Double]] =
       Seq(
@@ -28,6 +25,9 @@ object Demo1 {
       ).map(columnIndices =>
         columnIndices -> IPFUtils.getMarginalDistribution(querySize, actual, columnIndices.size, SetToInt(columnIndices))
       ).toMap
+
+    // Create solver
+    val solver = new MutuallyExclusiveWaveletSolver(querySize, debug = true)
 
     // Add cuboids to solver
     cuboids.foreach { case (columnIndices, values) => solver.addCuboid(columnIndices, values) }
@@ -75,6 +75,13 @@ object Demo3 {
         ),
         new MutuallyExclusiveWaveletSolver(_, _)
       ),
+      Run(3,
+        Seq(
+          (Seq(0, 1, 2), Array(1.0, 19.0, 13.0, 1.0, 4.0, 7.0, 1.0, 13.0)),
+        ),
+        new MutuallyExclusiveWaveletSolver(_, _)
+      ),
+
     )
 
     runs.foreach { case Run(querySize, cuboids, createSolver) =>
