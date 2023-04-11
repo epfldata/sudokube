@@ -6,31 +6,28 @@ import util.BitUtils.SetToInt
 
 import scala.util.Random
 
-object Demo {
+object Demo1 {
 
   /** Example for Wavelet Solver */
   def main(args: Array[String]): Unit = {
     val rng = new Random(42)
 
     // Number of dimensions
-    val querySize = 2
+    val querySize = 3
 
     // Generate random result
     val actual: Array[Double] = Array.fill(1 << querySize)(rng.nextInt(100))
 
-    val solver = new SingleCuboidWaveletSolver(querySize)
+    // Create solver
+    val solver = new MutuallyExclusiveWaveletSolver(querySize, debug = true)
 
     // List of cuboids represented as (column indices -> flattened array of values)
     val cuboids: Map[Seq[Int], Array[Double]] =
       Seq(
-        Seq(0),
+        Seq(1), Seq(0, 2)
       ).map(columnIndices =>
         columnIndices -> IPFUtils.getMarginalDistribution(querySize, actual, columnIndices.size, SetToInt(columnIndices))
       ).toMap
-
-    cuboids.foreach { case (columnIndices, values) =>
-      println(s"Cuboid (${columnIndices.mkString(",")}): [ ${values.mkString(", ")} ]")
-    }
 
     // Add cuboids to solver
     cuboids.foreach { case (columnIndices, values) => solver.addCuboid(columnIndices, values) }
@@ -62,24 +59,34 @@ object Demo2 {
 }
 
 object Demo3 {
+
   def main(args: Array[String]): Unit = {
-    val solver3 = new SingleCuboidWaveletSolver(3, debug = true)
-    val ca = (Seq(0, 2), Array(14.0, 20.0, 5.0, 20.0))
-    solver3.addCuboid(ca._1, ca._2)
-    solver3.solve()
 
-    println("\n================================\n")
+    val runs: Seq[Run] = Seq(
+      //      Run(3, Seq((Seq(0, 1, 2), Array(1.0, 19.0, 13.0, 1.0, 4.0, 7.0, 1.0, 13.0))), new SingleCuboidWaveletSolver(_, _)),
+      //      Run(3, Seq((Seq(0, 1), Array(5.0, 26.0, 14.0, 14.0))), new SingleCuboidWaveletSolver(_, _)),
+      //      Run(3, Seq((Seq(0, 2), Array(14.0, 20.0, 5.0, 20.0))), new SingleCuboidWaveletSolver(_, _)),
+      //      Run(3, Seq((Seq(1), Array(31.0, 28.0))), new SingleCuboidWaveletSolver(_, _)),
+      //      Run(3, Seq((Seq(0), Array(19.0, 40.0))), new SingleCuboidWaveletSolver(_, _)),
+      Run(3,
+        Seq(
+          (Seq(1), Array(31.0, 28.0)),
+          (Seq(0, 2), Array(14.0, 20.0, 5.0, 20.0))
+        ),
+        new MutuallyExclusiveWaveletSolver(_, _)
+      ),
+    )
 
-    val solver2 = new SingleCuboidWaveletSolver(3, debug = true)
-    val cb = (Seq(0, 1), Array(5.0, 26.0, 14.0, 14.0))
-    solver2.addCuboid(cb._1, cb._2)
-    solver2.solve()
+    runs.foreach { case Run(querySize, cuboids, createSolver) =>
+      val solver = createSolver(querySize, true)
+      cuboids.foreach { case (columnIndices, values) =>
+        solver.addCuboid(columnIndices, values)
+      }
+      solver.solve()
 
-    println("\n================================\n")
-
-    val solver = new SingleCuboidWaveletSolver(3, debug = true)
-    val cba = (Seq(0, 1, 2), Array(1.0, 19.0, 13.0, 1.0, 4.0, 7.0, 1.0, 13.0))
-    solver.addCuboid(cba._1, cba._2)
-    solver.solve()
+      println("================================")
+    }
   }
+
+  private case class Run(querySize: Int, cuboids: Seq[(Seq[Int], Array[Double])], solver: (Int, Boolean) => WaveletSolver)
 }
