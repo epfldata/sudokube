@@ -1,6 +1,5 @@
 package core.solver.wavelet
 
-import core.solver.SolverTools.error
 import core.solver.iterativeProportionalFittingSolver.IPFUtils
 import util.BitUtils.SetToInt
 
@@ -53,6 +52,7 @@ object AnalyseTransformer {
     writer.close()
   }
 }
+
 object PrintUtils {
 
   def toString(array: Array[Double], sep: String = " "): String =
@@ -67,21 +67,24 @@ object PrintUtils {
       //      "B" -> Array("a+c", "b+d"),
       //      "AB" -> Array("a", "b", "c", "d"),
       //      "BA" -> Array("a", "c", "b", "d"),
-      "ABCD" -> Array("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"),
-      "A" -> Array("a+b+c+d+e+f+g+h", "i+j+k+l+m+n+o+p"),
-      "B" -> Array("a+b+c+d+i+j+k+l", "e+f+g+h+m+n+o+p"),
-      "C" -> Array("a+b+e+f+i+j+m+n", "c+d+g+h+k+l+o+p"),
-      "D" -> Array("a+c+e+g+i+k+m+o", "b+d+f+h+j+l+n+p"),
-      "AB" -> Array("a+b+c+d", "e+f+g+h", "i+j+k+l", "m+n+o+p"),
-      "BA" -> Array("a+b+c+d", "i+j+k+l", "e+f+g+h", "m+n+o+p"),
-      "BD" -> Array("a+c+i+k", "b+d+j+l", "e+g+m+o", "f+h+n+p"),
-      "CD" -> Array("a+e+i+m", "b+f+j+n", "c+g+k+o", "d+h+l+p"),
-      "ABC" -> Array("a+b", "c+d", "e+f", "g+h", "i+j", "k+l", "m+n", "o+p"),
-      "BAC" -> Array("a+b", "c+d", "i+j", "k+l", "e+f", "g+h", "m+n", "o+p"),
-      "BCA" -> Array("a+b", "i+j", "c+d", "k+l", "e+f", "m+n", "g+h", "o+p"),
-      "ABD" -> Array("a+c", "b+d", "e+g", "f+h", "i+k", "j+l", "m+o", "n+p"),
-      "ACD" -> Array("a+e", "b+f", "c+g", "d+h", "i+m", "j+n", "k+o", "l+p"),
-      "BCD" -> Array("a+i", "b+j", "c+k", "d+l", "e+m", "f+n", "g+o", "h+p"),
+      "ABC" -> Array("a", "b", "c", "d", "e", "f", "g", "h"),
+      "ACB" -> Array("a", "c", "b", "d", "e", "g", "f", "h"),
+      "BAC" -> Array("a", "b", "e", "f", "c", "d", "g", "h"),
+      //      "ABCD" -> Array("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"),
+      //      "A" -> Array("a+b+c+d+e+f+g+h", "i+j+k+l+m+n+o+p"),
+      //      "B" -> Array("a+b+c+d+i+j+k+l", "e+f+g+h+m+n+o+p"),
+      //      "C" -> Array("a+b+e+f+i+j+m+n", "c+d+g+h+k+l+o+p"),
+      //      "D" -> Array("a+c+e+g+i+k+m+o", "b+d+f+h+j+l+n+p"),
+      //      "AB" -> Array("a+b+c+d", "e+f+g+h", "i+j+k+l", "m+n+o+p"),
+      //      "BA" -> Array("a+b+c+d", "i+j+k+l", "e+f+g+h", "m+n+o+p"),
+      //      "BD" -> Array("a+c+i+k", "b+d+j+l", "e+g+m+o", "f+h+n+p"),
+      //      "CD" -> Array("a+e+i+m", "b+f+j+n", "c+g+k+o", "d+h+l+p"),
+      //      "ABC" -> Array("a+b", "c+d", "e+f", "g+h", "i+j", "k+l", "m+n", "o+p"),
+      //      "BAC" -> Array("a+b", "c+d", "i+j", "k+l", "e+f", "g+h", "m+n", "o+p"),
+      //      "BCA" -> Array("a+b", "i+j", "c+d", "k+l", "e+f", "m+n", "g+h", "o+p"),
+      //      "ABD" -> Array("a+c", "b+d", "e+g", "f+h", "i+k", "j+l", "m+o", "n+p"),
+      //      "ACD" -> Array("a+e", "b+f", "c+g", "d+h", "i+m", "j+n", "k+o", "l+p"),
+      //      "BCD" -> Array("a+i", "b+j", "c+k", "d+l", "e+m", "f+n", "g+o", "h+p"),
     ).foreach {
       tuple =>
         println(s"${tuple._1} = [${
@@ -119,6 +122,22 @@ object PrintUtils {
       }
     }
 
+    private def normalize(expr: String): String = {
+      if (expr.matches("[a-z][a-z+-]*")) {
+        s"+$expr"
+      } else {
+        expr
+      }
+    }
+
+    private def invert_signs(s: String): String = {
+      s.map {
+        case '+' => '-'
+        case '-' => '+'
+        case c => c
+      }
+    }
+
     override def times(x: String, y: String): String = {
       if (x.matches("[+-]?0") || y.matches("[+-]?0")) {
         return "0"
@@ -139,22 +158,6 @@ object PrintUtils {
         ???
       }
 
-    }
-
-    private def normalize(expr: String): String = {
-      if (expr.matches("[a-z][a-z+-]*")) {
-        s"+$expr"
-      } else {
-        expr
-      }
-    }
-
-    private def invert_signs(s: String): String = {
-      s.map {
-        case '+' => '-'
-        case '-' => '+'
-        case c => c
-      }
     }
 
     override def div(x: String, y: String): String = {
