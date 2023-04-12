@@ -6,8 +6,10 @@ import Chip from '@mui/material/Chip';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box } from '@mui/material';
+import { RootStore, useRootStore } from './RootStore';
+import { observer } from 'mobx-react-lite';
 
-export function Materialization() {
+export default observer(function Materialization() {
   const columns: GridColDef[] = [
     {
       field: 'country',
@@ -56,15 +58,18 @@ export function Materialization() {
       day: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'
     }
   ];
+
+  const {metadataStore} = useRootStore();
   return (
     <Container style={{ paddingTop: '20px' }}>
+      <h1>{metadataStore.testNumber}</h1>
       <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
         <Grid item xs={6}>
           <FilterChip text='Country / 5–5' onDelete={() => {}} />
           <Chip
             icon = {<FilterAltIcon style = {{ height: '18px' }} />}
             label = 'Add ...'
-            onClick = {() => {}}
+            onClick = {() => {metadataStore.testToggle(); console.log("Clicked, " + metadataStore.testNumber)}}
             style = {chipStyle}
             variant = 'outlined'
             color = 'primary'
@@ -81,4 +86,4 @@ export function Materialization() {
       </Box>
     </Container>
   )
-}
+})

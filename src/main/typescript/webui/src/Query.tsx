@@ -4,10 +4,11 @@ import { Chip, Grid } from '@mui/material'
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DimensionChip, AddDimensionChip, FilterChip, SelectionChip, chipStyle } from './Chips';
 import { ResponsiveLine } from '@nivo/line';
+import { observer } from 'mobx-react-lite';
 
 const data = require('./sales-data.json');
 
-export function Query() {
+export default observer(function Query() {
   return (
     <Container style={{ paddingTop: '20px' }}>
       <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
@@ -112,4 +113,4 @@ export function Query() {
       </div>
     </Container>
   )
-}
+})
