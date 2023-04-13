@@ -2,12 +2,15 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { MetadataStore } from './Metadata';
 import React from 'react';
 import { ReactNode, createContext, useContext } from 'react';
+import { InputStore } from './InputStore';
 
 export class RootStore {
   readonly metadataStore: MetadataStore;
+  readonly inputStore: InputStore;
   constructor() {
     makeAutoObservable(this);
     this.metadataStore = new MetadataStore();
+    this.inputStore = new InputStore();
   }
 }
 

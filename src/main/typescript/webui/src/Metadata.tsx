@@ -36,6 +36,7 @@ export class MetadataStore {
   constructor() {
     makeAutoObservable(this);
     makePersistable(this, { name: 'MetadataStore', properties: ['test'], storage: window.localStorage });
+    this.loadDimensionHierarchy();
   }
   testToggle() {
     this.test ^= 1;
@@ -44,6 +45,8 @@ export class MetadataStore {
     return this.test;
   }
   loadDimensionHierarchy() {
+    const sampleMetadata = require('./sample-metadata.json');
+    this.dimensionHierarchy = sampleMetadata.dimensionHierarchy;
     // this.isLoading = true
     // this.transportLayer.fetchTodos().then(fetchedTodos => {
     //   runInAction(() => {
