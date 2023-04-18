@@ -44,7 +44,7 @@ export class MaterializationStore {
   input: MaterializationInput;
   constructor() {
     makeAutoObservable(this);
-    makePersistable(this, { name: 'MaterializationStore', properties: ['input'], storage: window.localStorage });
+    makePersistable(this, { name: 'MaterializationStore', properties: ['input'], storage: window.sessionStorage });
     this.metadata = new MaterializationMetadata();
     this.input = new MaterializationInput();
   }
