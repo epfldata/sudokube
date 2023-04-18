@@ -1,5 +1,4 @@
 import { makeAutoObservable } from "mobx";
-import { makePersistable } from "mobx-persist-store";
 
 export class DimensionLevel {
   name: string;
@@ -54,17 +53,9 @@ export class Filter {
 export class QueryMetadata {
   dimensionHierarchy: DimensionHierarchy = new DimensionHierarchy([]);
   isLoading: boolean = false;
-  test: number = 0;
   constructor() {
     makeAutoObservable(this);
-    makePersistable(this, { name: 'MetadataStore', properties: ['test'], storage: window.localStorage });
     this.loadDimensionHierarchy();
-  }
-  testToggle() {
-    this.test ^= 1;
-  }
-  get testNumber() {
-    return this.test;
   }
   loadDimensionHierarchy() {
     const sampleMetadata = require('./sample-metadata.json');
@@ -89,6 +80,21 @@ export class QueryInputs {
     this.filters = [{dimensionIndex: 2, dimensionLevelIndex: 0, valueIndex: 0}];
     makeAutoObservable(this);
   }
+  addHorizontal(dimensionIndex: number, dimensionLevelIndex: number) {
+    this.horizontal.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
+  }
+  removeHorizontal(index: number) {
+    this.horizontal.splice(index, 1);
+  }
+  addSeries(dimensionIndex: number, dimensionLevelIndex: number) {
+    this.series.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
+  }
+  removeSeries(index: number) {
+    this.series.splice(index, 1);
+  }
+  removeFilter(index: number) {
+    this.filters.splice(index, 1);
+  }
 }
 
 export class QueryStore {
@@ -97,14 +103,5 @@ export class QueryStore {
   constructor() {
     this.metadata = new QueryMetadata();
     this.inputs = new QueryInputs();
-  }
-  removeHorizontal(index: number) {
-    this.inputs.horizontal.splice(index, 1);
-  }
-  removeSeries(index: number) {
-    this.inputs.series.splice(index, 1);
-  }
-  removeFilter(index: number) {
-    this.inputs.filters.splice(index, 1);
   }
 }

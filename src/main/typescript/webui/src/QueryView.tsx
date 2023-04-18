@@ -25,7 +25,7 @@ export default observer(function Query() {
                 + ' / ' 
                 + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
             }
-            onDelete = { () => queryStore.removeHorizontal(i) }
+            onDelete = { () => queryStore.inputs.removeHorizontal(i) }
           />)) }
           <AddDimensionChip type='Horizontal' />
         </Grid>
@@ -39,7 +39,7 @@ export default observer(function Query() {
                 + ' = '
                 + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].possibleValues[o.valueIndex]
             }
-            onDelete = { () => queryStore.removeFilter(i) }
+            onDelete = { () => queryStore.inputs.removeFilter(i) }
           />)) }
           <Chip
             icon={<FilterAltIcon style={{ height: '18px' }} />}
@@ -60,7 +60,7 @@ export default observer(function Query() {
                   + ' / ' 
                   + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
               }
-              onDelete = { () => queryStore.removeSeries(i) }
+              onDelete = { () => queryStore.inputs.removeSeries(i) }
             />
           )) }
           <AddDimensionChip type='Series' />
