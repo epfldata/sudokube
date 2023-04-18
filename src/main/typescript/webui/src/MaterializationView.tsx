@@ -8,6 +8,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box } from '@mui/material';
 import { RootStore, useRootStore } from './RootStore';
 import { observer } from 'mobx-react-lite';
+import { MaterializationFilter } from './MaterializationStore';
 
 export default observer(function Materialization() {
   const columns: GridColDef[] = [
@@ -59,17 +60,23 @@ export default observer(function Materialization() {
     }
   ];
 
-  const {metadataStore} = useRootStore();
+  const { materializationStore } = useRootStore();
+  const dimensions = materializationStore.metadata.dimensions;
   return (
     <Container style={{ paddingTop: '20px' }}>
-      <h1>{metadataStore.testNumber}</h1>
       <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
         <Grid item xs={6}>
-          <FilterChip text='Country / 5–5' onDelete={() => {}} />
+          { materializationStore.input.filters.map((filter, index) => (
+            <FilterChip
+              key = { 'materialization-filter-chip-' + dimensions[filter.dimensionIndex].name + '-' + filter.bitsFrom + '-' + filter.bitsTo }
+              text = { dimensions[filter.dimensionIndex].name + ' / ' + filter.bitsFrom + '–' + filter.bitsTo }
+              onDelete = { () => materializationStore.removeFilterAtIndex(index) }
+            /> 
+          )) }
           <Chip
             icon = {<FilterAltIcon style = {{ height: '18px' }} />}
             label = 'Add ...'
-            onClick = {() => {metadataStore.testToggle(); console.log("Clicked, " + metadataStore.testNumber)}}
+            onClick = {() => {}}
             style = {chipStyle}
             variant = 'outlined'
             color = 'primary'

@@ -6,8 +6,8 @@ import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import Query from './Query';
-import Materialization from './Materialization';
+import Query from './QueryView';
+import Materialization from './MaterializationView';
 import { RootStore, RootStoreContextProvider } from './RootStore';
 
 export default function App({rootStore}: {rootStore: RootStore}) {

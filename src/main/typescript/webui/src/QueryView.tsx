@@ -10,14 +10,14 @@ import { useRootStore } from './RootStore';
 const data = require('./sales-data.json');
 
 export default observer(function Query() {
-  const { metadataStore, inputStore } = useRootStore();
-  const dimensions = metadataStore.dimensionHierarchy.dimensions;
+  const { queryStore } = useRootStore();
+  const dimensions = queryStore.metadata.dimensionHierarchy.dimensions;
 
   return (
     <Container style={{ paddingTop: '20px' }}>
       <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
         <Grid item xs={6}>
-          { inputStore.queryInput.horizontal.map((o, i) => (<DimensionChip
+          { queryStore.inputs.horizontal.map((o, i) => (<DimensionChip
             key = {'horizontal-' + o.dimensionIndex + '-' + o.dimensionLevelIndex}
             type = 'Horizontal'
             text = {
@@ -25,12 +25,12 @@ export default observer(function Query() {
                 + ' / ' 
                 + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
             }
-            onDelete = { () => inputStore.queryInput.removeHorizontal(i) }
+            onDelete = { () => queryStore.removeHorizontal(i) }
           />)) }
           <AddDimensionChip type='Horizontal' />
         </Grid>
         <Grid item xs={6}>
-          { inputStore.queryInput.filters.map((o, i) => (<FilterChip
+          { queryStore.inputs.filters.map((o, i) => (<FilterChip
             key = {'filter-' + o.dimensionIndex + '-' + o.dimensionLevelIndex + '-' + o.valueIndex}
             text = {
               dimensions[o.dimensionIndex].name 
@@ -39,7 +39,7 @@ export default observer(function Query() {
                 + ' = '
                 + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].possibleValues[o.valueIndex]
             }
-            onDelete = { () => inputStore.queryInput.removeFilter(i) }
+            onDelete = { () => queryStore.removeFilter(i) }
           />)) }
           <Chip
             icon={<FilterAltIcon style={{ height: '18px' }} />}
@@ -51,16 +51,18 @@ export default observer(function Query() {
           />
         </Grid>
         <Grid item xs={6}>
-          { inputStore.queryInput.series.map((o, i) => (<DimensionChip
-            key = {'series-' + o.dimensionIndex + '-' + o.dimensionLevelIndex}
-            type = 'Series'
-            text = {
-              dimensions[o.dimensionIndex].name 
-                + ' / ' 
-                + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
-            }
-            onDelete = { () => inputStore.queryInput.removeSeries(i) }
-          />)) }
+          { queryStore.inputs.series.map((o, i) => (
+            <DimensionChip
+              key = {'series-' + o.dimensionIndex + '-' + o.dimensionLevelIndex}
+              type = 'Series'
+              text = {
+                dimensions[o.dimensionIndex].name 
+                  + ' / ' 
+                  + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
+              }
+              onDelete = { () => queryStore.removeSeries(i) }
+            />
+          )) }
           <AddDimensionChip type='Series' />
         </Grid>
         <Grid item xs={6}>

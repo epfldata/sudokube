@@ -1,16 +1,16 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { MetadataStore } from './Metadata';
 import React from 'react';
 import { ReactNode, createContext, useContext } from 'react';
-import { InputStore } from './InputStore';
+import { QueryStore } from './QueryStore';
+import { MaterializationStore } from './MaterializationStore';
 
 export class RootStore {
-  readonly metadataStore: MetadataStore;
-  readonly inputStore: InputStore;
+  readonly queryStore: QueryStore;
+  readonly materializationStore: MaterializationStore;
   constructor() {
     makeAutoObservable(this);
-    this.metadataStore = new MetadataStore();
-    this.inputStore = new InputStore();
+    this.queryStore = new QueryStore();
+    this.materializationStore = new MaterializationStore();
   }
 }
 
