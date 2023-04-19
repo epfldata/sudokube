@@ -2,15 +2,15 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import React from 'react';
 import { ReactNode, createContext, useContext } from 'react';
 import { QueryStore } from './QueryStore';
-import { MaterializationStore } from './MaterializationStore';
+import MaterializationStore from './MaterializationStore';
 
 export class RootStore {
-  readonly queryStore: QueryStore;
   readonly materializationStore: MaterializationStore;
+  readonly queryStore: QueryStore;
   constructor() {
     makeAutoObservable(this);
-    this.queryStore = new QueryStore();
     this.materializationStore = new MaterializationStore();
+    this.queryStore = new QueryStore();
   }
 }
 

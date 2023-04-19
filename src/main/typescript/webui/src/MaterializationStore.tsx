@@ -1,5 +1,4 @@
 import { makeAutoObservable } from "mobx";
-import { makePersistable } from "mobx-persist-store";
 
 export class MaterializationDimension {
   name: string;
@@ -11,11 +10,25 @@ export class MaterializationDimension {
   }
 }
 
-export class MaterializationMetadata {
-  dimensions: MaterializationDimension[];
-  constructor() {
+export class MaterializationStrategyParameter {
+  name: string;
+  possibleValues?: string[];
+  constructor(name: string, possibleValues?: string[]) {
     makeAutoObservable(this);
-    this.dimensions = [{name: 'Country', numBits: 6}];
+    this.name = name;
+    if (possibleValues) {
+      this.possibleValues = possibleValues;
+    }
+  }
+}
+
+export class MaterializationStrategy {
+  name: string;
+  parameters: MaterializationStrategyParameter[];
+  constructor(name: string, parameters: MaterializationStrategyParameter[]) {
+    makeAutoObservable(this);
+    this.name = name;
+    this.parameters = parameters;
   }
 }
 
@@ -31,27 +44,35 @@ export class MaterializationFilter {
   }
 }
 
-export class MaterializationInput {
-  filters: MaterializationFilter[];
+export default class MaterializationStore {
+  dataset: string = '';
+  datasets: string[] = [];
+  dimensions: MaterializationDimension[] = [];
+  strategies: MaterializationStrategy[] = [];
+  addCuboidsFilters: MaterializationFilter[] = [];
   constructor() {
     makeAutoObservable(this);
-    this.filters = [{dimensionIndex: 0, bitsFrom: 5, bitsTo: 5}];
+    this.loadDatasets();
+    this.loadStrategies();
   }
-}
-
-export class MaterializationStore {
-  metadata: MaterializationMetadata;
-  input: MaterializationInput;
-  constructor() {
-    makeAutoObservable(this);
-    makePersistable(this, { name: 'MaterializationStore', properties: ['input'], storage: window.sessionStorage });
-    this.metadata = new MaterializationMetadata();
-    this.input = new MaterializationInput();
+  loadDatasets() {
+    this.datasets = ['Sales'];
+    this.setDatasetAndLoadDimensions(this.datasets[0]);
   }
-  addFilter(dimension: string, bitsFrom: number, bitsTo: number) {
-    this.input.filters.push(new MaterializationFilter(1, bitsFrom, bitsTo));
+  setDatasetAndLoadDimensions(dataset: string) {
+    this.dataset = dataset;
+    this.loadDimensions(dataset);
+  }
+  loadStrategies() {
+    this.strategies = [new MaterializationStrategy('Strategy', [new MaterializationStrategyParameter('Parameter', ['1', '2'])])];
+  }
+  loadDimensions(dataset: string) {
+    this.dimensions = [new MaterializationDimension('Country', 6), new MaterializationDimension('City', 6)];
+  }
+  addAddCuboidsFilter(dimensionIndex: number, bitsFrom: number, bitsTo: number) {
+    this.addCuboidsFilters.push(new MaterializationFilter(dimensionIndex, bitsFrom, bitsTo));
   }
   removeFilterAtIndex(index: number) {
-    this.input.filters.splice(index, 1);
+    this.addCuboidsFilters.splice(index, 1);
   }
 }
