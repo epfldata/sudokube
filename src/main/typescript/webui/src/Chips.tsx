@@ -119,57 +119,6 @@ export function FilterChip({ text, onDelete }: {
   />)
 }
 
-export function AddCuboidsFilterChip({onAdd}: {
-  onAdd: (dimensionIndex: number, bitsFrom: number, bitsTo: number) => void
-}) {
-  const { materializationStore } = useRootStore();
-  const [isDialogOpen, setDialogOpen] = React.useState(false);
-  const [dimensionIndex, setDimensionIndex] = React.useState(0);
-  const [bitsFrom, setBitsFrom] = React.useState('');
-  const [bitsTo, setBitsTo] = React.useState('');
-  return (<span>
-    <Chip
-      icon = { <FilterAltIcon style = {{ height: '18px' }} /> }
-      label = 'Add filter'
-      onClick = { () => setDialogOpen(true) }
-      style = {chipStyle}
-      variant = 'outlined'
-      color = 'primary'
-    />
-    <Dialog open = {isDialogOpen}>
-      <DialogTitle>Add Filter</DialogTitle>
-      <DialogContent>
-        <FormControl sx={{ m: 1, minWidth: 120 }}>
-          <InputLabel htmlFor="add-cuboids-filter-select-dimension">Dimension</InputLabel>
-          <Select
-            value = {dimensionIndex}
-            onChange = { e => setDimensionIndex(e.target.value as number) }
-            id="add-cuboids-filter-select-dimension" label="Dimension">
-            { materializationStore.dimensions.map((dimension, index) => (
-              <MenuItem key = { 'add-cuboids-filter-select-dimension-' + index } value = {index}> {dimension.name} </MenuItem>
-            )) }
-          </Select>
-        </FormControl>
-        <FormControl sx={{ m: 1, minWidth: 120 }}>
-          <FormLabel id="add-cuboids-filter-column-range-label" style = {{ fontSize: 'small' }}>Columns</FormLabel>
-          <span aria-labelledby = "add-cuboids-filter-column-range-label">
-            <TextField size = 'small' sx = {{ width: 60 }} onChange = { e => setBitsFrom(e.target.value) } />
-            <span style = {{ lineHeight: 2.5 }}> – </span>
-            <TextField size = 'small' sx = {{ width: 60 }} onChange = { e => setBitsTo(e.target.value) } />
-          </span>
-        </FormControl>
-        <DialogActions>
-          <Button onClick = { () => setDialogOpen(false) }>Cancel</Button>
-          <Button onClick = { () => {
-            onAdd(dimensionIndex, parseInt(bitsFrom), parseInt(bitsTo));
-            setDialogOpen(false);
-          } }>Add</Button>
-        </DialogActions>
-      </DialogContent>
-    </Dialog>
-  </span>)
-}
-
 export function SelectionChip({ keyText, valueText }: {
   keyText: ReactNode, valueText: ReactNode 
 }) {

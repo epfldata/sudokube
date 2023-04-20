@@ -44,35 +44,115 @@ export class MaterializationFilter {
   }
 }
 
+export class Cuboid {
+  id: string;
+  dimensions: {name: string, bits: string}[];
+  constructor(id: string, dimensions: {name: string, bits: string}[]) {
+    makeAutoObservable(this);
+    this.id = id;
+    this.dimensions = dimensions;
+  }
+}
+
 export default class MaterializationStore {
-  dataset: string = '';
   datasets: string[] = [];
-  dimensions: MaterializationDimension[] = [];
+  selectedDataset: string = '';
+
   strategies: MaterializationStrategy[] = [];
+  strategyIndex: number = 0;
+  strategyParameters: string[] = [];
+
+  dimensions: MaterializationDimension[] = [];
+
   addCuboidsFilters: MaterializationFilter[] = [];
+  addCuboidsFilteredCuboids: Cuboid[] = [];
+
+  chosenCuboidsFilters: MaterializationFilter[] = [];
+  chosenCuboids: Cuboid[] = [];
+  filteredChosenCuboids: Cuboid[] = [];
+
   constructor() {
     makeAutoObservable(this);
     this.loadDatasets();
     this.loadStrategies();
+    this.loadCuboids();
+
+    // TODO: Remove this when cuboids can really be added
+    this.filteredChosenCuboids = this.chosenCuboids = [
+      {
+        id: "1",
+        dimensions: [
+          { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
+          { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Year", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Month", bits: '\u2589\u2589\u2589\u2589\u25A2' },
+          { name: "Day", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'}
+        ] 
+      }
+    ]
   }
   loadDatasets() {
+    // TODO: Call backend to fetch available datasets
     this.datasets = ['Sales'];
     this.setDatasetAndLoadDimensions(this.datasets[0]);
   }
   setDatasetAndLoadDimensions(dataset: string) {
-    this.dataset = dataset;
+    this.selectedDataset = dataset;
     this.loadDimensions(dataset);
   }
   loadStrategies() {
-    this.strategies = [new MaterializationStrategy('Strategy', [new MaterializationStrategyParameter('Parameter', ['1', '2'])])];
+    // TODO: Call backend to fetch available strategies (with parameters)
+    this.strategies = [new MaterializationStrategy('Strategy', [
+      new MaterializationStrategyParameter('Parameter1', ['1', '2']),
+      new MaterializationStrategyParameter('Parameter2')])];
+  }
+  setStrategyIndex(index: number) {
+    this.strategyIndex = index;
+    this.strategyParameters = Array(this.strategies[index].parameters.length).fill('');
+  }
+  setStrategyParameter(index: number, value: string) {
+    this.strategyParameters[index] = value;
   }
   loadDimensions(dataset: string) {
-    this.dimensions = [new MaterializationDimension('Country', 6), new MaterializationDimension('City', 6)];
+    // TODO: Call backend to fetch available dimensions of the dataset
+    this.dimensions = [
+      new MaterializationDimension('Country', 6), 
+      new MaterializationDimension('City', 6), 
+      new MaterializationDimension('Year', 6), 
+      new MaterializationDimension('Month', 5), 
+      new MaterializationDimension('Day', 6)
+    ];
+  }
+
+  loadCuboids() {
+    // TODO: Call backend to fetch cuboids according to filters
+    this.addCuboidsFilteredCuboids = [
+      {
+        id: "1",
+        dimensions: [
+          { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
+          { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Year", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Month", bits: '\u2589\u2589\u2589\u2589\u25A2' },
+          { name: "Day", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'}
+        ] 
+      }
+    ]
   }
   addAddCuboidsFilter(dimensionIndex: number, bitsFrom: number, bitsTo: number) {
     this.addCuboidsFilters.push(new MaterializationFilter(dimensionIndex, bitsFrom, bitsTo));
   }
-  removeFilterAtIndex(index: number) {
+  removeAddCuboidsFilterAtIndex(index: number) {
     this.addCuboidsFilters.splice(index, 1);
+  }
+  setAddCuboidsFilteredCuboids(cuboids: Cuboid[]) {
+    this.addCuboidsFilteredCuboids = cuboids;
+  }
+
+  addChosenCuboid(cuboids: Cuboid[]) {
+    // TODO: Add cuboids selected
+  }
+  addChosenCuboidsFilter(dimensionIndex: number, bitsFrom: number, bitsTo: number) {
+    this.chosenCuboidsFilters.push(new MaterializationFilter(dimensionIndex, bitsFrom, bitsTo));
   }
 }
