@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
 import Grid from '@mui/material/Grid';
-import { ButtonChip, FilterChip, chipStyle } from './Chips';
+import { FilterChip } from './QueryViewChips';
 import Chip from '@mui/material/Chip';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DataGrid } from '@mui/x-data-grid';
@@ -9,6 +9,7 @@ import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormCon
 import { observer } from 'mobx-react-lite';
 import { useRootStore } from './RootStore';
 import { Cuboid, MaterializationDimension } from './MaterializationStore';
+import { ButtonChip, chipStyle } from './GenericChips';
 
 export default observer(function Materialization() {
   return (
@@ -127,7 +128,7 @@ const AddCuboids = observer(() => {
                 onDelete = { () => materializationStore.removeAddCuboidsFilterAtIndex(index) }
               /> );
             }) }
-            <CuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => {
+            <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => {
               materializationStore.addAddCuboidsFilter(dimensionIndex, bitsFrom, bitsTo);
               // TODO: Call backend with filters to get matching cuboids
             }} />
@@ -167,7 +168,7 @@ const ChosenCuboids = observer(() => {
           onDelete = { () => materializationStore.removeAddCuboidsFilterAtIndex(index) }
         /> 
       )) }
-      <CuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => 
+      <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => 
         materializationStore.addChosenCuboidsFilter(dimensionIndex, bitsFrom, bitsTo) 
       } />
     </Grid>
@@ -184,7 +185,7 @@ const ChosenCuboids = observer(() => {
   )
 })
 
-function CuboidsFilterChip({onAdd}: {
+function AddCuboidsFilterChip({onAdd}: {
   onAdd: (dimensionIndex: number, bitsFrom: number, bitsTo: number) => void
 }) {
   const { materializationStore } = useRootStore();
