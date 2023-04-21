@@ -9,6 +9,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Query from './QueryView';
 import Materialization from './MaterializationView';
 import { RootStore, RootStoreContextProvider } from './RootStore';
+import ExploreTransform from './ExploreTransformView';
 
 export default function App({rootStore}: {rootStore: RootStore}) {
   return (
@@ -20,15 +21,17 @@ export default function App({rootStore}: {rootStore: RootStore}) {
               Sudokube
             </Typography>
             <Box sx = {{ display: { xs: 'none', sm: 'block' } }}>
-              <Button key = 'Materialization' sx = {{ color: '#fff' }} href = '/materialization'>Materialization</Button>
+              <Button key = 'Materialize' sx = {{ color: '#fff' }} href = '/materialize'>Materialize</Button>
+              <Button key = 'Explore' sx = {{ color: '#fff' }} href = '/explore'>Explore</Button>
               <Button key = 'Query' sx = {{ color: '#fff' }} href = 'query'>Query</Button>
             </Box>
           </Toolbar>
         </AppBar>
         <BrowserRouter>
           <Routes>
-            <Route path = '/materialization' element = {<Materialization/>} />
+            <Route path = '/materialize' element = {<Materialization/>} />
             <Route path = '/query' element = {<Query/>} />
+            <Route path = '/explore' element = {<ExploreTransform/>} />
           </Routes>
         </BrowserRouter>
       </Container>

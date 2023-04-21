@@ -3,13 +3,16 @@ import React from 'react';
 import { ReactNode, createContext, useContext } from 'react';
 import { QueryStore } from './QueryStore';
 import MaterializationStore from './MaterializationStore';
+import { ExploreTransformStore } from './ExploreTransformStore';
 
 export class RootStore {
   readonly materializationStore: MaterializationStore;
+  readonly exploreTransformStore: ExploreTransformStore;
   readonly queryStore: QueryStore;
   constructor() {
     makeAutoObservable(this);
     this.materializationStore = new MaterializationStore();
+    this.exploreTransformStore = new ExploreTransformStore();
     this.queryStore = new QueryStore();
   }
 }
