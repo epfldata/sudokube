@@ -22,7 +22,7 @@ export default function App({rootStore}: {rootStore: RootStore}) {
             </Typography>
             <Box sx = {{ display: { xs: 'none', sm: 'block' } }}>
               <Button key = 'Materialize' sx = {{ color: '#fff' }} href = '/materialize'>Materialize</Button>
-              <Button key = 'Explore' sx = {{ color: '#fff' }} href = '/explore'>Explore</Button>
+              <Button key = 'Explore' sx = {{ color: '#fff' }} href = '/explore-transform'>Explore/Transform</Button>
               <Button key = 'Query' sx = {{ color: '#fff' }} href = 'query'>Query</Button>
             </Box>
           </Toolbar>
@@ -31,7 +31,7 @@ export default function App({rootStore}: {rootStore: RootStore}) {
           <Routes>
             <Route path = '/materialize' element = {<Materialization/>} />
             <Route path = '/query' element = {<Query/>} />
-            <Route path = '/explore' element = {<ExploreTransform/>} />
+            <Route path = '/explore-transform' element = {<ExploreTransform/>} />
           </Routes>
         </BrowserRouter>
       </Container>

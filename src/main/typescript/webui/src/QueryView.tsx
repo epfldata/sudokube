@@ -6,13 +6,14 @@ import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
 import { useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
+import { runInAction } from 'mobx';
 
 const data = require('./sales-data.json');
 
 export default observer(function Query() {
   const { queryStore } = useRootStore();
   // TODO: Call backend to load available cubes
-  queryStore.setCubes(['sales']);
+  runInAction(() => queryStore.cubes = ['sales']);
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>
@@ -23,7 +24,7 @@ export default observer(function Query() {
 })
 
 const SelectCube = observer(() => {
-  const { queryStore } = useRootStore();
+  const { queryStore: store } = useRootStore();
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
@@ -31,12 +32,12 @@ const SelectCube = observer(() => {
         id = "select-cube" label = "Select Cube"
         style = {{ marginBottom: 10 }}
         size = 'small'
-        value = { queryStore.selectedCubeIndex }
+        value = { store.selectedCubeIndex }
         onChange = { e => {
-          queryStore.setCubeIndex(e.target.value as number);
+          runInAction(() => store.selectedCubeIndex = e.target.value as number);
           // TODO: Load dimension hierarchy
         } }>
-        { queryStore.cubes.map((cube, index) => (
+        { store.cubes.map((cube, index) => (
           <MenuItem key = { 'select-cube-' + index } value = {index}>{cube}</MenuItem>
         )) }
       </Select>
@@ -45,7 +46,7 @@ const SelectCube = observer(() => {
 })
 
 const QueryParams = observer(() => {
-  const { queryStore } = useRootStore();
+  const { queryStore: store } = useRootStore();
   return (
     <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
       <Horizontal/>
@@ -54,25 +55,25 @@ const QueryParams = observer(() => {
       <Grid item xs={6}>
         <SelectionChip 
           keyText = 'Measure' 
-          valueText = { queryStore.measure } 
-          valueRange = { queryStore.measures } 
-          onChange = { v => queryStore.setMeasure(v) }
+          valueText = { store.measure } 
+          valueRange = { store.measures } 
+          onChange = { v => runInAction(() => store.measure = v) }
         />
         <SelectionChip 
           keyText = 'Aggregation' 
-          valueText = { queryStore.aggregation } 
-          valueRange = { queryStore.aggregations } 
-          onChange = { v => queryStore.setAggregation(v) }
+          valueText = { store.aggregation } 
+          valueRange = { store.aggregations } 
+          onChange = { v => runInAction(() => store.aggregation = v) }
         />
         <SelectionChip 
           keyText = 'Solver' 
-          valueText = { queryStore.solver } 
-          valueRange = { queryStore.solvers } 
-          onChange = { v => queryStore.setSolver(v) }
+          valueText = { store.solver } 
+          valueRange = { store.solvers } 
+          onChange = { v => runInAction(() => store.solver = v) }
         />
         <ButtonChip label = 'Run' variant = 'filled' onClick = {() => {
           // TODO: Call backend to query
-          queryStore.setResult(data);
+          runInAction(() => store.result = data);
         }} />
       </Grid>
     </Grid>
@@ -80,21 +81,21 @@ const QueryParams = observer(() => {
 })
 
 const Horizontal = observer(() => {
-  const { queryStore } = useRootStore();
-  const dimensions = queryStore.cube.dimensionHierarchy.dimensions;
+  const { queryStore: store } = useRootStore();
+  const dimensions = store.cube.dimensionHierarchy.dimensions;
   return (
     <Grid item xs={6}>
-      { queryStore.horizontal.map((o, i) => (<DimensionChip
-        key = {'horizontal-' + o.dimensionIndex + '-' + o.dimensionLevelIndex}
+      { store.horizontal.map((d, i) => (<DimensionChip
+        key = {'horizontal-' + d.dimensionIndex + '-' + d.dimensionLevelIndex}
         type = 'Horizontal'
         text = {
-          dimensions[o.dimensionIndex].name 
+          dimensions[d.dimensionIndex].name 
             + ' / ' 
-            + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
+            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
         }
-        zoomIn = { () => queryStore.zoomInHorizontal(i) }
-        zoomOut = { () => queryStore.zoomOutHorizontal(i) }
-        onDelete = { () => queryStore.removeHorizontal(i) }
+        zoomIn = { () => store.zoomInHorizontal(i) }
+        zoomOut = { () => store.zoomOutHorizontal(i) }
+        onDelete = { () => runInAction(() => store.horizontal.splice(i, 1)) }
       />)) }
       <AddDimensionChip type='Horizontal' />
     </Grid>
@@ -102,20 +103,20 @@ const Horizontal = observer(() => {
 });
 
 const Filters = observer(() => {
-  const { queryStore } = useRootStore();
-  const dimensions = queryStore.cube.dimensionHierarchy.dimensions;
+  const { queryStore: store } = useRootStore();
+  const dimensions = store.cube.dimensionHierarchy.dimensions;
   return (
     <Grid item xs={6}>
-      { queryStore.filters.map((o, i) => (<FilterChip
-        key = {'filter-' + o.dimensionIndex + '-' + o.dimensionLevelIndex + '-' + o.valueIndex}
+      { store.filters.map((d, i) => (<FilterChip
+        key = {'filter-' + d.dimensionIndex + '-' + d.dimensionLevelIndex + '-' + d.valueIndex}
         text = {
-          dimensions[o.dimensionIndex].name 
+          dimensions[d.dimensionIndex].name 
             + ' / ' 
-            + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
+            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
             + ' = '
-            + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].possibleValues[o.valueIndex]
+            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].possibleValues[d.valueIndex]
         }
-        onDelete = { () => queryStore.removeFilter(i) }
+        onDelete = { () => runInAction(() => store.filters.splice(i, 1)) }
       />)) }
       <AddQueryFilterChip/>
     </Grid>
@@ -127,18 +128,18 @@ const Series = observer(() => {
   const dimensions = queryStore.cube.dimensionHierarchy.dimensions;
   return (
     <Grid item xs={6}>
-      { queryStore.series.map((o, i) => (
+      { queryStore.series.map((d, i) => (
         <DimensionChip
-          key = {'series-' + o.dimensionIndex + '-' + o.dimensionLevelIndex}
+          key = {'series-' + d.dimensionIndex + '-' + d.dimensionLevelIndex}
           type = 'Series'
           text = {
-            dimensions[o.dimensionIndex].name 
+            dimensions[d.dimensionIndex].name 
               + ' / ' 
-              + dimensions[o.dimensionIndex].dimensionLevels[o.dimensionLevelIndex].name
+              + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
           }
           zoomIn = { () => queryStore.zoomInSeries(i) }
           zoomOut = { () => queryStore.zoomOutSeries(i) }
-          onDelete = { () => queryStore.removeSeries(i) }
+          onDelete = { () => runInAction(() => queryStore.series.splice(i, 1)) }
         />
       )) }
       <AddDimensionChip type='Series' />
@@ -147,11 +148,11 @@ const Series = observer(() => {
 });
 
 const Chart = observer(() => {
-  const { queryStore } = useRootStore();
+  const { queryStore: store } = useRootStore();
   return (
     <div style={{ width: '100%', height: '80vh', paddingTop: '20px' }}>
       <ResponsiveLine
-        data = {queryStore.result.data}
+        data = { store.result.data }
         margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
         xScale={{ type: 'point' }}
         yScale={{

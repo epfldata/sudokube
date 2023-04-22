@@ -121,13 +121,6 @@ export class QueryStore {
   constructor() {
     makeAutoObservable(this);
   }
-  setCubes(cubes: string[]) {
-    runInAction(() => { this.cubes = cubes });
-  }
-  setCubeIndex(index: number) {
-    this.selectedCubeIndex = index;
-  }
-
   addHorizontal(dimensionIndex: number, dimensionLevelIndex: number) {
     this.horizontal.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
   }
@@ -139,9 +132,6 @@ export class QueryStore {
   }
   zoomOutHorizontal(index: number) {
     this.horizontal[index].dimensionLevelIndex = Math.max(this.horizontal[index].dimensionLevelIndex - 1, 0);
-  }
-  removeHorizontal(index: number) {
-    this.horizontal.splice(index, 1);
   }
   addSeries(dimensionIndex: number, dimensionLevelIndex: number) {
     this.series.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
@@ -155,26 +145,7 @@ export class QueryStore {
   zoomOutSeries(index: number) {
     this.series[index].dimensionLevelIndex = Math.max(this.series[index].dimensionLevelIndex - 1, 0);
   }
-  removeSeries(index: number) {
-    this.series.splice(index, 1);
-  }
   addFilter(dimensionIndex: number, dimensionLevelIndex: number, valueIndex: number) {
     this.filters.push(new Filter(dimensionIndex, dimensionLevelIndex, valueIndex));
-  }
-  removeFilter(index: number) {
-    this.filters.splice(index, 1);
-  }
-  setMeasure(measure: string) {
-    this.measure = measure;
-  }
-  setAggregation(aggregation: string) {
-    this.aggregation = aggregation;
-  }
-  setSolver(solver: string) {
-    this.solver = solver;
-  }
-
-  setResult(result: ResultData) {
-    runInAction(() => this.result = result);
   }
 }

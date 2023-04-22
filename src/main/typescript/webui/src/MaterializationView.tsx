@@ -10,8 +10,44 @@ import { observer } from 'mobx-react-lite';
 import { useRootStore } from './RootStore';
 import { Cuboid, MaterializationDimension } from './MaterializationStore';
 import { ButtonChip, chipStyle } from './GenericChips';
+import { runInAction } from 'mobx';
 
 export default observer(function Materialization() {
+  const { materializationStore: store } = useRootStore();
+  // TODO: Call backend to fetch these things
+  runInAction(() => {
+    store.datasets = ['Sales', 'Dataset2'];
+    store.selectedDataset = store.datasets[0];
+    store.dimensions = [
+      { name: 'Country', numBits: 6 }, 
+      { name: 'City', numBits: 6 },
+      { name: 'Year', numBits: 6 },
+      { name: 'Month', numBits: 5 }, 
+      { name: 'Day', numBits: 6 }
+    ];
+    store.strategies = [
+      {
+        name: 'Strategy', 
+        parameters: [
+          { name: 'Parameter1', possibleValues: ['1', '2'] },
+          { name: 'Parameter2' }
+        ]
+      }
+    ];
+    // TODO: Remove this when cuboids can really be added and filtered
+    store.filteredChosenCuboids = store.chosenCuboids = store.addCuboidsFilteredCuboids = [
+      {
+        id: "1",
+        dimensions: [
+          { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
+          { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Year", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+          { name: "Month", bits: '\u2589\u2589\u2589\u2589\u25A2' },
+          { name: "Day", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'}
+        ] 
+      }
+    ];
+  });
   return (
     <Container style={{ paddingTop: '20px' }}>
       <SelectDataset/>
@@ -32,16 +68,23 @@ export default observer(function Materialization() {
 })
 
 const SelectDataset = observer(() => {
-  const { materializationStore } = useRootStore();
+  const { materializationStore: store } = useRootStore();
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-dataset">Dataset</InputLabel>
       <Select
         id = "select-dataset" label = "Dataset"
         style = {{ maxHeight: '50px', marginBottom: '5px' }}
-        value = { materializationStore.selectedDataset }
-        onChange = { e => materializationStore.setDatasetAndLoadDimensions(e.target.value) }>
-        { materializationStore.datasets.map((dataset, index) => (
+        value = { store.selectedDataset }
+        onChange = { e => runInAction(() => {
+            store.selectedDataset = e.target.value;
+            // TODO: Call backend to update dimensions
+            store.dimensions = store.dimensions;
+            store.chosenCuboids = [];
+            store.chosenCuboidsFilters = [];
+            store.filteredChosenCuboids = [];
+        })}>
+        { store.datasets.map((dataset, index) => (
           <MenuItem key = { 'select-dataset-' + index } value = {dataset}>{dataset}</MenuItem>
         )) }
       </Select>
@@ -50,7 +93,7 @@ const SelectDataset = observer(() => {
 })
 
 const SpecifyStrategy = observer(() => {
-  const { materializationStore } = useRootStore();
+  const { materializationStore: store } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   return ( <span>
     <ButtonChip label = 'Use predefined strategy' variant = 'outlined' onClick = { () => setDialogOpen(true) } />
@@ -62,39 +105,45 @@ const SpecifyStrategy = observer(() => {
           <Select
             id = 'select-strategy' label = 'Strategy'
             style = {{ maxHeight: '50px', marginBottom: '5px' }}
-            value = {materializationStore.strategyIndex}
-            onChange = { e => materializationStore.setStrategyIndex(e.target.value as number) }>
-            { materializationStore.strategies.map((strategy, index) => (
+            value = { store.strategyIndex | 0 }
+            onChange = { e => runInAction(() => {
+              const strategyIndex = e.target.value as number;
+              store.strategyIndex = strategyIndex;
+              store.strategyParameters = store.strategies[strategyIndex].parameters.map(p => p.possibleValues ? p.possibleValues[0] : '');
+            })}>
+            { store.strategies.map((strategy, index) => (
               <MenuItem key = { 'select-strategy-' + index } value = {index}> {strategy.name} </MenuItem>
             )) }
           </Select>
-          { materializationStore.strategies[materializationStore.strategyIndex].parameters.map((parameter, index) => (
+          { store.strategies[store.strategyIndex].parameters.map((parameter, index) => (
               parameter.possibleValues ?
-                <FormControl sx = {{ minWidth: 200, marginTop: 1 }}>
-                  <InputLabel htmlFor = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index }>{parameter.name}</InputLabel>
+                <FormControl 
+                  key = { 'strategy-' + store.strategyIndex + '-param-' + index }
+                  sx = {{ minWidth: 200, marginTop: 1 }}
+                >
+                  <InputLabel htmlFor = { 'strategy-' + store.strategyIndex + '-param-' + index }>{parameter.name}</InputLabel>
                   <Select
-                    id = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index }
-                    key = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index }
+                    id = { 'strategy-' + store.strategyIndex + '-param-' + index }
                     label = { parameter.name }
                     style = {{ marginBottom: 5 }}
-                    value = { materializationStore.strategyParameters[index] }
-                    onChange = { e => materializationStore.setStrategyParameter(index, e.target.value) }>
-                    { materializationStore.strategies[materializationStore.strategyIndex].parameters[index].possibleValues!.map((value, valueIndex) => (
+                    value = { store.strategyParameters[index] }
+                    onChange = { e => runInAction(() => store.strategyParameters[index] = e.target.value) }>
+                    { store.strategies[store.strategyIndex].parameters[index].possibleValues!.map((value, valueIndex) => (
                       <MenuItem
-                        key = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index + '-select-item-' + valueIndex }
-                        value = {index}>
+                        key = { 'strategy-' + store.strategyIndex + '-param-' + index + '-select-item-' + valueIndex }
+                        value = { value }>
                         {value}
                       </MenuItem>
                     )) }
                   </Select> 
                 </FormControl>
               : <TextField
-                  id = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index }
-                  key = { 'strategy-' + materializationStore.strategyIndex + '-param-' + index }
+                  id = { 'strategy-' + store.strategyIndex + '-param-' + index }
+                  key = { 'strategy-' + store.strategyIndex + '-param-' + index }
                   label = { parameter.name }
                   style = {{ marginBottom: 5 }}
-                  value = { materializationStore.strategyParameters[index] }
-                  onChange = { e => materializationStore.setStrategyParameter(index, e.target.value) }
+                  value = { store.strategyParameters[index] }
+                  onChange = { e => runInAction(() => store.strategyParameters[index] = e.target.value) }
                 />
           ))}
         </FormControl>
@@ -111,9 +160,10 @@ const SpecifyStrategy = observer(() => {
 })
 
 const AddCuboids = observer(() => {
-  const { materializationStore } = useRootStore();
-  const dimensions = materializationStore.dimensions;
+  const { materializationStore: store } = useRootStore();
+  const dimensions = store.dimensions;
   const [isCuboidsDialogOpen, setCuboidsDialogOpen] = React.useState(false);
+  // TODO: Call backend to get all cuboids
   return ( <span>
     <ButtonChip label = 'Choose cuboids' variant = 'outlined' onClick = { () => setCuboidsDialogOpen(true) } />
     <Dialog fullScreen open = {isCuboidsDialogOpen}>
@@ -121,15 +171,19 @@ const AddCuboids = observer(() => {
       <DialogContent>
         <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
           <Grid item xs={6}>
-            { materializationStore.addCuboidsFilters.map((filter, index) => {
+            { store.addCuboidsFilters.map((filter, index) => {
               return (<FilterChip
                 key = { 'materialization-choose-cuboids-filter-chip-' + dimensions[filter.dimensionIndex].name + '-' + filter.bitsFrom + '-' + filter.bitsTo }
                 text = { dimensions[filter.dimensionIndex].name + ' / ' + filter.bitsFrom + '–' + filter.bitsTo }
-                onDelete = { () => materializationStore.removeAddCuboidsFilterAtIndex(index) }
+                onDelete = { () => runInAction(() => store.addCuboidsFilters.splice(index, 1)) }
               /> );
             }) }
             <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => {
-              materializationStore.addAddCuboidsFilter(dimensionIndex, bitsFrom, bitsTo);
+              runInAction(() => store.addCuboidsFilters.push({
+                dimensionIndex: dimensionIndex,
+                bitsFrom: bitsFrom,
+                bitsTo: bitsTo
+              }));
               // TODO: Call backend with filters to get matching cuboids
             }} />
           </Grid>
@@ -137,8 +191,8 @@ const AddCuboids = observer(() => {
 
         <Box sx = {{ height: '70vh', width: '100%', marginTop: '20px' }}>
           <DataGrid
-            rows = { materializationStore.addCuboidsFilteredCuboids.map(cuboidToRow) } 
-            columns = { materializationStore.dimensions.map(dimensionToColumn) }
+            rows = { store.addCuboidsFilteredCuboids.map(cuboidToRow) } 
+            columns = { store.dimensions.map(dimensionToColumn) }
             checkboxSelection sx = {{ overflowX: 'scroll' }} 
           />
         </Box>
@@ -156,27 +210,31 @@ const AddCuboids = observer(() => {
 });
 
 const ChosenCuboids = observer(() => {
-  const { materializationStore } = useRootStore();
-  const dimensions = materializationStore.dimensions;
+  const { materializationStore: store } = useRootStore();
+  const dimensions = store.dimensions;
   return ( <div>
     <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
     <Grid item xs={6}>
-      { materializationStore.chosenCuboidsFilters.map((filter, index) => (
+      { store.chosenCuboidsFilters.map((filter, index) => (
         <FilterChip
           key = { 'materialization-filter-chip-' + dimensions[filter.dimensionIndex].name + '-' + filter.bitsFrom + '-' + filter.bitsTo }
           text = { dimensions[filter.dimensionIndex].name + ' / ' + filter.bitsFrom + '–' + filter.bitsTo }
-          onDelete = { () => materializationStore.removeAddCuboidsFilterAtIndex(index) }
+          onDelete = { () => runInAction(() => store.addCuboidsFilters.splice(index, 1)) }
         /> 
       )) }
       <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => 
-        materializationStore.addChosenCuboidsFilter(dimensionIndex, bitsFrom, bitsTo) 
+        runInAction(() => store.chosenCuboidsFilters.push({
+          dimensionIndex: dimensionIndex,
+          bitsFrom: bitsFrom,
+          bitsTo: bitsTo
+        }))
       } />
     </Grid>
   </Grid>
   <Box sx = {{ height: '65vh', width: '100%', marginTop: '20px' }}>
     <DataGrid
-      rows = { materializationStore.chosenCuboids.map(cuboidToRow) }
-      columns = { materializationStore.dimensions.map(dimensionToColumn) }
+      rows = { store.chosenCuboids.map(cuboidToRow) }
+      columns = { store.dimensions.map(dimensionToColumn) }
       disableRowSelectionOnClick
       sx = {{ overflowX: 'scroll' }}
     />
@@ -188,7 +246,7 @@ const ChosenCuboids = observer(() => {
 function AddCuboidsFilterChip({onAdd}: {
   onAdd: (dimensionIndex: number, bitsFrom: number, bitsTo: number) => void
 }) {
-  const { materializationStore } = useRootStore();
+  const { materializationStore: store } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [dimensionIndex, setDimensionIndex] = React.useState(0);
   const [bitsFrom, setBitsFrom] = React.useState('');
@@ -211,7 +269,7 @@ function AddCuboidsFilterChip({onAdd}: {
             value = {dimensionIndex}
             onChange = { e => setDimensionIndex(e.target.value as number) }
             id="add-cuboids-filter-select-dimension" label="Dimension">
-            { materializationStore.dimensions.map((dimension, index) => (
+            { store.dimensions.map((dimension, index) => (
               <MenuItem key = { 'add-cuboids-filter-select-dimension-' + index } value = {index}> {dimension.name} </MenuItem>
             )) }
           </Select>
