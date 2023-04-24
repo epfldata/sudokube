@@ -1,4 +1,4 @@
-import { Button, Container, FormControl, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Button, Container, FormControl, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import React, { ReactNode, useState } from "react";
 import { useRootStore } from "./RootStore";
@@ -22,15 +22,14 @@ export default observer(function ExploreTransformView() {
       new ExploreDimension('Day', 6)
     ];
     store.timeNumBits = 16;
-    store.timeBitsFilters.push(0);
-    store.timeBitsFilters.push(1);
+    store.timeBitsFilters = [0, 1];
   })
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>
       <CheckRename/>
       <FindRenameTime/>
-      <Merge/>
+      <Transform/>
     </Container>
   );
 })
@@ -63,27 +62,29 @@ const CheckRename = observer(() => {
   return ( <div>
     <h3>Check potentially renamed dimensions pair</h3>
     <div>
-      <SelectDimension 
+      <SingleSelectWithLabel 
         id = 'check-rename-select-dimension-1'
         label = 'Dimension 1'
         value = { store.checkRenameDimension1Index }
+        options = { store.dimensions }
         onChange = { v => {
           runInAction(() => store.checkRenameDimension1Index = v as number);
           setRenameCheckResultShown(false);
         }}
-        dimensionToMenuItemMapper = { (dimension, index) => (
+        optionToMenuItemMapper = { (dimension, index) => (
           <MenuItem key = { 'check-rename-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
         ) }
       />
-      <SelectDimension 
+      <SingleSelectWithLabel 
         id = 'check-rename-select-dimension-2'
         label = 'Dimension 2'
         value = { store.checkRenameDimension2Index }
+        options = { store.dimensions }
         onChange = { v => {
           runInAction(() => store.checkRenameDimension2Index = v);
           setRenameCheckResultShown(false);
         }}
-        dimensionToMenuItemMapper = { (dimension, index) => (
+        optionToMenuItemMapper = { (dimension, index) => (
           <MenuItem key = { 'check-rename-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
         ) }
       />
@@ -93,13 +94,38 @@ const CheckRename = observer(() => {
         setRenameCheckResultShown(true);
       }}>Check</Button>
     </div>
-    <div hidden = {!isRenameCheckResultShown}> { (() => {
-      let dimension1 = store.dimensions[store.checkRenameDimension1Index].name;
-      let dimension2 = store.dimensions[store.checkRenameDimension2Index].name;
-      return store.checkRenameResult
-        ? <span style = {{display: 'flex'}}><CheckCircleOutlineIcon/> {dimension1} is likely renamed to {dimension2}.</span>
-        : <span style = {{display: 'flex'}}><CancelIcon/>{dimension1} is not renamed to {dimension2}.</span>
-    })()} </div>
+    <div hidden = {!isRenameCheckResultShown}>
+      <TableContainer>
+        <Table sx = {{ width: 'auto' }} aria-label = "simple table">
+          <TableHead>
+            <TableRow>
+              <CompactTableCell>Dimension</CompactTableCell>
+              <CompactTableCell>NULL</CompactTableCell>
+              <CompactTableCell>Not NULL</CompactTableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            { store.dimensionsNullCount.map(row => (
+              <TableRow>
+                <CompactTableCell>{row.dimension}</CompactTableCell>
+                <CompactTableCell>{row.nullCount}</CompactTableCell>
+                <CompactTableCell>{row.notNullCount}</CompactTableCell>
+              </TableRow>
+            )) }
+          </TableBody>
+        </Table>
+      </TableContainer>
+      { store.checkRenameResult
+          ? <span style = {{display: 'flex'}}>
+              <CheckCircleOutlineIcon/>
+              {store.dimensionsNullCount[0].dimension} is likely renamed to {store.dimensionsNullCount[1].dimension}.
+            </span>
+          : <span style = {{display: 'flex'}}>
+              <CancelIcon/>
+              {store.dimensionsNullCount[0].dimension} is not renamed to {store.dimensionsNullCount[1].dimension}.
+            </span>
+      }
+    </div>
   </div> );
 })
 
@@ -107,20 +133,37 @@ const FindRenameTime = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
   const [isStepShown, setStepShown] = useState(false);
   const [isSearchEnded, setSearchEnded] = useState(false);
+
+  const filterSquares = () => {
+    let chars: string[] = store.timeBitsFilters.map(bit => bit.toString());
+    if (store.timeBitsFilters.length < store.timeNumBits) {
+      chars.push('?');
+    }
+    const remainingBits = store.timeNumBits - store.timeBitsFilters.length - 1;
+    if (remainingBits > 0) {
+      chars = chars.concat(Array(remainingBits).fill('✕'));
+    }
+    return (<span>
+      { chars.map(char => <CharInSquare char = { char } emphasize = { char === '?' } />) }
+    </span>)
+  }
+
   return ( <div>
     <h3>Find time of rename</h3>
+
     <div>
-      <SelectDimension
+      <SingleSelectWithLabel
         id = 'rename-time-select-dimension'
         label = 'Dimension'
         value = { store.findRenameTimeDimensionIndex }
+        options = { store.dimensions }
         onChange = { v => {
           runInAction(() => store.findRenameTimeDimensionIndex = v);
           setStepShown(false);
           setSearchEnded(false);
           runInAction(() => store.timeBitsFilters = []);
         }}
-        dimensionToMenuItemMapper = { (dimension, index) => (
+        optionToMenuItemMapper = { (dimension, index) => (
           <MenuItem key = { 'check-rename-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
         ) }
       />
@@ -129,33 +172,31 @@ const FindRenameTime = observer(() => {
         setStepShown(true);
       }}>Start</Button>
     </div>
+
     <div hidden = {!isStepShown}>
-      <div>
-        Filters on time bits applied: 
-        { store.timeBitsFilters.map(bit => bit == 0 ? " \u25A2 " : " \u2589 ") }
-        { Array(store.timeNumBits - store.timeBitsFilters.length).fill(" \u2715 ") }
-      </div>
+      <div>Filters on time bits applied: { filterSquares() }</div>
       <TableContainer>
-        <Table sx = {{ minWidth: 400 }} aria-label = "simple table">
+        <Table sx = {{ width: 'auto' }} aria-label = "simple table">
           <TableHead>
             <TableRow>
-              <TableCell>Time range</TableCell>
-              <TableCell>Count</TableCell>
+              <CompactTableCell>Time range</CompactTableCell>
+              <CompactTableCell>NULL</CompactTableCell>
+              <CompactTableCell>Not NULL</CompactTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            <TableRow>
-              <TableCell>{store.timeRange1}</TableCell>
-              <TableCell>{store.count1}</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>{store.timeRange2}</TableCell>
-              <TableCell>{store.count2}</TableCell>
-            </TableRow>
+            { store.timeRangeCounts.map(row => (
+              <TableRow>
+                <CompactTableCell>{row.range}</CompactTableCell>
+                <CompactTableCell>{row.nullCount}</CompactTableCell>
+                <CompactTableCell>{row.notNullCount}</CompactTableCell>
+              </TableRow>
+            )) }
           </TableBody>
         </Table>
       </TableContainer>
     </div>
+
     <Button 
       disabled = {isSearchEnded} 
       onClick = {() => {
@@ -170,59 +211,99 @@ const FindRenameTime = observer(() => {
   </div> );
 })
 
-const Merge = observer(() => {
+const Transform = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
   const [isComplete, setComplete] = useState(false);
   return ( <div>
-    <h3>Merge dimensions</h3>
-    <SelectDimension 
-      id = 'merge-select-dimension-1'
-      label = 'Dimension 1'
-      value = { store.mergeDimension1Index }
-      onChange = { v => runInAction(() => store.mergeDimension1Index = v) }
-      dimensionToMenuItemMapper = { (dimension, index) => (
-        <MenuItem key = { 'merge-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
-      ) }
-    />
-    <SelectDimension 
-      id = 'merge-select-dimension-2'
-      label = 'Dimension 2'
-      value = { store.mergeDimension2Index }
-      onChange = { v => runInAction(() => store.mergeDimension2Index = v) }
-      dimensionToMenuItemMapper = { (dimension, index) => (
-        <MenuItem key = { 'merge-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
-      ) }
-    />
-    <Button onClick = {() => {
-      // TODO: Query backend, show new name
-      setComplete(true);
-      runInAction(() => store.newCubeName = 'sales-merged')
-    }}>Merge and generate new cube</Button>
+    <h3>Transform</h3>
+    <div>
+      <SingleSelectWithLabel
+        id = 'transform-select'
+        label = 'Transformation'
+        value = {0}
+        options = { ['Merge'] }
+        onChange = { () => {} }
+        optionToMenuItemMapper = { (transformation, index) => (
+          <MenuItem key = { 'transform-select-' + index } value = {index}>{transformation}</MenuItem>
+        ) }
+      />
+    </div>
+    <div>
+      <SingleSelectWithLabel 
+        id = 'merge-select-dimension-1'
+        label = 'Dimension 1'
+        value = { store.mergeDimension1Index }
+        options = { store.dimensions }
+        onChange = { v => runInAction(() => store.mergeDimension1Index = v) }
+        optionToMenuItemMapper = { (dimension, index) => (
+          <MenuItem key = { 'merge-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
+        ) }
+      />
+      <SingleSelectWithLabel 
+        id = 'merge-select-dimension-2'
+        label = 'Dimension 2'
+        value = { store.mergeDimension2Index }
+        options = { store.dimensions }
+        onChange = { v => runInAction(() => store.mergeDimension2Index = v) }
+        optionToMenuItemMapper = { (dimension, index) => (
+          <MenuItem key = { 'merge-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
+        ) }
+      />
+    </div>
+    <div>
+      <TextField
+        id = 'new-cube-name-text-field'
+        label = 'Name of new cube'
+        style = {{ marginBottom: 5 }}
+        value = { store.newCubeName }
+        onChange = { e => runInAction(() => store.newCubeName = e.target.value) }
+        size = 'small'
+      />
+      <Button onClick = {() => {
+        // TODO: Query backend, show new name
+        setComplete(true);
+        runInAction(() => store.newCubeName = 'sales-merged')
+      }}>Transform</Button>
+    </div>
     <div style = {{ display: isComplete ? 'flex' : 'none' }}>
       <CheckCircleOutlineIcon/>Cube saved as {store.newCubeName}
     </div>
   </div> );
 })
 
-const SelectDimension = observer(({ id, label, value, onChange, dimensionToMenuItemMapper }: {
+const CompactTableCell = observer(({children}: {children: ReactNode}) => (
+  <TableCell sx = {{ paddingTop: 1, paddingBottom: 1 }}>{children}</TableCell>
+));
+
+const SingleSelectWithLabel = observer(({ id, label, value, options, onChange, optionToMenuItemMapper }: {
   id: string,
   label: string,
   value: any,
+  options: any[],
   onChange: (value: any) => void,
-  dimensionToMenuItemMapper: (dimension: ExploreDimension, index: number) => ReactNode
-}) => {
-  const { exploreTransformStore } = useRootStore();
-  return (
-    <FormControl sx = {{ minWidth: 200 }}>
-      <InputLabel htmlFor = {id}>{label}</InputLabel>
-      <Select
-        id = {id} label = {label}
-        style = {{ marginBottom: 10, marginRight: 10 }}
-        size = 'small'
-        value = { value }
-        onChange = { e => onChange(e.target.value as number) }>
-        { exploreTransformStore.dimensions.map(dimensionToMenuItemMapper) }
-      </Select>
-    </FormControl>
-  );
-});
+  optionToMenuItemMapper: (option: any, index: number) => ReactNode
+}) => (
+  <FormControl sx = {{ minWidth: 200 }}>
+    <InputLabel htmlFor = {id}>{label}</InputLabel>
+    <Select
+      id = {id} label = {label}
+      style = {{ marginBottom: 10, marginRight: 10 }}
+      size = 'small'
+      value = { value }
+      onChange = { e => onChange(e.target.value as number) }>
+      { options.map(optionToMenuItemMapper) }
+    </Select>
+  </FormControl>
+));
+
+const CharInSquare = observer(({ char, emphasize } : { char: string, emphasize: boolean }) => (
+  <div style = {{
+    display: 'inline-block',
+    width: 20, height: 20,
+    marginLeft: 5,
+    borderWidth: emphasize ? 3 : 1, borderStyle: 'solid',
+    textAlign: 'center', verticalAlign: 'middle', lineHeight: emphasize ? '16px' : '20px'
+  }}>
+    {char}
+  </div>
+));
