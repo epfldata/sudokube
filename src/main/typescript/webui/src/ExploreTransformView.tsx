@@ -2,7 +2,6 @@ import { Button, Container, FormControl, InputLabel, MenuItem, Select, Table, Ta
 import { observer } from "mobx-react-lite";
 import React, { ReactNode, useState } from "react";
 import { useRootStore } from "./RootStore";
-import { ExploreDimension } from "./ExploreTransformStore";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { runInAction } from "mobx";
@@ -10,19 +9,15 @@ import { runInAction } from "mobx";
 export default observer(function ExploreTransformView() {
   const { exploreTransformStore: store } = useRootStore();
   runInAction(() => {
-    // TODO: Call backend to fetch cubes
-    store.cubes = ['sales'];
-    store.selectedCubeIndex = 0;
     // TODO: Call backend to fetch these things for the default cube
     store.dimensions = [
-      new ExploreDimension('Country', 6), 
-      new ExploreDimension('City', 6), 
-      new ExploreDimension('Year', 6), 
-      new ExploreDimension('Month', 5), 
-      new ExploreDimension('Day', 6)
+      { name: 'Country', numBits: 6 }, 
+      { name: 'City', numBits: 6 }, 
+      { name: 'Year', numBits: 6 }, 
+      { name: 'Month', numBits: 5 }, 
+      { name: 'Day', numBits: 6 }
     ];
     store.timeNumBits = 16;
-    store.timeBitsFilters = [0, 1];
   })
   return (
     <Container style = {{ paddingTop: '20px' }}>
@@ -36,6 +31,9 @@ export default observer(function ExploreTransformView() {
 
 const SelectCube = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
+  // TODO: Call backend to fetch cubes
+  const [cubes, setCubes] = useState(['sales']);
+  const [cube, setCube] = useState(cubes[0]);
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
@@ -43,13 +41,24 @@ const SelectCube = observer(() => {
         id = "select-cube" label = "Select Cube"
         style = {{ marginBottom: 10 }}
         size = 'small'
-        value = { store.selectedCubeIndex }
+        value = {cube}
         onChange = { e => {
-          runInAction(() => store.selectedCubeIndex = e.target.value as number);
+          setCube(e.target.value);
           // TODO: Load dimensions and number of time bits
+          runInAction(() => {
+            // TODO: Call backend to fetch these things
+            store.dimensions = [
+              { name: 'Country', numBits: 6 }, 
+              { name: 'City', numBits: 6 }, 
+              { name: 'Year', numBits: 6 }, 
+              { name: 'Month', numBits: 5 }, 
+              { name: 'Day', numBits: 6 }
+            ];
+            store.timeNumBits = 16;
+          })
         } }>
-        { store.cubes.map((cube, index) => (
-          <MenuItem key = { 'select-cube-' + index } value = {index}>{cube}</MenuItem>
+        { cubes.map(cube => (
+          <MenuItem key = { 'select-cube-' + cube } value = {cube}>{cube}</MenuItem>
         )) }
       </Select>
     </FormControl>
@@ -58,95 +67,159 @@ const SelectCube = observer(() => {
 
 const CheckRename = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
+  const [dimension1, setDimension1] = useState(store.dimensions[0].name);
+  const [dimension2, setDimension2] = useState(store.dimensions[1].name);
+  const [dimensionsNullCounts, setDimensionsNullCounts] = useState([0, 0, 0, 0]);
+  const [isRenamed, setRenameCheckResult] = useState(false);
   const [isRenameCheckResultShown, setRenameCheckResultShown] = useState(false);
-  return ( <div>
-    <h3>Check potentially renamed dimensions pair</h3>
+
+  const SelectDimensions = observer(() => (
     <div>
       <SingleSelectWithLabel 
         id = 'check-rename-select-dimension-1'
         label = 'Dimension 1'
-        value = { store.checkRenameDimension1Index }
-        options = { store.dimensions }
+        value = {dimension1}
+        options = {store.dimensions}
         onChange = { v => {
-          runInAction(() => store.checkRenameDimension1Index = v as number);
+          setDimension1(v);
           setRenameCheckResultShown(false);
         }}
-        optionToMenuItemMapper = { (dimension, index) => (
-          <MenuItem key = { 'check-rename-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
+        optionToMenuItemMapper = { dimension => (
+          <MenuItem key = { 'check-rename-select-dimension-1-' + dimension.name } value = {dimension.name}>{dimension.name}</MenuItem>
         ) }
       />
       <SingleSelectWithLabel 
         id = 'check-rename-select-dimension-2'
         label = 'Dimension 2'
-        value = { store.checkRenameDimension2Index }
-        options = { store.dimensions }
+        value = {dimension2}
+        options = {store.dimensions}
         onChange = { v => {
-          runInAction(() => store.checkRenameDimension2Index = v);
+          setDimension2(v);
           setRenameCheckResultShown(false);
         }}
-        optionToMenuItemMapper = { (dimension, index) => (
-          <MenuItem key = { 'check-rename-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
+        optionToMenuItemMapper = { dimension => (
+          <MenuItem
+            key = { 'check-rename-select-dimension-2-' + dimension.name }
+            value = {dimension.name}
+          >
+            {dimension.name}
+          </MenuItem>
         ) }
       />
       <Button onClick = {() => {
         // TODO: Query backend and show results
-        runInAction(() => store.checkRenameResult = true);
+        setDimensionsNullCounts([0, 0, 0, 0]);
+        setRenameCheckResult(true);
         setRenameCheckResultShown(true);
       }}>Check</Button>
     </div>
+  ));
+
+  const ResultTable = observer(() => (
+    <TableContainer>
+      <Table sx = {{ width: 'auto' }} aria-label = "simple table">
+        <TableHead>
+          <TableRow>
+            <CompactTableCell>{}</CompactTableCell>
+            <CompactTableCell>{}</CompactTableCell>
+            <CompactTableCell align = 'center' colSpan = {2}>{dimension2}</CompactTableCell>
+          </TableRow>
+          <TableRow>
+            <CompactTableCell>{}</CompactTableCell>
+            <CompactTableCell>{}</CompactTableCell>
+            <CompactTableCell>NULL</CompactTableCell>
+            <CompactTableCell>Not NULL</CompactTableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <TableRow>
+            <CompactTableCell align = 'center' rowSpan = {2} variant = 'head'>{dimension1}</CompactTableCell>
+            <CompactTableCell variant = 'head'>NULL</CompactTableCell>
+            <CompactTableCell>{dimensionsNullCounts[0]}</CompactTableCell>
+            <CompactTableCell>{dimensionsNullCounts[1]}</CompactTableCell>
+          </TableRow>
+          <TableRow>
+            <CompactTableCell variant = 'head'>NOT NULL</CompactTableCell>
+            <CompactTableCell>{dimensionsNullCounts[2]}</CompactTableCell>
+            <CompactTableCell>{dimensionsNullCounts[3]}</CompactTableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  ));
+
+  const ResultMessage = observer(() => {
+    if (isRenamed) {
+      return (
+        <span style = {{display: 'flex'}}>
+          <CheckCircleOutlineIcon/>
+          {dimension1} is likely renamed to {dimension2}.
+        </span>
+      )
+    } else {
+      return (
+        <span style = {{display: 'flex'}}>
+          <CancelIcon/>
+          {dimension1} is not renamed to {dimension2}.
+        </span>
+      )
+    }
+  });
+
+  return ( <div>
+    <h3>Check potentially renamed dimensions pair</h3>
+    <SelectDimensions/>
     <div hidden = {!isRenameCheckResultShown}>
-      <TableContainer>
-        <Table sx = {{ width: 'auto' }} aria-label = "simple table">
-          <TableHead>
-            <TableRow>
-              <CompactTableCell>Dimension</CompactTableCell>
-              <CompactTableCell>NULL</CompactTableCell>
-              <CompactTableCell>Not NULL</CompactTableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            { store.dimensionsNullCount.map(row => (
-              <TableRow>
-                <CompactTableCell>{row.dimension}</CompactTableCell>
-                <CompactTableCell>{row.nullCount}</CompactTableCell>
-                <CompactTableCell>{row.notNullCount}</CompactTableCell>
-              </TableRow>
-            )) }
-          </TableBody>
-        </Table>
-      </TableContainer>
-      { store.checkRenameResult
-          ? <span style = {{display: 'flex'}}>
-              <CheckCircleOutlineIcon/>
-              {store.dimensionsNullCount[0].dimension} is likely renamed to {store.dimensionsNullCount[1].dimension}.
-            </span>
-          : <span style = {{display: 'flex'}}>
-              <CancelIcon/>
-              {store.dimensionsNullCount[0].dimension} is not renamed to {store.dimensionsNullCount[1].dimension}.
-            </span>
-      }
+      <ResultTable/>
+      <ResultMessage/>
     </div>
   </div> );
 })
 
 const FindRenameTime = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
-  const [isStepShown, setStepShown] = useState(false);
-  const [isSearchEnded, setSearchEnded] = useState(false);
 
-  const filterSquares = () => {
-    let chars: string[] = store.timeBitsFilters.map(bit => bit.toString());
-    if (store.timeBitsFilters.length < store.timeNumBits) {
+  const [dimension, setDimension] = useState(store.dimensions[0].name);
+
+  const [isStepShown, setStepShown] = useState(false);
+
+  const [filters, setFilters] = useState<(0|1)[]>([]);
+
+  type TimeRangeNullCountsRow = {
+    range: string;
+    nullCount: number;
+    notNullCount: number;
+  }
+  const [nullCounts, setNullCounts] = useState<TimeRangeNullCountsRow[]>([]);
+
+  const [isSearchEnded, setSearchEnded] = useState(false);
+  const [renameTime, setRenameTime] = useState('...');
+
+  const CharInSquare = observer(({ char, emphasize } : { char: string, emphasize: boolean }) => (
+    <div style = {{
+      display: 'inline-block',
+      width: 20, height: 20,
+      marginLeft: 5,
+      borderWidth: emphasize ? 3 : 1, borderStyle: 'solid',
+      textAlign: 'center', verticalAlign: 'middle', lineHeight: emphasize ? '16px' : '20px'
+    }}>
+      {char}
+    </div>
+  ));  
+
+  const BitsInSquares = observer(() => {
+    let chars: string[] = filters.map(bit => bit.toString());
+    if (filters.length < store.timeNumBits) {
       chars.push('?');
     }
-    const remainingBits = store.timeNumBits - store.timeBitsFilters.length - 1;
+    const remainingBits = store.timeNumBits - filters.length - 1;
     if (remainingBits > 0) {
       chars = chars.concat(Array(remainingBits).fill('✕'));
     }
     return (<span>
       { chars.map(char => <CharInSquare char = { char } emphasize = { char === '?' } />) }
     </span>)
-  }
+  });
 
   return ( <div>
     <h3>Find time of rename</h3>
@@ -155,26 +228,34 @@ const FindRenameTime = observer(() => {
       <SingleSelectWithLabel
         id = 'rename-time-select-dimension'
         label = 'Dimension'
-        value = { store.findRenameTimeDimensionIndex }
+        value = { dimension }
         options = { store.dimensions }
         onChange = { v => {
-          runInAction(() => store.findRenameTimeDimensionIndex = v);
+          setDimension(v);
           setStepShown(false);
           setSearchEnded(false);
-          runInAction(() => store.timeBitsFilters = []);
+          setFilters([]);
         }}
-        optionToMenuItemMapper = { (dimension, index) => (
-          <MenuItem key = { 'check-rename-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
+        optionToMenuItemMapper = { dimension => (
+          <MenuItem key = { 'check-rename-select-dimension-2-' + dimension.name } value = {dimension.name}>{dimension.name}</MenuItem>
         ) }
       />
       <Button onClick = {() => {
         // TODO: Query the first bit
+        setFilters([]);
+        setSearchEnded(false);
+        setNullCounts([
+          { range: '0 to 31', nullCount: 0, notNullCount: 0 },
+          { range: '32 to 63', nullCount: 0, notNullCount: 0 }
+        ]);
         setStepShown(true);
-      }}>Start</Button>
+      }}>
+        Start
+      </Button>
     </div>
 
     <div hidden = {!isStepShown}>
-      <div>Filters on time bits applied: { filterSquares() }</div>
+      <div>Filters on time bits applied: <BitsInSquares/> </div>
       <TableContainer>
         <Table sx = {{ width: 'auto' }} aria-label = "simple table">
           <TableHead>
@@ -185,7 +266,7 @@ const FindRenameTime = observer(() => {
             </TableRow>
           </TableHead>
           <TableBody>
-            { store.timeRangeCounts.map(row => (
+            { nullCounts.map(row => (
               <TableRow>
                 <CompactTableCell>{row.range}</CompactTableCell>
                 <CompactTableCell>{row.nullCount}</CompactTableCell>
@@ -201,19 +282,24 @@ const FindRenameTime = observer(() => {
       disabled = {isSearchEnded} 
       onClick = {() => {
         // TODO: Implement logic to continue or complete the search, get and show result
-        runInAction(() => store.timeBitsFilters.push(0));
+        setFilters(filters.slice().concat(0));
         setSearchEnded(true);
-        runInAction(() => { store.renameTime = "..." });
+        setRenameTime('...');
       }}>
       Continue
     </Button>
-    <div hidden = {!isSearchEnded}>Dimension is renamed at {store.renameTime}</div>
+    <div hidden = {!isSearchEnded}>Dimension is renamed at {renameTime}</div>
   </div> );
 })
 
 const Transform = observer(() => {
-  const { exploreTransformStore: store } = useRootStore();
-  const [isComplete, setComplete] = useState(false);
+  const [transformation, setTransformation] = useState('Merge');
+  const transformationDetails = () => {
+    switch (transformation) {
+      case 'Merge':
+        return <Merge/>;
+    }
+  }
   return ( <div>
     <h3>Transform</h3>
     <div>
@@ -222,19 +308,31 @@ const Transform = observer(() => {
         label = 'Transformation'
         value = {0}
         options = { ['Merge'] }
-        onChange = { () => {} }
+        onChange = { e => setTransformation(e.target.value) }
         optionToMenuItemMapper = { (transformation, index) => (
           <MenuItem key = { 'transform-select-' + index } value = {index}>{transformation}</MenuItem>
         ) }
       />
     </div>
+    { transformationDetails() }
+  </div> );
+})
+
+const Merge = observer(() => {
+  const { exploreTransformStore: store } = useRootStore();
+  const [dimension1Index, setDimension1Index] = useState(0);
+  const [dimension2Index, setDimension2Index] = useState(0);
+  const [mergedDimensionName, setMergedDimensionName] = useState('');
+  const [newCubeName, setNewCubeName] = useState('');
+  const [isComplete, setComplete] = useState(false);
+  return <div>
     <div>
       <SingleSelectWithLabel 
         id = 'merge-select-dimension-1'
         label = 'Dimension 1'
-        value = { store.mergeDimension1Index }
+        value = { dimension1Index }
         options = { store.dimensions }
-        onChange = { v => runInAction(() => store.mergeDimension1Index = v) }
+        onChange = { v => setDimension1Index(v) }
         optionToMenuItemMapper = { (dimension, index) => (
           <MenuItem key = { 'merge-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
         ) }
@@ -242,12 +340,20 @@ const Transform = observer(() => {
       <SingleSelectWithLabel 
         id = 'merge-select-dimension-2'
         label = 'Dimension 2'
-        value = { store.mergeDimension2Index }
+        value = { dimension2Index }
         options = { store.dimensions }
-        onChange = { v => runInAction(() => store.mergeDimension2Index = v) }
+        onChange = { v => setDimension2Index(v) }
         optionToMenuItemMapper = { (dimension, index) => (
           <MenuItem key = { 'merge-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
         ) }
+      />
+      <TextField
+        id = 'new-dimension-name-text-field'
+        label = 'Name of merged dimension'
+        style = {{ marginBottom: 5 }}
+        value = { mergedDimensionName }
+        onChange = { e => setMergedDimensionName(e.target.value) }
+        size = 'small'
       />
     </div>
     <div>
@@ -255,24 +361,35 @@ const Transform = observer(() => {
         id = 'new-cube-name-text-field'
         label = 'Name of new cube'
         style = {{ marginBottom: 5 }}
-        value = { store.newCubeName }
-        onChange = { e => runInAction(() => store.newCubeName = e.target.value) }
+        value = { newCubeName }
+        onChange = { e => setNewCubeName(e.target.value) }
         size = 'small'
       />
       <Button onClick = {() => {
         // TODO: Query backend, show new name
         setComplete(true);
-        runInAction(() => store.newCubeName = 'sales-merged')
       }}>Transform</Button>
     </div>
     <div style = {{ display: isComplete ? 'flex' : 'none' }}>
-      <CheckCircleOutlineIcon/>Cube saved as {store.newCubeName}
+      <CheckCircleOutlineIcon/>Cube saved as {newCubeName}
     </div>
-  </div> );
+  </div>
 })
 
-const CompactTableCell = observer(({children}: {children: ReactNode}) => (
-  <TableCell sx = {{ paddingTop: 1, paddingBottom: 1 }}>{children}</TableCell>
+const CompactTableCell = observer(({children, align, colSpan, rowSpan, variant}: {
+  children: ReactNode,
+  align?: 'center',
+  colSpan?: number, rowSpan?: number,
+  variant?: 'head' | undefined
+}) => (
+  <TableCell
+    sx = {{ paddingTop: 1, paddingBottom: 1 }}
+    align = {align}
+    colSpan = {colSpan} rowSpan={rowSpan}
+    variant = {variant}
+  >
+    {children}
+  </TableCell>
 ));
 
 const SingleSelectWithLabel = observer(({ id, label, value, options, onChange, optionToMenuItemMapper }: {
@@ -296,14 +413,3 @@ const SingleSelectWithLabel = observer(({ id, label, value, options, onChange, o
   </FormControl>
 ));
 
-const CharInSquare = observer(({ char, emphasize } : { char: string, emphasize: boolean }) => (
-  <div style = {{
-    display: 'inline-block',
-    width: 20, height: 20,
-    marginLeft: 5,
-    borderWidth: emphasize ? 3 : 1, borderStyle: 'solid',
-    textAlign: 'center', verticalAlign: 'middle', lineHeight: emphasize ? '16px' : '20px'
-  }}>
-    {char}
-  </div>
-));
