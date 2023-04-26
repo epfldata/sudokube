@@ -4,16 +4,19 @@ import Grid from '@mui/material/Grid';
 import { FilterChip } from './QueryViewChips';
 import Chip from '@mui/material/Chip';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
-import { DataGrid } from '@mui/x-data-grid';
+import { DataGrid, GridActionsCellItem, GridColDef } from '@mui/x-data-grid';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormLabel, InputLabel, MenuItem, Select, TextField } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import { useRootStore } from './RootStore';
 import { Cuboid, MaterializationDimension } from './MaterializationStore';
 import { ButtonChip, chipStyle } from './GenericChips';
 import { runInAction } from 'mobx';
+import { useState } from 'react';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default observer(function Materialization() {
   const { materializationStore: store } = useRootStore();
+  const [cubeName, setCubeName] = useState('');
   // TODO: Call backend to fetch these things
   runInAction(() => {
     store.datasets = ['Sales', 'Dataset2'];
@@ -60,9 +63,18 @@ export default observer(function Materialization() {
         <div style = {{ marginTop: 5, marginBottom: 10 }}><b>Cuboids chosen</b></div>
         <ChosenCuboids />
       </div>
-      <Button style = {{ marginTop: 10 }} onClick = { () => {
-        // TODO: Call backend with list of cuboids to materialize
-      } }>Materialize</Button>
+      <div style = {{ marginTop: 10 }}>
+        <TextField
+          id = 'cube-name-text-field'
+          label = 'Name of cube'
+          size = 'small'
+          value = { cubeName }
+          onChange = { e => setCubeName(e.target.value) }
+        />
+        <Button onClick = { () => {
+          // TODO: Call backend with list of cuboids to materialize
+        } }>Materialize</Button>
+      </div>
     </Container>
   )
 })
@@ -234,7 +246,22 @@ const ChosenCuboids = observer(() => {
   <Box sx = {{ height: '65vh', width: '100%', marginTop: '20px' }}>
     <DataGrid
       rows = { store.chosenCuboids.map(cuboidToRow) }
-      columns = { store.dimensions.map(dimensionToColumn) }
+      columns = {
+        store.dimensions.map(dimensionToColumn)
+          .concat([{
+            field: 'actions',
+            type: 'actions',
+            getActions: (params) => [
+              <GridActionsCellItem
+                icon = {<DeleteIcon/>}
+                label = 'Delete'
+                onClick={() => {
+                  // Todo: delete
+                }}
+              />
+            ]
+          } as GridColDef])
+      }
       disableRowSelectionOnClick
       sx = {{ overflowX: 'scroll' }}
     />
@@ -303,8 +330,9 @@ const cuboidToRow = ((cuboid: Cuboid) => {
 
 const dimensionToColumn = ((dimension: MaterializationDimension) => ({
   field: dimension.name,
+  type: 'string',
   headerName: dimension.name + ' (' + dimension.numBits + ' bits)',
   flex: 1,
   sortable: false,
   disableColumnMenu: true
-}));
+} as GridColDef));
