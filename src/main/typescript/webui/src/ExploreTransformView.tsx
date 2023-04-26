@@ -139,7 +139,7 @@ const CheckRename = observer(() => {
             <CompactTableCell>{dimensionsNullCounts[1]}</CompactTableCell>
           </TableRow>
           <TableRow>
-            <CompactTableCell variant = 'head'>NOT NULL</CompactTableCell>
+            <CompactTableCell variant = 'head'>Not NULL</CompactTableCell>
             <CompactTableCell>{dimensionsNullCounts[2]}</CompactTableCell>
             <CompactTableCell>{dimensionsNullCounts[3]}</CompactTableCell>
           </TableRow>
