@@ -177,7 +177,7 @@ const AddCuboids = observer(() => {
   const [isCuboidsDialogOpen, setCuboidsDialogOpen] = React.useState(false);
   // TODO: Call backend to get all cuboids
   return ( <span>
-    <ButtonChip label = 'Choose cuboids' variant = 'outlined' onClick = { () => setCuboidsDialogOpen(true) } />
+    <ButtonChip label = 'Manually choose cuboids' variant = 'outlined' onClick = { () => setCuboidsDialogOpen(true) } />
     <Dialog fullScreen open = {isCuboidsDialogOpen}>
       <DialogTitle>Choose cuboids</DialogTitle>
       <DialogContent>
@@ -226,46 +226,46 @@ const ChosenCuboids = observer(() => {
   const dimensions = store.dimensions;
   return ( <div>
     <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
-    <Grid item xs={6}>
-      { store.chosenCuboidsFilters.map((filter, index) => (
-        <FilterChip
-          key = { 'materialization-filter-chip-' + dimensions[filter.dimensionIndex].name + '-' + filter.bitsFrom + '-' + filter.bitsTo }
-          text = { dimensions[filter.dimensionIndex].name + ' / ' + filter.bitsFrom + '–' + filter.bitsTo }
-          onDelete = { () => runInAction(() => store.addCuboidsFilters.splice(index, 1)) }
-        /> 
-      )) }
-      <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => 
-        runInAction(() => store.chosenCuboidsFilters.push({
-          dimensionIndex: dimensionIndex,
-          bitsFrom: bitsFrom,
-          bitsTo: bitsTo
-        }))
-      } />
+      <Grid item xs={6}>
+        { store.chosenCuboidsFilters.map((filter, index) => (
+          <FilterChip
+            key = { 'materialization-filter-chip-' + dimensions[filter.dimensionIndex].name + '-' + filter.bitsFrom + '-' + filter.bitsTo }
+            text = { dimensions[filter.dimensionIndex].name + ' / ' + filter.bitsFrom + '–' + filter.bitsTo }
+            onDelete = { () => runInAction(() => store.addCuboidsFilters.splice(index, 1)) }
+          /> 
+        )) }
+        <AddCuboidsFilterChip onAdd = {(dimensionIndex: number, bitsFrom: number, bitsTo: number) => 
+          runInAction(() => store.chosenCuboidsFilters.push({
+            dimensionIndex: dimensionIndex,
+            bitsFrom: bitsFrom,
+            bitsTo: bitsTo
+          }))
+        } />
+      </Grid>
     </Grid>
-  </Grid>
-  <Box sx = {{ height: '65vh', width: '100%', marginTop: '20px' }}>
-    <DataGrid
-      rows = { store.chosenCuboids.map(cuboidToRow) }
-      columns = {
-        store.dimensions.map(dimensionToColumn)
-          .concat([{
-            field: 'actions',
-            type: 'actions',
-            getActions: (params) => [
-              <GridActionsCellItem
-                icon = {<DeleteIcon/>}
-                label = 'Delete'
-                onClick={() => {
-                  // Todo: delete
-                }}
-              />
-            ]
-          } as GridColDef])
-      }
-      disableRowSelectionOnClick
-      sx = {{ overflowX: 'scroll' }}
-    />
-  </Box>
+    <Box sx = {{ height: '65vh', width: '100%', marginTop: '20px' }}>
+      <DataGrid
+        rows = { store.chosenCuboids.map(cuboidToRow) }
+        columns = {
+          store.dimensions.map(dimensionToColumn)
+            .concat([{
+              field: 'actions',
+              type: 'actions',
+              getActions: (params) => [
+                <GridActionsCellItem
+                  icon = {<DeleteIcon/>}
+                  label = 'Delete'
+                  onClick={() => {
+                    // Todo: delete
+                  }}
+                />
+              ]
+            } as GridColDef])
+        }
+        disableRowSelectionOnClick
+        sx = {{ overflowX: 'scroll' }}
+      />
+    </Box>
   </div>
   )
 })
