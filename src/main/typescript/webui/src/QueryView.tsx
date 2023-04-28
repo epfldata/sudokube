@@ -1,24 +1,28 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
-import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
+import { Box, Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import { DimensionChip, AddDimensionChip, FilterChip, AddQueryFilterChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
 import { useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
+import { DataGrid } from '@mui/x-data-grid';
+import { cuboidToRow, dimensionToColumn } from './MaterializationView';
 
 const data = require('./sales-data.json');
 
 export default observer(function Query() {
-  const { queryStore } = useRootStore();
+  const { queryStore: store } = useRootStore();
   // TODO: Call backend to load available cubes
-  runInAction(() => queryStore.cubes = ['sales']);
+  runInAction(() => store.cubes = ['sales']);
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>
       <QueryParams/>
-      <Chart/>
+      <Cuboids isShown = {store.isRunComplete}/>
+      <Chart isShown = {store.isRunComplete}/>
+      <Metrics isShown = {store.isRunComplete}/>
     </Container>
   )
 })
@@ -35,7 +39,7 @@ const SelectCube = observer(() => {
         value = { store.selectedCubeIndex }
         onChange = { e => {
           runInAction(() => store.selectedCubeIndex = e.target.value as number);
-          // TODO: Load dimension hierarchy
+          // TODO: Load dimension hierarchy and flat dimensions
         } }>
         { store.cubes.map((cube, index) => (
           <MenuItem key = { 'select-cube-' + index } value = {index}>{cube}</MenuItem>
@@ -71,9 +75,35 @@ const QueryParams = observer(() => {
           valueRange = { store.solvers } 
           onChange = { v => runInAction(() => store.solver = v) }
         />
+        <SelectionChip
+          keyText = 'Mode'
+          valueText = { store.mode }
+          valueRange = { store.modes }
+          onChange = { v => runInAction(() => store.mode = v) }
+        />
         <ButtonChip label = 'Run' variant = 'filled' onClick = {() => {
           // TODO: Call backend to query
-          runInAction(() => store.result = data);
+          runInAction(() => {
+            store.isRunComplete = true;
+            store.result = data;
+            store.preparedCuboids = [{
+              id: '1',
+              dimensions: [
+                { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
+                { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+                { name: "Year", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
+                { name: "Month", bits: '\u2589\u2589\u2589\u2589\u25A2' },
+                { name: "Day", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'}
+              ]
+            }];
+            store.metrics = [
+              { name: 'Prepare time', value: '1 s' },
+              { name: 'Fetch time', value: '1 s' },
+              { name: 'Solve time', value: '1 s' },
+              { name: 'Error', value: '0.01' },
+              { name: 'Degree of freedom', value: '?' }
+            ];
+          });
         }} />
       </Grid>
     </Grid>
@@ -147,10 +177,52 @@ const Series = observer(() => {
   );
 });
 
-const Chart = observer(() => {
+const Cuboids = observer(({isShown}: {isShown: boolean}) => {
   const { queryStore: store } = useRootStore();
-  return (
-    <div style={{ width: '100%', height: '80vh', paddingTop: '20px' }}>
+  if (!isShown || store.preparedCuboids.length === 0) {
+    return null;
+  }
+  return ( <div>
+    <h3>Prepared Cuboids</h3>
+    <Box sx = {{ height: '30vh', width: '100%', marginTop: '20px' }}>
+      <DataGrid
+        rows = { store.preparedCuboids.map(cuboidToRow) }
+        columns = { store.cube.dimensions.map(dimensionToColumn) }
+        disableRowSelectionOnClick
+        sx = {{ overflowX: 'scroll' }}
+      />
+    </Box>
+    {
+      (store.nextCuboidIndex >= 0 && store.nextCuboidIndex < store.preparedCuboids.length) ? ( <div>
+        <h4>Next cuboid to be fetched</h4>
+        <TableContainer>
+          <Table sx = {{ width: '100%' }} aria-label = "simple table" size = 'small'>
+            <TableHead>
+              <TableRow>
+                { store.cube.dimensions.map(dimension => <TableCell>{dimension.name + ' (' + dimension.numBits + ' bits)'}</TableCell>) }
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                { store.preparedCuboids[store.nextCuboidIndex].dimensions.map(dimension => <TableCell>{dimension.bits}</TableCell>) }
+              </TableRow>
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Button onClick = {() => {}}>Fetch next cuboid and continue</Button>
+      </div> ) : null
+    }
+  </div> );
+})
+
+const Chart = observer(({isShown}: {isShown: boolean}) => {
+  if (!isShown) {
+    return null;
+  }
+  const { queryStore: store } = useRootStore();
+  return ( <div>
+    <h3>Current result</h3>
+    <div style={{ width: '100%', height: '50vh' }}>
       <ResponsiveLine
         data = { store.result.data }
         margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
@@ -195,5 +267,27 @@ const Chart = observer(() => {
         ]}
       />
     </div>
-  )
+  </div> );
 })
+
+const Metrics = observer(({isShown}: {isShown: boolean}) => {
+  if (!isShown) {
+    return null;
+  }
+  const { queryStore: store } = useRootStore();
+  return ( <div>
+    <h3>Metrics</h3>
+    <TableContainer>
+      <Table sx = {{ width: 'auto' }} aria-label = "simple table" size = 'small'>
+        <TableHead>
+          <TableRow>
+            { store.metrics.map(metric => <TableCell>{metric.name}</TableCell>) }
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          { store.metrics.map(metric => <TableCell>{metric.value}</TableCell>) }
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div> );
+});

@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { Cuboid } from "./MaterializationStore";
 
 export class DimensionLevel {
   name: string;
@@ -10,7 +11,7 @@ export class DimensionLevel {
   }
 }
 
-export class Dimension {
+export class TopLevelDimension {
   name: string;
   dimensionLevels: DimensionLevel[];
   constructor(name: string, dimensionLevels: DimensionLevel[]) {
@@ -21,11 +22,16 @@ export class Dimension {
 }
 
 export class DimensionHierarchy {
-  dimensions: Dimension[];
-  constructor(dimensions: Dimension[]) {
+  dimensions: TopLevelDimension[];
+  constructor(dimensions: TopLevelDimension[]) {
     makeAutoObservable(this);
     this.dimensions = dimensions;
   }
+}
+
+export type Dimension = {
+  name: string;
+  numBits: number;
 }
 
 export class SelectedDimension {
@@ -51,6 +57,7 @@ export class Filter {
 }
 
 export class QueryCube {
+  dimensions: Dimension[] = [];
   dimensionHierarchy: DimensionHierarchy = new DimensionHierarchy([]);
   isLoading: boolean = false;
   constructor() {
@@ -60,6 +67,13 @@ export class QueryCube {
   loadDimensionHierarchy() {
     const sampleMetadata = require('./sample-metadata.json');
     this.dimensionHierarchy = sampleMetadata.dimensionHierarchy;
+    runInAction(() => this.dimensions = [
+      { name: 'Country', numBits: 6 }, 
+      { name: 'City', numBits: 6 },
+      { name: 'Year', numBits: 6 },
+      { name: 'Month', numBits: 5 }, 
+      { name: 'Day', numBits: 6 }
+    ]);
     // this.isLoading = true
     // this.transportLayer.fetchTodos().then(fetchedTodos => {
     //   runInAction(() => {
@@ -98,6 +112,11 @@ class ResultDataPoint {
   }
 }
 
+type Metric = {
+  name: string;
+  value: string;
+}
+
 export class QueryStore {
   cubes: string[] = [];
   selectedCubeIndex: number = 0;
@@ -116,36 +135,45 @@ export class QueryStore {
   solvers: string[] = ['Naive', 'Linear Programming', 'Moment', 'Graphical Model'];
   solver: string = 'Naive';
 
+  modes: string[] = ['Batch', 'Online'];
+  mode: string = 'Batch';
+
+  isRunComplete: boolean = false;
+
+  preparedCuboids: Cuboid[] = [];
+  nextCuboidIndex: number = 0;
+
   result: ResultData = new ResultData([]);
+  metrics: Metric[] = [];
 
   constructor() {
     makeAutoObservable(this);
   }
   addHorizontal(dimensionIndex: number, dimensionLevelIndex: number) {
-    this.horizontal.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
+    runInAction(() => this.horizontal.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex)));
   }
   zoomInHorizontal(index: number) {
-    this.horizontal[index].dimensionLevelIndex = Math.min(
+    runInAction(() => this.horizontal[index].dimensionLevelIndex = Math.min(
       this.horizontal[index].dimensionLevelIndex + 1,
       this.cube.dimensionHierarchy.dimensions[this.horizontal[index].dimensionIndex].dimensionLevels.length - 1
-    );
+    ));
   }
   zoomOutHorizontal(index: number) {
-    this.horizontal[index].dimensionLevelIndex = Math.max(this.horizontal[index].dimensionLevelIndex - 1, 0);
+    runInAction(() => this.horizontal[index].dimensionLevelIndex = Math.max(this.horizontal[index].dimensionLevelIndex - 1, 0));
   }
   addSeries(dimensionIndex: number, dimensionLevelIndex: number) {
-    this.series.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex));
+    runInAction(() => this.series.push(new SelectedDimension(dimensionIndex, dimensionLevelIndex)));
   }
   zoomInSeries(index: number) {
-    this.series[index].dimensionLevelIndex = Math.min(
+    runInAction(() => this.series[index].dimensionLevelIndex = Math.min(
       this.series[index].dimensionLevelIndex + 1,
       this.cube.dimensionHierarchy.dimensions[this.series[index].dimensionIndex].dimensionLevels.length - 1
-    );
+    ));
   }
   zoomOutSeries(index: number) {
-    this.series[index].dimensionLevelIndex = Math.max(this.series[index].dimensionLevelIndex - 1, 0);
+    runInAction(() => this.series[index].dimensionLevelIndex = Math.max(this.series[index].dimensionLevelIndex - 1, 0));
   }
   addFilter(dimensionIndex: number, dimensionLevelIndex: number, valueIndex: number) {
-    this.filters.push(new Filter(dimensionIndex, dimensionLevelIndex, valueIndex));
+    runInAction(() => this.filters.push(new Filter(dimensionIndex, dimensionLevelIndex, valueIndex)));
   }
 }

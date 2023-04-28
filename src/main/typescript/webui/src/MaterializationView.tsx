@@ -321,14 +321,14 @@ function AddCuboidsFilterChip({onAdd}: {
   </span>)
 }
 
-const cuboidToRow = ((cuboid: Cuboid) => {
+export const cuboidToRow = ((cuboid: Cuboid) => {
   let row: any = {};
   row["id"] = cuboid.id;
   cuboid.dimensions.forEach(dimension => row[dimension.name] = dimension.bits);
   return row;
 });
 
-const dimensionToColumn = ((dimension: MaterializationDimension) => ({
+export const dimensionToColumn = ((dimension: MaterializationDimension) => ({
   field: dimension.name,
   type: 'string',
   headerName: dimension.name + ' (' + dimension.numBits + ' bits)',
