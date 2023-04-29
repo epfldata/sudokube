@@ -5,7 +5,7 @@ import util.{BitUtils, Profiler}
 class SingleCuboidWaveletSolver(override val querySize: Int,
                                 override val debug: Boolean = false)
   extends
-    WaveletSolver("SingleCuboidWaveletSolver", querySize, new HaarTransformer[Double](), debug) {
+    WaveletSolver[Double]("SingleCuboidWaveletSolver", querySize, debug) {
 
   override def solve(): Array[Double] = {
     assert(cuboids.size == 1, "SingleCuboidWaveletSolver can only solve a single cuboid")
@@ -55,7 +55,7 @@ class SingleCuboidWaveletSolver(override val querySize: Int,
       println(s"result as wavelet: $targetOrder ::  ${transformer.forward(permutedCuboid).mkString(", ")}")
     }
 
-    solution = Some((targetOrder, permutedCuboid))
+    solution = permutedCuboid
     permutedCuboid
   }
 }

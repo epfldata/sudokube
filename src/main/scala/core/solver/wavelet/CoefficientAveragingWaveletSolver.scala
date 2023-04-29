@@ -2,24 +2,30 @@ package core.solver.wavelet
 
 import util.Profiler
 
-class MutuallyExclusiveWaveletSolver(override val querySize: Int,
-                                     override val debug: Boolean = false)
+class CoefficientAveragingWaveletSolver(override val querySize: Int, override val debug: Boolean = false)
   extends
-    WaveletSolver[Double]("MutuallyExclusiveWaveletSolver", querySize, debug) {
+    WaveletSolver[Double]("CoefficientAveragingWaveletSolver", querySize, debug) {
 
 
   override def solve(): Array[Double] = {
-    // check if cuboids are mutually exclusive
-    val cuboidVariables = cuboids.keys.toSeq
-    assert(cuboidVariables.map(_.size).sum == cuboidVariables.flatten.toSet.size, "Cuboids are not mutually exclusive")
-
     val finalWavelet: Array[Double] = new Array(N)
 
-    // target order is ascending bit positions
-    val targetOrder = (0 until querySize).sorted(Ordering[Int])
+    // target order is ascending variables
+    val finalCuboidVariables = (0 until querySize).sorted(Ordering[Int])
+
+    // multiple cuboids can have the same variable,
+    // each corresponding wavelet will have coefficients for that variable
+    // we need to combine or select the coefficients from all the wavelets
+
+    // here we will average the coefficients for each variable,
+    // after extrapolating and permuting the marginal wavelets into the target order
+
+    // for each variable, find the number of cuboids that it appears in
+    val variableCounts: Map[Int, Int] = Profiler(s"$solverName Coefficient Averaging Preparation") {
+      cuboids.keys.flatten.groupBy(identity).mapValues(_.size)
+    }
 
     for (((variables, cuboid), index) <- cuboids.zipWithIndex) {
-
       val wavelet: Array[Double] = Profiler(s"$solverName Forward Transform") {
         // transform cuboid to wavelet
         transformer.forward(cuboid)
@@ -33,13 +39,13 @@ class MutuallyExclusiveWaveletSolver(override val querySize: Int,
         extrapolatedWavelet
       }
 
-      // copy the sum to the final wavelet
-      if (index == 0) {
-        finalWavelet(0) = extrapolatedWavelet(0)
-      }
-
       // copy the coefficients to the final wavelet
       Profiler(s"$solverName Wavelet Permutation & Combination") {
+        // copy the sum to the final wavelet
+        if (index == 0) {
+          finalWavelet(0) = extrapolatedWavelet(0)
+        }
+
         // fill the wavelet values into the right positions in the final wavelet
 
         /* eg:
@@ -66,28 +72,22 @@ class MutuallyExclusiveWaveletSolver(override val querySize: Int,
           val finalVariablePos = Math.pow(2, (querySize - 1) - variable).toInt
           val finalNumCoefficients = finalVariablePos
 
-          var adjustedCoefficients = Array.empty[Double]
+          // average the coefficients for each variable
+          var adjustedCoefficients = variableCoefficients.map { c => c / variableCounts(variable) }
 
-          if (numCoefficients == finalNumCoefficients) {
-            // we can just copy the coefficients
-            adjustedCoefficients = variableCoefficients
-
-          } else if (numCoefficients < finalNumCoefficients) {
+          if (numCoefficients < finalNumCoefficients) {
             // we need to equally split the coefficients, giving us double the number of coefficients
             val divisor = finalNumCoefficients / numCoefficients
             adjustedCoefficients = variableCoefficients.flatMap(c => Array.fill(divisor)(c / divisor))
 
-          } else /* if numCoefficient > finalNumCoefficients  */ {
-            // we need to sum the coefficients pairwise, giving us half the number of coefficients
+          } /* else if (numCoefficient > finalNumCoefficients)
+            we need to sum the coefficients pairwise, giving us half the number of coefficients
 
-            /*
             eg. given source cuboid (2, 4, 5) :: [total, 5, 4_0, 4_1, 2_0, 2_1, 2_2, 2_3]
             in the final cuboid (..., 2, ..., 4, 5, ...)
             there will always be equal or more variables succeeding variable 2
             hence, 2 can never acquire an earlier position that requires less coefficients than it has
-            */
-            assert(assertion = false, "This should not happen, since the cuboids are mutually exclusive")
-          }
+           */
 
           System.arraycopy(adjustedCoefficients, 0, finalWavelet, finalVariablePos, finalNumCoefficients)
         }
@@ -96,18 +96,18 @@ class MutuallyExclusiveWaveletSolver(override val querySize: Int,
       if (debug) {
         println(s"Source Cuboid: $variables :: ${cuboid.mkString(", ")}")
         println(s"Source Wavelet:  $variables :: ${extrapolatedWavelet.mkString(", ")}")
-        println(s"Combined Wavelet: $targetOrder :: ${finalWavelet.mkString(", ")}")
+        println(s"Combined Wavelet: $finalCuboidVariables :: ${finalWavelet.mkString(", ")}")
         println()
       }
     }
 
-    val finalCuboid: Array[Double] = Profiler(s"$solverName Final Reverse Transform") {
+    val finalCuboid: Array[Double] = Profiler(s"$solverName Reverse Transform") {
       transformer.reverse(finalWavelet)
     }
 
     if (debug) {
-      println(s"Final Wavelet: $targetOrder :: ${finalWavelet.mkString(", ")}")
-      println(s"Final Cuboid: $targetOrder :: ${finalCuboid.mkString(", ")}")
+      println(s"Final Wavelet: $finalCuboidVariables :: ${finalWavelet.mkString(", ")}")
+      println(s"Final Cuboid: $finalCuboidVariables :: ${finalCuboid.mkString(", ")}")
       println()
     }
 

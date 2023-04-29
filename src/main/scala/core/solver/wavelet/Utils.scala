@@ -63,13 +63,13 @@ object PrintUtils {
     val t = new HaarTransformer[String]
 
     Seq(
-      //      "A" -> Array("a+b", "c+d"),
-      //      "B" -> Array("a+c", "b+d"),
-      //      "AB" -> Array("a", "b", "c", "d"),
-      //      "BA" -> Array("a", "c", "b", "d"),
-      "ABC" -> Array("a", "b", "c", "d", "e", "f", "g", "h"),
-      "ACB" -> Array("a", "c", "b", "d", "e", "g", "f", "h"),
-      "BAC" -> Array("a", "b", "e", "f", "c", "d", "g", "h"),
+      "0,1,2" -> Array("a", "b", "c", "d", "e", "f", "g", "h"),
+      "0,1" -> Array("a+e", "b+f", "c+g", "d+h"),
+      "0,2" -> Array("a+c", "b+d", "e+g", "f+h"),
+      "0,1" -> Array("a+e", "b+f", "c+g", "d+h"),
+      "1,2" -> Array("a+b", "c+d", "e+f", "g+h"),
+      "0,2,1" -> Array("a", "b", "e", "f", "c", "d", "g", "h"),
+      "2,0,1" -> Array("a", "e", "b", "f", "c", "g", "d", "h"),
       //      "ABCD" -> Array("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"),
       //      "A" -> Array("a+b+c+d+e+f+g+h", "i+j+k+l+m+n+o+p"),
       //      "B" -> Array("a+b+c+d+i+j+k+l", "e+f+g+h+m+n+o+p"),
