@@ -321,9 +321,10 @@ function AddCuboidsFilterChip({onAdd}: {
   </span>)
 }
 
-export const cuboidToRow = ((cuboid: Cuboid) => {
+export const cuboidToRow = ((cuboid: Cuboid, index: number) => {
   let row: any = {};
   row["id"] = cuboid.id;
+  row['index'] = index;
   cuboid.dimensions.forEach(dimension => row[dimension.name] = dimension.bits);
   return row;
 });

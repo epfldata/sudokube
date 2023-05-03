@@ -189,29 +189,24 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
         rows = { store.preparedCuboids.map(cuboidToRow) }
         columns = { store.cube.dimensions.map(dimensionToColumn) }
         disableRowSelectionOnClick
-        sx = {{ overflowX: 'scroll' }}
+        sx = {{
+          overflowX: 'scroll',
+          '.materialization-online-next-cuboid': {
+            color: 'primary.main'
+          }
+        }}
+        density = 'compact'
+        getRowClassName = {(params) =>
+          params.row.index === store.nextCuboidIndex ? 'materialization-online-next-cuboid' : ''
+        }
+        initialState = {{
+          pagination: {
+            paginationModel: { pageSize: 5, page: 1 }
+          }
+        }}
+        rowCount={10}
       />
     </Box>
-    {
-      (store.nextCuboidIndex >= 0 && store.nextCuboidIndex < store.preparedCuboids.length) ? ( <div>
-        <h4>Next cuboid to be fetched</h4>
-        <TableContainer>
-          <Table sx = {{ width: '100%' }} aria-label = "simple table" size = 'small'>
-            <TableHead>
-              <TableRow>
-                { store.cube.dimensions.map(dimension => <TableCell>{dimension.name + ' (' + dimension.numBits + ' bits)'}</TableCell>) }
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TableRow>
-                { store.preparedCuboids[store.nextCuboidIndex].dimensions.map(dimension => <TableCell>{dimension.bits}</TableCell>) }
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <Button onClick = {() => {}}>Fetch next cuboid and continue</Button>
-      </div> ) : null
-    }
   </div> );
 })
 
