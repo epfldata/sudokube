@@ -147,15 +147,15 @@ abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) ext
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx
   override def encode(v: T): BigBinary = {
-    val data = if (isRange) {
+    val data = {
       val v1 = BigInt(encode_locally(v))
-      val v2 = if (v1 > 0) {
-        v1 << bitsMin
-      } else BigInt(0)
-      BigBinary(v2)
+      if (v1 > 0) {
+        if (isRange)
+          BigBinary(v1 << bitsMin)
+        else
+          BigBinary(v1).pup(bits)
+      } else BigBinary(0)
     }
-    else
-      BigBinary(encode_locally(v)).pup(bits)
     data + BigBinary(isNotNullBI)
   }
 

@@ -95,7 +95,7 @@ class DynamicSchema extends Schema {
       c.encode_any(math.abs(vi)) + sgn_enc
     }
     else {
-      val c = columns.getOrElse(key, new MemCol[String]())
+      val c = columns.getOrElse(key, new MemCol[String](2))
       columns(key) = c
       c.encode_any(v)
     }

@@ -1,4 +1,4 @@
-id,year,quarter,month,week,day,id,name,category_label,product_label,continent_code,continent_name,country_code,country_name,quantity,price_total
+RowId,year,quarter,month,week,day,id,name,category_label,product_label,continent_code,continent_name,country_code,country_name,quantity,price_total
 1,2014,2,7,27,13,1,Wayne Enterprises,Sports,Tent for extreme weather,europe,Europe,spain,Spain,3,190.05
 2,2015,2,5,20,24,2,Flowers By Irene,Sports,Snowboard table,europe,Europe,denmark,Denmark,1,261.9
 3,2015,4,12,50,18,3,Mammoth Pictures,Sports,Mountain Bike,south_america,South America,ecuador,Ecuador,1,257.75

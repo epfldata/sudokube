@@ -9,7 +9,7 @@ import scala.util.Try
 class IsNullColEncoder[T](init_size: Int = 1
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 
-    register.registerIdx(init_size)
+    register.registerIdx(init_size - 1)
     
     /**
      * Decode to NULL or NOT_NULL

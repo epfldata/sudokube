@@ -69,7 +69,7 @@ class MemCol[T](init_size: Int = 8
   /* protected */
   var encode_map = new mutable.HashMap[T, Int]
   var decode_map = new collection.mutable.ArrayBuffer[T](init_size)
-  register.registerIdx(init_size)
+  register.registerIdx(init_size - 1)
 
   def this(init_values: Seq[T])(implicit bitPosRegistry: BitPosRegistry) = {
     this(init_values.size)

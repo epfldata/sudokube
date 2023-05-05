@@ -4,6 +4,9 @@ import util.BitUtils
 
 class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentTransformer[Double], primaryMoments: Seq[(Int, Double)], handleZeroes: Boolean = false, secondOrder: Boolean = false) extends MomentSolver[Double](qsize, batchmode, transformer, primaryMoments) {
   override val solverName: String = "Comoment5"
+  var cutOffZero = false
+  var cutOffZeroCount = 0.0
+  var cutOffZeroValueSum = 0.0
   val pmArray = new Array[Double](qsize)
   val zeros = collection.mutable.BitSet()
   override def init(): Unit = {}
@@ -78,8 +81,8 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
       }
       val cuboid_moments = result
       newMomentIndices.foreach { case (i0, i) =>
-          momentsToAdd += i -> cuboid_moments(i0)
-          knownSet += i
+        momentsToAdd += i -> cuboid_moments(i0)
+        knownSet += i
       }
     }
   }
@@ -160,6 +163,20 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
         i += h << 1
       }
       h = h << 1
+    }
+    if (cutOffZero) {
+      cutOffZeroCount = 0.0
+      cutOffZeroValueSum = 0.0
+      assert(!handleNegative)
+      i = 0
+      while (i < N) {
+        if (result(i) < 0) {
+          cutOffZeroCount += 1
+          cutOffZeroValueSum -= result(i)
+          result(i) = 0
+        }
+        i += 1
+      }
     }
     if (handleZeroes) {
       result.indices.filter(i => zeros(i)).foreach {
