@@ -13,6 +13,7 @@ import { ButtonChip, chipStyle } from './GenericChips';
 import { runInAction } from 'mobx';
 import { useState } from 'react';
 import DeleteIcon from '@mui/icons-material/Delete';
+import {getBaseCuboids} from "./SudokubeClient";
 
 export default observer(function Materialization() {
   const { materializationStore: store } = useRootStore();
@@ -20,6 +21,7 @@ export default observer(function Materialization() {
   // TODO: Call backend to fetch these things
   runInAction(() => {
     store.datasets = ['Sales', 'Dataset2'];
+    getBaseCuboids()
     store.selectedDataset = store.datasets[0];
     store.dimensions = [
       { name: 'Country', numBits: 6 }, 

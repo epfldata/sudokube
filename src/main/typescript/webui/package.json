@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
+    "@improbable-eng/grpc-web": "^0.15.0",
     "@mui/icons-material": "^5.11.11",
     "@mui/material": "latest",
     "@mui/x-data-grid": "^6.1.0",
@@ -14,10 +15,12 @@
     "mobx": "^6.9.0",
     "mobx-persist-store": "^1.1.3",
     "mobx-react-lite": "^3.4.3",
+    "protoc-gen-js": "^3.21.2",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "^6.10.0",
     "react-scripts": "latest",
+    "ts-protoc-gen": "^0.15.0",
     "typescript": "latest"
   },
   "scripts": {
