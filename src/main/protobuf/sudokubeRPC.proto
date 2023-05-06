@@ -1,0 +1,11 @@
+syntax = "proto3";
+package frontend.service;
+
+service SudokubeService {
+  rpc getBaseCuboids(Empty) returns (BaseCuboidResponse) {}
+}
+
+message Empty {}
+message BaseCuboidResponse {
+  repeated string cuboids = 1;
+}
