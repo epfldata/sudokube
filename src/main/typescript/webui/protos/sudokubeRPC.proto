@@ -88,6 +88,7 @@ message GetAvailableCuboidsResponse {
     repeated EncodedDimensionBits dimensions = 1;
     bool isChosen = 2;
   }
+  repeated CuboidDef cuboids = 1;
 }
 
 message ManuallyUpdateCuboidsArgs {
@@ -119,7 +120,7 @@ message IsRenamedQueryArgs {
 
 message IsRenamedQueryResponse {
   repeated uint32 result = 1;
-  repeated bool isRenamed = 2;
+   bool isRenamed = 2;
 }
 
 
@@ -149,7 +150,7 @@ message TransformDimensionsArgs {
 message SelectDataCubeForQueryResponse {
   message DimHierarchy {
     string dimName = 1;
-    string numBits = 2;
+    uint32 numBits = 2;
     repeated string levels = 3;
   }
   repeated DimHierarchy dimensions = 1;
