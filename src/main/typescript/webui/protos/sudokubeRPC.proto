@@ -2,10 +2,212 @@ syntax = "proto3";
 package frontend.service;
 
 service SudokubeService {
-  rpc getBaseCuboids(Empty) returns (BaseCuboidResponse) {}
+
+  /* Materialize */
+  rpc getBaseCuboids(Empty) returns (BaseCuboidResponse);
+  rpc selectBaseCuboid(SelectBaseCuboidArgs) returns (SelectBaseCuboidResponse);
+  rpc selectMaterializationStrategy(SelectMaterializationStrategyArgs) returns (Empty);
+  rpc getChosenCuboids(GetCuboidsArgs) returns (GetChosenCuboidsResponse);
+  rpc deleteChosenCuboid(DeleteSelectedCuboidArgs) returns (Empty);
+  rpc getAvailableCuboids(GetCuboidsArgs) returns (GetAvailableCuboidsResponse);
+  rpc manuallyUpdateCuboids(ManuallyUpdateCuboidsArgs) returns (Empty);
+  rpc materializeCuboids(MaterializeArgs) returns (Empty);
+
+  /* Explore */
+  rpc getDataCubes(Empty) returns (GetCubesResponse); //also in Query
+  rpc selectDataCubeForExplore(SelectDataCubeArgs) returns (SelectDataCubeForExploreResponse);
+  rpc isRenameQuery(IsRenamedQueryArgs) returns (IsRenamedQueryResponse);
+  rpc startRenameTimeQuery(GetRenameTimeArgs) returns (GetRenameTimeResponse);
+  rpc continueRenameTimeQuery(Empty) returns (GetRenameTimeResponse);
+  rpc transformCube(TransformDimensionsArgs) returns (Empty);
+
+  /* Query */
+  rpc selectDataCubeForQuery(SelectDataCubeArgs) returns (SelectDataCubeForQueryResponse);
+  rpc getValuesForSlice(GetSliceValuesArgs) returns (GetSliceValueResponse);
+  //Todo get and post filters
+  rpc startQuery(QueryArgs) returns (QueryResponse);
+  rpc continueQuery(Empty) returns (QueryResponse);
 }
 
 message Empty {}
+
+/** Materialize Message **/
+
 message BaseCuboidResponse {
   repeated string cuboids = 1;
+}
+
+message SelectBaseCuboidArgs {
+  string cuboid = 1;
+}
+message SelectBaseCuboidResponse {
+  message Dimension {
+    string name = 1;
+    uint32 numBits = 2;
+  }
+  repeated Dimension dimensions = 1;
+}
+
+message SelectMaterializationStrategyArgs {
+  string name = 1;
+  repeated string args = 2;
+}
+
+
+message DimensionFilterCuboid {
+  string dimensionName = 1;
+  uint32 bitsFrom = 2;
+  uint32 bitsTo = 3;
+}
+
+message DeleteSelectedCuboidArgs {
+  repeated uint32 cuboidIDsWithinPage = 1;
+}
+
+message GetCuboidsArgs {//shared between GetChosenCuboids and GetAvailableCuboids
+  repeated DimensionFilterCuboid filters = 1;
+  uint32 requestedPageID = 2;
+  uint32 rowsPerPage = 3;
+}
+
+message EncodedDimensionBits {
+  string dimensionName = 1;
+  string chosenBits = 2; //in white/black squares
+}
+
+message GetChosenCuboidsResponse {
+  message CuboidDef {
+    repeated EncodedDimensionBits dimensions = 1;
+  }
+  repeated CuboidDef cuboids = 1;
+  uint32 totalNumCuboids = 2; //SBJ: Do you really want this?
+}
+
+message GetAvailableCuboidsResponse {
+  message CuboidDef {
+    repeated EncodedDimensionBits dimensions = 1;
+    bool isChosen = 2;
+  }
+}
+
+message ManuallyUpdateCuboidsArgs {
+  repeated bool isChosen = 1; //for all cuboids in the current page
+}
+
+message MaterializeArgs {
+  string cubeName = 1;
+}
+
+/** Explore and Transform Messages **/
+
+message GetCubesResponse  {
+  repeated string cubes = 1;
+}
+
+message SelectDataCubeArgs {//shared between Explore and Query
+  string cube = 1;
+}
+message SelectDataCubeForExploreResponse {
+  repeated string dimNames = 1;
+}
+
+
+message IsRenamedQueryArgs {
+  string dimension1 = 1;
+  string dimension2 = 2;
+}
+
+message IsRenamedQueryResponse {
+  repeated uint32 result = 1;
+  repeated bool isRenamed = 2;
+}
+
+
+message GetRenameTimeArgs {
+  string dimensionName = 1;
+}
+message GetRenameTimeResponse  {
+  uint32 numTimeBits = 1;
+  bool isComplete = 2;
+  repeated bool filtersApplied = 3; //false-true for 0-1
+  repeated uint32 result = 4;
+  string renameTime = 5;
+}
+
+message MergeColumnDef  {
+  string dim1 = 1;
+  string dim2 = 2;
+  string newdim = 3;
+}
+
+message TransformDimensionsArgs {
+  repeated MergeColumnDef cols = 1;
+  string newCubeName = 2;
+}
+
+/**  Query messages **/
+message SelectDataCubeForQueryResponse {
+  message DimHierarchy {
+    string dimName = 1;
+    string numBits = 2;
+    repeated string levels = 3;
+  }
+  repeated DimHierarchy dimensions = 1;
+  repeated string measures = 2;
+}
+
+message GetSliceValuesArgs  {
+  string dimensionName = 1;
+  string dimensionLevel = 2;
+  string searchText = 3;
+  uint32 requestedPageId = 4;
+  uint32 numRowsInPage = 5;
+}
+
+message GetSliceValueResponse {
+  repeated string values = 1;
+}
+
+//TODO get and post filters
+message FilterDef {
+  string dimensionName = 1;
+  string dimensionLevel = 2;
+  repeated string values = 3;
+  //may have to change to indexes of values
+}
+message QueryArgs {
+  message DimensionDef {
+    string dimensionName = 1;
+    string dimensionLevel = 2;
+  }
+  repeated DimensionDef horizontal = 1;
+  repeated DimensionDef series = 2;
+  repeated FilterDef filters = 3;
+  string measure = 4;
+  string aggregation = 5;
+  string solver = 6;
+  bool isBatchMode = 7;
+  uint32 preparedCuboidsPerPage = 8; //SBJ: Should it be part of different request?
+}
+
+message XYpoint {
+  string X = 1; //should it be float with additional string label?
+  float Y = 2;
+}
+message QueryStatistic {
+  string name = 1;
+  string value = 2;
+}
+message QueryResponse {
+  uint32 numPreparedCuboids = 1;
+  message CuboidDef {
+    repeated EncodedDimensionBits dimensions = 1;
+  }
+  repeated CuboidDef cuboids = 2;
+  message SeriesData {
+    string seriesName = 1;
+    repeated XYpoint data = 2;
+  }
+  repeated SeriesData series = 3;
+  repeated QueryStatistic stats = 4;
 }
