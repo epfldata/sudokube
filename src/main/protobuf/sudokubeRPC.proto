@@ -24,9 +24,11 @@ service SudokubeService {
   /* Query */
   rpc selectDataCubeForQuery(SelectDataCubeArgs) returns (SelectDataCubeForQueryResponse);
   rpc getValuesForSlice(GetSliceValuesArgs) returns (GetSliceValueResponse);
-  //Todo get and post filters
+  rpc setValuesForSlice(SetSliceValuesArgs) returns (Empty);
+  rpc getFilters(Empty) returns (GetFiltersResponse); // Currently applied filters
   rpc startQuery(QueryArgs) returns (QueryResponse);
   rpc continueQuery(Empty) returns (QueryResponse);
+  rpc getPreparedCuboids(GetPreparedCuboidsArgs) returns (GetPreparedCuboidsResponse); // for page change in cuboids table
 }
 
 message Empty {}
@@ -61,7 +63,7 @@ message DimensionFilterCuboid {
 }
 
 message DeleteSelectedCuboidArgs {
-  repeated uint32 cuboidIDsWithinPage = 1;
+  uint32 cuboidIDWithinPage = 1;
 }
 
 message GetCuboidsArgs {//shared between GetChosenCuboids and GetAvailableCuboids
@@ -70,22 +72,21 @@ message GetCuboidsArgs {//shared between GetChosenCuboids and GetAvailableCuboid
   uint32 rowsPerPage = 3;
 }
 
-message EncodedDimensionBits {
+message DimensionBits {
   string dimensionName = 1;
-  string chosenBits = 2; //in white/black squares
+  repeated bool chosenBits = 2;
 }
 
 message GetChosenCuboidsResponse {
   message CuboidDef {
-    repeated EncodedDimensionBits dimensions = 1;
+    repeated DimensionBits dimensions = 1;
   }
   repeated CuboidDef cuboids = 1;
-  uint32 totalNumCuboids = 2; //SBJ: Do you really want this?
 }
 
 message GetAvailableCuboidsResponse {
   message CuboidDef {
-    repeated EncodedDimensionBits dimensions = 1;
+    repeated DimensionBits dimensions = 1;
     bool isChosen = 2;
   }
   repeated CuboidDef cuboids = 1;
@@ -120,7 +121,7 @@ message IsRenamedQueryArgs {
 
 message IsRenamedQueryResponse {
   repeated uint32 result = 1;
-   bool isRenamed = 2;
+  bool isRenamed = 2;
 }
 
 
@@ -169,13 +170,21 @@ message GetSliceValueResponse {
   repeated string values = 1;
 }
 
-//TODO get and post filters
+message SetSliceValuesArgs {
+  repeated bool isSelected = 1; // Whether each value on the page is selected
+}
+
 message FilterDef {
   string dimensionName = 1;
   string dimensionLevel = 2;
   repeated string values = 3;
   //may have to change to indexes of values
 }
+
+message GetFiltersResponse {
+  repeated FilterDef filters = 1;
+}
+
 message QueryArgs {
   message DimensionDef {
     string dimensionName = 1;
@@ -199,16 +208,26 @@ message QueryStatistic {
   string name = 1;
   string value = 2;
 }
+message CuboidDef {
+  repeated DimensionBits dimensions = 1;
+}
 message QueryResponse {
-  uint32 numPreparedCuboids = 1;
-  message CuboidDef {
-    repeated EncodedDimensionBits dimensions = 1;
-  }
+  uint32 cuboidsPageId = 1;
   repeated CuboidDef cuboids = 2;
+  uint32 currentCuboidIdWithinPage = 3;
   message SeriesData {
     string seriesName = 1;
     repeated XYpoint data = 2;
   }
-  repeated SeriesData series = 3;
-  repeated QueryStatistic stats = 4;
+  repeated SeriesData series = 4;
+  repeated QueryStatistic stats = 5;
+}
+
+message GetPreparedCuboidsArgs {
+  uint32 requestedPageId = 1;
+  uint32 numRowsInPage = 2;
+}
+
+message GetPreparedCuboidsResponse {
+  repeated CuboidDef cuboids = 1;
 }

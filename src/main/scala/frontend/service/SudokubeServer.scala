@@ -50,11 +50,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val stats = collection.mutable.Map[String, String]()
     var numPrepared = 0
     var cubsFetched = 0
-    var prepareCuboids = Seq[QueryResponse.CuboidDef]()
-    var shownCuboids = Seq[QueryResponse.CuboidDef]()
+    var prepareCuboids = Seq[CuboidDef]()
+    var shownCuboids = Seq[CuboidDef]()
   }
-  def bitsToSquares(total: Int, cuboidBits: Set[Int]) = {
-    (0 until total).reverse.map { b => if (cuboidBits contains b) "\u2589" else "\u25A2" }.mkString
+  def bitsToBools(total: Int, cuboidBits: Set[Int]) = {
+    (0 until total).reverse.map { b => cuboidBits contains b }
   }
   /* Materialoze */
   override def getBaseCuboids(in: Empty): Future[BaseCuboidResponse] = {
@@ -78,12 +78,12 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val total = 5
         val numBits = Random.nextInt(total + 1)
         val selectedBits = Util.collect_n(numBits, () => Random.nextInt(total)).toSet
-        val string = bitsToSquares(total, selectedBits)
-        EncodedDimensionBits("Dim" + i, string)
+        val bitsValues = bitsToBools(total, selectedBits)
+        DimensionBits("Dim" + i, bitsValues)
       }
       GetChosenCuboidsResponse.CuboidDef(dims)
     }
-    Future.successful(GetChosenCuboidsResponse(cubs.take(cubsInPage), numCuboids))
+    Future.successful(GetChosenCuboidsResponse(cubs.take(cubsInPage)))
   }
 
   override def deleteChosenCuboid(in: DeleteSelectedCuboidArgs): Future[Empty] = {
@@ -97,8 +97,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val total = 5
         val numBits = Random.nextInt(total + 1)
         val selectedBits = Util.collect_n(numBits, () => Random.nextInt(total)).toSet
-        val string = bitsToSquares(total, selectedBits)
-        EncodedDimensionBits("Dim" + i, string)
+        val bitsValues = bitsToBools(total, selectedBits)
+        DimensionBits("Dim" + i, bitsValues)
       }
       val isChosen = Random.nextBoolean()
       GetAvailableCuboidsResponse.CuboidDef(dims, isChosen)
@@ -167,9 +167,13 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val response = GetSliceValueResponse(shownValues)
     Future.successful(response)
   }
-  /**
-   * Todo get and post filters
-   */
+
+  // TODO: Implement something to get and post filters
+
+  override def getFilters(in: Empty): Future[GetFiltersResponse] = ???
+
+  override def setValuesForSlice(in: SetSliceValuesArgs): Future[Empty] = ???
+
   override def startQuery(in: QueryArgs): Future[QueryResponse] = {
     import QueryState._
     import QueryResponse._
@@ -181,8 +185,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
           val total = 5
           val numBits = Random.nextInt(total + 1)
           val selectedBits = Util.collect_n(numBits, () => Random.nextInt(total)).toSet
-          val string = bitsToSquares(total, selectedBits)
-          EncodedDimensionBits("Dim" + i, string)
+          val bitsValues = bitsToBools(total, selectedBits)
+          DimensionBits("Dim" + i, bitsValues)
         }
       CuboidDef(dims)
     }
@@ -197,7 +201,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     series += SeriesData("Linear", (1 to 10).map{i => XYpoint("P" +i, i + cubsFetched)})
     series += SeriesData("Quadratic", (1 to 10).map{i => XYpoint("P" +i, math.pow(i + cubsFetched/10.0, 2).toFloat)})
     series += SeriesData("Log", (1 to 10).map{i => XYpoint("P" +i, math.log(i + cubsFetched).toFloat)})
-    val response = QueryResponse(numPrepared, shownCuboids, series)
+    val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
     Future.successful(response)
   }
   override def continueQuery(in: Empty): Future[QueryResponse] = {
@@ -216,7 +220,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     series += SeriesData("Linear", (1 to 10).map { i => XYpoint("P" + i, i + cubsFetched) })
     series += SeriesData("Quadratic", (1 to 10).map { i => XYpoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
     series += SeriesData("Log", (1 to 10).map { i => XYpoint("P" + i, math.log(i + cubsFetched).toFloat) })
-    val response = QueryResponse(numPrepared, shownCuboids, series)
+    val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
     Future.successful(response)
   }
+
+  // TODO: Implement something
+  override def getPreparedCuboids(in: GetPreparedCuboidsArgs): Future[GetPreparedCuboidsResponse] = ???
 }
