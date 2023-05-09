@@ -81,7 +81,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val bitsValues = bitsToBools(total, selectedBits)
         DimensionBits("Dim" + i, bitsValues)
       }
-      GetChosenCuboidsResponse.CuboidDef(dims)
+      CuboidDef(dims)
     }
     Future.successful(GetChosenCuboidsResponse(cubs.take(cubsInPage)))
   }
@@ -101,7 +101,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         DimensionBits("Dim" + i, bitsValues)
       }
       val isChosen = Random.nextBoolean()
-      GetAvailableCuboidsResponse.CuboidDef(dims, isChosen)
+      GetAvailableCuboidsResponse.ManualSelectionCuboidDef(dims, isChosen)
     }
     Future.successful(GetAvailableCuboidsResponse(cubs.take(cubsInPage)))
   }
@@ -133,7 +133,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
      timeBits = 1
     val isComplete = timeBits >= totalTimeBits
     val bits = (0 until timeBits).map{i => Random.nextBoolean()}
-    val result = Array(0, 10, 20, 0)
+    val result = Array(GetRenameTimeResponse.ResultRow("0", 0, 10), GetRenameTimeResponse.ResultRow("1", 20, 0))
     val string = if(isComplete) "Column Changed between X and Y" else ""
     val response = GetRenameTimeResponse(timeBits, isComplete, bits, result, string)
     Future.successful(response)
@@ -143,7 +143,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     timeBits += 1
     val isComplete = timeBits >= totalTimeBits
     val bits = (0 until timeBits).map { i => Random.nextBoolean() }
-    val result = Array(0, 10, 20, 0)
+    val result = Array(GetRenameTimeResponse.ResultRow("0", 0, 10), GetRenameTimeResponse.ResultRow("1", 20, 0))
     val string = if (isComplete) "Column Changed between X and Y" else ""
     val response = GetRenameTimeResponse(timeBits, isComplete, bits, result, string)
     Future.successful(response)

@@ -77,19 +77,20 @@ message DimensionBits {
   repeated bool chosenBits = 2;
 }
 
+message CuboidDef {
+  repeated DimensionBits dimensions = 1;
+}
+
 message GetChosenCuboidsResponse {
-  message CuboidDef {
-    repeated DimensionBits dimensions = 1;
-  }
   repeated CuboidDef cuboids = 1;
 }
 
 message GetAvailableCuboidsResponse {
-  message CuboidDef {
+  message ManualSelectionCuboidDef {
     repeated DimensionBits dimensions = 1;
     bool isChosen = 2;
   }
-  repeated CuboidDef cuboids = 1;
+  repeated ManualSelectionCuboidDef cuboids = 1;
 }
 
 message ManuallyUpdateCuboidsArgs {
@@ -132,7 +133,12 @@ message GetRenameTimeResponse  {
   uint32 numTimeBits = 1;
   bool isComplete = 2;
   repeated bool filtersApplied = 3; //false-true for 0-1
-  repeated uint32 result = 4;
+  message ResultRow {
+    string timeRange = 1;
+    uint32 nullCount = 2;
+    uint32 notNullCount = 3;
+  }
+  repeated ResultRow resultRows = 4;
   string renameTime = 5;
 }
 
@@ -174,14 +180,12 @@ message SetSliceValuesArgs {
   repeated bool isSelected = 1; // Whether each value on the page is selected
 }
 
-message FilterDef {
-  string dimensionName = 1;
-  string dimensionLevel = 2;
-  repeated string values = 3;
-  //may have to change to indexes of values
-}
-
 message GetFiltersResponse {
+  message FilterDef {
+    string dimensionName = 1;
+    string dimensionLevel = 2;
+    string values = 3;
+  }
   repeated FilterDef filters = 1;
 }
 
@@ -192,11 +196,10 @@ message QueryArgs {
   }
   repeated DimensionDef horizontal = 1;
   repeated DimensionDef series = 2;
-  repeated FilterDef filters = 3;
-  string measure = 4;
-  string aggregation = 5;
-  string solver = 6;
-  bool isBatchMode = 7;
+  string measure = 3;
+  string aggregation = 4;
+  string solver = 5;
+  bool isBatchMode = 6;
   uint32 preparedCuboidsPerPage = 8; //SBJ: Should it be part of different request?
 }
 
@@ -207,9 +210,6 @@ message XYpoint {
 message QueryStatistic {
   string name = 1;
   string value = 2;
-}
-message CuboidDef {
-  repeated DimensionBits dimensions = 1;
 }
 message QueryResponse {
   uint32 cuboidsPageId = 1;
