@@ -45,7 +45,7 @@ message SelectBaseCuboidArgs {
 message SelectBaseCuboidResponse {
   message Dimension {
     string name = 1;
-    uint32 numBits = 2;
+    uint32 num_bits = 2;
   }
   repeated Dimension dimensions = 1;
 }
@@ -57,24 +57,24 @@ message SelectMaterializationStrategyArgs {
 
 
 message DimensionFilterCuboid {
-  string dimensionName = 1;
-  uint32 bitsFrom = 2;
-  uint32 bitsTo = 3;
+  string dimension_name = 1;
+  uint32 bits_from = 2;
+  uint32 bits_to = 3;
 }
 
 message DeleteSelectedCuboidArgs {
-  uint32 cuboidIDWithinPage = 1;
+  uint32 cuboid_id_within_page = 1;
 }
 
 message GetCuboidsArgs {//shared between GetChosenCuboids and GetAvailableCuboids
   repeated DimensionFilterCuboid filters = 1;
-  uint32 requestedPageID = 2;
-  uint32 rowsPerPage = 3;
+  uint32 requested_page_id = 2;
+  uint32 rows_per_page = 3;
 }
 
 message DimensionBits {
-  string dimensionName = 1;
-  repeated bool chosenBits = 2;
+  string dimension_name = 1;
+  repeated bool chosen_bits = 2;
 }
 
 message CuboidDef {
@@ -88,17 +88,17 @@ message GetChosenCuboidsResponse {
 message GetAvailableCuboidsResponse {
   message ManualSelectionCuboidDef {
     repeated DimensionBits dimensions = 1;
-    bool isChosen = 2;
+    bool is_chosen = 2;
   }
   repeated ManualSelectionCuboidDef cuboids = 1;
 }
 
 message ManuallyUpdateCuboidsArgs {
-  repeated bool isChosen = 1; //for all cuboids in the current page
+  repeated bool is_chosen = 1; //for all cuboids in the current page
 }
 
 message MaterializeArgs {
-  string cubeName = 1;
+  string cube_name = 1;
 }
 
 /** Explore and Transform Messages **/
@@ -111,7 +111,7 @@ message SelectDataCubeArgs {//shared between Explore and Query
   string cube = 1;
 }
 message SelectDataCubeForExploreResponse {
-  repeated string dimNames = 1;
+  repeated string dim_names = 1;
 }
 
 
@@ -122,42 +122,42 @@ message IsRenamedQueryArgs {
 
 message IsRenamedQueryResponse {
   repeated uint32 result = 1;
-  bool isRenamed = 2;
+  bool is_renamed = 2;
 }
 
 
 message GetRenameTimeArgs {
-  string dimensionName = 1;
+  string dimension_name = 1;
 }
 message GetRenameTimeResponse  {
-  uint32 numTimeBits = 1;
-  bool isComplete = 2;
-  repeated bool filtersApplied = 3; //false-true for 0-1
+  uint32 num_time_bits = 1;
+  bool is_complete = 2;
+  repeated bool filters_applied = 3; //false-true for 0-1
   message ResultRow {
-    string timeRange = 1;
-    uint32 nullCount = 2;
-    uint32 notNullCount = 3;
+    string time_range = 1;
+    uint32 null_count = 2;
+    uint32 not_null_count = 3;
   }
-  repeated ResultRow resultRows = 4;
-  string renameTime = 5;
+  repeated ResultRow result_rows = 4;
+  string rename_time = 5;
 }
 
 message MergeColumnDef  {
   string dim1 = 1;
   string dim2 = 2;
-  string newdim = 3;
+  string new_dim = 3;
 }
 
 message TransformDimensionsArgs {
   repeated MergeColumnDef cols = 1;
-  string newCubeName = 2;
+  string new_cube_name = 2;
 }
 
 /**  Query messages **/
 message SelectDataCubeForQueryResponse {
   message DimHierarchy {
-    string dimName = 1;
-    uint32 numBits = 2;
+    string dim_name = 1;
+    uint32 num_bits = 2;
     repeated string levels = 3;
   }
   repeated DimHierarchy dimensions = 1;
@@ -165,11 +165,11 @@ message SelectDataCubeForQueryResponse {
 }
 
 message GetSliceValuesArgs  {
-  string dimensionName = 1;
-  string dimensionLevel = 2;
-  string searchText = 3;
-  uint32 requestedPageId = 4;
-  uint32 numRowsInPage = 5;
+  string dimension_name = 1;
+  string dimension_level = 2;
+  string search_text = 3;
+  uint32 requested_page_id = 4;
+  uint32 num_rows_in_page = 5;
 }
 
 message GetSliceValueResponse {
@@ -177,13 +177,13 @@ message GetSliceValueResponse {
 }
 
 message SetSliceValuesArgs {
-  repeated bool isSelected = 1; // Whether each value on the page is selected
+  repeated bool is_selected = 1; // Whether each value on the page is selected
 }
 
 message GetFiltersResponse {
   message FilterDef {
-    string dimensionName = 1;
-    string dimensionLevel = 2;
+    string dimension_name = 1;
+    string dimension_level = 2;
     string values = 3;
   }
   repeated FilterDef filters = 1;
@@ -191,41 +191,41 @@ message GetFiltersResponse {
 
 message QueryArgs {
   message DimensionDef {
-    string dimensionName = 1;
-    string dimensionLevel = 2;
+    string dimension_name = 1;
+    string dimension_level = 2;
   }
   repeated DimensionDef horizontal = 1;
   repeated DimensionDef series = 2;
   string measure = 3;
   string aggregation = 4;
   string solver = 5;
-  bool isBatchMode = 6;
-  uint32 preparedCuboidsPerPage = 8; //SBJ: Should it be part of different request?
+  bool is_batch_mode = 6;
+  uint32 prepared_cuboids_per_page = 8; //SBJ: Should it be part of different request?
 }
 
-message XYpoint {
-  string X = 1; //should it be float with additional string label?
-  float Y = 2;
+message XYPoint {
+  string x = 1; //should it be float with additional string label?
+  float y = 2;
 }
 message QueryStatistic {
   string name = 1;
   string value = 2;
 }
 message QueryResponse {
-  uint32 cuboidsPageId = 1;
+  uint32 cuboids_page_id = 1;
   repeated CuboidDef cuboids = 2;
-  uint32 currentCuboidIdWithinPage = 3;
+  uint32 current_cuboid_id_within_page = 3;
   message SeriesData {
-    string seriesName = 1;
-    repeated XYpoint data = 2;
+    string series_name = 1;
+    repeated XYPoint data = 2;
   }
   repeated SeriesData series = 4;
   repeated QueryStatistic stats = 5;
 }
 
 message GetPreparedCuboidsArgs {
-  uint32 requestedPageId = 1;
-  uint32 numRowsInPage = 2;
+  uint32 requested_page_id = 1;
+  uint32 numRows_in_page = 2;
 }
 
 message GetPreparedCuboidsResponse {

@@ -198,9 +198,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
    shownCuboids = prepareCuboids.take(in.preparedCuboidsPerPage)
     val series = collection.mutable.ArrayBuffer[SeriesData]()
-    series += SeriesData("Linear", (1 to 10).map{i => XYpoint("P" +i, i + cubsFetched)})
-    series += SeriesData("Quadratic", (1 to 10).map{i => XYpoint("P" +i, math.pow(i + cubsFetched/10.0, 2).toFloat)})
-    series += SeriesData("Log", (1 to 10).map{i => XYpoint("P" +i, math.log(i + cubsFetched).toFloat)})
+    series += SeriesData("Linear", (1 to 10).map{i => XYPoint("P" +i, i + cubsFetched)})
+    series += SeriesData("Quadratic", (1 to 10).map{i => XYPoint("P" +i, math.pow(i + cubsFetched/10.0, 2).toFloat)})
+    series += SeriesData("Log", (1 to 10).map{i => XYPoint("P" +i, math.log(i + cubsFetched).toFloat)})
     val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
     Future.successful(response)
   }
@@ -217,9 +217,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
 
     val series = collection.mutable.ArrayBuffer[SeriesData]()
-    series += SeriesData("Linear", (1 to 10).map { i => XYpoint("P" + i, i + cubsFetched) })
-    series += SeriesData("Quadratic", (1 to 10).map { i => XYpoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
-    series += SeriesData("Log", (1 to 10).map { i => XYpoint("P" + i, math.log(i + cubsFetched).toFloat) })
+    series += SeriesData("Linear", (1 to 10).map { i => XYPoint("P" + i, i + cubsFetched) })
+    series += SeriesData("Quadratic", (1 to 10).map { i => XYPoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
+    series += SeriesData("Log", (1 to 10).map { i => XYPoint("P" + i, math.log(i + cubsFetched).toFloat) })
     val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
     Future.successful(response)
   }
