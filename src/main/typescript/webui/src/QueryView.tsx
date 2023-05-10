@@ -87,7 +87,7 @@ const QueryParams = observer(() => {
             store.isRunComplete = true;
             store.result = data;
             store.preparedCuboids = [{
-              id: '1',
+              id: 0,
               dimensions: [
                 { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
                 { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },

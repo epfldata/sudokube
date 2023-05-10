@@ -7,29 +7,40 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DataGrid, GridActionsCellItem, GridColDef } from '@mui/x-data-grid';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormLabel, InputLabel, MenuItem, Select, TextField } from '@mui/material';
 import { observer } from 'mobx-react-lite';
-import { useRootStore } from './RootStore';
+import { apiBaseUrl, useRootStore } from './RootStore';
 import { Cuboid, MaterializationDimension } from './MaterializationStore';
 import { ButtonChip, chipStyle } from './GenericChips';
 import { runInAction } from 'mobx';
 import { useState } from 'react';
 import DeleteIcon from '@mui/icons-material/Delete';
-import {getBaseCuboids} from "./SudokubeClient";
+import {grpc} from "@improbable-eng/grpc-web";
+import {SudokubeService} from "./_proto/sudokubeRPC_pb_service";
+import {Empty, BaseCuboidResponse, SelectBaseCuboidArgs, SelectBaseCuboidResponse, SelectMaterializationStrategyArgs} from "./_proto/sudokubeRPC_pb";
 
 export default observer(function Materialization() {
   const { materializationStore: store } = useRootStore();
   const [cubeName, setCubeName] = useState('');
-  // TODO: Call backend to fetch these things
+
+  grpc.unary(SudokubeService.getBaseCuboids, {
+    host: apiBaseUrl,
+    request: new Empty(),
+    onEnd: res => runInAction(() => {
+      store.datasets = (res.message as BaseCuboidResponse)!.toObject().cuboidsList;
+      store.selectedDataset = store.datasets[0];
+      const selectBaseCuboidArgs = new SelectBaseCuboidArgs();
+      selectBaseCuboidArgs.setCuboid(store.selectedDataset);
+      grpc.unary(SudokubeService.selectBaseCuboid, {
+        host: apiBaseUrl,
+        request: selectBaseCuboidArgs,
+        onEnd: res => runInAction(() => {
+          store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
+        })
+      });
+    })
+  });
+
+  // TODO: Add strategies
   runInAction(() => {
-    store.datasets = ['Sales', 'Dataset2'];
-    getBaseCuboids()
-    store.selectedDataset = store.datasets[0];
-    store.dimensions = [
-      { name: 'Country', numBits: 6 }, 
-      { name: 'City', numBits: 6 },
-      { name: 'Year', numBits: 6 },
-      { name: 'Month', numBits: 5 }, 
-      { name: 'Day', numBits: 6 }
-    ];
     store.strategies = [
       {
         name: 'Strategy', 
@@ -42,7 +53,7 @@ export default observer(function Materialization() {
     // TODO: Remove this when cuboids can really be added and filtered
     store.filteredChosenCuboids = store.chosenCuboids = store.addCuboidsFilteredCuboids = [
       {
-        id: "1",
+        id: 0,
         dimensions: [
           { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
           { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
@@ -92,11 +103,18 @@ const SelectDataset = observer(() => {
         value = { store.selectedDataset }
         onChange = { e => runInAction(() => {
             store.selectedDataset = e.target.value;
-            // TODO: Call backend to update dimensions
-            store.dimensions = store.dimensions;
-            store.chosenCuboids = [];
-            store.chosenCuboidsFilters = [];
-            store.filteredChosenCuboids = [];
+            const selectBaseCuboidArgs = new SelectBaseCuboidArgs();
+            selectBaseCuboidArgs.setCuboid(store.selectedDataset);
+            grpc.unary(SudokubeService.selectBaseCuboid, {
+              host: apiBaseUrl,
+              request: selectBaseCuboidArgs,
+              onEnd: res => runInAction(() => {
+                store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
+                store.chosenCuboids = [];
+                store.chosenCuboidsFilters = [];
+                store.filteredChosenCuboids = [];
+              })
+            });
         })}>
         { store.datasets.map((dataset, index) => (
           <MenuItem key = { 'select-dataset-' + index } value = {dataset}>{dataset}</MenuItem>
@@ -165,7 +183,17 @@ const SpecifyStrategy = observer(() => {
           <Button onClick = { () => setDialogOpen(false) }>Cancel</Button>
           <Button onClick = { () => { 
             // TODO: Send strategy and parameters to backend
-            setDialogOpen(false); 
+            const selectMaterializationStrategyArgs = new SelectMaterializationStrategyArgs();
+            selectMaterializationStrategyArgs.setName(store.strategies[store.strategyIndex].name);
+            selectMaterializationStrategyArgs.setArgsList(store.strategyParameters);
+            grpc.unary(SudokubeService.selectMaterializationStrategy, {
+              host: apiBaseUrl,
+              request: selectMaterializationStrategyArgs,
+              onEnd: () => {
+                setDialogOpen(false);
+                // TODO: Refresh cuboids table
+              }
+            });
           } }>Confirm</Button>
         </DialogActions>
       </DialogContent>
@@ -177,7 +205,7 @@ const AddCuboids = observer(() => {
   const { materializationStore: store } = useRootStore();
   const dimensions = store.dimensions;
   const [isCuboidsDialogOpen, setCuboidsDialogOpen] = React.useState(false);
-  // TODO: Call backend to get all cuboids
+  // TODO: Call backend to get cuboids
   return ( <span>
     <ButtonChip label = 'Manually choose cuboids' variant = 'outlined' onClick = { () => setCuboidsDialogOpen(true) } />
     <Dialog fullScreen open = {isCuboidsDialogOpen}>

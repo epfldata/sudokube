@@ -45,9 +45,9 @@ export class MaterializationFilter {
 }
 
 export class Cuboid {
-  id: string;
+  id: number;
   dimensions: {name: string, bits: string}[];
-  constructor(id: string, dimensions: {name: string, bits: string}[]) {
+  constructor(id: number, dimensions: {name: string, bits: string}[]) {
     makeAutoObservable(this);
     this.id = id;
     this.dimensions = dimensions;
