@@ -1,4 +1,5 @@
 import { makeAutoObservable } from "mobx";
+import { CuboidDef, DimensionFilterCuboid } from "./_proto/sudokubeRPC_pb";
 
 export class MaterializationDimension {
   name: string;
@@ -64,12 +65,12 @@ export default class MaterializationStore {
 
   dimensions: MaterializationDimension[] = [];
 
-  addCuboidsFilters: MaterializationFilter[] = [];
-  addCuboidsFilteredCuboids: Cuboid[] = [];
+  addCuboidsFilters: DimensionFilterCuboid[] = [];
 
-  chosenCuboidsFilters: MaterializationFilter[] = [];
-  chosenCuboids: Cuboid[] = [];
-  filteredChosenCuboids: Cuboid[] = [];
+  chosenCuboids: CuboidDef[] = [];
+  chosenCuboidsFilters: DimensionFilterCuboid[] = [];
+  chosenCuboidsPage: number = 0;
+  chosenCuboidsPageSize: number = 10;
 
   constructor() {
     makeAutoObservable(this);

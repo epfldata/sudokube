@@ -8,7 +8,8 @@ import { useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
 import { DataGrid } from '@mui/x-data-grid';
-import { cuboidToRow, dimensionToColumn } from './MaterializationView';
+import { dimensionToColumn } from './MaterializationView';
+import { Cuboid } from './MaterializationStore';
 
 const data = require('./sales-data.json');
 
@@ -193,7 +194,11 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
           overflowX: 'scroll',
           '.materialization-online-next-cuboid': {
             color: 'primary.main'
-          }
+          },
+          // https://github.com/mui/mui-x/issues/409#issuecomment-1233333917
+          '.MuiTablePagination-displayedRows': {
+            display: 'none',
+          },
         }}
         density = 'compact'
         getRowClassName = {(params) =>
@@ -201,10 +206,16 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
         }
         initialState = {{
           pagination: {
-            paginationModel: { pageSize: 5, page: 1 }
+            paginationModel: { pageSize: 5, page: 2 }
           }
         }}
-        rowCount={10}
+        pagination = {true}
+        paginationMode="server"
+        // paginationModel={{pageSize: 5, page: 2}}
+        pageSizeOptions={[5]}
+        rowCount={Number.MAX_VALUE}
+        onPaginationModelChange={(model) => {console.log(model.page)}}
+        // rowCount={10}
       />
     </Box>
   </div> );
@@ -219,9 +230,13 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
     <h3>Current result</h3>
     <div style={{ width: '100%', height: '50vh' }}>
       <ResponsiveLine
-        data = { store.result.data }
+        // data = { store.result.data }
+        data = {[
+          {id: 'Stuff', data: [{x: 1, y: 1}, {x: 3, y: 3}]}
+        ]}
         margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
-        xScale={{ type: 'point' }}
+        xScale={{ type: 'linear' }}
+        xFormat = {(v) => v === 1.0 ? 'one' : 'others'}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -232,6 +247,10 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
         yFormat=' >-.2f'
         axisTop={null}
         axisRight={null}
+        axisBottom={{
+          tickValues: [1, 3],
+          format: (v) => (v === 1 ? 'one' : 'three')
+        }}
         pointLabelYOffset={-12}
         useMesh={true}
         legends={[
@@ -285,4 +304,12 @@ const Metrics = observer(({isShown}: {isShown: boolean}) => {
       </Table>
     </TableContainer>
   </div> );
+});
+
+const cuboidToRow = ((cuboid: Cuboid, index: number) => {
+  let row: any = {};
+  row["id"] = cuboid.id;
+  row['index'] = index;
+  cuboid.dimensions.forEach(dimension => row[dimension.name] = dimension.bits);
+  return row;
 });
