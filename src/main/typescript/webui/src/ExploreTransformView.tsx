@@ -1,24 +1,35 @@
-import { Button, Container, FormControl, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
+import { Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import React, { ReactNode, useState } from "react";
-import { useRootStore } from "./RootStore";
+import React, { ReactNode, useEffect, useState } from "react";
+import { apiBaseUrl, useRootStore } from "./RootStore";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { runInAction } from "mobx";
+import { SudokubeService } from "./_proto/sudokubeRPC_pb_service";
+import { grpc } from "@improbable-eng/grpc-web";
+import { Empty, GetCubesResponse, GetRenameTimeArgs, GetRenameTimeResponse, IsRenamedQueryArgs, IsRenamedQueryResponse, MergeColumnDef, SelectDataCubeArgs, SelectDataCubeForExploreResponse, TransformDimensionsArgs } from "./_proto/sudokubeRPC_pb";
+import { buildMessage } from "./Utils";
+import { transform } from "typescript";
 
 export default observer(function ExploreTransformView() {
   const { exploreTransformStore: store } = useRootStore();
-  runInAction(() => {
-    // TODO: Call backend to fetch these things for the default cube
-    store.dimensions = [
-      { name: 'Country', numBits: 6 }, 
-      { name: 'City', numBits: 6 }, 
-      { name: 'Year', numBits: 6 }, 
-      { name: 'Month', numBits: 5 }, 
-      { name: 'Day', numBits: 6 }
-    ];
-    store.timeNumBits = 16;
-  })
+  grpc.unary(SudokubeService.getDataCubes, {
+    host: apiBaseUrl,
+    request: new Empty(),
+    onEnd: response => {
+      runInAction(() => {
+        store.cubes = (response.message as GetCubesResponse)?.getCubesList();
+        store.cube = store.cubes[0];
+      });
+      grpc.unary(SudokubeService.selectDataCubeForExplore, {
+        host: apiBaseUrl,
+        request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+        onEnd: response => runInAction(() => {
+          store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+        })
+      })
+    }
+  });
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>
@@ -31,9 +42,6 @@ export default observer(function ExploreTransformView() {
 
 const SelectCube = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
-  // TODO: Call backend to fetch cubes
-  const [cubes, setCubes] = useState(['sales']);
-  const [cube, setCube] = useState(cubes[0]);
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
@@ -41,23 +49,20 @@ const SelectCube = observer(() => {
         id = "select-cube" label = "Select Cube"
         style = {{ marginBottom: 10 }}
         size = 'small'
-        value = {cube}
+        value = {store.cube}
         onChange = { e => {
-          setCube(e.target.value);
-          // TODO: Load dimensions and number of time bits
           runInAction(() => {
-            // TODO: Call backend to fetch these things
-            store.dimensions = [
-              { name: 'Country', numBits: 6 }, 
-              { name: 'City', numBits: 6 }, 
-              { name: 'Year', numBits: 6 }, 
-              { name: 'Month', numBits: 5 }, 
-              { name: 'Day', numBits: 6 }
-            ];
-            store.timeNumBits = 16;
+            store.cube = e.target.value;
+            grpc.unary(SudokubeService.selectDataCubeForExplore, {
+              host: apiBaseUrl,
+              request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+              onEnd: response => runInAction(() => {
+                store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+              })
+            })
           })
         } }>
-        { cubes.map(cube => (
+        { store.cubes.map(cube => (
           <MenuItem key = { 'select-cube-' + cube } value = {cube}>{cube}</MenuItem>
         )) }
       </Select>
@@ -67,11 +72,17 @@ const SelectCube = observer(() => {
 
 const CheckRename = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
-  const [dimension1, setDimension1] = useState(store.dimensions[0].name);
-  const [dimension2, setDimension2] = useState(store.dimensions[1].name);
+  const [dimension1, setDimension1] = useState(store.dimensions[0]);
+  const [dimension2, setDimension2] = useState(store.dimensions[1]);
   const [dimensionsNullCounts, setDimensionsNullCounts] = useState([0, 0, 0, 0]);
   const [isRenamed, setRenameCheckResult] = useState(false);
   const [isRenameCheckResultShown, setRenameCheckResultShown] = useState(false);
+
+  useEffect(() => {
+    setDimension1(store.dimensions[0]);
+    setDimension2(store.dimensions[1]);
+    setRenameCheckResultShown(false);
+  }, [store.dimensions]);
 
   const SelectDimensions = observer(() => (
     <div>
@@ -85,7 +96,7 @@ const CheckRename = observer(() => {
           setRenameCheckResultShown(false);
         }}
         optionToMenuItemMapper = { dimension => (
-          <MenuItem key = { 'check-rename-select-dimension-1-' + dimension.name } value = {dimension.name}>{dimension.name}</MenuItem>
+          <MenuItem key = { 'check-rename-select-dimension-1-' + dimension } value = {dimension}>{dimension}</MenuItem>
         ) }
       />
       <SingleSelectWithLabel 
@@ -99,25 +110,34 @@ const CheckRename = observer(() => {
         }}
         optionToMenuItemMapper = { dimension => (
           <MenuItem
-            key = { 'check-rename-select-dimension-2-' + dimension.name }
-            value = {dimension.name}
+            key = { 'check-rename-select-dimension-2-' + dimension }
+            value = {dimension}
           >
-            {dimension.name}
+            {dimension}
           </MenuItem>
         ) }
       />
       <Button onClick = {() => {
-        // TODO: Query backend and show results
-        setDimensionsNullCounts([0, 0, 0, 0]);
-        setRenameCheckResult(true);
-        setRenameCheckResultShown(true);
+        grpc.unary(SudokubeService.isRenameQuery, {
+          host: apiBaseUrl,
+          request: buildMessage(new IsRenamedQueryArgs(), {
+            dimension1: dimension1,
+            dimension2: dimension2
+          }),
+          onEnd: response => {
+            const { resultList: nullCounts, isRenamed } = (response.message as IsRenamedQueryResponse).toObject();
+            setDimensionsNullCounts(nullCounts);
+            setRenameCheckResult(isRenamed);
+            setRenameCheckResultShown(true);
+          }
+        })
       }}>Check</Button>
     </div>
   ));
 
   const ResultTable = observer(() => (
     <TableContainer>
-      <Table sx = {{ width: 'auto' }} aria-label = "simple table">
+      <Table sx = {{ width: 'auto', }} aria-label = "simple table">
         <TableHead>
           <TableRow>
             <CompactTableCell>{}</CompactTableCell>
@@ -179,14 +199,18 @@ const CheckRename = observer(() => {
 const FindRenameTime = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
 
-  const [dimension, setDimension] = useState(store.dimensions[0].name);
-
+  const [dimension, setDimension] = useState(store.dimensions[0]);
   const [isStepShown, setStepShown] = useState(false);
-
-  const [filters, setFilters] = useState<(0|1)[]>([]);
+  const [numTimeBits, setNumTimeBits] = useState(0);
+  const [filters, setFilters] = useState<boolean[]>([]);
+  useEffect(() => {
+    setDimension(store.dimensions[0]);
+    setStepShown(false);
+    setFilters([]);
+  }, [store.dimensions]);
 
   type TimeRangeNullCountsRow = {
-    range: string;
+    timeRange: string;
     nullCount: number;
     notNullCount: number;
   }
@@ -208,11 +232,11 @@ const FindRenameTime = observer(() => {
   ));  
 
   const BitsInSquares = observer(() => {
-    let chars: string[] = filters.map(bit => bit.toString());
-    if (filters.length < store.timeNumBits) {
+    let chars: string[] = filters.map(bit => bit ? '1' : '0');
+    if (filters.length < numTimeBits) {
       chars.push('?');
     }
-    const remainingBits = store.timeNumBits - filters.length - 1;
+    const remainingBits = numTimeBits - filters.length - 1;
     if (remainingBits > 0) {
       chars = chars.concat(Array(remainingBits).fill('✕'));
     }
@@ -237,18 +261,31 @@ const FindRenameTime = observer(() => {
           setFilters([]);
         }}
         optionToMenuItemMapper = { dimension => (
-          <MenuItem key = { 'check-rename-select-dimension-2-' + dimension.name } value = {dimension.name}>{dimension.name}</MenuItem>
+          <MenuItem key = { 'check-rename-select-dimension-2-' + dimension } value = {dimension}>{dimension}</MenuItem>
         ) }
       />
       <Button onClick = {() => {
-        // TODO: Query the first bit
-        setFilters([]);
-        setSearchEnded(false);
-        setNullCounts([
-          { range: '0 to 31', nullCount: 0, notNullCount: 0 },
-          { range: '32 to 63', nullCount: 0, notNullCount: 0 }
-        ]);
-        setStepShown(true);
+        grpc.unary(SudokubeService.startRenameTimeQuery, {
+          host: apiBaseUrl,
+          request: buildMessage(new GetRenameTimeArgs, {dimensionName: dimension}),
+          onEnd: response => {
+            const {
+              numTimeBits,
+              isComplete,
+              filtersAppliedList,
+              resultRowsList,
+              renameTime
+            } = (response.message as GetRenameTimeResponse).toObject();
+            setNumTimeBits(numTimeBits);
+            setFilters(filtersAppliedList);
+            setNullCounts(resultRowsList);
+            setSearchEnded(isComplete);
+            setStepShown(true);
+            if (isComplete) {
+              setRenameTime(renameTime);
+            }
+          }
+        })
       }}>
         Start
       </Button>
@@ -268,7 +305,7 @@ const FindRenameTime = observer(() => {
           <TableBody>
             { nullCounts.map(row => (
               <TableRow>
-                <CompactTableCell>{row.range}</CompactTableCell>
+                <CompactTableCell>{row.timeRange}</CompactTableCell>
                 <CompactTableCell>{row.nullCount}</CompactTableCell>
                 <CompactTableCell>{row.notNullCount}</CompactTableCell>
               </TableRow>
@@ -276,105 +313,144 @@ const FindRenameTime = observer(() => {
           </TableBody>
         </Table>
       </TableContainer>
-    </div>
 
-    <Button 
-      disabled = {isSearchEnded} 
-      onClick = {() => {
-        // TODO: Implement logic to continue or complete the search, get and show result
-        setFilters(filters.slice().concat(0));
-        setSearchEnded(true);
-        setRenameTime('...');
-      }}>
-      Continue
-    </Button>
-    <div hidden = {!isSearchEnded}>Dimension is renamed at {renameTime}</div>
+      <Button 
+        disabled = {isSearchEnded} 
+        onClick = {() => {
+          grpc.unary(SudokubeService.continueRenameTimeQuery, {
+            host: apiBaseUrl,
+            request: new Empty(),
+            onEnd: response => {
+              const {
+                numTimeBits,
+                isComplete,
+                filtersAppliedList,
+                resultRowsList,
+                renameTime
+              } = (response.message as GetRenameTimeResponse).toObject();
+              setNumTimeBits(numTimeBits);
+              setFilters(filtersAppliedList);
+              setNullCounts(resultRowsList);
+              setSearchEnded(isComplete);
+              setStepShown(true);
+              if (isComplete) {
+                setRenameTime(renameTime);
+              }
+            }
+          })
+        }}>
+        Continue
+      </Button>
+    </div>
+    <div hidden = {!isSearchEnded}>{renameTime}</div>
   </div> );
 })
 
 const Transform = observer(() => {
-  const [transformation, setTransformation] = useState('Merge');
-  const transformationDetails = () => {
-    switch (transformation) {
-      case 'Merge':
-        return <Merge/>;
-    }
-  }
-  return ( <div>
-    <h3>Transform</h3>
-    <div>
-      <SingleSelectWithLabel
-        id = 'transform-select'
-        label = 'Transformation'
-        value = {0}
-        options = { ['Merge'] }
-        onChange = { e => setTransformation(e.target.value) }
-        optionToMenuItemMapper = { (transformation, index) => (
-          <MenuItem key = { 'transform-select-' + index } value = {index}>{transformation}</MenuItem>
-        ) }
-      />
-    </div>
-    { transformationDetails() }
-  </div> );
-})
-
-const Merge = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
-  const [dimension1Index, setDimension1Index] = useState(0);
-  const [dimension2Index, setDimension2Index] = useState(0);
-  const [mergedDimensionName, setMergedDimensionName] = useState('');
   const [newCubeName, setNewCubeName] = useState('');
   const [isComplete, setComplete] = useState(false);
-  return <div>
+
+  useEffect(() => {
+    runInAction(() => store.transformations = [
+      {
+        dim1: store.dimensions[0],
+        dim2: store.dimensions[1],
+        newDim: ''
+      }
+    ]);
+    setNewCubeName('');
+    setComplete(false);
+  }, [store.dimensions]);
+
+  const IndividualTransformation = observer(({transformation, index}: {
+    transformation: MergeColumnDef.AsObject, index: number
+  }) => (
     <div>
-      <SingleSelectWithLabel 
-        id = 'merge-select-dimension-1'
-        label = 'Dimension 1'
-        value = { dimension1Index }
-        options = { store.dimensions }
-        onChange = { v => setDimension1Index(v) }
-        optionToMenuItemMapper = { (dimension, index) => (
-          <MenuItem key = { 'merge-select-dimension-1-' + index } value = {index}>{dimension.name}</MenuItem>
+      <SingleSelectWithLabel
+        id = {'transform-select-' + index}
+        label = 'Transformation'
+        value = {'Merge'}
+        options = { ['Merge'] }
+        onChange = { () => {} }
+        optionToMenuItemMapper = { (transformation) => (
+          <MenuItem key = { 'transform-select-' + index } value = 'Merge'>{transformation}</MenuItem>
         ) }
       />
       <SingleSelectWithLabel 
-        id = 'merge-select-dimension-2'
-        label = 'Dimension 2'
-        value = { dimension2Index }
+        id = {'merge-' + index + '-select-dimension-1'}
+        label = 'Dimension 1'
+        value = { transformation.dim1 }
         options = { store.dimensions }
-        onChange = { v => setDimension2Index(v) }
-        optionToMenuItemMapper = { (dimension, index) => (
-          <MenuItem key = { 'merge-select-dimension-2-' + index } value = {index}>{dimension.name}</MenuItem>
+        onChange = { v => transformation.dim1 = v }
+        optionToMenuItemMapper = { dimension => (
+          <MenuItem key = { 'merge' + index + '-select-dimension-1-' + dimension } value = {dimension}>{dimension}</MenuItem>
+        ) }
+      />
+      <SingleSelectWithLabel 
+        id = {'merge-' + index + '-select-dimension-2'}
+        label = 'Dimension 2'
+        value = { transformation.dim2 }
+        options = { store.dimensions }
+        onChange = { v => transformation.dim2 = v }
+        optionToMenuItemMapper = { dimension => (
+          <MenuItem key = { 'merge' + index + '-select-dimension-2-' + dimension } value = {dimension}>{dimension}</MenuItem>
         ) }
       />
       <TextField
-        id = 'new-dimension-name-text-field'
+        id = { 'merge-' + index + '-new-dimension-name-text-field' }
         label = 'Name of merged dimension'
         style = {{ marginBottom: 5 }}
-        value = { mergedDimensionName }
-        onChange = { e => setMergedDimensionName(e.target.value) }
+        value = { transformation.newDim }
+        onChange = { e => transformation.newDim = e.target.value }
         size = 'small'
       />
     </div>
+  ));
+
+  return ( <div>
+    <h3>Transform</h3>
+    { store.transformations.map((transformation, index) => (
+      <IndividualTransformation transformation={transformation} index={index}/>
+    )) }
     <div>
-      <TextField
-        id = 'new-cube-name-text-field'
-        label = 'Name of new cube'
-        style = {{ marginBottom: 5 }}
-        value = { newCubeName }
-        onChange = { e => setNewCubeName(e.target.value) }
-        size = 'small'
-      />
-      <Button onClick = {() => {
-        // TODO: Query backend, show new name
-        setComplete(true);
-      }}>Transform</Button>
+      <Button onClick = {() => runInAction(() => {
+        store.transformations.push(
+          {
+            dim1: store.dimensions[0],
+            dim2: store.dimensions[1],
+            newDim: ''
+          }
+        );
+      })}>Add transformation</Button>
     </div>
-    <div style = {{ display: isComplete ? 'flex' : 'none' }}>
-      <CheckCircleOutlineIcon/>Cube saved as {newCubeName}
-    </div>
-  </div>
-})
+    <TextField
+      id = 'new-cube-name-text-field'
+      label = 'Name of new cube'
+      style = {{ marginBottom: 5 }}
+      value = { newCubeName }
+      onChange = { e => setNewCubeName(e.target.value) }
+      size = 'small'
+    />
+    <Button onClick = {() => {
+      grpc.unary(SudokubeService.transformCube, {
+        host: apiBaseUrl,
+        request: buildMessage(new TransformDimensionsArgs(), {
+          colsList: store.transformations.map(transformation => buildMessage(new MergeColumnDef(), transformation)),
+          newCubeName: newCubeName
+        }),
+        onEnd: () => setComplete(true)
+      });
+    }}>Transform</Button>
+    <Dialog open = {isComplete}>
+      <DialogTitle>Success</DialogTitle>
+      <DialogContent>Cube saved as {newCubeName}</DialogContent>
+      <DialogActions>
+        <Button onClick = { () => setComplete(false) }>OK</Button>
+      </DialogActions>
+    </Dialog>
+  </div> );
+});
 
 const CompactTableCell = observer(({children, align, colSpan, rowSpan, variant}: {
   children: ReactNode,
