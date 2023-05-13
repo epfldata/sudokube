@@ -58,7 +58,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
   def cuboidToDimSplit(cub: IndexedSeq[Int], cols: Vector[LD2[_]]) = {
     val groups = cub.groupBy(b => cols.find(l => l.encoder.bits.contains(b)).get)
-    groups.map { case (ld, bs) => ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b)) }
+    groups.map { case (ld, bs) =>
+      println("  name " + ld.name + "all bits = " + ld.encoder.bits + " selectedbits = " + bs)
+      ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b)) }
   }
 
   object MaterializeState {
@@ -106,7 +108,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val dims = staticSchema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
       columnMap = staticSchema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
       baseCuboid = cg.loadBase()
-      println("Base cuboid loaded")
+      shownCuboids.clear()
+      shownCuboidsManualView.clear()
+      chosenCuboids.clear()
+      println("Base cuboid" + baseCuboid.cubeName +  "  loaded")
       SelectBaseCuboidResponse(dims)
     }
   }
@@ -160,7 +165,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       val cubsInPage = in.rowsPerPage
       val nbits = baseCuboid.index.n_bits
-      val filterBits = in.filters.map { f => columnMap(f.dimensionName).bits.slice(f.bitsFrom, f.bitsTo) }.reduce(_ ++ _)
+      val filterBits = in.filters.map { f => columnMap(f.dimensionName).bits.slice(f.bitsFrom, f.bitsTo) }.fold(Vector())(_ ++ _)
       val bitsToPick = (0 until nbits).diff(filterBits)
       val n2 = bitsToPick.size
       var requestedCubStart = BigInt(in.rowsPerPage * in.requestedPageId)
@@ -186,7 +191,6 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
       println("Filter Bits = " + filterBits)
       println("Available Cuboids = ")
-      availableCuboidsView.foreach(println)
       shownCuboidsManualView.clear()
       shownCuboidsManualView ++= availableCuboidsView.map { cub =>
         val isChosen = chosenCuboids.contains(cub)
@@ -194,6 +198,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       val cubs = shownCuboidsManualView.map { case (cub, isC) =>
         val dims = cuboidToDimSplit(cub, staticSchema.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
+        println("Cuboid bits = " + cub + "   split = " + dims)
+        println("\n")
         GetAvailableCuboidsResponse.ManualSelectionCuboidDef(dims, isC)
       }
       GetAvailableCuboidsResponse(cubs)
