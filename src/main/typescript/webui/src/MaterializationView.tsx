@@ -37,21 +37,23 @@ export default observer(function Materialization() {
   const [cubeName, setCubeName] = useState('');
   const [isSuccessDialogOpen, setSuccessDialogOpen] = useState(false);
 
-  grpc.unary(SudokubeService.getBaseCuboids, {
-    host: apiBaseUrl,
-    request: new Empty(),
-    onEnd: res => runInAction(() => {
-      store.datasets = (res.message as BaseCuboidResponse)!.toObject().cuboidsList;
-      store.selectedDataset = store.datasets[0];
-      grpc.unary(SudokubeService.selectBaseCuboid, {
-        host: apiBaseUrl,
-        request: buildMessage(new SelectBaseCuboidArgs(), { cuboid: store.selectedDataset }),
-        onEnd: res => runInAction(() => {
-          store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
-        })
-      });
-    })
-  });
+  useEffect(() => {
+    grpc.unary(SudokubeService.getBaseCuboids, {
+      host: apiBaseUrl,
+      request: new Empty(),
+      onEnd: res => runInAction(() => {
+        store.datasets = (res.message as BaseCuboidResponse)!.toObject().cuboidsList;
+        store.selectedDataset = store.datasets[0];
+        grpc.unary(SudokubeService.selectBaseCuboid, {
+          host: apiBaseUrl,
+          request: buildMessage(new SelectBaseCuboidArgs(), { cuboid: store.selectedDataset }),
+          onEnd: res => runInAction(() => {
+            store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
+          })
+        });
+      })
+    });
+  }, []);
 
   useEffect(() => setCubeName(''), [store.selectedDataset]);
 
@@ -241,8 +243,13 @@ const ManuallyChooseCuboids = observer(() => {
 
   useEffect(() => {
     runInAction(() => store.addCuboidsFilters = []);
-    fetchAvailableCuboids();
   }, [store.selectedDataset]);
+
+  useEffect(() => {
+    if (isCuboidsDialogOpen) {
+      fetchAvailableCuboids();
+    }
+  }, [store.selectedDataset, isCuboidsDialogOpen])
 
   return ( <span>
     <ButtonChip label = 'Manually choose cuboids' variant = 'outlined' onClick = { () => setCuboidsDialogOpen(true) } />
