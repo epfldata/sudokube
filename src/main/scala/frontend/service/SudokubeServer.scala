@@ -98,15 +98,17 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import SelectBaseCuboidResponse._
     val dsname = in.cuboid
     println("SelectBaseCuboid " + in)
-    val cgstatic = getCubeGenerator(dsname)
-    cg = cgstatic._1
-    isStaticSchema = cgstatic._2
-    staticSchema = cg.schemaInstance.asInstanceOf[StaticSchema2]
-    val dims = staticSchema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
-    columnMap = staticSchema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
-    baseCuboid = cg.loadBase()
-    val response = SelectBaseCuboidResponse(dims)
-    Future.successful(response)
+    Future {
+      val cgstatic = getCubeGenerator(dsname)
+      cg = cgstatic._1
+      isStaticSchema = cgstatic._2
+      staticSchema = cg.schemaInstance.asInstanceOf[StaticSchema2]
+      val dims = staticSchema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
+      columnMap = staticSchema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
+      baseCuboid = cg.loadBase()
+      println("Base cuboid loaded")
+      SelectBaseCuboidResponse(dims)
+    }
   }
 
   override def selectMaterializationStrategy(in: SelectMaterializationStrategyArgs): Future[Empty] = {
@@ -173,7 +175,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       val availableCuboidsView = ArrayBuffer[IndexedSeq[Int]]()
       while (binom <= (requestedCubStart + nextNumCuboids) && k < n2) {
-        val cubs = bitsToPick.combinations(k).slice(requestedCubStart.toInt, binom.toInt).toSeq
+        val cubs = bitsToPick.combinations(k).slice(requestedCubStart.toInt, binom.toInt).map(c => c ++ filterBits)
         availableCuboidsView ++= cubs
         nextNumCuboids -= cubs.size
         requestedCubStart = 0
@@ -181,7 +183,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         binom /= (k + 1)
         k += 1
       }
-      availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt)
+      availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
+      println("Filter Bits = " + filterBits)
+      println("Available Cuboids = ")
+      availableCuboidsView.foreach(println)
       shownCuboidsManualView.clear()
       shownCuboidsManualView ++= availableCuboidsView.map { cub =>
         val isChosen = chosenCuboids.contains(cub)
