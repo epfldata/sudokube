@@ -61,10 +61,17 @@ export default observer(function Materialization() {
   runInAction(() => {
     store.strategies = [
       {
-        name: 'Strategy', 
+        name: 'Prefix', 
         parameters: [
-          { name: 'Parameter1', possibleValues: ['1', '2'] },
-          { name: 'Parameter2' }
+          { name: 'logN' },
+          { name: 'minD' }
+        ]
+      },
+      {
+        name: 'Randomized', 
+        parameters: [
+          { name: 'logN' },
+          { name: 'minD' }
         ]
       }
     ];
@@ -321,9 +328,17 @@ const ManuallyChooseCuboids = observer(() => {
 
         <DialogActions>
           <Button onClick = { () => setCuboidsDialogOpen(false) }>Cancel</Button>
-          <Button onClick = { () => { 
-            setCuboidsDialogOpen(false); 
-            fetchChosenCuboids(store);
+          <Button onClick = { () => {
+            grpc.unary(SudokubeService.manuallyUpdateCuboids, {
+              host: apiBaseUrl,
+              request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
+                isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel.includes(i))
+              }),
+              onEnd: () => {
+                setCuboidsDialogOpen(false); 
+                fetchChosenCuboids(store);
+              }
+            });
           } }>Confirm</Button>
         </DialogActions>
       </DialogContent>
@@ -483,7 +498,6 @@ export const cuboidToRow = ((cuboid: CuboidDef, index: number) => {
   cuboid.getDimensionsList().forEach(dimension => 
     row[dimension.getDimensionName()] =
       dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join('')
-      .concat(dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join(''))
   );
   return row;
 });
