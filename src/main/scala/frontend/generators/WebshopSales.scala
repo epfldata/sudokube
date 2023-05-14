@@ -9,6 +9,7 @@ import util.BigBinary
 import java.io.{BufferedInputStream, PrintStream}
 
 class WebshopSales(implicit backend: CBackend)  extends CubeGenerator("WebshopSales") {
+  override lazy val schemaInstance = schema()
   val skipped = Set(0,4,6,10,12,14)
   val notskipped = (0 to 14).toSet.diff(skipped).toVector.sorted
   def genUniq(col: Int): Unit = {
@@ -29,7 +30,7 @@ class WebshopSales(implicit backend: CBackend)  extends CubeGenerator("WebshopSa
       }
     Vector(datasize -> data)
   }
-  override protected def schema(): Schema2 = {
+  override protected def schema(): StaticSchema2 = {
     //List(7,8,9,11,13).foreach(genUniq)
     def uniq(i: Int) = s"tabledata/webshop/uniq/col$i.uniq"
     val year = LD2[Int]("Year", new StaticNatCol(2014, 2015, StaticNatCol.defaultToInt, nullable = false))

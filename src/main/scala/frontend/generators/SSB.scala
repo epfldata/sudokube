@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext
 case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
-  override def schema(): Schema2 = {
+  override def schema(): StaticSchema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
     import StaticDateCol._
     val louniqs = uniq("lineorder") _
@@ -22,7 +22,7 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
     //3 -> custkey
     //4 -> partkey
     //5 -> suppkey
-    val orderDateCol = LD2[Date]("order_date", StaticDateCol.fromFile(louniqs(6),simpleDateFormat("yyyyMMdd"), true, true, true))
+    val orderDateCol = LD2[Date]("order_date", StaticDateCol.fromFile(louniqs(6), simpleDateFormat("yyyyMMdd"), true, true, true))
     val oprioCol = LD2[String]("ord_priority", new LazyMemCol(louniqs(7)))
     val shiprioCol = LD2[String]("ship_priority", new LazyMemCol(louniqs(8)))
     val qtyCol = LD2[Int]("quantity", StaticNatCol.fromFile(louniqs(9)))
@@ -59,7 +59,7 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
     val suppNationCol = LD2[String]("supp_nation", new LazyMemCol(suppuniqs(5)))
     val suppRegionCol = LD2[String]("supp_region", new LazyMemCol(suppuniqs(6)))
     //6 -> Phone
-    val suppDims= BD2("Supplier", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
+    val suppDims = BD2("Supplier", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
     //val suppDims = BD2("Supplier", Vector(suppLocation), true)
 
 
@@ -83,12 +83,12 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
 
     val partuniqs = uniq("part") _
 
-     //val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
+    //val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
     // 2 -> name
-     val mfgrCol = LD2[String]("mfgr", new LazyMemCol(partuniqs(3)))
-     val catCol = LD2[String]("category", new LazyMemCol(partuniqs(4)))
+    val mfgrCol = LD2[String]("mfgr", new LazyMemCol(partuniqs(3)))
+    val catCol = LD2[String]("category", new LazyMemCol(partuniqs(4)))
     val brandCol = LD2[String]("brand", new LazyMemCol(partuniqs(5)))
-     val colorCol = LD2[String]("color", new LazyMemCol(partuniqs(6)))
+    val colorCol = LD2[String]("color", new LazyMemCol(partuniqs(6)))
     val typeCol = LD2[String]("type", new LazyMemCol(partuniqs(7)))
     val sizeCol = LD2[Int]("size", StaticNatCol.fromFile(partuniqs(8)))
     val containerCol = LD2[String]("container", new LazyMemCol(partuniqs(9)))
@@ -129,7 +129,7 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
     val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d.tail).toMap
     val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d.tail).toMap
 
-    val sch = schemaInstance
+    val sch = schemaInstance.asInstanceOf[StaticSchema2]
 
     def joinFunc(r: IndexedSeq[String]) = {
       val oid = r(0)

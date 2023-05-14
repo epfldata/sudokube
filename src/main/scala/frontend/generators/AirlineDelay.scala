@@ -12,6 +12,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
 
 class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDelay") {
+  override lazy val schemaInstance: StaticSchema2 = schema()
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     implicit val ec = ExecutionContext.global
     val join = (0 until 1000).map { i =>
@@ -38,7 +39,7 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
   }
   val skipped = Set[Int](5, 32, 33, 34, 35, 43, 44, 45, 46)
   val notskipped = (0 to 92 ).toSet.diff(skipped).toVector.sorted
-  override protected def schema(): Schema2 = {
+  override protected def schema(): StaticSchema2 = {
     def uniq(i: Int) = s"tabledata/airline/uniq/col$i.uniq"
     val alldims = collection.mutable.ArrayBuffer[Dim2]()
     val floatToInt = StaticNatCol.floatToInt(0)(_)
@@ -52,7 +53,7 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
 
     val reportingAirline = LD2[String]("ReportingAirline", new LazyMemCol(uniq(6)))
     val dotID = LD2[String]("ReportingAirline_DOT_ID", new LazyMemCol(uniq(7)))
-    val iata_reportingAirline = LD2[String] ("IATA_ReportingAirline", new LazyMemCol(uniq(8)))
+    val iata_reportingAirline = LD2[String]("IATA_ReportingAirline", new LazyMemCol(uniq(8)))
     val tailnumber = LD2[String]("TailNumber", new LazyMemCol(uniq(9)))
     val fligtnumberRA = LD2[Int]("FlightNumber", StaticNatCol.fromFile(uniq(10)))
     alldims += BD2("FlightDetails", Vector(reportingAirline, dotID, iata_reportingAirline, tailnumber, fligtnumberRA), false)
@@ -81,7 +82,7 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
 
     import StaticDateCol.simpleDateFormat
     val crsDepTime = LD2[Date]("CRSDepTime", StaticDateCol.fromFile(uniq(29), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
-    val depTime = LD2[Date]("DepTime", StaticDateCol.fromFile(uniq(30),simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
+    val depTime = LD2[Date]("DepTime", StaticDateCol.fromFile(uniq(30), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
     val depDifference = LD2[Int]("DepartureDifference", StaticNatCol.fromFile(uniq(31), floatToInt))
     //skip delay
     //skip delay15
@@ -136,21 +137,21 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
 
     val divAirportLandings = LD2[Int]("DivAirportLandings", StaticNatCol.fromFile(uniq(64)))
     val divReachedDest = LD2[String]("DivReachedDest", new LazyMemCol(uniq(65)))
-    val divActualElapsedTime= LD2[Int]("DivActualElapsedTime", StaticNatCol.fromFile(uniq(66), floatToInt))
+    val divActualElapsedTime = LD2[Int]("DivActualElapsedTime", StaticNatCol.fromFile(uniq(66), floatToInt))
     val divArrivalDelay = LD2[Int]("DivArrivalDelay", StaticNatCol.fromFile(uniq(67), floatToInt))
     val divDistance = LD2[Int]("DivDistance", StaticNatCol.fromFile(uniq(68), floatToInt))
     alldims += BD2("Diversions", Vector(divAirportLandings, divReachedDest, divActualElapsedTime, divArrivalDelay, divDistance), false)
     def divairport(num: Int) = {
-      val startId = 69 + (num-1) * 8
+      val startId = 69 + (num - 1) * 8
       val divXAiport = LD2[String](s"Div${num}Airport", new LazyMemCol(uniq(startId)))
       val divXAiportID = LD2[String](s"Div${num}AirportID", new LazyMemCol(uniq(startId + 1)))
       val divXAiportSeqID = LD2[String](s"Div${num}AirportSeqID", new LazyMemCol(uniq(startId + 2)))
-      val divXWheelsOn = LD2[Date](s"Div${num}WheelsOn",  StaticDateCol.fromFile(uniq(startId + 3), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
+      val divXWheelsOn = LD2[Date](s"Div${num}WheelsOn", StaticDateCol.fromFile(uniq(startId + 3), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
       val divXTotalGTime = LD2[Int](s"Div${num}TotalGTime", StaticNatCol.fromFile(uniq(startId + 4), floatToInt))
       val divXLongestGTime = LD2[Int](s"Div${num}LongestGTime", StaticNatCol.fromFile(uniq(startId + 5), floatToInt))
       val divXWheelsOff = LD2[Date](s"Div${num}WheelsOff", StaticDateCol.fromFile(uniq(startId + 6), simpleDateFormat("HHmm"), hasHr = true, hasMin = true))
       val divXTailNum = LD2[String](s"Div${num}TailNum", new LazyMemCol(uniq(startId + 7)))
-      val dims = Vector(divXAiport,divXAiportID,divXAiportSeqID,divXWheelsOn,divXTotalGTime,divXLongestGTime,divXWheelsOff,divXTailNum)
+      val dims = Vector(divXAiport, divXAiportID, divXAiportSeqID, divXWheelsOn, divXTotalGTime, divXLongestGTime, divXWheelsOff, divXTailNum)
       BD2(s"Div$num", dims, false)
     }
     alldims += divairport(1)

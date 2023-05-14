@@ -146,6 +146,7 @@ abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) ext
   override def bitsMin: Int = register.bitsMin
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx
+  override def samplePrefix(size: Int): IndexedSeq[Int] = bits.takeRight(size - 1) :+ isNotNullBit
   override def encode(v: T): BigBinary = {
     val data = {
       val v1 = BigInt(encode_locally(v))

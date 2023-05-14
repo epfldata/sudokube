@@ -7,12 +7,11 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.Materializer
 import backend.CBackend
 import com.typesafe.config.ConfigFactory
-import combinatorics.Combinatorics
+import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import core.{DataCube, PartialDataCube}
-import core.materialization.{Base2MaterializationStrategy, PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import frontend.generators._
 import frontend.schema.encoders.ColEncoder
-import frontend.schema.{DynamicSchema, LD2, StaticSchema2}
+import frontend.schema.{LD2, Schema2}
 import util.Util
 
 import scala.collection.mutable.ArrayBuffer
@@ -51,24 +50,24 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   implicit val ec = ExecutionContext.global
   def getCubeGenerator(cname: String) = {
     cname match {
-      case "SSB" => new SSB(100) -> true
-      case "NYC" => new NYC() -> true
-      case "WebShop" => new WebshopSales() -> true
+      case "SSB" => new SSB(100)
+      case "NYC" => new NYC()
+      case "WebShop" => new WebshopSales()
+      case "WebShopDyn" => new WebShopDyn()
+      case "TinyData" => new TinyData()
     }
   }
   def cuboidToDimSplit(cub: IndexedSeq[Int], cols: Vector[LD2[_]]) = {
     val groups = cub.groupBy(b => cols.find(l => l.encoder.bits.contains(b)).get)
     groups.map { case (ld, bs) =>
-      println("  name " + ld.name + "all bits = " + ld.encoder.bits + " selectedbits = " + bs)
       ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b)) }
   }
 
   object MaterializeState {
-    var isStaticSchema = false
     var cg: CubeGenerator = null
     var baseCuboid: DataCube = null
     //TODO: Merge into common parent
-    var staticSchema: StaticSchema2 = null
+    var schema: Schema2 = null
     var columnMap: Map[String, ColEncoder[_]] = null
     val chosenCuboids = ArrayBuffer[IndexedSeq[Int]]()
     val shownCuboids = ArrayBuffer[IndexedSeq[Int]]()
@@ -93,43 +92,46 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
   /* Materialize */
   override def getBaseCuboids(in: Empty): Future[BaseCuboidResponse] = {
-    Future.successful(BaseCuboidResponse(List("WebShop", "NYC", "SSB")))
+    Future.successful(BaseCuboidResponse(List("WebShop", "NYC", "SSB", "WebShopDyn", "TinyData")))
   }
   override def selectBaseCuboid(in: SelectBaseCuboidArgs): Future[SelectBaseCuboidResponse] = {
     import MaterializeState._
     import SelectBaseCuboidResponse._
     val dsname = in.cuboid
-    println("SelectBaseCuboid " + in)
+    println("SelectBaseCuboid arg:" + in)
     Future {
-      val cgstatic = getCubeGenerator(dsname)
-      cg = cgstatic._1
-      isStaticSchema = cgstatic._2
-      staticSchema = cg.schemaInstance.asInstanceOf[StaticSchema2]
-      val dims = staticSchema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
-      columnMap = staticSchema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
+     cg = getCubeGenerator(dsname)
+      schema = cg.schemaInstance
+      val dims = schema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
+      columnMap = schema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
       baseCuboid = cg.loadBase()
       shownCuboids.clear()
       shownCuboidsManualView.clear()
       chosenCuboids.clear()
       println("Base cuboid" + baseCuboid.cubeName +  "  loaded")
-      SelectBaseCuboidResponse(dims)
+      val res = SelectBaseCuboidResponse(dims)
+      println("\t response: " + res)
+      res
     }
   }
 
   override def selectMaterializationStrategy(in: SelectMaterializationStrategyArgs): Future[Empty] = {
     import MaterializeState._
+    println("SelectMaterializationStrategy arg: " + in)
     val args = in.args.map(_.toInt).toVector
     val ms = in.name match {
       case "Randomized" => new RandomizedMaterializationStrategy(baseCuboid.index.n_bits, args(0), args(1))
-      case "Prefix" => new SchemaBasedMaterializationStrategy(staticSchema, args(0), args(1))
+      case "Prefix" => new SchemaBasedMaterializationStrategy(schema, args(0), args(1))
     }
     chosenCuboids.clear()
     chosenCuboids ++= ms.projections
+    println("\t response: OK")
     Future.successful(Empty())
   }
 
   override def getChosenCuboids(in: GetCuboidsArgs): Future[GetChosenCuboidsResponse] = {
     import MaterializeState._
+    println("GetChosenCuboids  arg: " + in)
     val cubsInPage = in.rowsPerPage
     def filterCondition(cub: IndexedSeq[Int]) = {
       val cubSet = cub.toSet
@@ -145,23 +147,27 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     shownCuboids.clear()
     shownCuboids ++= filteredCuboids.slice(requestedCuboidsStart, requestedCuboidsEnd)
     val cubs = shownCuboids.map { cub =>
-      val dims = cuboidToDimSplit(cub, staticSchema.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
+      val dims = cuboidToDimSplit(cub, schema.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
       CuboidDef(dims)
     }
-    Future.successful(GetChosenCuboidsResponse(cubs))
+    val res = GetChosenCuboidsResponse(cubs)
+    println("\t response: " + res)
+    Future.successful(res)
   }
 
   override def deleteChosenCuboid(in: DeleteSelectedCuboidArgs): Future[Empty] = {
     import MaterializeState._
+    println("DeleteChosenCuboid arg: " + in)
     val id = in.cuboidIdWithinPage
     val deletedCuboid = shownCuboids(id)
     shownCuboids -= deletedCuboid
     chosenCuboids -= deletedCuboid
+    println("\t response: OK" )
     Future.successful(Empty())
   }
   override def getAvailableCuboids(in: GetCuboidsArgs): Future[GetAvailableCuboidsResponse] = {
     import MaterializeState._
-    println("getAvailableCuboids " + in)
+    println("GetAvailableCuboids " + in)
     Future {
       val cubsInPage = in.rowsPerPage
       val nbits = baseCuboid.index.n_bits
@@ -189,39 +195,41 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         k += 1
       }
       availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
-      println("Filter Bits = " + filterBits)
-      println("Available Cuboids = ")
       shownCuboidsManualView.clear()
       shownCuboidsManualView ++= availableCuboidsView.map { cub =>
         val isChosen = chosenCuboids.contains(cub)
         cub -> isChosen
       }
       val cubs = shownCuboidsManualView.map { case (cub, isC) =>
-        val dims = cuboidToDimSplit(cub, staticSchema.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
-        println("Cuboid bits = " + cub + "   split = " + dims)
-        println("\n")
+        val dims = cuboidToDimSplit(cub, schema.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
         GetAvailableCuboidsResponse.ManualSelectionCuboidDef(dims, isC)
       }
-      GetAvailableCuboidsResponse(cubs)
+      val res = GetAvailableCuboidsResponse(cubs)
+      println("\t response: " + res)
+      res
     }
   }
   override def manuallyUpdateCuboids(in: ManuallyUpdateCuboidsArgs): Future[Empty] = {
     import MaterializeState._
+    println("ManuallyUpdateCuboids arg: " + in)
     in.isChosen.zip(shownCuboidsManualView).foreach { case (afterChosen, (cub, beforeChosen)) =>
       if (beforeChosen && !afterChosen)
         chosenCuboids -= cub
       else if (!beforeChosen && afterChosen)
         chosenCuboids += cub
     }
+    println("\t response: OK")
     Future.successful(Empty())
   }
   override def materializeCuboids(in: MaterializeArgs): Future[Empty] = {
     import MaterializeState._
+    println("MaterializeCuboids arg: " + in)
     Future {
       val ms = PresetMaterializationStrategy(baseCuboid.index.n_bits, chosenCuboids)
       val dc = new PartialDataCube(in.cubeName, baseCuboid.cubeName)
       dc.buildPartial(ms)
       dc.save()
+      println("\t response: OK" )
       Empty()
     }
   }

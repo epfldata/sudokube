@@ -145,8 +145,80 @@ case class BD2(override val name: String, children: Vector[Dim2], cross: Boolean
 
 }
 
+case class DynBD2() extends Dim2("ROOT") {
+  def reset(): Unit = {
+    children.clear()
+  }
+  val children = collection.mutable.Map[String, LD2[_]]()
+  def getOrAdd(name: String, enc: ColEncoder[_]) = {
+    if(children.isDefinedAt(name))
+      children(name).encoder
+    else {
+      children(name) = LD2(name, enc)
+      enc
+    }
+  }
+
+  override def queries: Set[IndexedSeq[Int]] = children.values.foldLeft(Set(IndexedSeq[Int]())) { case (acc, cur) =>
+    val cq = cur.queries
+    acc.flatMap(q1 => cq.map(q2 => q1 ++ q2))
+  }
+  override def queriesUpto(qsize: Int): Set[IndexedSeq[Int]] = children.values.foldLeft(Set(IndexedSeq[Int]())) { case (acc, cur) =>
+    val cq = cur.queriesUpto(qsize)
+    acc.flatMap(q1 => cq.flatMap(q2 => if (q1.size + q2.size <= qsize) Some(q1 ++ q2) else None))
+  }
+  override def numPrefixUpto(size: Int): Array[BigInt] = {
+    val init = Array.fill(size + 1)(BigInt(0))
+    init(0) += 1
+    children.values.foldLeft(init) { (acc, cur) =>
+      val cr = cur.numPrefixUpto(size)
+      val result = Array.fill(size + 1)(BigInt(0))
+      (0 to size).foreach { s1 =>
+        (0 to size - s1).foreach { s2 =>
+          result(s1 + s2) += acc(s1) * cr(s2)
+        }
+      }
+      result
+    }
+  }
+  override def samplePrefix(size: Int): IndexedSeq[Int] = {
+    val childrenToConsider = collection.mutable.ArrayBuffer[Int]()
+    val children2 = children.values.toVector
+    childrenToConsider ++= children2.indices
+    var bitsLeft = size
+    var totalBits = maxSize
+    var result = Vector[Int]()
+    while (bitsLeft != 0) {
+      assert(bitsLeft > 0)
+      if (totalBits > bitsLeft) {
+        val idx0 = Random.nextInt(childrenToConsider.size) //pick one of the remaining children
+        val idx = childrenToConsider(idx0)
+        val child = children2(idx)
+        childrenToConsider -= idx //remove child from being considered again
+        val maxBits = Math.min(bitsLeft, child.maxSize)
+        var bits = if (maxBits > 0) Random.nextInt(maxBits + 1) else 0
+        if (totalBits - child.maxSize < bitsLeft - bits) {
+          bits = bitsLeft + child.maxSize - totalBits //so that both sides are equal
+        }
+        bitsLeft -= bits
+        totalBits -= child.maxSize
+        result = result ++ child.samplePrefix(bits)
+      } else { //must pick all bits from all remaining children
+        assert(totalBits == bitsLeft)
+        result = result ++ childrenToConsider.map { idx =>
+          val child = children2(idx)
+          child.samplePrefix(child.maxSize)
+        }.reduce(_ ++ _)
+        bitsLeft = 0
+      }
+    }
+    result
+  }
+  override def maxSize: Int =  children.values.map(_.maxSize).sum
+}
+
 @SerialVersionUID(4L)
-class StructuredDynamicSchema(tl: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends Schema2(tl) {
+class StructuredDynamicSchema(tl: Vector[Dim2])(implicit bitPosRegistry: BitPosRegistry) extends StructuredSchema2(tl) {
   override def n_bits = bitPosRegistry.n_bits
 
   def save(filename: String) {
@@ -192,15 +264,35 @@ object StructuredDynamicSchema {
   }
 }
 
-@SerialVersionUID(4636658400657404607L)
-abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
+abstract class Schema2 extends Serializable {
+  val root : Dim2
+  def columnVector: Vector[LD2[_]]
+  def n_bits: Int
+  def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))
+  def queries = root.queries.toList.sortBy(_.length)
+  def queriesUpto(qSize: Int) = root.queriesUpto(qSize).groupBy(_.length)
+
+  def initBeforeEncode() {
+    implicit val ec = ExecutionContext.global
+    val futs = columnVector.map {
+      _.encoder.initializeBeforeEncoding
+    }
+    Await.result(Future.sequence(futs), Duration.Inf)
+  }
+
+  def initBeforeDecode() {
+    implicit val ec = ExecutionContext.global
+    val futs = columnVector.map {
+      _.encoder.initializeBeforeDecoding
+    }
+    Await.result(Future.sequence(futs), Duration.Inf)
+  }
+}
+
+abstract class StructuredSchema2(top_level: Vector[Dim2]) extends Schema2 {
   val root = new BD2("ROOT", top_level, true)
 
-  def recommended_cube = Tools.params(n_bits, 25)
-
   lazy val columnVector: Vector[LD2[_]] = root.leaves
-
-  def n_bits: Int
 
   def encode_column(idx: Int, v: Any): BigBinary = columnVector(idx).encoder.encode_any(v)
 
@@ -225,34 +317,9 @@ abstract class Schema2(top_level: Vector[Dim2]) extends Serializable {
     }
   }
 
-  def decode_tuple(bb: BigBinary) = columnVector.map(c => c.name -> c.encoder.decode(bb))
-
-  def queries = root.queries.toList.sortBy(_.length)
-
-  def queriesUpto(qSize: Int) = root.queriesUpto(qSize).groupBy(_.length)
-
-  def initBeforeEncode() {
-    //println("Starting to load dictionary values")
-    implicit val ec = ExecutionContext.global
-    val futs = columnVector.map {
-      _.encoder.initializeBeforeEncoding
-    }
-    Await.result(Future.sequence(futs), Duration.Inf)
-    //println("Dictionary loading complete")
-  }
-
-  def initBeforeDecode() {
-    //println("Starting to load dictionary values")
-    implicit val ec = ExecutionContext.global
-    val futs = columnVector.map {
-      _.encoder.initializeBeforeDecoding
-    }
-    Await.result(Future.sequence(futs), Duration.Inf)
-    //println("Dictionary loading complete")
-  }
 }
 
-class StaticSchema2(tl: Vector[Dim2]) extends Schema2(tl) {
+class StaticSchema2(tl: Vector[Dim2]) extends StructuredSchema2(tl) {
   val n_bits = columnVector.foldLeft(0) { (acc, cur) => cur.encoder.asInstanceOf[StaticColEncoder[_]].set_bits(acc) }
 
 }

@@ -9,7 +9,7 @@ import java.util.Date
 import scala.io.Source
 
 case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
-
+  override lazy val schemaInstance = schema()
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
@@ -20,7 +20,7 @@ case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
     join
   }
 
-  override def schema(): Schema2 = {
+  override def schema(): StaticSchema2 = {
 
     def uniq(i: Int) = s"tabledata/nyc/uniq/all.$i.uniq"
     import StaticDateCol._
