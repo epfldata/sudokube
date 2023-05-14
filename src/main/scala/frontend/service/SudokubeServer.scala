@@ -281,13 +281,13 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val levels = (1 to numBits).map { j => dim + "L" + j }
       SelectDataCubeForQueryResponse.DimHierarchy(dim, numBits, levels)
     }
-    val response = SelectDataCubeForQueryResponse(dims)
+    val response = SelectDataCubeForQueryResponse(dims, Seq("Sales"))
     Future.successful(response)
   }
   override def getValuesForSlice(in: GetSliceValuesArgs): Future[GetSliceValueResponse] = {
     val values = (1 to 100).map(i => "V" + i)
     val shownValues = values.filter(_.contains(in.searchText)).take(in.numRowsInPage)
-    val response = GetSliceValueResponse(shownValues)
+    val response = GetSliceValueResponse(shownValues, Seq())
     Future.successful(response)
   }
 
@@ -296,6 +296,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   override def getFilters(in: Empty): Future[GetFiltersResponse] = ???
 
   override def setValuesForSlice(in: SetSliceValuesArgs): Future[Empty] = ???
+
+  override def deleteFilter(in: DeleteFilterArgs): Future[Empty] = Future.successful(Empty())
 
   override def startQuery(in: QueryArgs): Future[QueryResponse] = {
     import QueryResponse._
@@ -324,7 +326,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     series += SeriesData("Linear", (1 to 10).map { i => XYPoint("P" + i, i + cubsFetched) })
     series += SeriesData("Quadratic", (1 to 10).map { i => XYPoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
     series += SeriesData("Log", (1 to 10).map { i => XYPoint("P" + i, math.log(i + cubsFetched).toFloat) })
-    val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
+    val response = QueryResponse(0, shownCuboids, 0, false, series, stats.map(p => new QueryStatistic(p._1, p._2)).toSeq) // TODO?: Convert stats?
     Future.successful(response)
   }
   override def continueQuery(in: Empty): Future[QueryResponse] = {
@@ -343,7 +345,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     series += SeriesData("Linear", (1 to 10).map { i => XYPoint("P" + i, i + cubsFetched) })
     series += SeriesData("Quadratic", (1 to 10).map { i => XYPoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
     series += SeriesData("Log", (1 to 10).map { i => XYPoint("P" + i, math.log(i + cubsFetched).toFloat) })
-    val response = QueryResponse(0, shownCuboids, 0, series) // TODO?: Convert stats?
+    val response = QueryResponse(0, shownCuboids, 0, true, series, stats.map(p => new QueryStatistic(p._1, p._2)).toSeq) // TODO?: Convert stats?
     Future.successful(response)
   }
 
