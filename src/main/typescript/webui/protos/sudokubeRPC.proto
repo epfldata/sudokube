@@ -233,7 +233,7 @@ message QueryResponse {
 
 message GetPreparedCuboidsArgs {
   uint32 requested_page_id = 1;
-  uint32 numRows_in_page = 2;
+  uint32 num_rows_in_page = 2;
 }
 
 message GetPreparedCuboidsResponse {

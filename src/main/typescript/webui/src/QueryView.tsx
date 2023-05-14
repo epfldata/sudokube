@@ -1,21 +1,19 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
-import { Box, Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
 import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
 import { apiBaseUrl, useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useEffect } from 'react';
 import { grpc } from '@improbable-eng/grpc-web';
-import { DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
+import { DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, GetPreparedCuboidsArgs, GetPreparedCuboidsResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
 import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
 import { buildMessage } from './Utils';
 import { cuboidToRow } from './MaterializationView';
-
-const data = require('./sales-data.json');
+import MaterialReactTable, { MRT_ColumnDef } from 'material-react-table';
 
 export default observer(function Query() {
   const { queryStore: store } = useRootStore();
@@ -235,39 +233,48 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
   }
   return ( <div>
     <h3>Prepared Cuboids</h3>
-    <Box sx = {{ height: '30vh', width: '100%', marginTop: '20px' }}>
-      <DataGrid
-        rows = { store.preparedCuboids.map(cuboidToRow) }
+    <div style = {{ marginTop: 20 }}>
+      <MaterialReactTable
         columns = { store.dimensions.map(dimensionToColumn) }
-        disableRowSelectionOnClick
-        sx = {{
-          overflowX: 'scroll',
-          '.materialization-online-next-cuboid': {
-            color: 'primary.main'
-          },
-          // https://github.com/mui/mui-x/issues/409#issuecomment-1233333917
-          '.MuiTablePagination-displayedRows': {
-            display: 'none',
-          },
+        enableColumnResizing
+        data = { store.preparedCuboids.map((cuboid, index, _) => cuboidToRow(
+          cuboid, index, _,
+          store.cuboidsPage === store.currentCuboidPage && index === store.currentCuboidIdWithinPage
+        )) } 
+        getRowId = { row => row.id }
+        rowCount = {Number.MAX_VALUE}
+        enablePagination
+        manualPagination
+        state = {{
+          density: 'compact',
+          pagination: { pageIndex: store.cuboidsPage, pageSize: store.cuboidsPageSize }
         }}
-        density = 'compact'
-        getRowClassName = {(params) =>
-          params.row.index === store.nextCuboidIndex ? 'materialization-online-next-cuboid' : ''
-        }
-        initialState = {{
-          pagination: {
-            paginationModel: { pageSize: 5, page: 2 }
-          }
+        onPaginationChange={(updater: any) => {
+          const model = updater({pageIndex: store.cuboidsPage, pageSize: store.cuboidsPageSize});
+          store.cuboidsPage = model.pageIndex;
+          store.cuboidsPageSize = model.pageSize;
+          grpc.unary(SudokubeService.getPreparedCuboids, {
+            host: apiBaseUrl,
+            request: buildMessage(new GetPreparedCuboidsArgs(), {
+              requestedPageId: model.pageIndex,
+              numRowsInPage: model.pageSize
+            }),
+            onEnd: res => {
+              store.preparedCuboids = (res.message as GetPreparedCuboidsResponse).getCuboidsList()
+            }
+          });
         }}
-        pagination = {true}
-        paginationMode="server"
-        // paginationModel={{pageSize: 5, page: 2}}
-        pageSizeOptions={[5]}
-        rowCount={Number.MAX_VALUE}
-        onPaginationModelChange={(model) => {console.log(model.page)}}
-        // rowCount={10}
+        muiBottomToolbarProps = {{
+          sx: {
+            '.MuiTablePagination-displayedRows': { display: 'none' },
+            '.MuiTablePagination-selectLabel': { display: 'none' },
+            '.MuiTablePagination-select': { display: 'none' },
+            '.MuiTablePagination-selectIcon': { display: 'none' }
+          } 
+        }}
+        renderTopToolbar = {false}
       />
-    </Box>
+    </div>
     <Button
       disabled = {store.isQueryComplete}
       onClick = {() => {
@@ -277,7 +284,7 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
           onEnd: res => {
             const message = res.message as QueryResponse;
             runInAction(() => {
-              store.cuboidsPage = message.getCuboidsPageId();
+              store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
               store.preparedCuboids = message.getCuboidsList();
               store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
               store.isQueryComplete = message.getIsComplete();
@@ -371,11 +378,7 @@ const Metrics = observer(({isShown}: {isShown: boolean}) => {
   </div> );
 });
 
-const dimensionToColumn = ((dimension: SelectDataCubeForQueryResponse.DimHierarchy) => ({
-  field: dimension.getDimName(),
-  type: 'string',
-  headerName: dimension.getDimName() + ' (' + dimension.getNumBits() + ' bits)',
-  sortable: false,
-  disableColumnMenu: true,
-  width: dimension.getNumBits() * 20 + 20
-} as GridColDef));
+const dimensionToColumn = ((dimension: SelectDataCubeForQueryResponse.DimHierarchy): MRT_ColumnDef<any> => ({
+  accessorKey: dimension.getDimName(),
+  header: dimension.getDimName() + ' (' + dimension.getNumBits() + ' bits)'
+}));

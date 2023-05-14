@@ -144,6 +144,7 @@ export class QueryStore {
 
   cuboidsPage: number = 0;
   cuboidsPageSize: number = 5;
+  currentCuboidPage: number = 0;
   currentCuboidIdWithinPage: number = 0;
 
   preparedCuboids: CuboidDef[] = [];

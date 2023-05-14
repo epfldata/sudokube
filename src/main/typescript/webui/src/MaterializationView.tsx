@@ -4,19 +4,19 @@ import Grid from '@mui/material/Grid';
 import { FilterChip } from './QueryViewChips';
 import Chip from '@mui/material/Chip';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
-import { DataGrid, GridActionsCellItem, GridColDef, GridPaginationModel, GridRowSelectionModel } from '@mui/x-data-grid';
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormLabel, InputLabel, MenuItem, Select, TextField } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormLabel, IconButton, InputLabel, MenuItem, Select, TextField, Tooltip, useTheme } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import { apiBaseUrl, useRootStore } from './RootStore';
 import MaterializationStore, { MaterializationDimension } from './MaterializationStore';
 import { ButtonChip, chipStyle } from './GenericChips';
 import { runInAction } from 'mobx';
 import { useEffect, useState } from 'react';
-import DeleteIcon from '@mui/icons-material/Delete';
 import {grpc} from "@improbable-eng/grpc-web";
 import {SudokubeService} from "./_proto/sudokubeRPC_pb_service";
 import {Empty, BaseCuboidResponse, SelectBaseCuboidArgs, SelectBaseCuboidResponse, SelectMaterializationStrategyArgs, GetCuboidsArgs, DimensionFilterCuboid, GetChosenCuboidsResponse, CuboidDef, MaterializeArgs, DeleteSelectedCuboidArgs, GetAvailableCuboidsResponse, ManuallyUpdateCuboidsArgs} from "./_proto/sudokubeRPC_pb";
 import { buildMessage } from './Utils';
+import MaterialReactTable, { MRT_ColumnDef, MRT_RowSelectionState } from 'material-react-table';
+import { Delete } from '@mui/icons-material';
 
 const fetchChosenCuboids = (store: MaterializationStore) => {
   grpc.unary(SudokubeService.getChosenCuboids, {
@@ -228,22 +228,26 @@ const ManuallyChooseCuboids = observer(() => {
   const [isCuboidsDialogOpen, setCuboidsDialogOpen] = React.useState(false);
   const [page, setPage] = useState(0), [pageSize, setPageSize] = useState(10);
   const [cuboids, setCuboids] = useState<CuboidDef[]>([]);
-  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState<MRT_RowSelectionState>({});
 
-  const fetchAvailableCuboids = () => {
+  const fetchAvailableCuboids = ({newPage, newPageSize} : {
+    newPage?: number, newPageSize?: number
+  }) => {
     grpc.unary(SudokubeService.getAvailableCuboids, {
       host: apiBaseUrl,
       request: buildMessage(new GetCuboidsArgs(), {
         filtersList: store.addCuboidsFilters,
-        requestedPageId: page,
-        rowsPerPage: pageSize
+        requestedPageId: newPage ?? page,
+        rowsPerPage: newPageSize ?? pageSize
       }),
       onEnd: res => runInAction(() => {
         const rpcCuboidsList = (res.message as GetAvailableCuboidsResponse)!.getCuboidsList();
         setCuboids(rpcCuboidsList.map(cuboid => buildMessage(new CuboidDef(), {
           dimensionsList: cuboid.getDimensionsList()
         })));
-        setRowSelectionModel(rpcCuboidsList.flatMap((cuboid, index) => cuboid.getIsChosen() ? [index] : []));
+        const newRowSelectionModel: MRT_RowSelectionState = {};
+        rpcCuboidsList.forEach((cuboid, index) => { newRowSelectionModel[String(index)] = cuboid.getIsChosen() });
+        setRowSelectionModel(newRowSelectionModel);
       })
     });
   }
@@ -254,7 +258,7 @@ const ManuallyChooseCuboids = observer(() => {
 
   useEffect(() => {
     if (isCuboidsDialogOpen) {
-      fetchAvailableCuboids();
+      fetchAvailableCuboids({});
     }
   }, [store.selectedDataset, isCuboidsDialogOpen])
 
@@ -271,7 +275,7 @@ const ManuallyChooseCuboids = observer(() => {
                 text = { filter.getDimensionName() + ' / ' + filter.getBitsFrom() + '–' + filter.getBitsTo() }
                 onDelete = { () => {
                   runInAction(() => store.addCuboidsFilters.splice(index, 1));
-                  fetchAvailableCuboids();
+                  fetchAvailableCuboids({});
                 } }
               /> );
             }) }
@@ -283,48 +287,52 @@ const ManuallyChooseCuboids = observer(() => {
                   bitsTo: bitsTo
                 })
               );
-              fetchAvailableCuboids();
+              fetchAvailableCuboids({});
             }} />
           </Grid>
         </Grid>
 
-        <Box sx = {{ height: '70vh', width: '100%', marginTop: '20px' }}>
-          <DataGrid
-            rows = { cuboids.map(cuboidToRow) } 
+        <div style = {{ marginTop: 20 }}>
+          <MaterialReactTable
             columns = { store.dimensions.map(dimensionToColumn) }
-            checkboxSelection
-            rowSelectionModel={rowSelectionModel}
-            onRowSelectionModelChange={(model: GridRowSelectionModel) => {
-              setRowSelectionModel(model);
+            enableColumnResizing
+            data = { cuboids.map(cuboidToRow) } 
+            getRowId = { row => row.id }
+            enableRowSelection
+            rowCount = {Number.MAX_VALUE}
+            enablePagination
+            manualPagination
+            state = {{
+              density: 'compact',
+              pagination: { pageIndex: page, pageSize: pageSize },
+              rowSelection: rowSelectionModel
             }}
-            sx = {{
-              width: '100%',
-              overflowX: 'scroll',
-              '.MuiTablePagination-displayedRows': {
-                display: 'none',
-              }
-            }} 
-            density = 'compact'
-            pagination = {true}
-            paginationMode="server"
-            paginationModel={{page: page, pageSize: pageSize}}
-            pageSizeOptions={[10]}
-            rowCount={Number.MAX_VALUE}
-            onPaginationModelChange={model => {
+            onRowSelectionChange={setRowSelectionModel}
+            onPaginationChange={(updater: any) => {
+              const model = updater({pageIndex: page, pageSize: pageSize});
               grpc.unary(SudokubeService.manuallyUpdateCuboids, {
                 host: apiBaseUrl,
                 request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
-                  isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel.includes(i))
+                  isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
                 }),
                 onEnd: () => {
-                  setPage(model.page);
+                  setPage(model.pageIndex);
                   setPageSize(model.pageSize);
-                  fetchAvailableCuboids();
+                  fetchAvailableCuboids({newPage: model.pageIndex, newPageSize: model.pageSize});
                 }
               });
             }}
+            muiBottomToolbarProps = {{
+              sx: {
+                '.MuiTablePagination-displayedRows': { display: 'none' },
+                '.MuiTablePagination-selectLabel': { display: 'none' },
+                '.MuiTablePagination-select': { display: 'none' },
+                '.MuiTablePagination-selectIcon': { display: 'none' }
+              } 
+            }}
+            renderTopToolbar = {false}
           />
-        </Box>
+        </div>
 
         <DialogActions>
           <Button onClick = { () => setCuboidsDialogOpen(false) }>Cancel</Button>
@@ -332,7 +340,7 @@ const ManuallyChooseCuboids = observer(() => {
             grpc.unary(SudokubeService.manuallyUpdateCuboids, {
               host: apiBaseUrl,
               request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
-                isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel.includes(i))
+                isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
               }),
               onEnd: () => {
                 setCuboidsDialogOpen(false); 
@@ -386,56 +394,59 @@ const ChosenCuboids = observer(() => {
         }} />
       </Grid>
     </Grid>
-    <Box sx = {{ height: '60vh', width: '100%', marginTop: '20px' }}>
-      <DataGrid
-        rows = { store.chosenCuboids.map(cuboidToRow) }
-        columns = {
-          store.dimensions.map(dimensionToColumn)
-            .concat([{
-              field: 'actions',
-              type: 'actions',
-              getActions: (params) => [
-                <GridActionsCellItem
-                  icon = {<DeleteIcon/>}
-                  label = 'Delete'
-                  onClick={() => {
-                    grpc.unary(SudokubeService.deleteChosenCuboid, {
-                      host: apiBaseUrl,
-                      request: buildMessage(new DeleteSelectedCuboidArgs(), {
-                        cuboidIdWithinPage: params.id
-                      }),
-                      onEnd: () => {
-                        fetchChosenCuboids(store);
-                      }
-                    });
-                  }}
-                />
-              ]
-            } as GridColDef])
-        }
-        disableRowSelectionOnClick
-        sx = {{
-          width: '100%',
-          overflowX: 'scroll',
-          '.MuiTablePagination-displayedRows': {
-            display: 'none',
-          } 
+    <div style = {{ marginTop: '20px' }}>
+      <MaterialReactTable
+        columns = { store.dimensions.map(dimensionToColumn) }
+        enableColumnResizing
+        data = { store.chosenCuboids.map(cuboidToRow) }
+        getRowId = { row => row.id }
+        enableEditing
+        renderRowActions = {({row}) => (
+          <Box sx={{ display: 'flex', gap: '1rem' }}>
+            <Tooltip title="Delete">
+              <IconButton onClick={() => {
+                grpc.unary(SudokubeService.deleteChosenCuboid, {
+                  host: apiBaseUrl,
+                  request: buildMessage(new DeleteSelectedCuboidArgs(), {
+                    cuboidIdWithinPage: row.id
+                  }),
+                  onEnd: () => {
+                    fetchChosenCuboids(store);
+                  }
+                });
+              }}>
+                <Delete />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+        rowCount = {Number.MAX_VALUE}
+        enablePagination
+        manualPagination
+        state = {{
+          density: 'compact',
+          pagination: { pageIndex: store.chosenCuboidsPage, pageSize: store.chosenCuboidsPageSize }
         }}
-        density = 'compact'
-        pagination = {true}
-        paginationMode="server"
-        paginationModel={{page: store.chosenCuboidsPage, pageSize: store.chosenCuboidsPageSize}}
-        pageSizeOptions={[10]}
-        rowCount={Number.MAX_VALUE}
-        onPaginationModelChange={(model: GridPaginationModel) => {
+        onPaginationChange={(updater: any) => {
+          const model = updater({pageIndex: store.chosenCuboidsPage, pageSize: store.chosenCuboidsPageSize});
           runInAction(() => {
-            store.chosenCuboidsPage = model.page;
+            store.chosenCuboidsPage = model.pageIndex;
             store.chosenCuboidsPageSize = model.pageSize;
           });
+          console.log(model)
           fetchChosenCuboids(store);
         }}
+        muiBottomToolbarProps = {{
+          sx: {
+            '.MuiTablePagination-displayedRows': { display: 'none' },
+            '.MuiTablePagination-selectLabel': { display: 'none' },
+            '.MuiTablePagination-select': { display: 'none' },
+            '.MuiTablePagination-selectIcon': { display: 'none' }
+          } 
+        }}
+        renderTopToolbar = {false}
       />
-    </Box>
+    </div>
   </div>
   )
 })
@@ -491,22 +502,22 @@ function AddCuboidsFilterChip({onAdd}: {
   </span>)
 }
 
-export const cuboidToRow = ((cuboid: CuboidDef, index: number) => {
+export const cuboidToRow = ((cuboid: CuboidDef, index: number, _: any, highlight?: boolean) => {
+  const theme = useTheme();
+  console.log()
   let row: any = {};
-  row['id'] = index;
+  row['id'] = String(index);
   row['index'] = index;
   cuboid.getDimensionsList().forEach(dimension => 
     row[dimension.getDimensionName()] =
-      dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join('')
+      <span style = {{ color: highlight ? theme.palette.primary.main : theme.palette.text.primary }}>
+        { dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join('') }
+      </span>
   );
   return row;
 });
 
 const dimensionToColumn = ((dimension: MaterializationDimension) => ({
-  field: dimension.name,
-  type: 'string',
-  headerName: dimension.name + ' (' + dimension.numBits + ' bits)',
-  sortable: false,
-  disableColumnMenu: true,
-  width: dimension.numBits * 20 + 20
-} as GridColDef));
+  accessorKey: dimension.name,
+  header: dimension.name + ' (' + dimension.numBits + ' bits)'
+} as MRT_ColumnDef<any>));
