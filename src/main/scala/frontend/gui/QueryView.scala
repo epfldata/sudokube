@@ -47,7 +47,7 @@ case class QueryView(sch: Schema2, dc: DataCube) {
     val q_unsorted = (xbits.flatten ++ ybits.flatten ++ slicebits.flatten.map(_._1))
     val q_sorted = q_unsorted.sorted
 
-    val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
+    val perm = q_sorted.map(b => q_unsorted.indexOf(b)).toArray
     val permf = permute_bits(q_unsorted.size, perm)
 
     val slice = slicebits.flatten.map { case (i, v) => q_sorted.indexOf(i) -> v }.sortBy(_._1)

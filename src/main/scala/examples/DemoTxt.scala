@@ -2,6 +2,10 @@ package examples
 
 import backend._
 import breeze.linalg.DenseMatrix
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.github.tototoshi.csv.CSVReader
 import core._
 import core.materialization._
 import core.solver.RationalTools._
@@ -14,11 +18,11 @@ import frontend.experiments.Tools
 import frontend.generators._
 import frontend.gui.{FeatureFrameSSB, MaterializationView, QueryView}
 import frontend.schema.DynamicSchema
-import frontend.schema.encoders.{ColEncoder, DynamicColEncoder}
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, MemCol}
 import util.BitUtils._
 import util._
 
-import java.io.PrintStream
+import java.io.FileWriter
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -267,6 +271,50 @@ object DemoTxt {
     val display = new QueryView(sch, dc)
     val d2 = new MaterializationView()
   }
+
+  def genDynSchemaData(): Unit = {
+    case class SchemaChange(id: Int, newName: String, rownum: Int)
+    val changes = collection.mutable.PriorityQueue[SchemaChange]()(Ordering.by(x => -x.rownum))
+
+    changes += SchemaChange(6, "CompanyID", 20)
+    //changes += SchemaChange(6, "CompanyNumber", 40)
+    changes += SchemaChange(7, "CompanyName", 31)
+    //changes += SchemaChange(13, "CountryName", 43)
+    //changes += SchemaChange(8, "Category", 84)
+    //changes += SchemaChange(9, "Product", 85)
+    //changes += SchemaChange(4, "WeekNo", 100)
+    //changes += SchemaChange(1, "SaleYr", 130)
+
+    val filename = s"tabledata/Webshop/sales.csv"
+    val datasize = CSVReader.open(filename).iterator.drop(1).size
+    val allData = CSVReader.open(filename).all().toVector
+
+    val mapper = new ObjectMapper() with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+    val outfilename = s"tabledata/Webshop/salesDyn.json"
+    val fileWriter = new FileWriter(outfilename)
+    val sequenceWriter = mapper.writerWithDefaultPrettyPrinter().writeValuesAsArray(fileWriter)
+
+    val currentHeader = allData.head.toArray
+    currentHeader.zipWithIndex.foreach{case (h, i) => println(i, h)}
+    var nextChange = changes.head
+    allData.tail.zipWithIndex.foreach { case (d, i) =>
+      if (!changes.isEmpty) {
+        while (i == nextChange.rownum && !changes.isEmpty) {
+          currentHeader(nextChange.id) = nextChange.newName
+          //println("Changing header " + nextChange.id + "  to  " + nextChange.newName + " at row " + i)
+            changes.dequeue()
+          if (!changes.isEmpty) {
+            nextChange = changes.head
+          }
+        }
+      }
+      val row = d.toVector.zip(currentHeader).map { case (v, k) => (k, v) }.toMap
+      sequenceWriter.write( row )
+    }
+    sequenceWriter.close()
+  }
+
   def demo2() = {
     implicit val be  = CBackend.rowstore
     val sch = new DynamicSchema
@@ -355,6 +403,8 @@ object DemoTxt {
     //effectiveIPFSolver()
     //vanillaIPFSolver2()
     //momentSolver3()
-    demo()
+    //demo()
+    genDynSchemaData()
+    //demo2()
   }
 }

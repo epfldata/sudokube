@@ -3,7 +3,7 @@ package frontend.generators
 import backend.CBackend
 import breeze.io.CSVReader
 import frontend.JsonReader
-import frontend.schema.{DynamicSchema2, Schema2}
+import frontend.schema.DynamicSchema2
 import util.{BigBinary, Profiler}
 
 import java.io.{File, FileReader}
@@ -40,13 +40,13 @@ class DynamicSchemaCubeGenerator(override val inputname: String,
         (schemaInstance.encode_tuple((x - measure_key.get).toList), measure)
       })
     }
-    schemaInstance.save(inputname)
+    schemaInstance.save(baseName)
     Vector(data.size -> data.toIterator)
   }
   override protected def schema(): DynamicSchema2 = {
-    val file = new File("cubedata/" + inputname + "/" + inputname + ".sch")
+    val file = new File("cubedata/" + baseName + "/" + baseName + ".sch")
     if(file.exists())
-      DynamicSchema2.load(inputname)
+      DynamicSchema2.load(baseName)
     else
       new DynamicSchema2()
     }

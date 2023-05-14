@@ -150,12 +150,13 @@ case class DynBD2() extends Dim2("ROOT") {
     children.clear()
   }
   val children = collection.mutable.Map[String, LD2[_]]()
-  def getOrAdd(name: String, enc: ColEncoder[_]) = {
+  def getOrAdd(name: String, enc: => ColEncoder[_]) = {
     if(children.isDefinedAt(name))
       children(name).encoder
     else {
-      children(name) = LD2(name, enc)
-      enc
+      val encInstance = enc
+      children(name) = LD2(name, encInstance)
+      encInstance
     }
   }
 
