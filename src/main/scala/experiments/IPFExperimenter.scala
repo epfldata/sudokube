@@ -6,7 +6,6 @@ import frontend.generators.{AirlineDelay, CubeGenerator, NYC, SSB}
 import frontend.schema.encoders.ColEncoder
 
 import java.io.{File, PrintStream}
-import java.time.format.DateTimeFormatter
 
 /**
  * Compare the time and error for IPF solvers and moment solver.
@@ -319,51 +318,5 @@ object IPFExperimenter {
     val expt = new ErrorAnalysis(cg.inputname)
     val trueResult = dc.naive_eval(query)
     expt.run(dc, dc.cubeName, query, trueResult)
-  }
-
-  def main(args: Array[String]): Unit = {
-    implicit val numIters: Int = 100
-    val maxdim = 40
-    val partialQS = 9
-    val nyc = new NYC()
-    val airline = new AirlineDelay()
-    implicit val timestampedFolder = args.lift(1).getOrElse(Experiment.now())
-    args.lift(0).getOrElse("default") match {
-      //case "default" => ()
-
-
-      case "NYC-SMS-qsize" => ipf_moment_expt_qsize(true, "NYC", 15, 18, maxdim)
-      case "NYC-SMS-logn" => ipf_moment_expt_logn(true, "NYC", 15)
-      case "NYC-SMS-dmin" => ipf_moment_expt_dmin(true, "NYC", 15)
-      case "trie" => trie_expt("NYC")
-      case "NYC-SMS-partial" => ipf_moment_partial(true, "NYC", partialQS, 15, 18, maxdim)
-      case "NYC-SMS-stats" => cuboid_stats(true, nyc)
-
-      case "NYC-RMS-qsize" => ipf_moment_expt_qsize(false, "NYC", 15, 18, maxdim)
-      case "NYC-RMS-logn" => ipf_moment_expt_logn(false, "NYC", 15)
-      case "NYC-RMS-dmin" => ipf_moment_expt_dmin(false, "NYC", 15)
-      case "NYC-RMS-partial" => ipf_moment_partial(false, "NYC", partialQS, 15, 18, maxdim)
-      case "NYC-RMS-stats" => cuboid_stats(false, nyc)
-
-      case "NYC-online" => manual_online("NYC")
-
-      case "Airline-SMS-qsize" => ipf_moment_expt_qsize(true, "Airline", 15, 18, maxdim)
-      case "Airline-SMS-logn" => ipf_moment_expt_logn(true, "Airline", 15)
-      case "Airline-SMS-dmin" => ipf_moment_expt_dmin(true, "Airline", 15)
-      case "Airline-SMS-partial" => ipf_moment_partial(true, "Airline", partialQS, 15, 18, maxdim)
-      case "Airline-SMS-stats" => cuboid_stats(true, airline)
-
-      case "Airline-RMS-qsize" => ipf_moment_expt_qsize(false, "Airline", 15, 18, maxdim)
-      case "Airline-RMS-logn" => ipf_moment_expt_logn(false, "Airline", 15)
-      case "Airline-RMS-dmin" => ipf_moment_expt_dmin(false, "Airline", 15)
-      case "Airline-RMS-partial" => ipf_moment_partial(false, "Airline", partialQS, 15, 18, maxdim)
-      case "Airline-RMS-stats" => cuboid_stats(false, airline)
-
-      case "Airline-online" => manual_online("Airline")
-      case "error" => error_analysis()
-      //case s => println(s"Unknown Expt $s with timestamp $timestampedFolder")
-
-    }
-
   }
 }

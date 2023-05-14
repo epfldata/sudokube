@@ -31,7 +31,9 @@ libraryDependencies ++= Seq(
   "com.github.tototoshi" %% "scala-csv" % "1.3.10",
   "ch.megard" %% "akka-http-cors" % "0.4.2",
   "org.apache.xmlgraphics" % "batik-all" % "1.16",
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8")
+  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.8.8",
+  "de.sciss" % "jwave" % "1.0.3",
+)
 
 lazy val originalCBackend = (project in file("src") / "native" / "Original")
   .settings(nativeCompile / sourceDirectory := baseDirectory.value)
