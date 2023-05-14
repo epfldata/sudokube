@@ -375,7 +375,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     timeRange(0) = 0
     timeRange(3) = (1 << totalTimeBits) - 1
     timeRange(1) = (timeRange(0) + timeRange(3) -1)/2
-    timeRange(1) = (timeRange(0) + timeRange(3) +1)/2
+    timeRange(2) = (timeRange(0) + timeRange(3) +1)/2
     colNotNullBit =  columnMap(in.dimensionName).isNotNullBit
     doRenameTimeQuery
   }
