@@ -9,27 +9,28 @@ import { SudokubeService } from "./_proto/sudokubeRPC_pb_service";
 import { grpc } from "@improbable-eng/grpc-web";
 import { Empty, GetCubesResponse, GetRenameTimeArgs, GetRenameTimeResponse, IsRenamedQueryArgs, IsRenamedQueryResponse, MergeColumnDef, SelectDataCubeArgs, SelectDataCubeForExploreResponse, TransformDimensionsArgs } from "./_proto/sudokubeRPC_pb";
 import { buildMessage } from "./Utils";
-import { transform } from "typescript";
 
 export default observer(function ExploreTransformView() {
   const { exploreTransformStore: store } = useRootStore();
-  grpc.unary(SudokubeService.getDataCubes, {
-    host: apiBaseUrl,
-    request: new Empty(),
-    onEnd: response => {
-      runInAction(() => {
-        store.cubes = (response.message as GetCubesResponse)?.getCubesList();
-        store.cube = store.cubes[0];
-      });
-      grpc.unary(SudokubeService.selectDataCubeForExplore, {
-        host: apiBaseUrl,
-        request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
-        onEnd: response => runInAction(() => {
-          store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+  useEffect(() => {
+    grpc.unary(SudokubeService.getDataCubesForExplore, {
+      host: apiBaseUrl,
+      request: new Empty(),
+      onEnd: response => {
+        runInAction(() => {
+          store.cubes = (response.message as GetCubesResponse)?.getCubesList();
+          store.cube = store.cubes[0];
+        });
+        grpc.unary(SudokubeService.selectDataCubeForExplore, {
+          host: apiBaseUrl,
+          request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+          onEnd: response => runInAction(() => {
+            store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+          })
         })
-      })
-    }
-  });
+      }
+    });
+  }, []);
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>

@@ -1,22 +1,47 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
 import { Box, Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
-import { DimensionChip, AddDimensionChip, FilterChip, AddQueryFilterChip } from './QueryViewChips';
+import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
-import { useRootStore } from './RootStore';
+import { apiBaseUrl, useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
-import { DataGrid } from '@mui/x-data-grid';
-import { dimensionToColumn } from './MaterializationView';
-import { Cuboid } from './MaterializationStore';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { useEffect } from 'react';
+import { grpc } from '@improbable-eng/grpc-web';
+import { DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
+import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
+import { buildMessage } from './Utils';
+import { cuboidToRow } from './MaterializationView';
 
 const data = require('./sales-data.json');
 
 export default observer(function Query() {
   const { queryStore: store } = useRootStore();
-  // TODO: Call backend to load available cubes
-  runInAction(() => store.cubes = ['sales']);
+  useEffect(() => {
+    grpc.unary(SudokubeService.getDataCubesForQuery, {
+      host: apiBaseUrl,
+      request: new Empty(),
+      onEnd: response => {
+        runInAction(() => {
+          store.cubes = (response.message as GetCubesResponse)?.getCubesList();
+          store.cube = store.cubes[0];
+        });
+        grpc.unary(SudokubeService.selectDataCubeForQuery, {
+          host: apiBaseUrl,
+          request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+          onEnd: response => runInAction(() => {
+            const message = response.message as SelectDataCubeForQueryResponse;
+            runInAction(() => {
+              store.dimensions = message.getDimensionsList();
+              store.measures = message.getMeasuresList();
+            });
+          })
+        });
+      }
+    });
+  }, []);
   return (
     <Container style = {{ paddingTop: '20px' }}>
       <SelectCube/>
@@ -37,13 +62,23 @@ const SelectCube = observer(() => {
         id = "select-cube" label = "Select Cube"
         style = {{ marginBottom: 10 }}
         size = 'small'
-        value = { store.selectedCubeIndex }
+        value = { store.cube }
         onChange = { e => {
-          runInAction(() => store.selectedCubeIndex = e.target.value as number);
-          // TODO: Load dimension hierarchy and flat dimensions
+          runInAction(() => store.cube = e.target.value);
+          grpc.unary(SudokubeService.selectDataCubeForQuery, {
+            host: apiBaseUrl,
+            request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+            onEnd: response => runInAction(() => {
+              const message = response.message as SelectDataCubeForQueryResponse;
+              runInAction(() => {
+                store.dimensions = message.getDimensionsList();
+                store.measures = message.getMeasuresList();
+              });
+            })
+          });
         } }>
-        { store.cubes.map((cube, index) => (
-          <MenuItem key = { 'select-cube-' + index } value = {index}>{cube}</MenuItem>
+        { store.cubes.map(cube => (
+          <MenuItem key = { 'select-cube-' + cube } value = {cube}>{cube}</MenuItem>
         )) }
       </Select>
     </FormControl>
@@ -83,28 +118,39 @@ const QueryParams = observer(() => {
           onChange = { v => runInAction(() => store.mode = v) }
         />
         <ButtonChip label = 'Run' variant = 'filled' onClick = {() => {
-          // TODO: Call backend to query
-          runInAction(() => {
-            store.isRunComplete = true;
-            store.result = data;
-            store.preparedCuboids = [{
-              id: 0,
-              dimensions: [
-                { name: "Country", bits: '\u2589\u2589\u2589\u25A2\u25A2\u25A2' },
-                { name: "City", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
-                { name: "Year", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2' },
-                { name: "Month", bits: '\u2589\u2589\u2589\u2589\u25A2' },
-                { name: "Day", bits: '\u25A2\u25A2\u25A2\u25A2\u25A2\u25A2'}
-              ]
-            }];
-            store.metrics = [
-              { name: 'Prepare time', value: '1 s' },
-              { name: 'Fetch time', value: '1 s' },
-              { name: 'Solve time', value: '1 s' },
-              { name: 'Error', value: '0.01' },
-              { name: 'Degree of freedom', value: '?' }
-            ];
-          });
+          grpc.unary(SudokubeService.startQuery, {
+            host: apiBaseUrl,
+            request: buildMessage(new QueryArgs(), {
+              horizontalList: store.horizontal.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
+                dimensionName: store.dimensions[dimension.dimensionIndex],
+                dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+              })),
+              seriesList: store.series.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
+                dimensionName: store.dimensions[dimension.dimensionIndex],
+                dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+              })),
+              measure: store.measure,
+              aggregation: store.aggregation,
+              solver: store.solver,
+              isBatchMode: store.mode === 'Batch',
+              preparedCuboidsPerPage: store.cuboidsPageSize
+            }),
+            onEnd: res => {
+              const message = res.message as QueryResponse;
+              runInAction(() => {
+                store.cuboidsPage = message.getCuboidsPageId();
+                store.preparedCuboids = message.getCuboidsList();
+                store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
+                store.isQueryComplete = message.getIsComplete();
+                store.result = { data: message.getSeriesList().map(seriesData => ({
+                  id: seriesData.getSeriesName(),
+                  data: seriesData.getDataList().map(point => point.toObject())
+                })) };
+                store.metrics = message.getStatsList().map(stat => stat.toObject());
+                store.isRunComplete = true;
+              })
+            }
+          })
         }} />
       </Grid>
     </Grid>
@@ -113,16 +159,15 @@ const QueryParams = observer(() => {
 
 const Horizontal = observer(() => {
   const { queryStore: store } = useRootStore();
-  const dimensions = store.cube.dimensionHierarchy.dimensions;
   return (
     <Grid item xs={6}>
       { store.horizontal.map((d, i) => (<DimensionChip
         key = {'horizontal-' + d.dimensionIndex + '-' + d.dimensionLevelIndex}
         type = 'Horizontal'
         text = {
-          dimensions[d.dimensionIndex].name 
+          store.dimensions[d.dimensionIndex].getDimName() 
             + ' / ' 
-            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
+            + store.dimensions[d.dimensionIndex].getLevelsList()[d.dimensionLevelIndex]
         }
         zoomIn = { () => store.zoomInHorizontal(i) }
         zoomOut = { () => store.zoomOutHorizontal(i) }
@@ -135,28 +180,33 @@ const Horizontal = observer(() => {
 
 const Filters = observer(() => {
   const { queryStore: store } = useRootStore();
-  const dimensions = store.cube.dimensionHierarchy.dimensions;
   return (
     <Grid item xs={6}>
       { store.filters.map((d, i) => (<FilterChip
-        key = {'filter-' + d.dimensionIndex + '-' + d.dimensionLevelIndex + '-' + d.valueIndex}
-        text = {
-          dimensions[d.dimensionIndex].name 
-            + ' / ' 
-            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
-            + ' = '
-            + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].possibleValues[d.valueIndex]
-        }
-        onDelete = { () => runInAction(() => store.filters.splice(i, 1)) }
+        key = {'filter-' + d.getDimensionName() + '-' + d.getDimensionLevel() + '-' + d.getValues()}
+        text = { d.getDimensionName() + ' / ' + d.getDimensionLevel() + ' = ' + d.getValues() }
+        onDelete = { () => {
+          grpc.unary(SudokubeService.deleteFilter, {
+            host: apiBaseUrl,
+            request: buildMessage(new DeleteFilterArgs(), { index: i }),
+            onEnd: () => {
+              grpc.unary(SudokubeService.getFilters, {
+                host: apiBaseUrl,
+                request: new Empty(),
+                onEnd: (res => runInAction(() => store.filters = (res.message as GetFiltersResponse).getFiltersList()))
+              });
+            }
+          })
+        } }
       />)) }
-      <AddQueryFilterChip/>
+      <AddFilterChip/>
     </Grid>
   )
 });
 
 const Series = observer(() => {
   const { queryStore } = useRootStore();
-  const dimensions = queryStore.cube.dimensionHierarchy.dimensions;
+  const dimensions = queryStore.dimensions;
   return (
     <Grid item xs={6}>
       { queryStore.series.map((d, i) => (
@@ -164,9 +214,9 @@ const Series = observer(() => {
           key = {'series-' + d.dimensionIndex + '-' + d.dimensionLevelIndex}
           type = 'Series'
           text = {
-            dimensions[d.dimensionIndex].name 
+            dimensions[d.dimensionIndex].getDimName()
               + ' / ' 
-              + dimensions[d.dimensionIndex].dimensionLevels[d.dimensionLevelIndex].name
+              + dimensions[d.dimensionIndex].getLevelsList()[d.dimensionLevelIndex]
           }
           zoomIn = { () => queryStore.zoomInSeries(i) }
           zoomOut = { () => queryStore.zoomOutSeries(i) }
@@ -188,7 +238,7 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
     <Box sx = {{ height: '30vh', width: '100%', marginTop: '20px' }}>
       <DataGrid
         rows = { store.preparedCuboids.map(cuboidToRow) }
-        columns = { store.cube.dimensions.map(dimensionToColumn) }
+        columns = { store.dimensions.map(dimensionToColumn) }
         disableRowSelectionOnClick
         sx = {{
           overflowX: 'scroll',
@@ -218,6 +268,30 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
         // rowCount={10}
       />
     </Box>
+    <Button
+      disabled = {store.isQueryComplete}
+      onClick = {() => {
+        grpc.unary(SudokubeService.continueQuery, {
+          host: apiBaseUrl,
+          request: new Empty(),
+          onEnd: res => {
+            const message = res.message as QueryResponse;
+            runInAction(() => {
+              store.cuboidsPage = message.getCuboidsPageId();
+              store.preparedCuboids = message.getCuboidsList();
+              store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
+              store.isQueryComplete = message.getIsComplete();
+              store.result = { data: message.getSeriesList().map(seriesData => ({
+                id: seriesData.getSeriesName(),
+                data: seriesData.getDataList().map(point => point.toObject())
+              })) };
+              store.metrics = message.getStatsList().map(stat => stat.toObject());
+              store.isRunComplete = true;
+            })
+          }
+        })
+      }}
+    >Continue</Button>
   </div> );
 })
 
@@ -230,13 +304,8 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
     <h3>Current result</h3>
     <div style={{ width: '100%', height: '50vh' }}>
       <ResponsiveLine
-        // data = { store.result.data }
-        data = {[
-          {id: 'Stuff', data: [{x: 1, y: 1}, {x: 3, y: 3}]}
-        ]}
+        data = { store.result.data }
         margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
-        xScale={{ type: 'linear' }}
-        xFormat = {(v) => v === 1.0 ? 'one' : 'others'}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -247,10 +316,6 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
         yFormat=' >-.2f'
         axisTop={null}
         axisRight={null}
-        axisBottom={{
-          tickValues: [1, 3],
-          format: (v) => (v === 1 ? 'one' : 'three')
-        }}
         pointLabelYOffset={-12}
         useMesh={true}
         legends={[
@@ -306,10 +371,11 @@ const Metrics = observer(({isShown}: {isShown: boolean}) => {
   </div> );
 });
 
-const cuboidToRow = ((cuboid: Cuboid, index: number) => {
-  let row: any = {};
-  row["id"] = cuboid.id;
-  row['index'] = index;
-  cuboid.dimensions.forEach(dimension => row[dimension.name] = dimension.bits);
-  return row;
-});
+const dimensionToColumn = ((dimension: SelectDataCubeForQueryResponse.DimHierarchy) => ({
+  field: dimension.getDimName(),
+  type: 'string',
+  headerName: dimension.getDimName() + ' (' + dimension.getNumBits() + ' bits)',
+  sortable: false,
+  disableColumnMenu: true,
+  width: dimension.getNumBits() * 20 + 20
+} as GridColDef));

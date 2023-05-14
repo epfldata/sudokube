@@ -502,7 +502,7 @@ export const cuboidToRow = ((cuboid: CuboidDef, index: number) => {
   return row;
 });
 
-export const dimensionToColumn = ((dimension: MaterializationDimension) => ({
+const dimensionToColumn = ((dimension: MaterializationDimension) => ({
   field: dimension.name,
   type: 'string',
   headerName: dimension.name + ' (' + dimension.numBits + ' bits)',

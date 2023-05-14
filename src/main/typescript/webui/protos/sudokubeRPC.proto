@@ -14,7 +14,7 @@ service SudokubeService {
   rpc materializeCuboids(MaterializeArgs) returns (Empty);
 
   /* Explore */
-  rpc getDataCubes(Empty) returns (GetCubesResponse); //also in Query
+  rpc getDataCubesForExplore(Empty) returns (GetCubesResponse);
   rpc selectDataCubeForExplore(SelectDataCubeArgs) returns (SelectDataCubeForExploreResponse);
   rpc isRenameQuery(IsRenamedQueryArgs) returns (IsRenamedQueryResponse);
   rpc startRenameTimeQuery(GetRenameTimeArgs) returns (GetRenameTimeResponse);
@@ -22,10 +22,12 @@ service SudokubeService {
   rpc transformCube(TransformDimensionsArgs) returns (Empty);
 
   /* Query */
+  rpc getDataCubesForQuery(Empty) returns (GetCubesResponse);
   rpc selectDataCubeForQuery(SelectDataCubeArgs) returns (SelectDataCubeForQueryResponse);
   rpc getValuesForSlice(GetSliceValuesArgs) returns (GetSliceValueResponse);
   rpc setValuesForSlice(SetSliceValuesArgs) returns (Empty);
   rpc getFilters(Empty) returns (GetFiltersResponse); // Currently applied filters
+  rpc deleteFilter(DeleteFilterArgs) returns (Empty);
   rpc startQuery(QueryArgs) returns (QueryResponse);
   rpc continueQuery(Empty) returns (QueryResponse);
   rpc getPreparedCuboids(GetPreparedCuboidsArgs) returns (GetPreparedCuboidsResponse); // for page change in cuboids table
@@ -174,6 +176,7 @@ message GetSliceValuesArgs  {
 
 message GetSliceValueResponse {
   repeated string values = 1;
+  repeated bool is_selected = 2;
 }
 
 message SetSliceValuesArgs {
@@ -187,6 +190,10 @@ message GetFiltersResponse {
     string values = 3;
   }
   repeated FilterDef filters = 1;
+}
+
+message DeleteFilterArgs {
+  uint32 index = 1;
 }
 
 message QueryArgs {
@@ -215,12 +222,13 @@ message QueryResponse {
   uint32 cuboids_page_id = 1;
   repeated CuboidDef cuboids = 2;
   uint32 current_cuboid_id_within_page = 3;
+  bool is_complete = 4;
   message SeriesData {
     string series_name = 1;
     repeated XYPoint data = 2;
   }
-  repeated SeriesData series = 4;
-  repeated QueryStatistic stats = 5;
+  repeated SeriesData series = 5;
+  repeated QueryStatistic stats = 6;
 }
 
 message GetPreparedCuboidsArgs {
