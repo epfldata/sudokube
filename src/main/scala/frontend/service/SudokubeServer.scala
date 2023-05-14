@@ -235,7 +235,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
 
   /* Explore */
-  override def getDataCubes(in: Empty): Future[GetCubesResponse] = {
+  override def getDataCubesForExplore(in: Empty): Future[GetCubesResponse] = {
     val response = GetCubesResponse((1 to 10).map(i => "DataCube" + i))
     Future.successful(response)
   }
@@ -273,7 +273,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   override def transformCube(in: TransformDimensionsArgs): Future[Empty] = {
     Future.successful(Empty())
   }
+
   /** Query */
+  // TODO: Implement the real version
+  override def getDataCubesForQuery(in: Empty): Future[GetCubesResponse] = getDataCubesForExplore(Empty())
+
   override def selectDataCubeForQuery(in: SelectDataCubeArgs): Future[SelectDataCubeForQueryResponse] = {
     val dims = (1 to 10).map { i =>
       val dim = "Dim" + i

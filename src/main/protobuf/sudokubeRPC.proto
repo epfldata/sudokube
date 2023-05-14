@@ -14,7 +14,7 @@ service SudokubeService {
   rpc materializeCuboids(MaterializeArgs) returns (Empty);
 
   /* Explore */
-  rpc getDataCubes(Empty) returns (GetCubesResponse); //also in Query
+  rpc getDataCubesForExplore(Empty) returns (GetCubesResponse);
   rpc selectDataCubeForExplore(SelectDataCubeArgs) returns (SelectDataCubeForExploreResponse);
   rpc isRenameQuery(IsRenamedQueryArgs) returns (IsRenamedQueryResponse);
   rpc startRenameTimeQuery(GetRenameTimeArgs) returns (GetRenameTimeResponse);
@@ -22,6 +22,7 @@ service SudokubeService {
   rpc transformCube(TransformDimensionsArgs) returns (Empty);
 
   /* Query */
+  rpc getDataCubesForQuery(Empty) returns (GetCubesResponse);
   rpc selectDataCubeForQuery(SelectDataCubeArgs) returns (SelectDataCubeForQueryResponse);
   rpc getValuesForSlice(GetSliceValuesArgs) returns (GetSliceValueResponse);
   rpc setValuesForSlice(SetSliceValuesArgs) returns (Empty);
