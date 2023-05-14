@@ -10,12 +10,14 @@ import com.typesafe.config.ConfigFactory
 import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import core.{DataCube, PartialDataCube}
 import frontend.generators._
-import frontend.schema.encoders.ColEncoder
-import frontend.schema.{LD2, Schema2}
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder}
+import frontend.schema.{DynamicSchema2, LD2, Schema2}
+import frontend.service.GetRenameTimeResponse.ResultRow
 import util.Util
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import scala.reflect.io.File
 import scala.util.Random
 //#grpc-web
 
@@ -75,8 +77,15 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
 
   object ExploreState {
-    var timeBits = 1
+    var dc: DataCube = null
+    var sch: DynamicSchema2 = null
+    var columnMap: Map[String, DynamicColEncoder[_]] = null
+    val timeDimension: String = "RowId"
     var totalTimeBits = 5
+    var exploreResult = 0  //0 -> No info, 1 -> ColIsAdded, 2 -> ColIsDeleted
+    val sliceArray = collection.mutable.ArrayBuffer[Boolean]() //0 in this array refers to the leftmost, most significant bit in dimension
+    var colNotNullBit = 0
+    var timeRange = Array(0, 0, 0 ,0)
   }
 
   object QueryState {
@@ -138,7 +147,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       in.filters.map { f =>
         val filterBits = columnMap(f.dimensionName).bits.slice(f.bitsFrom, f.bitsTo).toSet
         filterBits.subsetOf(cubSet)
-      }.fold(true)(_ && _)
+      }.fold(cub.size < baseCuboid.index.n_bits)(_ && _) //exclude base cuboid
     }
     val filteredCuboids = chosenCuboids.filter(filterCondition(_))
     val numCuboids = filteredCuboids.size
@@ -194,7 +203,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         binom /= (k + 1)
         k += 1
       }
-      availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
+      //TODO: FIX: Sometimes there are twice as many available cuboids
+      if(k < n2)  //do not pick all bits
+         availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
       shownCuboidsManualView.clear()
       shownCuboidsManualView ++= availableCuboidsView.map { cub =>
         val isChosen = chosenCuboids.contains(cub)
@@ -225,8 +236,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import MaterializeState._
     println("MaterializeCuboids arg: " + in)
     Future {
-      val ms = PresetMaterializationStrategy(baseCuboid.index.n_bits, chosenCuboids)
-      val dc = new PartialDataCube(in.cubeName, baseCuboid.cubeName)
+      val nbits = baseCuboid.index.n_bits
+      val ms = PresetMaterializationStrategy(nbits, chosenCuboids :+ (0 until nbits)) //always add base cuboid
+      val dc = new PartialDataCube(cg.inputname + "_" + in.cubeName, baseCuboid.cubeName)
       dc.buildPartial(ms)
       dc.save()
       println("\t response: OK" )
@@ -236,39 +248,139 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
   /* Explore */
   override def getDataCubes(in: Empty): Future[GetCubesResponse] = {
-    val response = GetCubesResponse((1 to 10).map(i => "DataCube" + i))
+    println("GetDataCubes Explore")
+    val file = File("cubedata")
+    val potentialCubes = file.toDirectory.dirs.map(_.name)
+    val dynamicCubes = potentialCubes.filter { fn =>
+      File(s"cubedata/$fn/$fn.sch").exists
+    } //only dynamic schema
+    //Give WebshopDyn as first entry
+    val response = GetCubesResponse(("WebShopDyn_base" +: dynamicCubes.toVector).distinct)
     Future.successful(response)
   }
   override def selectDataCubeForExplore(in: SelectDataCubeArgs): Future[SelectDataCubeForExploreResponse] = {
-    val dims = (1 to 10).map(i => "Dim" + i)
-    val response = SelectDataCubeForExploreResponse(dims)
-    Future.successful(response)
+    import ExploreState._
+    Future {
+      val cgName = in.cube.split("_")(0)
+      val cg = getCubeGenerator(cgName)
+      dc = if(in.cube.endsWith("_base")){
+        cg.loadBase()
+      } else {
+        PartialDataCube.load(in.cube, cg.baseName)
+      }
+      sch = cg.schemaInstance.asInstanceOf[DynamicSchema2]
+      columnMap = sch.columnVector.map { case LD2(name, enc) => name -> enc.asInstanceOf[DynamicColEncoder[_]] }.toMap
+      totalTimeBits = columnMap(timeDimension).bits.size
+      SelectDataCubeForExploreResponse(columnMap.keys.toVector)
+    }
   }
   override def isRenameQuery(in: IsRenamedQueryArgs): Future[IsRenamedQueryResponse] = {
-    val result = Array(0, 10, 20, 0)
-    val isRenamed = Random.nextBoolean()
-    val response = IsRenamedQueryResponse(result, isRenamed)
-    Future.successful(response)
+    import ExploreState._
+    Future {
+      val bit1 = columnMap(in.dimension1).isNotNullBit
+      val bit0 = columnMap(in.dimension2).isNotNullBit
+
+      val qu = Vector(bit0, bit1)
+      val qs = qu.sorted
+      val permf = Util.permute_unsortedIdx_to_sortedIdx(qu)
+      val sortedres = dc.naive_eval(qs).map(_.toInt)
+      val result = sortedres.indices.map { ui =>
+        val si = permf(ui)
+        sortedres(si)
+      }
+      val isRenamed = (result(0) == 0) && ( result(3) == 0)
+      val response = IsRenamedQueryResponse(result, isRenamed)
+      response
+    }
+  }
+
+  def doRenameTimeQuery = {
+    import ExploreState._
+      Future {
+        val bit0 = colNotNullBit
+        val timeBitsInQuery = columnMap(timeDimension).bits.takeRight(sliceArray.size + 1)
+        val fullquery = bit0 +: timeBitsInQuery
+        println("RenameTime query = " + fullquery)
+        val permf = Util.permute_unsortedIdx_to_sortedIdx(fullquery)
+        val sortedRes = dc.naive_eval(fullquery.sorted).map(_.toInt)
+        val unsortedRes = sortedRes.indices.map { ui =>
+          val si = permf(ui)
+          sortedRes(si)
+        }.toArray
+        val sliceArgs = sliceArray.zipWithIndex.map{case (sv, i) => (fullquery.size-1-i) -> (if(sv) 1 else 0)}
+        val slicedRes = Util.slice(unsortedRes, sliceArgs)
+        println("RenameTime queryRes = " + slicedRes.toVector)
+        val row0 = ResultRow(timeRange(0) + "-" + timeRange(1), slicedRes(0), slicedRes(1))
+        val row1 = ResultRow(timeRange(2) + "-" + timeRange(3), slicedRes(2), slicedRes(3))
+        val zeroIndices = slicedRes.indices.filter(i => slicedRes(i) == 0).toSet
+        var isContinue = true
+        assert(slicedRes.size == 4)
+        val currentSlice = sliceArray.toVector
+        val currentTimeRange = timeRange.clone()
+        if(zeroIndices.isEmpty) {
+          isContinue = false
+        }
+        else if(Set(0,2).subsetOf(zeroIndices)) isContinue = false  //no rename
+         //(0,1) and (2,3) both zero not possible. (1,3) zero means all null
+        else if(Set(0,3).subsetOf(zeroIndices)) {
+          isContinue = false
+          exploreResult = 2 //column deleted
+
+        } else if (Set(1, 2).subsetOf(zeroIndices)) {
+          isContinue = false
+          exploreResult = 1 //column added
+        } else if (zeroIndices.contains(0)) {
+          exploreResult = 2 //col deleted somewhere in 1 slice
+          sliceArray += true
+          timeRange(0) = timeRange(2)
+          timeRange(1) = (timeRange(3)+timeRange(0)-1)/2
+          timeRange(2) = (timeRange(3)+timeRange(0)+1)/2
+        } else if (zeroIndices.contains(1)) {
+          exploreResult = 1 // col added somewhere in 1-slice
+          sliceArray += true
+          timeRange(0) = timeRange(2)
+          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+        } else if (zeroIndices.contains(2)) {
+          exploreResult = 1 //col added in 0-slice
+          sliceArray += false
+          timeRange(3) = timeRange(1)
+          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+        } else if (zeroIndices.contains(3)) {
+          exploreResult = 2 //col deleted in 0-slice
+          sliceArray += false
+          timeRange(3) = timeRange(1)
+          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+        }
+        val string = if(!isContinue) {
+           exploreResult match {
+            case 0 => "No renaming could be detected within the available resolution"
+            case 1 => s"Column possibly added between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
+            case 2 => s"Column possibly deleted between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
+          }
+        } else {
+          if(sliceArray.last) "Slicing to upper range" else "Slicing to lower range"
+        }
+        println("RenameTime currentTimeRange = " + currentTimeRange.toVector + "   nextTimeRange = " + timeRange.toVector)
+        println(string)
+        GetRenameTimeResponse(totalTimeBits, !isContinue,  currentSlice, Vector(row0, row1), string)
+      }
   }
   override def startRenameTimeQuery(in: GetRenameTimeArgs): Future[GetRenameTimeResponse] = {
     import ExploreState._
-    timeBits = 1
-    val isComplete = timeBits >= totalTimeBits
-    val bits = (0 until timeBits).map { i => Random.nextBoolean() }
-    val result = Array(GetRenameTimeResponse.ResultRow("0", 0, 10), GetRenameTimeResponse.ResultRow("1", 20, 0))
-    val string = if (isComplete) "Column Changed between X and Y" else ""
-    val response = GetRenameTimeResponse(timeBits, isComplete, bits, result, string)
-    Future.successful(response)
+    exploreResult = 0
+    sliceArray.clear()
+    timeRange(0) = 0
+    timeRange(3) = (1 << totalTimeBits) - 1
+    timeRange(1) = (timeRange(0) + timeRange(3) -1)/2
+    timeRange(1) = (timeRange(0) + timeRange(3) +1)/2
+    colNotNullBit =  columnMap(in.dimensionName).isNotNullBit
+    doRenameTimeQuery
   }
   override def continueRenameTimeQuery(in: Empty): Future[GetRenameTimeResponse] = {
-    import ExploreState._
-    timeBits += 1
-    val isComplete = timeBits >= totalTimeBits
-    val bits = (0 until timeBits).map { i => Random.nextBoolean() }
-    val result = Array(GetRenameTimeResponse.ResultRow("0", 0, 10), GetRenameTimeResponse.ResultRow("1", 20, 0))
-    val string = if (isComplete) "Column Changed between X and Y" else ""
-    val response = GetRenameTimeResponse(timeBits, isComplete, bits, result, string)
-    Future.successful(response)
+    doRenameTimeQuery
   }
   override def transformCube(in: TransformDimensionsArgs): Future[Empty] = {
     Future.successful(Empty())

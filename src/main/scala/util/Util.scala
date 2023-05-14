@@ -74,6 +74,25 @@ object Util {
     result
   }
 
+  /** returns a function that takes as input key in source(sorted result)
+   * and outputs key in destination(original order)
+   *  dst(f(i)) <- src(i)
+   * */
+  def permute_sortedIdx_to_unsortedIdx(q_unsorted: IndexedSeq[Int]) = {
+    val q_sorted = q_unsorted.sorted
+    val perm = q_sorted.map(b => q_unsorted.indexOf(b)).toArray
+    (i: Int) => BitUtils.permute_bits(q_sorted.size, perm)(i)
+  }
+
+  /** returns a function that takes as input key in dest and outputs key in src
+   *  dst(i) <- src(f(i))
+   * */
+  def permute_unsortedIdx_to_sortedIdx(q_unsorted: IndexedSeq[Int]) = {
+    val q_sorted = q_unsorted.sorted
+    val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
+    (i: Int) => BitUtils.permute_bits(q_sorted.size, perm)(i)
+  }
+
   //converts long to type T
   def fromLong[T](long: Long)(implicit num: Fractional[T]): T = {
     val upper = (long >> 31).toInt
