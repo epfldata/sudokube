@@ -59,7 +59,7 @@ case class MyDimLevel(name: String, enc: ColEncoder[_]) {
       (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString)
     } else {
       val droppedBits = enc.bits.length - numBits
-      (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map{ case (grp, idxes) =>
+      (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map { case (grp, idxes) =>
         val first = enc.decode_locally(idxes.min).toString
         val last = enc.decode_locally(idxes.max).toString
         first + " to " + last
@@ -131,7 +131,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     cname match {
       case "SSB" => new SSB(100)
       case "NYC" => new NYC()
-      case "WebShopSales" => new WebshopSales()
+      case "WebshopSales" => new WebshopSales()
       case "WebShopDyn" => new WebShopDyn()
       case "TinyData" => new TinyData()
     }
@@ -179,19 +179,21 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var sch: Schema2 = null
     var hierarchy: Vector[MyDimHierarchy] = null
     var columnMap: Map[String, Map[String, (MyDimLevel, Int)]] = null
-    val stats = collection.mutable.Map[String, Double]() withDefaultValue(0.0)
+    val stats = collection.mutable.Map[String, Double]() withDefaultValue (0.0)
     var shownSliceValues: IndexedSeq[(String, Int, Boolean)] = null //value, original id, and isSelected
     var cubsFetched = 0
     var prepareCuboids = Seq[NewProjectionMetaData]()
     val filters = ArrayBuffer[(String, String, ArrayBuffer[(String, Int)])]()
     var filterCurrentDimArgs: (String, String) = null
     var momentSolver: CoMoment5SolverDouble = null
+    var isBatch = true
     var sortedQuery = IndexedSeq[Int]()
     var computeSortedIdx: ((Int, Int) => Int) = null
     var diceBits = Seq[Int]()
     var diceArgs = Seq[Seq[Int]]()
     var validXvalues = Seq[(String, Int)]()
     var validYvalues = Seq[(String, Int)]()
+    var prepareNumCuboidsInpage = 0
   }
 
   def bitsToBools(total: Int, cuboidBits: Set[Int]) = {
@@ -199,7 +201,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
   /* Materialize */
   override def getBaseCuboids(in: Empty): Future[BaseCuboidResponse] = {
-    Future.successful(BaseCuboidResponse(List("WebShop", "NYC", "SSB", "WebShopDyn", "TinyData")))
+    Future.successful(BaseCuboidResponse(List("WebshopSales", "NYC", "SSB", "WebShopDyn", "TinyData")))
   }
   override def selectBaseCuboid(in: SelectBaseCuboidArgs): Future[SelectBaseCuboidResponse] = {
     import MaterializeState._
@@ -490,7 +492,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val file = File("cubedata")
     val potentialCubes = file.toDirectory.dirs.map(_.name)
     //Give Webshop as first entry
-    val response = GetCubesResponse(("WebShopSales_base" +: potentialCubes.toVector).distinct)
+    val response = GetCubesResponse(("WebshopSales_base" +: potentialCubes.toVector).distinct)
     Future.successful(response)
   }
 
@@ -579,12 +581,19 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import QueryState._
 
     Future {
-      val nextCuboidToFetch = prepareCuboids(cubsFetched)
 
-      val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
-
+      if (isBatch) {
+        val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
+        Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array)}}
+        cubsFetched += prepareCuboids.size
+      }
+      else {
+        val nextCuboidToFetch = prepareCuboids(cubsFetched)
+        cubsFetched += 1
+        val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
+        Profiler("Solve") { momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+      }
       val sortedRes = Profiler("Solve") {
-        momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData)
         momentSolver.fillMissing()
         momentSolver.solve()
       }
@@ -593,51 +602,60 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       println("DiceArgs = " + diceArgs)
       val diceRes = Util.dice(sortedRes, diceBits, diceArgs)
       println("diceRes = " + diceRes.mkString(" "))
-      val series = validYvalues.reverse.map{case (ylabel, yid) => //we reverse the order of series
-          SeriesData(ylabel, validXvalues.map{case (xlabel, xid) =>
+      val series = validYvalues.reverse.map { case (ylabel, yid) => //we reverse the order of series
+        SeriesData(ylabel, validXvalues.map { case (xlabel, xid) =>
           val si = computeSortedIdx(xid, yid)
-           XYPoint(xlabel, diceRes(si).toFloat)
-          })
+          XYPoint(xlabel, diceRes(si).toFloat)
+        })
       }
       println("AllSeries")
       series.foreach(println)
-      stats("PrepareTime") += Profiler.getDurationMicro("Prepare")
-      stats("FetchTime") += Profiler.getDurationMicro("Fetch")
-      stats("SolveTime") += Profiler.getDurationMicro("Solve")
+      stats("PrepareTime(ms)") += Profiler.getDurationMicro("Prepare")/1000.0
+      stats("FetchTime(ms)") += Profiler.getDurationMicro("Fetch")/1000.0
+      stats("SolveTime(ms)") += Profiler.getDurationMicro("Solve")/1000.0
       stats("DOF") = momentSolver.dof
 
-      val cubsWithinPage = 10 //FIXME
-      val shownCuboids = Await.result(getPreparedCuboids(GetPreparedCuboidsArgs(0, cubsWithinPage)), Duration.Inf).cuboids //FIXME: Remove
+
       val statsToShow = stats.map(p => new QueryStatistic(p._1, p._2.toString)).toSeq
-      val fetchedCuboidIDwithinPage = cubsFetched % cubsWithinPage
-      cubsFetched += 1
+      val fetchedCuboidIDwithinPage = (cubsFetched - 1) % prepareNumCuboidsInpage
+      val fetchedCuboidPageNum = (cubsFetched - 1) / prepareNumCuboidsInpage
+
+      val start = fetchedCuboidPageNum * prepareNumCuboidsInpage
+      val end = (fetchedCuboidPageNum + 1) * prepareNumCuboidsInpage
+      val cuboidsToDisplay = prepareCuboids.slice(start, end).map { pm =>
+        val cub = BitUtils.IntToSet(pm.queryIntersection).map { i => sortedQuery(i) }
+        val dims = cuboidToDimSplit(cub, sch.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
+        CuboidDef(dims)
+      }
+
+
       val isComplete = cubsFetched == prepareCuboids.size
-      val response = QueryResponse(0, shownCuboids, fetchedCuboidIDwithinPage, isComplete, series, statsToShow) // FIXME: change 0 to page id of current cuboid
+      val response = QueryResponse(fetchedCuboidPageNum, cuboidsToDisplay, fetchedCuboidIDwithinPage, isComplete, series, statsToShow)
       response
     }
   }
-  def extractValidLabelsAndIndexesForDims(dims : Seq[QueryArgs.DimensionDef]) = {
+  def extractValidLabelsAndIndexesForDims(dims: Seq[QueryArgs.DimensionDef]) = {
     import QueryState._
     println("Processing labels for " + dims)
     val isSoloDim = dims.size == 1
-    val foldResult = if(dims.isEmpty)
+    val foldResult = if (dims.isEmpty)
       Vector("(all)" -> 0) -> 0
     else
       dims.map { d =>
-      val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
-      val validValues = level.values(numBits).zipWithIndex
-      (d.dimensionLevel, validValues, numBits)
-    }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (dname, curvv, curbits)) =>
-      curvv.flatMap { case (curv, curi) =>
-        accvv.map { case (accv, acci) =>
-          //put curi as higherorder bits infront of acci
-          //Put curv infront of accv
-          val newi = (curi << accbits) + acci
-          val newv = (if(isSoloDim) curv else s"$dname=$curv ") + accv
-          (newv, newi)
-        }
-      } -> (accbits + curbits)
-    }//labels and indexes of valid rows within (0 .. numEntries)
+        val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
+        val validValues = level.values(numBits).zipWithIndex
+        (d.dimensionLevel, validValues, numBits)
+      }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (dname, curvv, curbits)) =>
+        curvv.flatMap { case (curv, curi) =>
+          accvv.map { case (accv, acci) =>
+            //put curi as higherorder bits infront of acci
+            //Put curv infront of accv
+            val newi = (curi << accbits) + acci
+            val newv = (if (isSoloDim) curv else s"$dname=$curv ") + accv
+            (newv, newi)
+          }
+        } -> (accbits + curbits)
+      } //labels and indexes of valid rows within (0 .. numEntries)
     val bits = dims.map { d =>
       val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
       level.selectedBits(numBits)
@@ -648,6 +666,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import QueryState._
     stats.clear()
     cubsFetched = 0
+    prepareNumCuboidsInpage = in.preparedCuboidsPerPage
     println("StartQuery arg:" + in)
     Profiler.resetAll()
     val (xbits, xlabels, xtotal) = extractValidLabelsAndIndexesForDims(in.horizontal.reverse) //treat left most as most-significant
@@ -672,9 +691,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     }
 
     val zbits = diceBitsAndArgs.map(_._1).foldLeft(Vector[Int]())(_ ++ _)
-    diceArgs = diceBitsAndArgs.map(_._2).foldLeft(Vector(Vector[Int]())){ case(accvss, curvss) =>
-      accvss.flatMap{ accvs =>
-        curvss.map{ curvs =>
+    diceArgs = diceBitsAndArgs.map(_._2).foldLeft(Vector(Vector[Int]())) { case (accvss, curvss) =>
+      accvss.flatMap { accvs =>
+        curvss.map { curvs =>
           accvs ++ curvs
         }
       }
@@ -683,8 +702,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val fullQuery = (aggQuery ++ zbits).toVector
     sortedQuery = fullQuery.sorted
     println(s"aggQuery $aggQuery, fullQuery = $fullQuery, sorted = $sortedQuery")
-    diceBits = zbits.map{b => sortedQuery.indexOf(b)} //Dice is done on the sorted result before permuting
-    val permf =  Util.permute_unsortedIdx_to_sortedIdx(aggQuery) //slice is already done, so only aggdims remain
+    diceBits = zbits.map { b => sortedQuery.indexOf(b) } //Dice is done on the sorted result before permuting
+    val permf = Util.permute_unsortedIdx_to_sortedIdx(aggQuery) //slice is already done, so only aggdims remain
     computeSortedIdx = (xid: Int, yid: Int) => {
       val ui = yid * xtotal + xid
       val si = permf(ui)
@@ -692,15 +711,15 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       si
     }
 
-    val isBatch = false //in.isBatchMode) //FIXME Always in online mode for now
+    isBatch = in.isBatchMode
 
     val numSeries =
       prepareCuboids = Profiler("Prepare") {
-      if (isBatch)
-        dc.index.prepareBatch(sortedQuery)
-      else
-        dc.index.prepareOnline(sortedQuery, 2)
-    }
+        if (isBatch)
+          dc.index.prepareBatch(sortedQuery)
+        else
+          dc.index.prepareOnline(sortedQuery, 2)
+      }
     val pm = Profiler("Prepare") {
       SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments)
     }
@@ -719,7 +738,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val start = in.numRowsInPage * in.requestedPageId
     val end = in.numRowsInPage * (in.requestedPageId + 1)
     val cuboidsToDisplay = prepareCuboids.slice(start, end).map { pm =>
-      val cub = BitUtils.IntToSet(pm.queryIntersection).map{i => sortedQuery(i)}
+      val cub = BitUtils.IntToSet(pm.queryIntersection).map { i => sortedQuery(i) }
       val dims = cuboidToDimSplit(cub, sch.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
       CuboidDef(dims)
     }
