@@ -34,6 +34,7 @@ export default observer(function Query() {
             runInAction(() => {
               store.dimensions = message.getDimensionsList();
               store.measures = message.getMeasuresList();
+              store.measure = store.measures[0];
             });
           })
         });
@@ -71,6 +72,7 @@ const SelectCube = observer(() => {
               runInAction(() => {
                 store.dimensions = message.getDimensionsList();
                 store.measures = message.getMeasuresList();
+                store.measure = store.measures[0];
               });
             })
           });
