@@ -9,7 +9,7 @@ import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
 import { useEffect } from 'react';
 import { grpc } from '@improbable-eng/grpc-web';
-import { DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, GetPreparedCuboidsArgs, GetPreparedCuboidsResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
+import { CuboidDimension, DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, GetPreparedCuboidsArgs, GetPreparedCuboidsResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
 import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
 import { buildMessage } from './Utils';
 import { cuboidToRow } from './MaterializationView';
@@ -32,7 +32,8 @@ export default observer(function Query() {
           onEnd: response => runInAction(() => {
             const message = response.message as SelectDataCubeForQueryResponse;
             runInAction(() => {
-              store.dimensions = message.getDimensionsList();
+              store.dimensionHierarchy = message.getDimHierarchyList();
+              store.dimensions = message.getCuboidDimsList();
               store.measures = message.getMeasuresList();
               store.measure = store.measures[0];
             });
@@ -70,9 +71,14 @@ const SelectCube = observer(() => {
             onEnd: response => runInAction(() => {
               const message = response.message as SelectDataCubeForQueryResponse;
               runInAction(() => {
-                store.dimensions = message.getDimensionsList();
+                store.dimensionHierarchy = message.getDimHierarchyList();
+                store.dimensions = message.getCuboidDimsList();
                 store.measures = message.getMeasuresList();
                 store.measure = store.measures[0];
+                store.horizontal = [];
+                store.series = [];
+                store.filters = [];
+                store.isRunComplete = false; // Hide the results
               });
             })
           });
@@ -122,12 +128,12 @@ const QueryParams = observer(() => {
             host: apiBaseUrl,
             request: buildMessage(new QueryArgs(), {
               horizontalList: store.horizontal.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensions[dimension.dimensionIndex].getDimName(),
-                dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+                dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
+                dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               seriesList: store.series.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensions[dimension.dimensionIndex].getDimName(),
-                dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+                dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
+                dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               measure: store.measure,
               aggregation: store.aggregation,
@@ -165,9 +171,9 @@ const Horizontal = observer(() => {
         key = {'horizontal-' + d.dimensionIndex + '-' + d.dimensionLevelIndex}
         type = 'Horizontal'
         text = {
-          store.dimensions[d.dimensionIndex].getDimName() 
+          store.dimensionHierarchy[d.dimensionIndex].getDimName() 
             + ' / ' 
-            + store.dimensions[d.dimensionIndex].getLevelsList()[d.dimensionLevelIndex]
+            + store.dimensionHierarchy[d.dimensionIndex].getLevelsList()[d.dimensionLevelIndex]
         }
         zoomIn = { () => store.zoomInHorizontal(i) }
         zoomOut = { () => store.zoomOutHorizontal(i) }
@@ -206,7 +212,7 @@ const Filters = observer(() => {
 
 const Series = observer(() => {
   const { queryStore } = useRootStore();
-  const dimensions = queryStore.dimensions;
+  const dimensions = queryStore.dimensionHierarchy;
   return (
     <Grid item xs={6}>
       { queryStore.series.map((d, i) => (
@@ -230,7 +236,7 @@ const Series = observer(() => {
 
 const Cuboids = observer(({isShown}: {isShown: boolean}) => {
   const { queryStore: store } = useRootStore();
-  if (!isShown || store.preparedCuboids.length === 0) {
+  if (!isShown) {
     return null;
   }
   return ( <div>
@@ -380,7 +386,7 @@ const Metrics = observer(({isShown}: {isShown: boolean}) => {
   </div> );
 });
 
-const dimensionToColumn = ((dimension: SelectDataCubeForQueryResponse.DimHierarchy): MRT_ColumnDef<any> => ({
-  accessorKey: dimension.getDimName(),
-  header: dimension.getDimName() + ' (' + dimension.getNumBits() + ' bits)'
+const dimensionToColumn = ((dimension: CuboidDimension): MRT_ColumnDef<any> => ({
+  accessorKey: dimension.getName(),
+  header: dimension.getName() + ' (' + dimension.getNumBits() + ' bits)'
 }));

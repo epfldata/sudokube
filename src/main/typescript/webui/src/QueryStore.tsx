@@ -1,6 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import { Cuboid } from "./MaterializationStore";
-import { CuboidDef, GetFiltersResponse, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
+import { CuboidDef, CuboidDimension, GetFiltersResponse, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
 
 export class DimensionLevel {
   name: string;
@@ -121,7 +120,8 @@ type Metric = {
 export class QueryStore {
   cubes: string[] = [];
   cube: string = '';
-  dimensions: SelectDataCubeForQueryResponse.DimHierarchy[] = [];
+  dimensionHierarchy: SelectDataCubeForQueryResponse.DimHierarchy[] = [];
+  dimensions: CuboidDimension[] = [];
 
   horizontal: SelectedDimension[] = [];
   series: SelectedDimension[] = [];
@@ -162,7 +162,7 @@ export class QueryStore {
   zoomInHorizontal(index: number) {
     runInAction(() => this.horizontal[index].dimensionLevelIndex = Math.min(
       this.horizontal[index].dimensionLevelIndex + 1,
-      this.dimensions[this.horizontal[index].dimensionIndex].getLevelsList().length - 1
+      this.dimensionHierarchy[this.horizontal[index].dimensionIndex].getLevelsList().length - 1
     ));
   }
   zoomOutHorizontal(index: number) {
@@ -174,13 +174,10 @@ export class QueryStore {
   zoomInSeries(index: number) {
     runInAction(() => this.series[index].dimensionLevelIndex = Math.min(
       this.series[index].dimensionLevelIndex + 1,
-      this.dimensions[this.series[index].dimensionIndex].getLevelsList().length - 1
+      this.dimensionHierarchy[this.series[index].dimensionIndex].getLevelsList().length - 1
     ));
   }
   zoomOutSeries(index: number) {
     runInAction(() => this.series[index].dimensionLevelIndex = Math.max(this.series[index].dimensionLevelIndex - 1, 0));
   }
-  // addFilter(dimensionIndex: number, dimensionLevelIndex: number, valueIndex: number) {
-  //   runInAction(() => this.filters.push(new Filter(dimensionIndex, dimensionLevelIndex, valueIndex)));
-  // }
 }

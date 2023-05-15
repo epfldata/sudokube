@@ -74,7 +74,7 @@ export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
             value = {dimensionIndex}
             onChange = { e => setDimensionIndex(e.target.value as number) }
             id="add-dimension-select-dimension" label="Dimension">
-            { store.dimensions.map((dimension, index) => (
+            { store.dimensionHierarchy.map((dimension, index) => (
               <MenuItem key = { 'add-dimension-select-dimension-' + index } value = {index}> {dimension.getDimName()} </MenuItem>
             )) }
           </Select>
@@ -85,7 +85,7 @@ export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
             value = {dimensionLevelIndex}
             onChange = { e => setDimensionLevelIndex(e.target.value as number) }
             id="add-dimension-select-dimension-level" label="Dimension Level">
-            { store.dimensions[dimensionIndex]?.getLevelsList().map((level, index) => (
+            { store.dimensionHierarchy[dimensionIndex]?.getLevelsList().map((level, index) => (
               <MenuItem key = { 'add-dimension-select-dimension-level-' + index } value = {index}>{level}</MenuItem>
             )) }
           </Select>
@@ -134,7 +134,7 @@ export const AddFilterChip = observer(() => {
     grpc.unary(SudokubeService.getValuesForSlice, {
       host: apiBaseUrl,
       request: buildMessage(new GetSliceValuesArgs(), {
-        dimensionName: newDimension ?? store.dimensions[dimensionIndex].getDimName(),
+        dimensionName: newDimension ?? store.dimensionHierarchy[dimensionIndex].getDimName(),
         dimensionLevel: newLevel ?? level,
         searchText: newSearchText ?? valuesSearchText,
         requestedPageId: newPageId ?? page,
@@ -148,7 +148,7 @@ export const AddFilterChip = observer(() => {
         setRowSelectionModel(newModel);
       })
     });
-  }, [store.dimensions, dimensionIndex, level, valuesSearchText, page, pageSize]);
+  }, [store.dimensionHierarchy, dimensionIndex, level, valuesSearchText, page, pageSize]);
 
   const fetchFilters = useCallback(() => {
     grpc.unary(SudokubeService.getFilters, {
@@ -177,7 +177,7 @@ export const AddFilterChip = observer(() => {
               value = {dimensionIndex}
               onChange = { e => setDimensionIndex(e.target.value as number) }
               id="add-query-filter-select-dimension" label="Dimension">
-              { store.dimensions.map((dimension, index) => (
+              { store.dimensionHierarchy.map((dimension, index) => (
                 <MenuItem key = { 'add-query-filter-select-dimension-' + index } value = {index}> {dimension.getDimName()} </MenuItem>
               )) }
             </Select>
@@ -193,7 +193,7 @@ export const AddFilterChip = observer(() => {
                 fetchValues({newLevel: e.target.value, newSearchText: '', newPageId: 0});
               }}
               id="add-query-filter-select-dimension-level" label="Dimension Level">
-              { store.dimensions[dimensionIndex]?.getLevelsList().map((dimensionLevel, index) => (
+              { store.dimensionHierarchy[dimensionIndex]?.getLevelsList().map((dimensionLevel, index) => (
                 <MenuItem key = { 'add-query-filter-select-dimension-' + dimensionIndex + '-level-' + index } value = {dimensionLevel}>{dimensionLevel}</MenuItem>
               )) }
             </Select>

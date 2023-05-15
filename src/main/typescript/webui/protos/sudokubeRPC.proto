@@ -44,12 +44,14 @@ message BaseCuboidResponse {
 message SelectBaseCuboidArgs {
   string cuboid = 1;
 }
+
+message CuboidDimension {
+  string name = 1;
+  uint32 num_bits = 2;
+}
+
 message SelectBaseCuboidResponse {
-  message Dimension {
-    string name = 1;
-    uint32 num_bits = 2;
-  }
-  repeated Dimension dimensions = 1;
+  repeated CuboidDimension dimensions = 1;
 }
 
 message SelectMaterializationStrategyArgs {
@@ -159,11 +161,11 @@ message TransformDimensionsArgs {
 message SelectDataCubeForQueryResponse {
   message DimHierarchy {
     string dim_name = 1;
-    uint32 num_bits = 2;
-    repeated string levels = 3;
+    repeated string levels = 2;
   }
-  repeated DimHierarchy dimensions = 1;
-  repeated string measures = 2;
+  repeated DimHierarchy dim_hierarchy = 1;
+  repeated CuboidDimension cuboid_dims = 2;
+  repeated string measures = 3;
 }
 
 message GetSliceValuesArgs  {
