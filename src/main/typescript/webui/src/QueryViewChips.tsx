@@ -1,5 +1,5 @@
 import React, { ReactNode, useCallback, useState } from 'react'
-import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormLabel, Grid, Input, InputLabel, MenuItem, Select, Table, TextField } from '@mui/material'
+import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material'
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SsidChartIcon from '@mui/icons-material/SsidChart';
@@ -12,8 +12,8 @@ import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
 import { buildMessage } from './Utils';
 import { Empty, GetFiltersResponse, GetSliceValueResponse, GetSliceValuesArgs, SetSliceValuesArgs } from './_proto/sudokubeRPC_pb';
 import { grpc } from '@improbable-eng/grpc-web';
-import { DataGrid, GridRowSelectionModel } from '@mui/x-data-grid';
 import { runInAction } from 'mobx';
+import MaterialReactTable, { MRT_RowSelectionState } from 'material-react-table';
 
 export function DimensionChip({ type, text, zoomIn, zoomOut, onDelete }: {
   type: 'Horizontal' | 'Series', 
@@ -124,7 +124,7 @@ export const AddFilterChip = observer(() => {
   const [level, setLevel] = useState('');
   const [valuesSearchText, setValuesSearchText] = useState('');
   const [values, setValues] = useState<string[]>([]);
-  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState<MRT_RowSelectionState>({});
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
@@ -143,7 +143,9 @@ export const AddFilterChip = observer(() => {
       onEnd: (res => {
         const message = res.message as GetSliceValueResponse;
         setValues(message.getValuesList());
-        setRowSelectionModel(values.flatMap((_, index) => message.getIsSelectedList()[index] ? [index] : []));
+        const newModel: MRT_RowSelectionState = {};
+        message.getIsSelectedList().forEach((isSelected, index) => newModel[String(index)] = isSelected)
+        setRowSelectionModel(newModel);
       })
     });
   }, [store.dimensions, dimensionIndex, level, valuesSearchText, page, pageSize]);
@@ -188,11 +190,11 @@ export const AddFilterChip = observer(() => {
                 setLevel(e.target.value);
                 setValuesSearchText('');
                 setPage(0);
-                fetchValues({});
+                fetchValues({newLevel: e.target.value, newSearchText: '', newPageId: 0});
               }}
               id="add-query-filter-select-dimension-level" label="Dimension Level">
               { store.dimensions[dimensionIndex]?.getLevelsList().map((dimensionLevel, index) => (
-                <MenuItem key = { 'add-query-filter-select-dimension-' + dimensionIndex + '-level-' + index } value = {index}> {dimensionLevel} </MenuItem>
+                <MenuItem key = { 'add-query-filter-select-dimension-' + dimensionIndex + '-level-' + index } value = {dimensionLevel}>{dimensionLevel}</MenuItem>
               )) }
             </Select>
           </FormControl>
@@ -207,41 +209,37 @@ export const AddFilterChip = observer(() => {
             id="add-query-filter-search-text" label="Search for values"/>
         </div>
         <div>
-          <Box sx = {{ height: '60vh', width: '100%', marginTop: '20px' }}>
-            <DataGrid
-              rows = { values.map((value, index) => ({ id: index, 'Value': value })) } 
-              columns = { [{field: 'Value'}] }
-              checkboxSelection
-              rowSelectionModel={rowSelectionModel}
-              onRowSelectionModelChange={(model: GridRowSelectionModel) => {
-                setRowSelectionModel(model);
+          <Box sx = {{ marginTop: '20px' }}>
+            <MaterialReactTable
+              columns = { [{accessorKey: 'Value', header: 'Value'}] }
+              enableColumnResizing
+              data = { values.map((value, index) => ({ id: String(index), 'Value': value })) } 
+              getRowId = { row => row.id }
+              enableRowSelection
+              rowCount = {Number.MAX_VALUE}
+              enablePagination
+              manualPagination
+              state = {{
+                density: 'compact',
+                pagination: { pageIndex: page, pageSize: pageSize },
+                rowSelection: rowSelectionModel
               }}
-              sx = {{
-                width: '100%',
-                overflowX: 'scroll',
-                '.MuiTablePagination-displayedRows': {
-                  display: 'none',
-                }
-              }} 
-              density = 'compact'
-              pagination = {true}
-              paginationMode="server"
-              paginationModel={{page: page, pageSize: pageSize}}
-              pageSizeOptions={[10]}
-              rowCount={Number.MAX_VALUE}
-              onPaginationModelChange={model => {
-                grpc.unary(SudokubeService.setValuesForSlice, {
-                  host: apiBaseUrl,
-                  request: buildMessage(new SetSliceValuesArgs(), {
-                    isSelectedList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel.includes(i))
-                  }),
-                  onEnd: () => {
-                    setPage(model.page);
-                    setPageSize(model.pageSize);
-                    fetchValues({newPageId: model.page, newPageSize: model.pageSize});
-                  }
-                });
+              onRowSelectionChange={setRowSelectionModel}
+              onPaginationChange={(updater: any) => {
+                const model = updater({pageIndex: page, pageSize: pageSize});
+                setPage(model.pageIndex);
+                setPageSize(model.pageSize);
+                fetchValues({newPageId: model.pageIndex, newPageSize: model.pageSize});
               }}
+              muiBottomToolbarProps = {{
+                sx: {
+                  '.MuiTablePagination-displayedRows': { display: 'none' },
+                  '.MuiTablePagination-selectLabel': { display: 'none' },
+                  '.MuiTablePagination-select': { display: 'none' },
+                  '.MuiTablePagination-selectIcon': { display: 'none' }
+                } 
+              }}
+              renderTopToolbar = {false}
             />
           </Box>
         </div>
@@ -250,9 +248,10 @@ export const AddFilterChip = observer(() => {
             grpc.unary(SudokubeService.setValuesForSlice, {
               host: apiBaseUrl,
               request: buildMessage(new SetSliceValuesArgs(), {
-                isSelectedList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel.includes(i))
+                isSelectedList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
               }),
               onEnd: () => {
+                fetchFilters();
                 setDialogOpen(false);
               }
             });
