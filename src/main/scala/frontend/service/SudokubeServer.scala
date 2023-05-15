@@ -615,18 +615,18 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   def extractValidLabelsAndIndexesForDims(dims : Seq[QueryArgs.DimensionDef]) = {
     import QueryState._
     println("Processing labels for " + dims)
-
+    val isSoloDim = dims.size <= 1
     val foldResult = dims.map { d =>
       val (level, numBits) = columnMap(d.dimensionLevel)(d.dimensionLevel) //FIXME dimName is empty, so using dimlevel
       val validValues = level.values(numBits).zipWithIndex
-      (validValues, numBits)
-    }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (curvv, curbits)) =>
+      (d.dimensionLevel, validValues, numBits)
+    }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (dname, curvv, curbits)) =>
       curvv.flatMap { case (curv, curi) =>
         accvv.map { case (accv, acci) =>
           //put curi as higherorder bits infront of acci
           //Put curv infront of accv
           val newi = (curi << accbits) + acci
-          val newv = curv + ";" + accv
+          val newv = (if(isSoloDim) curv else s"$dname=$curv ") + accv
           (newv, newi)
         }
       } -> (accbits + curbits)
@@ -643,8 +643,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     cubsFetched = 0
     println("StartQuery arg:" + in)
     Profiler.resetAll()
-    val (xbits, xlabels, xtotal) = extractValidLabelsAndIndexesForDims(in.horizontal)
-    val (ybits, ylabels, ytotal) = extractValidLabelsAndIndexesForDims(in.series)
+    val (xbits, xlabels, xtotal) = extractValidLabelsAndIndexesForDims(in.horizontal.reverse) //treat left most as most-significant
+    val (ybits, ylabels, ytotal) = extractValidLabelsAndIndexesForDims(in.series.reverse)
     validXvalues = xlabels
     validYvalues = ylabels
 
