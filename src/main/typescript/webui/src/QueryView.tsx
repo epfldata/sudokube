@@ -122,11 +122,11 @@ const QueryParams = observer(() => {
             host: apiBaseUrl,
             request: buildMessage(new QueryArgs(), {
               horizontalList: store.horizontal.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensions[dimension.dimensionIndex],
+                dimensionName: store.dimensions[dimension.dimensionIndex].getDimName(),
                 dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               seriesList: store.series.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensions[dimension.dimensionIndex],
+                dimensionName: store.dimensions[dimension.dimensionIndex].getDimName(),
                 dimensionLevel: store.dimensions[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               measure: store.measure,
