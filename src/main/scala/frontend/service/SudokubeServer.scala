@@ -59,9 +59,9 @@ case class MyDimLevel(name: String, enc: ColEncoder[_]) {
       (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString)
     } else {
       val droppedBits = enc.bits.length - numBits
-      (0 to enc.maxIdx).groupBy(_ >> droppedBits).map { case (grp, idxes) =>
-        val first = enc.decode_locally(idxes.head).toString
-        val last = enc.decode_locally(idxes.last).toString
+      (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map{ case (grp, idxes) =>
+        val first = enc.decode_locally(idxes.min).toString
+        val last = enc.decode_locally(idxes.max).toString
         first + " to " + last
       }.toVector
     }
@@ -188,7 +188,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var momentSolver: CoMoment5SolverDouble = null
     var sortedQuery = IndexedSeq[Int]()
     var computeSortedIdx: ((Int, Int) => Int) = null
-    var sliceArgs = Seq[(Int, Int)]()
+    var diceBits = Seq[Int]()
+    var diceArgs = Seq[Seq[Int]]()
     var validXvalues = Seq[(String, Int)]()
     var validYvalues = Seq[(String, Int)]()
   }
@@ -588,16 +589,18 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         momentSolver.solve()
       }
       println("SortedRes = " + sortedRes.mkString(" "))
-      println("SliceArgs = " + sliceArgs)
-      val sliceRes = Util.slice(sortedRes, sliceArgs) //FIXME: Only taking first slice value
-      println("SliceRes = " + sliceRes.mkString(" "))
-      val series = validYvalues.map{case (ylabel, yid) =>
+      println("DiceBits = " + diceBits)
+      println("DiceArgs = " + diceArgs)
+      val diceRes = Util.dice(sortedRes, diceBits, diceArgs)
+      println("diceRes = " + diceRes.mkString(" "))
+      val series = validYvalues.reverse.map{case (ylabel, yid) => //we reverse the order of series
           SeriesData(ylabel, validXvalues.map{case (xlabel, xid) =>
           val si = computeSortedIdx(xid, yid)
-           XYPoint(xlabel, sliceRes(si).toFloat)
+           XYPoint(xlabel, diceRes(si).toFloat)
           })
       }
-
+      println("AllSeries")
+      series.foreach(println)
       stats("PrepareTime") += Profiler.getDurationMicro("Prepare")
       stats("FetchTime") += Profiler.getDurationMicro("Fetch")
       stats("SolveTime") += Profiler.getDurationMicro("Solve")
@@ -616,8 +619,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   def extractValidLabelsAndIndexesForDims(dims : Seq[QueryArgs.DimensionDef]) = {
     import QueryState._
     println("Processing labels for " + dims)
-    val isSoloDim = dims.size <= 1
-    val foldResult = dims.map { d =>
+    val isSoloDim = dims.size == 1
+    val foldResult = if(dims.isEmpty)
+      Vector("(all)" -> 0) -> 0
+    else
+      dims.map { d =>
       val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
       val validValues = level.values(numBits).zipWithIndex
       (d.dimensionLevel, validValues, numBits)
@@ -648,29 +654,43 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val (ybits, ylabels, ytotal) = extractValidLabelsAndIndexesForDims(in.series.reverse)
     validXvalues = xlabels
     validYvalues = ylabels
-
-    val sliceBitsAndArgs = filters.map { case (dname, lname, ab) =>
+    println("Valid x = " + xlabels)
+    println("Valid y = " + ylabels)
+    val diceBitsAndArgs = filters.map { case (dname, lname, ab) =>
       val (level, numBits) = columnMap(dname)(lname)
       val bits = level.selectedBits(numBits)
-      //FIXME Only the first selected value is picked. Multiple values in a filter are not supported yet
-      val idx = ab.head._2
-      var idx2 = idx
-      val res = bits.map { b => //LSB to MSB
-        val v = idx2 & 1
-        idx2 >>= 1
-        b -> v
+      val idxes = ab.map { case (_, idx) =>
+        var idx2 = idx
+        val res = bits.map { b => //LSB to MSB
+          val v = idx2 & 1
+          idx2 >>= 1
+          v
+        }
+        res
       }
-      println(s"idx = $idx res = $res")
-      res
-    }.flatten
+      (bits, idxes)
+    }
 
-    val zbits = sliceBitsAndArgs.map(_._1)
-    val fullQuery = (xbits ++ ybits ++ zbits).toVector
+    val zbits = diceBitsAndArgs.map(_._1).foldLeft(Vector[Int]())(_ ++ _)
+    diceArgs = diceBitsAndArgs.map(_._2).foldLeft(Vector(Vector[Int]())){ case(accvss, curvss) =>
+      accvss.flatMap{ accvs =>
+        curvss.map{ curvs =>
+          accvs ++ curvs
+        }
+      }
+    }
+    val aggQuery = (xbits ++ ybits).toVector
+    val fullQuery = (aggQuery ++ zbits).toVector
     sortedQuery = fullQuery.sorted
-    println(s"fullQuery = $fullQuery, sorted = $sortedQuery")
-    sliceArgs = sliceBitsAndArgs.map{case (b, v) => sortedQuery.indexOf(b) -> v} //Slice is done on the sorted result
-    val permf =  Util.permute_unsortedIdx_to_sortedIdx(fullQuery)
-    computeSortedIdx = (xid: Int, yid: Int) => permf(yid * xtotal + xid)
+    println(s"aggQuery $aggQuery, fullQuery = $fullQuery, sorted = $sortedQuery")
+    diceBits = zbits.map{b => sortedQuery.indexOf(b)} //Dice is done on the sorted result before permuting
+    val permf =  Util.permute_unsortedIdx_to_sortedIdx(aggQuery) //slice is already done, so only aggdims remain
+    computeSortedIdx = (xid: Int, yid: Int) => {
+      val ui = yid * xtotal + xid
+      val si = permf(ui)
+      println(s"x=$xid y=$yid ui=$ui si=$si")
+      si
+    }
 
     val isBatch = false //in.isBatchMode) //FIXME Always in online mode for now
 

@@ -74,6 +74,25 @@ object Util {
     result
   }
 
+  /**
+   *  Aggregation of multiple slices. SLOW!!
+   *  One entry per value in diceValues
+   *  Each entry in diceValues must have same size as diceCols and contains mapping (0/1) for each col
+   */
+
+  def dice[T: ClassTag : Fractional](a: Array[T], diceCols: Seq[Int], diceValues: Seq[Seq[Int]]) = {
+    val allColsInt = a.length - 1
+    val diceColsInt = diceCols.map(1 << _).sum
+    val diceInts = diceValues.map{ dv => dv.zip(diceCols).map{case (v, c) => v << c}.sum}
+    val aggColsInt = allColsInt - diceColsInt
+    val aggN = a.length >> diceCols.length
+    val result = new Array[T](aggN)
+    (0 until aggN).map { i0 =>
+      val i = BitUtils.unprojectIntWithInt(i0, aggColsInt)
+      result(i0) = diceInts.map{di => a(i + di)}.sum
+    }
+    result
+  }
   /** returns a function that takes as input key in source(sorted result)
    * and outputs key in destination(original order)
    *  dst(f(i)) <- src(i)
