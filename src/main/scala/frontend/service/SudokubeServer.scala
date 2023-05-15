@@ -208,7 +208,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       cg = getCubeGenerator(dsname)
       schema = cg.schemaInstance
-      val dims = schema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
+      val dims = schema.columnVector.map { case LD2(name, enc) => CuboidDimension(name, enc.bits.size) }
       columnMap = schema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
       baseCuboid = cg.loadBase()
       shownCuboids.clear()
@@ -510,8 +510,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       sch.initBeforeDecode()
       hierarchy = getDimHierarchy(sch.root)
       columnMap = hierarchy.map { h => h.name -> h.flattenedLevelsMap }.toMap
-      val dims = hierarchy.map { h => DimHierarchy(h.name, 0, h.flattenedLevels.map(_._1)) } //FIXME: numBits
-      val res = SelectDataCubeForQueryResponse(dims, Vector(cg.measureName))
+      val dims = hierarchy.map { h => DimHierarchy(h.name, h.flattenedLevels.map(_._1)) }
+      val cuboidDims = sch.columnVector.map { case LD2(name, encoder) => CuboidDimension(name, encoder.bits.size) }
+      val res = SelectDataCubeForQueryResponse(dims, cuboidDims, Vector(cg.measureName))
       println("\t response:" + res)
       res
     }
@@ -520,7 +521,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import QueryState._
     println("GetValuesForSlice arg: " + in)
     val dname = in.dimensionName
-    val lname = in.dimensionName //FIXME dimlevel is empty, so using dimName for now
+    val lname = in.dimensionLevel
     val (level, numBits) = columnMap(dname)(lname)
     val allValuesWithIndex = level.values(numBits).zipWithIndex.iterator
     val fileteredValues = allValuesWithIndex.filter(_._1.contains(in.searchText))
@@ -608,7 +609,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val fetchedCuboidIDwithinPage = cubsFetched % cubsWithinPage
       cubsFetched += 1
       val isComplete = cubsFetched == prepareCuboids.size
-      val response = QueryResponse(0, shownCuboids, fetchedCuboidIDwithinPage, isComplete, series, statsToShow)
+      val response = QueryResponse(0, shownCuboids, fetchedCuboidIDwithinPage, isComplete, series, statsToShow) // FIXME: change 0 to page id of current cuboid
       response
     }
   }
@@ -617,7 +618,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     println("Processing labels for " + dims)
     val isSoloDim = dims.size <= 1
     val foldResult = dims.map { d =>
-      val (level, numBits) = columnMap(d.dimensionLevel)(d.dimensionLevel) //FIXME dimName is empty, so using dimlevel
+      val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
       val validValues = level.values(numBits).zipWithIndex
       (d.dimensionLevel, validValues, numBits)
     }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (dname, curvv, curbits)) =>
@@ -632,7 +633,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       } -> (accbits + curbits)
     }//labels and indexes of valid rows within (0 .. numEntries)
     val bits = dims.map { d =>
-      val (level, numBits) = columnMap(d.dimensionLevel)(d.dimensionLevel)  //FIXME dimName is empty, so using dimlevel
+      val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
       level.selectedBits(numBits)
     }.flatten
     (bits, foldResult._1, (1 << foldResult._2))
