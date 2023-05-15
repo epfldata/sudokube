@@ -13,6 +13,7 @@ import scala.concurrent.ExecutionContext
 case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
+  override val measureName: String = "Amount"
   override def schema(): StaticSchema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
     import StaticDateCol._

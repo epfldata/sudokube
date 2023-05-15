@@ -10,6 +10,8 @@ import scala.io.Source
 
 case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
   override lazy val schemaInstance = schema()
+
+  override val measureName: String = "Count"
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))

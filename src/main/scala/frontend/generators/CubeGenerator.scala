@@ -9,7 +9,7 @@ import util.BigBinary
 abstract class CubeGenerator(val inputname: String)(implicit val backend: CBackend) {
   lazy val schemaInstance = schema()
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])]
-
+  val measureName: String = "" //FIXME: Only one measure for now
   lazy val baseName = inputname + "_base"
   def saveBase() = {
     val r_its = generatePartitions()

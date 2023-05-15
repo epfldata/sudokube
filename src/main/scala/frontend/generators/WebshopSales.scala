@@ -10,6 +10,7 @@ import java.io.{BufferedInputStream, PrintStream}
 
 class WebshopSales(implicit backend: CBackend)  extends CubeGenerator("WebshopSales") {
   override lazy val schemaInstance = schema()
+  override val measureName: String = "PriceTotal"
   val skipped = Set(0,4,6,10,12,14)
   val notskipped = (0 to 14).toSet.diff(skipped).toVector.sorted
   def genUniq(col: Int): Unit = {

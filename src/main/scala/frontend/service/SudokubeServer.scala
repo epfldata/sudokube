@@ -8,17 +8,21 @@ import akka.stream.Materializer
 import backend.CBackend
 import com.typesafe.config.ConfigFactory
 import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
+import core.solver.SolverTools
+import core.solver.moment.CoMoment5SolverDouble
 import core.{DataCube, PartialDataCube}
 import frontend.generators._
+import frontend.schema._
 import frontend.schema.encoders.{ColEncoder, DynamicColEncoder}
-import frontend.schema.{DynamicSchema2, LD2, Schema2}
 import frontend.service.GetRenameTimeResponse.ResultRow
-import util.Util
+import frontend.service.SelectDataCubeForQueryResponse.DimHierarchy
+import planning.NewProjectionMetaData
+import util.{BitUtils, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.io.File
-import scala.util.Random
 //#grpc-web
 
 
@@ -46,23 +50,105 @@ object SudokubeServer {
   }
 }
 
+case class MyDimLevel(name: String, enc: ColEncoder[_]) {
+  def decodePrefix(enc: ColEncoder[_], numBits: Int): IndexedSeq[String] = {
+    if (numBits == 0) {
+      Vector("(all)")
+    }
+    else if (numBits == enc.bits.length) {
+      (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString)
+    } else {
+      val droppedBits = enc.bits.length - numBits
+      (0 to enc.maxIdx).groupBy(_ >> droppedBits).map { case (grp, idxes) =>
+        val first = enc.decode_locally(idxes.head).toString
+        val last = enc.decode_locally(idxes.last).toString
+        first + " to " + last
+      }.toVector
+    }
+  }
+  def values(numBits: Int) = decodePrefix(enc, numBits)
+  def fullName(numBits: Int) = {
+    val grp = if (numBits == bits.size) ""
+    else "/" + (1 << (bits.size - numBits))
+    name + grp
+  }
+  val bits = enc.bits
+  def selectedBits(numBits: Int) = bits.takeRight(numBits)
+}
+
+case class MyDimHierarchy(name: String, levels: IndexedSeq[MyDimLevel]) {
+  lazy val flattenedLevels = {
+    levels.flatMap { l =>
+      val totalbits = l.bits.size
+      (0 to totalbits).map { nb => l.fullName(nb) -> (l, nb) }
+    }
+  }
+  lazy val flattenedLevelsMap = flattenedLevels.toMap
+  //def currentLevel(l) = levels(levelIdx)
+  //def increment = {
+  //  if (currentLevel.numBits < currentLevel.bits.length)
+  //    currentLevel.numBits += 1
+  //  else {
+  //    if (levelIdx < levels.size - 1) {
+  //      levelIdx += 1
+  //      currentLevel.numBits = 0
+  //    }
+  //  }
+  //}
+  //def decrement = {
+  //  if (currentLevel.numBits > 0) {
+  //    currentLevel.numBits -= 1
+  //  } else {
+  //    if (levelIdx > 0) {
+  //      levelIdx -= 1
+  //      currentLevel.numBits = currentLevel.bits.size
+  //    }
+  //  }
+  //}
+}
 
 class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   implicit val backend = CBackend.default
   implicit val ec = ExecutionContext.global
+  def getDimHierarchy(dim: Dim2): Vector[MyDimHierarchy] = dim match {
+    case BD2(rootname, children, cross) => if (cross) {
+      children.map(c => getDimHierarchy(c)).reduce(_ ++ _)
+    } else {
+      //assuming all children are LD2 here
+      val levels = children.map { case LD2(name, encoder) =>
+        MyDimLevel(name, encoder)
+      }
+      val hierarchy = MyDimHierarchy(rootname, levels)
+      Vector(hierarchy)
+    }
+    case LD2(name, encoder) =>
+      val level = MyDimLevel(name, encoder)
+      val hierarchy = MyDimHierarchy(name, Vector(level))
+      Vector(hierarchy)
+    case r@DynBD2() => r.children.values.map(c => getDimHierarchy(c)).reduce(_ ++ _)
+  }
   def getCubeGenerator(cname: String) = {
     cname match {
       case "SSB" => new SSB(100)
       case "NYC" => new NYC()
-      case "WebShop" => new WebshopSales()
+      case "WebShopSales" => new WebshopSales()
       case "WebShopDyn" => new WebShopDyn()
       case "TinyData" => new TinyData()
     }
   }
-  def cuboidToDimSplit(cub: IndexedSeq[Int], cols: Vector[LD2[_]]) = {
+  def cuboidToDimSplit(cub: Seq[Int], cols: Vector[LD2[_]]) = {
+    //println("Split cuboid " + cub)
+    //cols.map{case LD2(n, e) =>
+    //  val bits = e match {
+    //    case d:DynamicColEncoder[_] => d.bits + " + " + d.isNotNullBit
+    //    case _ => e.bits
+    //  }
+    //  println(n -> bits)
+    //}
     val groups = cub.groupBy(b => cols.find(l => l.encoder.bits.contains(b)).get)
     groups.map { case (ld, bs) =>
-      ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b)) }
+      ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b))
+    }
   }
 
   object MaterializeState {
@@ -82,18 +168,29 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var columnMap: Map[String, DynamicColEncoder[_]] = null
     val timeDimension: String = "RowId"
     var totalTimeBits = 5
-    var exploreResult = 0  //0 -> No info, 1 -> ColIsAdded, 2 -> ColIsDeleted
+    var exploreResult = 0 //0 -> No info, 1 -> ColIsAdded, 2 -> ColIsDeleted
     val sliceArray = collection.mutable.ArrayBuffer[Boolean]() //0 in this array refers to the leftmost, most significant bit in dimension
     var colNotNullBit = 0
-    var timeRange = Array(0, 0, 0 ,0)
+    var timeRange = Array(0, 0, 0, 0)
   }
 
   object QueryState {
-    val stats = collection.mutable.Map[String, String]()
-    var numPrepared = 0
+    var dc: DataCube = null
+    var sch: Schema2 = null
+    var hierarchy: Vector[MyDimHierarchy] = null
+    var columnMap: Map[String, Map[String, (MyDimLevel, Int)]] = null
+    val stats = collection.mutable.Map[String, Double]() withDefaultValue(0.0)
+    var shownSliceValues: IndexedSeq[(String, Int, Boolean)] = null //value, original id, and isSelected
     var cubsFetched = 0
-    var prepareCuboids = Seq[CuboidDef]()
-    var shownCuboids = Seq[CuboidDef]()
+    var prepareCuboids = Seq[NewProjectionMetaData]()
+    val filters = ArrayBuffer[(String, String, ArrayBuffer[(String, Int)])]()
+    var filterCurrentDimArgs: (String, String) = null
+    var momentSolver: CoMoment5SolverDouble = null
+    var sortedQuery = IndexedSeq[Int]()
+    var computeSortedIdx: ((Int, Int) => Int) = null
+    var sliceArgs = Seq[(Int, Int)]()
+    var validXvalues = Seq[(String, Int)]()
+    var validYvalues = Seq[(String, Int)]()
   }
 
   def bitsToBools(total: Int, cuboidBits: Set[Int]) = {
@@ -109,7 +206,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val dsname = in.cuboid
     println("SelectBaseCuboid arg:" + in)
     Future {
-     cg = getCubeGenerator(dsname)
+      cg = getCubeGenerator(dsname)
       schema = cg.schemaInstance
       val dims = schema.columnVector.map { case LD2(name, enc) => Dimension(name, enc.bits.size) }
       columnMap = schema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
@@ -117,7 +214,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       shownCuboids.clear()
       shownCuboidsManualView.clear()
       chosenCuboids.clear()
-      println("Base cuboid" + baseCuboid.cubeName +  "  loaded")
+      println("Base cuboid" + baseCuboid.cubeName + "  loaded")
       val res = SelectBaseCuboidResponse(dims)
       println("\t response: " + res)
       res
@@ -171,7 +268,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val deletedCuboid = shownCuboids(id)
     shownCuboids -= deletedCuboid
     chosenCuboids -= deletedCuboid
-    println("\t response: OK" )
+    println("\t response: OK")
     Future.successful(Empty())
   }
   override def getAvailableCuboids(in: GetCuboidsArgs): Future[GetAvailableCuboidsResponse] = {
@@ -204,8 +301,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         k += 1
       }
       //TODO: FIX: Sometimes there are twice as many available cuboids
-      if(k < n2)  //do not pick all bits
-         availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
+      if (k < n2) //do not pick all bits
+        availableCuboidsView ++= bitsToPick.combinations(k).slice(requestedCubStart.toInt, (requestedCubStart + nextNumCuboids).toInt).map(c => c ++ filterBits)
       shownCuboidsManualView.clear()
       shownCuboidsManualView ++= availableCuboidsView.map { cub =>
         val isChosen = chosenCuboids.contains(cub)
@@ -241,7 +338,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val dc = new PartialDataCube(cg.inputname + "_" + in.cubeName, baseCuboid.cubeName)
       dc.buildPartial(ms)
       dc.save()
-      println("\t response: OK" )
+      println("\t response: OK")
       Empty()
     }
   }
@@ -263,7 +360,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       val cgName = in.cube.split("_")(0)
       val cg = getCubeGenerator(cgName)
-      dc = if(in.cube.endsWith("_base")){
+      dc = if (in.cube.endsWith("_base")) {
         cg.loadBase()
       } else {
         PartialDataCube.load(in.cube, cg.baseName)
@@ -288,7 +385,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val si = permf(ui)
         sortedres(si)
       }
-      val isRenamed = (result(0) == 0) && ( result(3) == 0)
+      val isRenamed = (result(0) == 0) && (result(3) == 0)
       val response = IsRenamedQueryResponse(result, isRenamed)
       response
     }
@@ -296,77 +393,77 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
   def doRenameTimeQuery = {
     import ExploreState._
-      Future {
-        val bit0 = colNotNullBit
-        val timeBitsInQuery = columnMap(timeDimension).bits.takeRight(sliceArray.size + 1)
-        val fullquery = bit0 +: timeBitsInQuery
-        println("RenameTime query = " + fullquery)
-        val permf = Util.permute_unsortedIdx_to_sortedIdx(fullquery)
-        val sortedRes = dc.naive_eval(fullquery.sorted).map(_.toInt)
-        val unsortedRes = sortedRes.indices.map { ui =>
-          val si = permf(ui)
-          sortedRes(si)
-        }.toArray
-        val sliceArgs = sliceArray.zipWithIndex.map{case (sv, i) => (fullquery.size-1-i) -> (if(sv) 1 else 0)}
-        val slicedRes = Util.slice(unsortedRes, sliceArgs)
-        println("RenameTime queryRes = " + slicedRes.toVector)
-        val row0 = ResultRow(timeRange(0) + "-" + timeRange(1), slicedRes(0), slicedRes(1))
-        val row1 = ResultRow(timeRange(2) + "-" + timeRange(3), slicedRes(2), slicedRes(3))
-        val zeroIndices = slicedRes.indices.filter(i => slicedRes(i) == 0).toSet
-        var isContinue = true
-        assert(slicedRes.size == 4)
-        val currentSlice = sliceArray.toVector
-        val currentTimeRange = timeRange.clone()
-        if(zeroIndices.isEmpty) {
-          isContinue = false
-        }
-        else if(Set(0,2).subsetOf(zeroIndices)) isContinue = false  //no rename
-         //(0,1) and (2,3) both zero not possible. (1,3) zero means all null
-        else if(Set(0,3).subsetOf(zeroIndices)) {
-          isContinue = false
-          exploreResult = 2 //column deleted
-
-        } else if (Set(1, 2).subsetOf(zeroIndices)) {
-          isContinue = false
-          exploreResult = 1 //column added
-        } else if (zeroIndices.contains(0)) {
-          exploreResult = 2 //col deleted somewhere in 1 slice
-          sliceArray += true
-          timeRange(0) = timeRange(2)
-          timeRange(1) = (timeRange(3)+timeRange(0)-1)/2
-          timeRange(2) = (timeRange(3)+timeRange(0)+1)/2
-        } else if (zeroIndices.contains(1)) {
-          exploreResult = 1 // col added somewhere in 1-slice
-          sliceArray += true
-          timeRange(0) = timeRange(2)
-          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
-          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
-        } else if (zeroIndices.contains(2)) {
-          exploreResult = 1 //col added in 0-slice
-          sliceArray += false
-          timeRange(3) = timeRange(1)
-          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
-          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
-        } else if (zeroIndices.contains(3)) {
-          exploreResult = 2 //col deleted in 0-slice
-          sliceArray += false
-          timeRange(3) = timeRange(1)
-          timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
-          timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
-        }
-        val string = if(!isContinue) {
-           exploreResult match {
-            case 0 => "No renaming could be detected within the available resolution"
-            case 1 => s"Column possibly added between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
-            case 2 => s"Column possibly deleted between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
-          }
-        } else {
-          if(sliceArray.last) "Slicing to upper range" else "Slicing to lower range"
-        }
-        println("RenameTime currentTimeRange = " + currentTimeRange.toVector + "   nextTimeRange = " + timeRange.toVector)
-        println(string)
-        GetRenameTimeResponse(totalTimeBits, !isContinue,  currentSlice, Vector(row0, row1), string)
+    Future {
+      val bit0 = colNotNullBit
+      val timeBitsInQuery = columnMap(timeDimension).bits.takeRight(sliceArray.size + 1)
+      val fullquery = bit0 +: timeBitsInQuery
+      println("RenameTime query = " + fullquery)
+      val permf = Util.permute_unsortedIdx_to_sortedIdx(fullquery)
+      val sortedRes = dc.naive_eval(fullquery.sorted).map(_.toInt)
+      val unsortedRes = sortedRes.indices.map { ui =>
+        val si = permf(ui)
+        sortedRes(si)
+      }.toArray
+      val sliceArgs = sliceArray.zipWithIndex.map { case (sv, i) => (fullquery.size - 1 - i) -> (if (sv) 1 else 0) }
+      val slicedRes = Util.slice(unsortedRes, sliceArgs)
+      println("RenameTime queryRes = " + slicedRes.toVector)
+      val row0 = ResultRow(timeRange(0) + "-" + timeRange(1), slicedRes(0), slicedRes(1))
+      val row1 = ResultRow(timeRange(2) + "-" + timeRange(3), slicedRes(2), slicedRes(3))
+      val zeroIndices = slicedRes.indices.filter(i => slicedRes(i) == 0).toSet
+      var isContinue = true
+      assert(slicedRes.size == 4)
+      val currentSlice = sliceArray.toVector
+      val currentTimeRange = timeRange.clone()
+      if (zeroIndices.isEmpty) {
+        isContinue = false
       }
+      else if (Set(0, 2).subsetOf(zeroIndices)) isContinue = false //no rename
+      //(0,1) and (2,3) both zero not possible. (1,3) zero means all null
+      else if (Set(0, 3).subsetOf(zeroIndices)) {
+        isContinue = false
+        exploreResult = 2 //column deleted
+
+      } else if (Set(1, 2).subsetOf(zeroIndices)) {
+        isContinue = false
+        exploreResult = 1 //column added
+      } else if (zeroIndices.contains(0)) {
+        exploreResult = 2 //col deleted somewhere in 1 slice
+        sliceArray += true
+        timeRange(0) = timeRange(2)
+        timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+        timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+      } else if (zeroIndices.contains(1)) {
+        exploreResult = 1 // col added somewhere in 1-slice
+        sliceArray += true
+        timeRange(0) = timeRange(2)
+        timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+        timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+      } else if (zeroIndices.contains(2)) {
+        exploreResult = 1 //col added in 0-slice
+        sliceArray += false
+        timeRange(3) = timeRange(1)
+        timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+        timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+      } else if (zeroIndices.contains(3)) {
+        exploreResult = 2 //col deleted in 0-slice
+        sliceArray += false
+        timeRange(3) = timeRange(1)
+        timeRange(1) = (timeRange(3) + timeRange(0) - 1) / 2
+        timeRange(2) = (timeRange(3) + timeRange(0) + 1) / 2
+      }
+      val string = if (!isContinue) {
+        exploreResult match {
+          case 0 => "No renaming could be detected within the available resolution"
+          case 1 => s"Column possibly added between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
+          case 2 => s"Column possibly deleted between ${currentTimeRange(1)} and ${currentTimeRange(2)}"
+        }
+      } else {
+        if (sliceArray.last) "Slicing to upper range" else "Slicing to lower range"
+      }
+      println("RenameTime currentTimeRange = " + currentTimeRange.toVector + "   nextTimeRange = " + timeRange.toVector)
+      println(string)
+      GetRenameTimeResponse(totalTimeBits, !isContinue, currentSlice, Vector(row0, row1), string)
+    }
   }
   override def startRenameTimeQuery(in: GetRenameTimeArgs): Future[GetRenameTimeResponse] = {
     import ExploreState._
@@ -374,9 +471,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     sliceArray.clear()
     timeRange(0) = 0
     timeRange(3) = (1 << totalTimeBits) - 1
-    timeRange(1) = (timeRange(0) + timeRange(3) -1)/2
-    timeRange(2) = (timeRange(0) + timeRange(3) +1)/2
-    colNotNullBit =  columnMap(in.dimensionName).isNotNullBit
+    timeRange(1) = (timeRange(0) + timeRange(3) - 1) / 2
+    timeRange(2) = (timeRange(0) + timeRange(3) + 1) / 2
+    colNotNullBit = columnMap(in.dimensionName).isNotNullBit
     doRenameTimeQuery
   }
   override def continueRenameTimeQuery(in: Empty): Future[GetRenameTimeResponse] = {
@@ -387,84 +484,225 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
 
   /** Query */
-  // TODO: Implement the real version
-  override def getDataCubesForQuery(in: Empty): Future[GetCubesResponse] = getDataCubesForExplore(Empty())
+  override def getDataCubesForQuery(in: Empty): Future[GetCubesResponse] = {
+    println("GetDataCubes Explore")
+    val file = File("cubedata")
+    val potentialCubes = file.toDirectory.dirs.map(_.name)
+    //Give Webshop as first entry
+    val response = GetCubesResponse(("WebShopSales_base" +: potentialCubes.toVector).distinct)
+    Future.successful(response)
+  }
 
   override def selectDataCubeForQuery(in: SelectDataCubeArgs): Future[SelectDataCubeForQueryResponse] = {
-    val dims = (1 to 10).map { i =>
-      val dim = "Dim" + i
-      val numBits = 6
-      val levels = (1 to numBits).map { j => dim + "L" + j }
-      SelectDataCubeForQueryResponse.DimHierarchy(dim, numBits, levels)
+    import QueryState._
+    Future {
+      println("SelectDataCubeForQuery arg:" + in)
+      val cgName = in.cube.split("_")(0)
+      val cg = getCubeGenerator(cgName)
+      //filters.clear()
+      dc = if (in.cube.endsWith("_base")) {
+        cg.loadBase()
+      } else {
+        PartialDataCube.load(in.cube, cg.baseName)
+      }
+      dc.loadPrimaryMoments(cg.baseName)
+      sch = cg.schemaInstance
+      sch.initBeforeDecode()
+      hierarchy = getDimHierarchy(sch.root)
+      columnMap = hierarchy.map { h => h.name -> h.flattenedLevelsMap }.toMap
+      val dims = hierarchy.map { h => DimHierarchy(h.name, 0, h.flattenedLevels.map(_._1)) } //FIXME: numBits
+      val res = SelectDataCubeForQueryResponse(dims, Vector(cg.measureName))
+      println("\t response:" + res)
+      res
     }
-    val response = SelectDataCubeForQueryResponse(dims, Seq("Sales"))
-    Future.successful(response)
   }
   override def getValuesForSlice(in: GetSliceValuesArgs): Future[GetSliceValueResponse] = {
-    val values = (1 to 100).map(i => "V" + i)
-    val shownValues = values.filter(_.contains(in.searchText)).take(in.numRowsInPage)
-    val response = GetSliceValueResponse(shownValues, Seq())
+    import QueryState._
+    println("GetValuesForSlice arg: " + in)
+    val dname = in.dimensionName
+    val lname = in.dimensionName //FIXME dimlevel is empty, so using dimName for now
+    val (level, numBits) = columnMap(dname)(lname)
+    val allValuesWithIndex = level.values(numBits).zipWithIndex.iterator
+    val fileteredValues = allValuesWithIndex.filter(_._1.contains(in.searchText))
+    val rowStart = in.requestedPageId * in.numRowsInPage
+    val rowEnd = (in.requestedPageId + 1) * in.numRowsInPage
+    shownSliceValues = fileteredValues.slice(rowStart, rowEnd).toVector.map { case (v, i) => (v, i, false) }
+    filterCurrentDimArgs = (dname, lname)
+    val response = GetSliceValueResponse(shownSliceValues.map(_._1), shownSliceValues.map(_._3))
+    println("\t response: " + response)
     Future.successful(response)
   }
 
-  // TODO: Implement something to get and post filters
+  override def getFilters(in: Empty): Future[GetFiltersResponse] = {
+    import QueryState._
+    println("GetFilters")
+    val response = GetFiltersResponse(filters.map { f => GetFiltersResponse.FilterDef(f._1, f._2, f._3.map(_._1).mkString(";")) })
+    println("\t response : " + response)
+    Future.successful(response)
+  }
 
-  override def getFilters(in: Empty): Future[GetFiltersResponse] = ???
+  override def setValuesForSlice(in: SetSliceValuesArgs): Future[Empty] = {
+    import QueryState._
+    println("SetValueForSlice arg: " + in)
+    val filter = filters.find(f => (f._1 == filterCurrentDimArgs._1) && (f._2 == filterCurrentDimArgs._2))
+    val filterAB = if (filter.isEmpty) {
+      val ab = new ArrayBuffer[(String, Int)]()
+      filters += ((filterCurrentDimArgs._1, filterCurrentDimArgs._2, ab))
+      ab
+    } else {
+      filter.get._3
+    }
+    shownSliceValues.zip(in.isSelected).foreach { case ((v, i, before), after) =>
+      if (!before && after) {
+        filterAB += ((v, i))
+      } else if (before && !after) {
+        filterAB -= ((v, i))
+      }
+    }
+    println("currently selected indexes for slice = " + filterAB)
+    println("\t response: OK")
+    Future.successful(Empty())
+  }
 
-  override def setValuesForSlice(in: SetSliceValuesArgs): Future[Empty] = ???
+  override def deleteFilter(in: DeleteFilterArgs): Future[Empty] = {
+    import QueryState._
+    println("DeleteFilter arg: " + in)
+    filters.remove(in.index)
+    println("\t response: OK")
+    Future.successful(Empty())
+  }
 
-  override def deleteFilter(in: DeleteFilterArgs): Future[Empty] = Future.successful(Empty())
-
-  override def startQuery(in: QueryArgs): Future[QueryResponse] = {
+  def runQuery(): Future[QueryResponse] = {
     import QueryResponse._
     import QueryState._
-    stats.clear()
-    cubsFetched = 1
-    numPrepared = Random.nextInt(100)
-    prepareCuboids = (0 until numPrepared).map { j =>
-      val dims = (1 to 10).map { i =>
-        val total = 5
-        val numBits = Random.nextInt(total + 1)
-        val selectedBits = Util.collect_n(numBits, () => Random.nextInt(total)).toSet
-        val bitsValues = bitsToBools(total, selectedBits)
-        DimensionBits("Dim" + i, bitsValues)
+
+    Future {
+      val nextCuboidToFetch = prepareCuboids(cubsFetched)
+
+      val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
+
+      val sortedRes = Profiler("Solve") {
+        momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData)
+        momentSolver.fillMissing()
+        momentSolver.solve()
       }
-      CuboidDef(dims)
+      println("SortedRes = " + sortedRes.mkString(" "))
+      println("SliceArgs = " + sliceArgs)
+      val sliceRes = Util.slice(sortedRes, sliceArgs) //FIXME: Only taking first slice value
+      println("SliceRes = " + sliceRes.mkString(" "))
+      val series = validYvalues.map{case (ylabel, yid) =>
+          SeriesData(ylabel, validXvalues.map{case (xlabel, xid) =>
+          val si = computeSortedIdx(xid, yid)
+           XYPoint(xlabel, sliceRes(si).toFloat)
+          })
+      }
+
+      stats("PrepareTime") += Profiler.getDurationMicro("Prepare")
+      stats("FetchTime") += Profiler.getDurationMicro("Fetch")
+      stats("SolveTime") += Profiler.getDurationMicro("Solve")
+      stats("DOF") = momentSolver.dof
+
+      val cubsWithinPage = 10 //FIXME
+      val shownCuboids = Await.result(getPreparedCuboids(GetPreparedCuboidsArgs(0, cubsWithinPage)), Duration.Inf).cuboids //FIXME: Remove
+      val statsToShow = stats.map(p => new QueryStatistic(p._1, p._2.toString)).toSeq
+      val fetchedCuboidIDwithinPage = cubsFetched % cubsWithinPage
+      cubsFetched += 1
+      val isComplete = cubsFetched == prepareCuboids.size
+      val response = QueryResponse(0, shownCuboids, fetchedCuboidIDwithinPage, isComplete, series, statsToShow)
+      response
     }
+  }
+  def extractValidLabelsAndIndexesForDims(dims : Seq[QueryArgs.DimensionDef]) = {
+    import QueryState._
+    println("Processing labels for " + dims)
 
-    stats += ("PrepareTime" -> cubsFetched.toString)
-    stats += ("FetchTime" -> (2 * cubsFetched).toString)
-    stats += ("SolveTime" -> (3 * cubsFetched).toString)
-    stats += ("Error" -> (0.4 - cubsFetched / 10.0).toString)
+    val foldResult = dims.map { d =>
+      val (level, numBits) = columnMap(d.dimensionLevel)(d.dimensionLevel) //FIXME dimName is empty, so using dimlevel
+      val validValues = level.values(numBits).zipWithIndex
+      (validValues, numBits)
+    }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (curvv, curbits)) =>
+      curvv.flatMap { case (curv, curi) =>
+        accvv.map { case (accv, acci) =>
+          //put curi as higherorder bits infront of acci
+          //Put curv infront of accv
+          val newi = (curi << accbits) + acci
+          val newv = curv + ";" + accv
+          (newv, newi)
+        }
+      } -> (accbits + curbits)
+    }//labels and indexes of valid rows within (0 .. numEntries)
+    val bits = dims.map { d =>
+      val (level, numBits) = columnMap(d.dimensionLevel)(d.dimensionLevel)  //FIXME dimName is empty, so using dimlevel
+      level.selectedBits(numBits)
+    }.flatten
+    (bits, foldResult._1, (1 << foldResult._2))
+  }
+  override def startQuery(in: QueryArgs): Future[QueryResponse] = {
+    import QueryState._
+    stats.clear()
+    cubsFetched = 0
+    println("StartQuery arg:" + in)
+    Profiler.resetAll()
+    val (xbits, xlabels, xtotal) = extractValidLabelsAndIndexesForDims(in.horizontal)
+    val (ybits, ylabels, ytotal) = extractValidLabelsAndIndexesForDims(in.series)
+    validXvalues = xlabels
+    validYvalues = ylabels
 
-    shownCuboids = prepareCuboids.take(in.preparedCuboidsPerPage)
-    val series = collection.mutable.ArrayBuffer[SeriesData]()
-    series += SeriesData("Linear", (1 to 10).map { i => XYPoint("P" + i, i + cubsFetched) })
-    series += SeriesData("Quadratic", (1 to 10).map { i => XYPoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
-    series += SeriesData("Log", (1 to 10).map { i => XYPoint("P" + i, math.log(i + cubsFetched).toFloat) })
-    val response = QueryResponse(0, shownCuboids, 0, false, series, stats.map(p => new QueryStatistic(p._1, p._2)).toSeq) // TODO?: Convert stats?
-    Future.successful(response)
+    val sliceBitsAndArgs = filters.map { case (dname, lname, ab) =>
+      val (level, numBits) = columnMap(dname)(lname)
+      val bits = level.selectedBits(numBits)
+      //FIXME Only the first selected value is picked. Multiple values in a filter are not supported yet
+      val idx = ab.head._2
+      var idx2 = idx
+      val res = bits.map { b => //LSB to MSB
+        val v = idx2 & 1
+        idx2 >>= 1
+        b -> v
+      }
+      println(s"idx = $idx res = $res")
+      res
+    }.flatten
+
+    val zbits = sliceBitsAndArgs.map(_._1)
+    val fullQuery = (xbits ++ ybits ++ zbits).toVector
+    sortedQuery = fullQuery.sorted
+    println(s"fullQuery = $fullQuery, sorted = $sortedQuery")
+    sliceArgs = sliceBitsAndArgs.map{case (b, v) => sortedQuery.indexOf(b) -> v} //Slice is done on the sorted result
+    val permf =  Util.permute_unsortedIdx_to_sortedIdx(fullQuery)
+    computeSortedIdx = (xid: Int, yid: Int) => permf(yid * xtotal + xid)
+
+    val isBatch = false //in.isBatchMode) //FIXME Always in online mode for now
+
+    val numSeries =
+      prepareCuboids = Profiler("Prepare") {
+      if (isBatch)
+        dc.index.prepareBatch(sortedQuery)
+      else
+        dc.index.prepareOnline(sortedQuery, 2)
+    }
+    val pm = Profiler("Prepare") {
+      SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments)
+    }
+    momentSolver = Profiler("Solve") {
+      new CoMoment5SolverDouble(sortedQuery.size, isBatch, null, pm)
+    }
+    runQuery()
   }
   override def continueQuery(in: Empty): Future[QueryResponse] = {
-
-    import QueryResponse._
     import QueryState._
-    stats.clear()
-    cubsFetched += 1
-    stats += ("PrepareTime" -> cubsFetched.toString)
-    stats += ("FetchTime" -> (2 * cubsFetched).toString)
-    stats += ("SolveTime" -> (3 * cubsFetched).toString)
-    stats += ("Error" -> (0.4 - cubsFetched / 10.0).toString)
-
-
-    val series = collection.mutable.ArrayBuffer[SeriesData]()
-    series += SeriesData("Linear", (1 to 10).map { i => XYPoint("P" + i, i + cubsFetched) })
-    series += SeriesData("Quadratic", (1 to 10).map { i => XYPoint("P" + i, math.pow(i + cubsFetched / 10.0, 2).toFloat) })
-    series += SeriesData("Log", (1 to 10).map { i => XYPoint("P" + i, math.log(i + cubsFetched).toFloat) })
-    val response = QueryResponse(0, shownCuboids, 0, true, series, stats.map(p => new QueryStatistic(p._1, p._2)).toSeq) // TODO?: Convert stats?
-    Future.successful(response)
+    runQuery()
   }
 
-  // TODO: Implement something
-  override def getPreparedCuboids(in: GetPreparedCuboidsArgs): Future[GetPreparedCuboidsResponse] = ???
+  override def getPreparedCuboids(in: GetPreparedCuboidsArgs): Future[GetPreparedCuboidsResponse] = {
+    import QueryState._
+    val start = in.numRowsInPage * in.requestedPageId
+    val end = in.numRowsInPage * (in.requestedPageId + 1)
+    val cuboidsToDisplay = prepareCuboids.slice(start, end).map { pm =>
+      val cub = BitUtils.IntToSet(pm.queryIntersection).map{i => sortedQuery(i)}
+      val dims = cuboidToDimSplit(cub, sch.columnVector).map { case (k, v) => DimensionBits(k, v) }.toSeq
+      CuboidDef(dims)
+    }
+    val response = GetPreparedCuboidsResponse(cuboidsToDisplay)
+    Future.successful(response)
+  }
 }

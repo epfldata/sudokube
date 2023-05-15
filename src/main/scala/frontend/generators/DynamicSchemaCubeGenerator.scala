@@ -7,14 +7,15 @@ import frontend.schema.DynamicSchema2
 import util.{BigBinary, Profiler}
 
 import java.io.{File, FileReader}
+import scala.util.Try
 
 class DynamicSchemaCubeGenerator(override val inputname: String,
                                       filename: String,
                                       measure_key: Option[String] = None,
-                                      map_value: Object => Long = _.asInstanceOf[Long]
+                                      map_value: Object => Long = DynamicSchemaCubeGenerator.defaultToLong
                                      )(implicit backend: CBackend) extends CubeGenerator(inputname) {
   override lazy val schemaInstance = schema()
-
+  override val measureName: String = measure_key.getOrElse("Count")
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     schemaInstance.reset()
     val items = {
@@ -52,9 +53,15 @@ class DynamicSchemaCubeGenerator(override val inputname: String,
     }
 }
 
+
 class WebShopDyn(implicit be: CBackend) extends DynamicSchemaCubeGenerator("WebShopDyn", "tabledata/Webshop/salesDyn.json")
-class TinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TinyData", "tabledata/TinyData/data.csv")
+class TinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TinyData", "tabledata/TinyData/data.csv", Some("Value") )
 object DynamicSchemaCubeGenerator {
+  def defaultToLong(v: Object) = v match {
+    case s: String => s.toLong
+    case _ => v.asInstanceOf[Long]
+  }
+
   def main(args: Array[String]): Unit = {
     implicit val be = CBackend.default
     new WebShopDyn().saveBase()

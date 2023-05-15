@@ -9,12 +9,20 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
   var cutOffZeroValueSum = 0.0
   val pmArray = new Array[Double](qsize)
   val zeros = collection.mutable.BitSet()
+  //used for online mode. Otherwise, moments array is used for both raw and central moments
+  var centralMoments: Array[Double] = null
+
   override def init(): Unit = {}
   init2()
   def init2(): Unit = {
-    moments = Array.fill[Double](N)(0) //using moments array for comoments
     val total = primaryMoments.head._2
-    moments(0) = total
+    val array = Array.fill[Double](N)(0)
+    array(0) = total
+    if (batchmode) {
+      moments = array //using moments array for comoments
+    } else {
+      centralMoments = array
+    }
     assert(primaryMoments.head._1 == 0)
     var logh = 0
     primaryMoments.tail.foreach { case (i, m) =>
@@ -131,7 +139,30 @@ class CoMoment5SolverDouble(qsize: Int, batchmode: Boolean, transformer: MomentT
   }
 
   def fillMissingOnline(): Unit = {
-
+    momentsToAdd.foreach {
+      case (i, m) =>
+        val mu = m
+        centralMoments(i) = mu
+    }
+    momentsToAdd.clear()
+    val array = centralMoments.clone()
+    var h = 1
+    var logh = 0
+    while (h < N) {
+      val ph = pmArray(logh)
+      var i = 0
+      while (i < N) {
+        var j = i
+        while (j < i + h) {
+          array(j + h) = array(j + h) + ph * array(j)
+          j += 1
+        }
+        i += (h << 1)
+      }
+      h <<= 1
+      logh += 1
+    }
+    moments = array
   }
 
   override def solve(handleNegative: Boolean): Array[Double] = {
