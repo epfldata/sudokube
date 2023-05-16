@@ -137,7 +137,7 @@ export class QueryStore {
   solver: string = 'Naive';
 
   modes: string[] = ['Batch', 'Online'];
-  mode: string = 'Batch';
+  mode: string = 'Online';
 
   isRunComplete: boolean = false;
   isQueryComplete: boolean = false;

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
-import { Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material'
+import { Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme } from '@mui/material'
 import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
@@ -323,10 +323,10 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
   const { queryStore: store } = useRootStore();
   return ( <div>
     <h3>Current result</h3>
-    <div style={{ width: '100%', height: '50vh' }}>
+    <div style={{ width: '100%', height: '50vh', margin: 0 }}>
       <ResponsiveLine
         data = { store.result.data }
-        margin={{ top: 5, right: 115, bottom: 25, left: 35 }}
+        margin={{ top: 5, right: 75, bottom: store.result.data.length * 20 + 30, left: 75 }}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -344,10 +344,10 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
             anchor: 'bottom-right',
             direction: 'column',
             justify: false,
-            translateX: 100,
-            translateY: 0,
+            translateX: 0,
+            translateY: store.result.data.length * 20 + 30,
             itemsSpacing: 0,
-            itemDirection: 'left-to-right',
+            itemDirection: 'right-to-left',
             itemWidth: 80,
             itemHeight: 20,
             itemOpacity: 0.75,
