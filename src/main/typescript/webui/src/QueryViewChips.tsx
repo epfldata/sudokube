@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useState } from 'react'
+import React, { ReactNode, useCallback, useEffect, useState } from 'react'
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material'
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -127,6 +127,18 @@ export const AddFilterChip = observer(() => {
   const [rowSelectionModel, setRowSelectionModel] = useState<MRT_RowSelectionState>({});
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      setDimensionIndex(0);
+      setLevel('');
+      setValuesSearchText('');
+      setValues([]);
+      setRowSelectionModel({});
+      setPage(0);
+      setPageSize(10);
+    }
+  }, [isDialogOpen]);
 
   const fetchValues = useCallback(({newDimension, newLevel, newSearchText, newPageId, newPageSize}: {
     newDimension?: string, newLevel?: string, newSearchText?: string, newPageId?: number, newPageSize?: number
