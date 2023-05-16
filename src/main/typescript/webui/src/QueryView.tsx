@@ -321,12 +321,13 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
     return null;
   }
   const { queryStore: store } = useRootStore();
+  const legendsHeight = store.result.data.length * 20;
   return ( <div>
     <h3>Current result</h3>
-    <div style={{ width: '100%', height: '50vh', margin: 0 }}>
+    <div style={{ width: '100%', height: 400 + legendsHeight, margin: 0 }}>
       <ResponsiveLine
         data = { store.result.data }
-        margin={{ top: 5, right: 75, bottom: store.result.data.length * 20 + 30, left: 75 }}
+        margin={{ top: 5, right: 75, bottom: legendsHeight + 30, left: 75 }}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -345,7 +346,7 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
             direction: 'column',
             justify: false,
             translateX: 0,
-            translateY: store.result.data.length * 20 + 30,
+            translateY: legendsHeight + 30,
             itemsSpacing: 0,
             itemDirection: 'right-to-left',
             itemWidth: 80,
