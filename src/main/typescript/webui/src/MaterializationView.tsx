@@ -502,17 +502,14 @@ function AddCuboidsFilterChip({onAdd}: {
   </span>)
 }
 
-export const cuboidToRow = ((cuboid: CuboidDef, index: number, _: any, highlight?: boolean) => {
+export const cuboidToRow = ((cuboid: CuboidDef, index: number) => {
   const theme = useTheme();
-  console.log()
   let row: any = {};
   row['id'] = String(index);
   row['index'] = index;
   cuboid.getDimensionsList().forEach(dimension => 
     row[dimension.getDimensionName()] =
-      <span style = {{ color: highlight ? theme.palette.primary.main : theme.palette.text.primary }}>
-        { dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join('') }
-      </span>
+      dimension.getChosenBitsList().map(bit => bit ? '\u2589' : '\u25A2').join('')
   );
   return row;
 });

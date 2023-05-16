@@ -245,11 +245,17 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
       <MaterialReactTable
         columns = { store.dimensions.map(dimensionToColumn) }
         enableColumnResizing
-        data = { store.preparedCuboids.map((cuboid, index, _) => cuboidToRow(
-          cuboid, index, _,
-          store.cuboidsPage === store.currentCuboidPage && index === store.currentCuboidIdWithinPage
-        )) } 
+        data = { store.preparedCuboids.map(cuboidToRow) }
         getRowId = { row => row.id }
+        muiTableBodyRowProps = {({row}) => ({
+          sx: {
+            backgroundColor: 
+              (store.cuboidsPage === store.currentCuboidPage 
+                && row.index === store.currentCuboidIdWithinPage)
+                ? '#fffde7'
+                : '#ffffff'
+          }
+        })}
         rowCount = {Number.MAX_VALUE}
         enablePagination
         manualPagination
