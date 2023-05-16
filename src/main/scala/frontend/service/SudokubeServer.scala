@@ -513,6 +513,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       sch.initBeforeDecode()
       hierarchy = getDimHierarchy(sch.root)
       columnMap = hierarchy.map { h => h.name -> h.flattenedLevelsMap }.toMap
+      shownSliceValues =  null
+      filters.clear()
+      filterCurrentDimArgs = null
       val dims = hierarchy.map { h => DimHierarchy(h.name, h.flattenedLevels.map(_._1)) }
       val cuboidDims = sch.columnVector.map { case LD2(name, encoder) => CuboidDimension(name, encoder.bits.size) }
       val res = SelectDataCubeForQueryResponse(dims, cuboidDims, Vector(cg.measureName))
@@ -530,9 +533,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val fileteredValues = allValuesWithIndex.filter(_._1.contains(in.searchText))
     val rowStart = in.requestedPageId * in.numRowsInPage
     val rowEnd = (in.requestedPageId + 1) * in.numRowsInPage
-    shownSliceValues = fileteredValues.slice(rowStart, rowEnd).toVector.map { case (v, i) => (v, i, false) }
+    val abOpt = filters.find(f => f._1 == dname && f._2 == lname).map(_._3)
+    shownSliceValues = fileteredValues.slice(rowStart, rowEnd).toVector.map { case (v, i) => (v, i, abOpt.map(ab => ab.exists(_._2 == i)).getOrElse(false)) }
     filterCurrentDimArgs = (dname, lname)
     val response = GetSliceValueResponse(shownSliceValues.map(_._1), shownSliceValues.map(_._3))
+    println("Set shown slice values " + shownSliceValues)
     println("\t response: " + response)
     Future.successful(response)
   }
@@ -548,23 +553,26 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   override def setValuesForSlice(in: SetSliceValuesArgs): Future[Empty] = {
     import QueryState._
     println("SetValueForSlice arg: " + in)
-    val filter = filters.find(f => (f._1 == filterCurrentDimArgs._1) && (f._2 == filterCurrentDimArgs._2))
-    val filterAB = if (filter.isEmpty) {
-      val ab = new ArrayBuffer[(String, Int)]()
-      filters += ((filterCurrentDimArgs._1, filterCurrentDimArgs._2, ab))
-      ab
-    } else {
-      filter.get._3
-    }
-    shownSliceValues.zip(in.isSelected).foreach { case ((v, i, before), after) =>
-      if (!before && after) {
-        filterAB += ((v, i))
-      } else if (before && !after) {
-        filterAB -= ((v, i))
+    println("\t currentlyShownSliceValues = " + shownSliceValues)
+    if(filterCurrentDimArgs != null) {
+      val filter = filters.find(f => (f._1 == filterCurrentDimArgs._1) && (f._2 == filterCurrentDimArgs._2))
+      val filterAB = if (filter.isEmpty) {
+        val ab = new ArrayBuffer[(String, Int)]()
+        filters += ((filterCurrentDimArgs._1, filterCurrentDimArgs._2, ab))
+        ab
+      } else {
+        filter.get._3
       }
+      shownSliceValues.zip(in.isSelected).foreach { case ((v, i, before), after) =>
+        if (!before && after) {
+          filterAB += ((v, i))
+        } else if (before && !after) {
+          filterAB -= ((v, i))
+        }
+      }
+      println("currently selected indexes for slice = " + filterAB)
+      println("\t response: OK")
     }
-    println("currently selected indexes for slice = " + filterAB)
-    println("\t response: OK")
     Future.successful(Empty())
   }
 
