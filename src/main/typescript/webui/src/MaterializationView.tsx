@@ -313,7 +313,7 @@ const ManuallyChooseCuboids = observer(() => {
               grpc.unary(SudokubeService.manuallyUpdateCuboids, {
                 host: apiBaseUrl,
                 request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
-                  isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
+                  isChosenList: Array.from(cuboids.keys()).map(i => rowSelectionModel[String(i)])
                 }),
                 onEnd: () => {
                   setPage(model.pageIndex);
@@ -340,7 +340,7 @@ const ManuallyChooseCuboids = observer(() => {
             grpc.unary(SudokubeService.manuallyUpdateCuboids, {
               host: apiBaseUrl,
               request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
-                isChosenList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
+                isChosenList: Array.from(cuboids.keys()).map(i => rowSelectionModel[String(i)])
               }),
               onEnd: () => {
                 setCuboidsDialogOpen(false); 

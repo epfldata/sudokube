@@ -260,7 +260,7 @@ export const AddFilterChip = observer(() => {
             grpc.unary(SudokubeService.setValuesForSlice, {
               host: apiBaseUrl,
               request: buildMessage(new SetSliceValuesArgs(), {
-                isSelectedList: Array.from(Array(pageSize).keys()).map(i => rowSelectionModel[String(i)])
+                isSelectedList: Array.from(values.keys()).map(i => rowSelectionModel[String(i)])
               }),
               onEnd: () => {
                 fetchFilters();
