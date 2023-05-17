@@ -13,7 +13,7 @@ import core.solver.moment.CoMoment5SolverDouble
 import core.{DataCube, PartialDataCube}
 import frontend.generators._
 import frontend.schema._
-import frontend.schema.encoders.{ColEncoder, DynamicColEncoder}
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, StaticColEncoder}
 import frontend.service.GetRenameTimeResponse.ResultRow
 import frontend.service.SelectDataCubeForQueryResponse.DimHierarchy
 import planning.NewProjectionMetaData
@@ -51,19 +51,39 @@ object SudokubeServer {
 }
 
 case class MyDimLevel(name: String, enc: ColEncoder[_]) {
-  def decodePrefix(enc: ColEncoder[_], numBits: Int): IndexedSeq[String] = {
+  def decodePrefix(enc: ColEncoder[_], numBits: Int): IndexedSeq[(String, Int)] = {
     if (numBits == 0) {
-      Vector("(all)")
+      Vector("(all)" -> 0)
     }
-    else if (numBits == enc.bits.length) {
-      (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString)
-    } else {
-      val droppedBits = enc.bits.length - numBits
-      (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map { case (grp, idxes) =>
-        val first = enc.decode_locally(idxes.min).toString
-        val last = enc.decode_locally(idxes.max).toString
-        first + " to " + last
-      }.toVector
+    else {
+      if (enc.isInstanceOf[StaticColEncoder[_]]) {
+        if (numBits == enc.bits.length) {
+          (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString).zipWithIndex
+        } else {
+          val droppedBits = enc.bits.length - numBits
+          (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map { case (grp, idxes) =>
+            val first = enc.decode_locally(idxes.min).toString
+            val last = enc.decode_locally(idxes.max).toString
+            first + " to " + last
+          }.zipWithIndex
+        }
+      } else { //DynamicColEncoder
+        val dynenc = enc.asInstanceOf[DynamicColEncoder[_]]
+        val localOffset = 1 << (numBits - 1)
+        if(numBits == 1) {
+          Vector("NULL", "Not NULL").zipWithIndex
+        } else if(numBits - 1 == enc.bits.length ) {
+          ("NULL" -> 0) +: (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString).
+            zipWithIndex.map{case (v, i) => v -> (i + localOffset)}
+        } else {
+          val droppedBits = enc.bits.length - (numBits - 1)
+          ("NULL" -> 0) +: (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map { case (grp, idxes) =>
+            val first = enc.decode_locally(idxes.min).toString
+            val last = enc.decode_locally(idxes.max).toString
+            first + " to " + last
+          }.zipWithIndex.map{case (v, i) => v -> (i + localOffset)}
+        }
+      }
     }
   }
   def values(numBits: Int) = decodePrefix(enc, numBits)
@@ -72,7 +92,10 @@ case class MyDimLevel(name: String, enc: ColEncoder[_]) {
     else "/" + (1 << (bits.size - numBits))
     name + grp
   }
-  val bits = enc.bits
+  val bits = enc match {
+    case d: DynamicColEncoder[_] => d.bits :+ d.isNotNullBit
+    case _ => enc.bits
+  }
   def selectedBits(numBits: Int) = bits.takeRight(numBits)
 }
 
@@ -80,31 +103,10 @@ case class MyDimHierarchy(name: String, levels: IndexedSeq[MyDimLevel]) {
   lazy val flattenedLevels = {
     levels.flatMap { l =>
       val totalbits = l.bits.size
-      (0 to totalbits).map { nb => l.fullName(nb) -> (l, nb) }
+      (1 to totalbits).map { nb => l.fullName(nb) -> (l, nb) } //exclude 0-bit level
     }
   }
   lazy val flattenedLevelsMap = flattenedLevels.toMap
-  //def currentLevel(l) = levels(levelIdx)
-  //def increment = {
-  //  if (currentLevel.numBits < currentLevel.bits.length)
-  //    currentLevel.numBits += 1
-  //  else {
-  //    if (levelIdx < levels.size - 1) {
-  //      levelIdx += 1
-  //      currentLevel.numBits = 0
-  //    }
-  //  }
-  //}
-  //def decrement = {
-  //  if (currentLevel.numBits > 0) {
-  //    currentLevel.numBits -= 1
-  //  } else {
-  //    if (levelIdx > 0) {
-  //      levelIdx -= 1
-  //      currentLevel.numBits = currentLevel.bits.size
-  //    }
-  //  }
-  //}
 }
 
 class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
@@ -133,21 +135,14 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       case "NYC" => new NYC()
       case "WebshopSales" => new WebshopSales()
       case "WebShopDyn" => new WebShopDyn()
-      case "TinyData" => new TinyData()
+      case "TinyData" => new TinyDataStatic()
+      case "TinyDataDyn" => new TinyData()
     }
   }
   def cuboidToDimSplit(cub: Seq[Int], cols: Vector[LD2[_]]) = {
-    //println("Split cuboid " + cub)
-    //cols.map{case LD2(n, e) =>
-    //  val bits = e match {
-    //    case d:DynamicColEncoder[_] => d.bits + " + " + d.isNotNullBit
-    //    case _ => e.bits
-    //  }
-    //  println(n -> bits)
-    //}
-    val groups = cub.groupBy(b => cols.find(l => l.encoder.bits.contains(b)).get)
+    val groups = cub.groupBy(b => cols.find(l => bitsOfEncoder(l.encoder).contains(b)).get)
     groups.map { case (ld, bs) =>
-      ld.name -> ld.encoder.bits.reverse.map(b => bs.contains(b))
+      ld.name -> bitsOfEncoder(ld.encoder).reverse.map(b => bs.contains(b))
     }
   }
 
@@ -196,12 +191,17 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var prepareNumCuboidsInpage = 0
   }
 
+  def bitsOfEncoder(enc: ColEncoder[_]) = enc match {
+    case d: DynamicColEncoder[_] => d.bits :+ d.isNotNullBit
+    case _ => enc.bits
+  }
+
   def bitsToBools(total: Int, cuboidBits: Set[Int]) = {
     (0 until total).reverse.map { b => cuboidBits contains b }
   }
   /* Materialize */
   override def getBaseCuboids(in: Empty): Future[BaseCuboidResponse] = {
-    Future.successful(BaseCuboidResponse(List("WebshopSales", "NYC", "SSB", "WebShopDyn", "TinyData")))
+    Future.successful(BaseCuboidResponse(List("WebshopSales", "NYC", "SSB", "WebShopDyn", "TinyData", "TinyDataDyn")))
   }
   override def selectBaseCuboid(in: SelectBaseCuboidArgs): Future[SelectBaseCuboidResponse] = {
     import MaterializeState._
@@ -211,7 +211,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       cg = getCubeGenerator(dsname)
       schema = cg.schemaInstance
-      val dims = schema.columnVector.map { case LD2(name, enc) => CuboidDimension(name, enc.bits.size) }
+      val dims = schema.columnVector.map { case LD2(name, enc) => CuboidDimension(name, bitsOfEncoder(enc).size) }
       columnMap = schema.columnVector.map { case LD2(name, enc) => name -> enc }.toMap
       baseCuboid = cg.loadBase()
       shownCuboids.clear()
@@ -245,7 +245,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     def filterCondition(cub: IndexedSeq[Int]) = {
       val cubSet = cub.toSet
       in.filters.map { f =>
-        val filterBits = columnMap(f.dimensionName).bits.slice(f.bitsFrom, f.bitsTo).toSet
+        val filterBits = bitsOfEncoder(columnMap(f.dimensionName)).slice(f.bitsFrom, f.bitsTo).toSet
         filterBits.subsetOf(cubSet)
       }.fold(cub.size < baseCuboid.index.n_bits)(_ && _) //exclude base cuboid
     }
@@ -280,7 +280,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       val cubsInPage = in.rowsPerPage
       val nbits = baseCuboid.index.n_bits
-      val filterBits = in.filters.map { f => columnMap(f.dimensionName).bits.slice(f.bitsFrom, f.bitsTo) }.fold(Vector())(_ ++ _)
+      val filterBits = in.filters.map { f => bitsOfEncoder(columnMap(f.dimensionName)).slice(f.bitsFrom, f.bitsTo) }.fold(Vector())(_ ++ _)
       val bitsToPick = (0 until nbits).diff(filterBits)
       val n2 = bitsToPick.size
       var requestedCubStart = BigInt(in.rowsPerPage * in.requestedPageId)
@@ -295,9 +295,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       val availableCuboidsView = ArrayBuffer[IndexedSeq[Int]]()
       while (binom <= (requestedCubStart + nextNumCuboids) && k < n2) {
-        val cubs = bitsToPick.combinations(k).slice(requestedCubStart.toInt, binom.toInt).map(c => c ++ filterBits)
-        availableCuboidsView ++= cubs
-        nextNumCuboids -= cubs.size
+        val cubsK = bitsToPick.combinations(k).slice(requestedCubStart.toInt, binom.toInt).map(c => c ++ filterBits).toVector
+        println(s"cuboids with ($k + ${filterBits.size}) bits = " + cubsK)
+        availableCuboidsView ++= cubsK
+        nextNumCuboids -= cubsK.size
         requestedCubStart = 0
         binom *= (n2 - k)
         binom /= (k + 1)
@@ -370,7 +371,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       sch = cg.schemaInstance.asInstanceOf[DynamicSchema2]
       columnMap = sch.columnVector.map { case LD2(name, enc) => name -> enc.asInstanceOf[DynamicColEncoder[_]] }.toMap
-      totalTimeBits = columnMap(timeDimension).bits.size
+      totalTimeBits = columnMap(timeDimension).bits.size //exclude isNotNULL bit
       SelectDataCubeForExploreResponse(columnMap.keys.toVector)
     }
   }
@@ -513,11 +514,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       sch.initBeforeDecode()
       hierarchy = getDimHierarchy(sch.root)
       columnMap = hierarchy.map { h => h.name -> h.flattenedLevelsMap }.toMap
-      shownSliceValues =  null
+      shownSliceValues = null
       filters.clear()
       filterCurrentDimArgs = null
       val dims = hierarchy.map { h => DimHierarchy(h.name, h.flattenedLevels.map(_._1)) }
-      val cuboidDims = sch.columnVector.map { case LD2(name, encoder) => CuboidDimension(name, encoder.bits.size) }
+      val cuboidDims = sch.columnVector.map { case LD2(name, encoder) => CuboidDimension(name, bitsOfEncoder(encoder).size) }
       val res = SelectDataCubeForQueryResponse(dims, cuboidDims, Vector(cg.measureName))
       println("\t response:" + res)
       res
@@ -529,7 +530,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val dname = in.dimensionName
     val lname = in.dimensionLevel
     val (level, numBits) = columnMap(dname)(lname)
-    val allValuesWithIndex = level.values(numBits).zipWithIndex.iterator
+    val allValuesWithIndex = level.values(numBits).iterator
     val fileteredValues = allValuesWithIndex.filter(_._1.contains(in.searchText))
     val rowStart = in.requestedPageId * in.numRowsInPage
     val rowEnd = (in.requestedPageId + 1) * in.numRowsInPage
@@ -554,7 +555,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import QueryState._
     println("SetValueForSlice arg: " + in)
     println("\t currentlyShownSliceValues = " + shownSliceValues)
-    if(filterCurrentDimArgs != null) {
+    if (filterCurrentDimArgs != null) {
       val filter = filters.find(f => (f._1 == filterCurrentDimArgs._1) && (f._2 == filterCurrentDimArgs._2))
       val filterAB = if (filter.isEmpty) {
         val ab = new ArrayBuffer[(String, Int)]()
@@ -592,7 +593,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
       if (isBatch) {
         val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
-        Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array)}}
+        Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array) } }
         cubsFetched += prepareCuboids.size
       }
       else {
@@ -618,9 +619,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       println("AllSeries")
       series.foreach(println)
-      stats("PrepareTime(ms)") += Profiler.getDurationMicro("Prepare")/1000.0
-      stats("FetchTime(ms)") += Profiler.getDurationMicro("Fetch")/1000.0
-      stats("SolveTime(ms)") += Profiler.getDurationMicro("Solve")/1000.0
+      stats("PrepareTime(ms)") += Profiler.getDurationMicro("Prepare") / 1000.0
+      stats("FetchTime(ms)") += Profiler.getDurationMicro("Fetch") / 1000.0
+      stats("SolveTime(ms)") += Profiler.getDurationMicro("Solve") / 1000.0
       stats("DOF") = momentSolver.dof
 
 
@@ -651,7 +652,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     else
       dims.map { d =>
         val (level, numBits) = columnMap(d.dimensionName)(d.dimensionLevel)
-        val validValues = level.values(numBits).zipWithIndex
+        val validValues = level.values(numBits)
         (d.dimensionLevel, validValues, numBits)
       }.foldLeft(IndexedSeq("" -> 0), 0) { case ((accvv, accbits), (dname, curvv, curbits)) =>
         curvv.flatMap { case (curv, curi) =>

@@ -55,7 +55,7 @@ class DynamicSchemaCubeGenerator(override val inputname: String,
 
 
 class WebShopDyn(implicit be: CBackend) extends DynamicSchemaCubeGenerator("WebShopDyn", "tabledata/Webshop/salesDyn.json")
-class TinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TinyData", "tabledata/TinyData/data.csv", Some("Value") )
+class TinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TinyDataDyn", "tabledata/TinyData/data.csv", Some("Value") )
 object DynamicSchemaCubeGenerator {
   def defaultToLong(v: Object) = v match {
     case s: String => s.toLong
