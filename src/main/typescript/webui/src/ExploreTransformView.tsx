@@ -200,12 +200,12 @@ const CheckRename = observer(() => {
 const FindRenameTime = observer(() => {
   const { exploreTransformStore: store } = useRootStore();
 
-  const [dimension, setDimension] = useState(store.dimensions[0]);
+  const [dimension, setDimension] = useState(store.dimensions[0] ?? '');
   const [isStepShown, setStepShown] = useState(false);
   const [numTimeBits, setNumTimeBits] = useState(0);
   const [filters, setFilters] = useState<boolean[]>([]);
   useEffect(() => {
-    setDimension(store.dimensions[0]);
+    setDimension(store.dimensions[0] ?? '');
     setStepShown(false);
     setFilters([]);
   }, [store.dimensions]);
@@ -262,7 +262,7 @@ const FindRenameTime = observer(() => {
           setFilters([]);
         }}
         optionToMenuItemMapper = { dimension => (
-          <MenuItem key = { 'check-rename-select-dimension-2-' + dimension } value = {dimension}>{dimension}</MenuItem>
+          <MenuItem key = { 'rename-time-select-dimension-' + dimension } value = {dimension}>{dimension}</MenuItem>
         ) }
       />
       <Button onClick = {() => {
