@@ -302,6 +302,10 @@ const ManuallyChooseCuboids = observer(() => {
             rowCount = {Number.MAX_VALUE}
             enablePagination
             manualPagination
+            muiTablePaginationProps = {{
+              showFirstButton: false,
+              showLastButton: false
+            }}
             state = {{
               density: 'compact',
               pagination: { pageIndex: page, pageSize: pageSize },
@@ -423,6 +427,10 @@ const ChosenCuboids = observer(() => {
         rowCount = {Number.MAX_VALUE}
         enablePagination
         manualPagination
+        muiTablePaginationProps = {{
+          showFirstButton: false,
+          showLastButton: false
+        }}
         state = {{
           density: 'compact',
           pagination: { pageIndex: store.chosenCuboidsPage, pageSize: store.chosenCuboidsPageSize }

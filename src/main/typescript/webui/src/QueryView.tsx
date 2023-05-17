@@ -252,13 +252,17 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
             backgroundColor: 
               (store.cuboidsPage === store.currentCuboidPage 
                 && row.index === store.currentCuboidIdWithinPage)
-                ? '#fffde7'
+                ? '#f5fbfe'
                 : '#ffffff'
           }
         })}
         rowCount = {Number.MAX_VALUE}
         enablePagination
         manualPagination
+        muiTablePaginationProps = {{
+          showFirstButton: false,
+          showLastButton: false
+        }}
         state = {{
           density: 'compact',
           pagination: { pageIndex: store.cuboidsPage, pageSize: store.cuboidsPageSize }
