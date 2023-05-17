@@ -344,6 +344,30 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
         axisRight={null}
         pointLabelYOffset={-12}
         useMesh={true}
+        tooltip = {({point}) => (
+          <div style = {{
+            padding: 5,
+            background: 'white',
+            fontSize: 12,
+            maxWidth: 400,
+            boxShadow: '0 0 4px #888888',
+            borderRadius: 3
+          }}>
+            <div>
+              <svg style = {{ width: 9, height: 8, padding: 0, margin: 0, marginRight: 5 }}>
+                <circle
+                  r={4} cx={4} cy={4}
+                  fill={point.color} opacity={1}
+                  stroke-width={0} stroke='rgba(0, 0, 0, .5)'
+                  style = {{ pointerEvents: 'none' }}
+                />
+              </svg>
+              <b>{point.serieId}</b>
+            </div>
+            <div>x: <b>{point.data.x}</b></div>
+            <div>y: <b>{point.data.y}</b></div>
+          </div>
+        )}
         legends={[
           {
             anchor: 'bottom-right',
