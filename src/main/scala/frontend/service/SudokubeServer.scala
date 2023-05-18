@@ -353,7 +353,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val file = File("cubedata")
     val potentialCubes = file.toDirectory.dirs.map(_.name)
     val dynamicCubes = potentialCubes.filter { fn =>
-      File(s"cubedata/$fn/$fn.sch").exists
+      fn.startsWith("WebShopDyn") || fn.startsWith("TinyDataDyn")
     } //only dynamic schema
     //Give WebshopDyn as first entry
     val response = GetCubesResponse(("WebShopDyn_base" +: dynamicCubes.toVector).distinct)
