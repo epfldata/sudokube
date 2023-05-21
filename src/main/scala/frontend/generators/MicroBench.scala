@@ -12,7 +12,7 @@ case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double)(im
 
   //println("\n\n----------------------\n" + inputname)
   override def schema(): Schema2 = {
-    val enc = (0 until n_bits).map { i => new LD2(s"D$i", BinaryCol) }.toVector
+    val enc = (0 until n_bits).map { i => new LD2(s"D$i", new BinaryCol) }.toVector
     val sch = new StaticSchema2(enc)
     assert(sch.n_bits == n_bits)
     sch

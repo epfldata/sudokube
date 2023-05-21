@@ -20,7 +20,7 @@ case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend)
   }
   override protected def schema(): Schema2 = {
     //StaticNatCol with both max and min 1 stores either 0 or 1
-    val dims = (0 until n_bits).map(i => LD2(s"d$i", BinaryCol)).toVector
+    val dims = (0 until n_bits).map(i => LD2(s"d$i", new BinaryCol)).toVector
     new StaticSchema2(dims)
   }
 }

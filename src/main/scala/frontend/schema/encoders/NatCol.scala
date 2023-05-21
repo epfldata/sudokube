@@ -40,7 +40,7 @@ class StaticNatCol(min_value: Int, max_value: Int, map_f: Any => Option[Int], nu
   override def n_bits: Int = if (max_value < min_value) 0 else math.ceil(math.log(maxIdx + 1) / math.log(2)).toInt  // size = log(len); len = maxIdx + 1
 }
 
-object BinaryCol extends StaticNatCol(0, 1, defaultToInt, false)
+class BinaryCol extends StaticNatCol(0, 1, defaultToInt, false)
 
 object StaticNatCol {
 

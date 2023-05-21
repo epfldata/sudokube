@@ -26,7 +26,9 @@ abstract class CubeGenerator(val inputname: String)(implicit val backend: CBacke
     dc
   }
   def loadBase() = {
-    DataCube.load(baseName)
+    val base =  DataCube.load(baseName)
+    assert(schemaInstance.n_bits ==  base.index.n_bits, s"Schema bits = ${schemaInstance.n_bits} != ${base.index.n_bits} =  bits in base cuboid")
+    base
   }
   def saveRMS(logN: Int, minD: Int, maxD: Int) = {
     val rms = new RandomizedMaterializationStrategy(schemaInstance.n_bits, logN, minD, maxD)
