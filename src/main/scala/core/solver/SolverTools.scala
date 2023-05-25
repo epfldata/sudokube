@@ -30,24 +30,11 @@ object SolverTools {
     val m1D = q.zipWithIndex.map { case (b, i) => (1 << i) -> Util.fromLong(primaryMoments._2(b)) }
     (0 -> Util.fromLong(primaryMoments._1)) +: m1D
   }
-
-  def fastMoments(naive: Array[Double]): Array[Double] = {
-    val result = naive.clone()
-    val N = naive.size
-    var h = 1
-    while (h < N) {
-      (0 until N by h * 2).foreach { i =>
-        (i until i + h).foreach { j =>
-          val sum = result(j) + result(j + h)
-          result(j) = sum
-        }
-      }
-      h *= 2
-    }
-    result
+  def intervalPrecision[T](trueResult: Array[Double], bounds: IndexedSeq[Interval[T]])(implicit num: Fractional[T]) = {
+    val cumulativeSpan = num.toDouble(bounds.map { i => num.minus(i.ub.get, i.lb.get) }.sum)
+    val total = trueResult.sum
+    cumulativeSpan / total
   }
-
-
   def error[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
     //assumes naive values can fit in Long without any fraction or overflow
     val length = naive.length

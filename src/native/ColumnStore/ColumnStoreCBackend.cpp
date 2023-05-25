@@ -11,6 +11,11 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_reset0
     colStore.clear();
 }
 
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_cuboidGC0
+  (JNIEnv *env, jobject obj,  jint h_id) {
+  colStore.cuboidGC(h_id);
+}
+
 JNIEXPORT jint JNICALL Java_backend_ColumnStoreCBackend_sRehash0
         (JNIEnv *env, jobject obj, jint s_id, jintArray jbitpos, jint mode) {
     jsize bitposlen = env->GetArrayLength(jbitpos);

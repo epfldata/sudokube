@@ -17,6 +17,14 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_reset0
 
 /*
  * Class:      backend_ColumnStoreCBackend
+ * Method:     cuboidGC0
+ * Signature:  (I)V
+ */
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_cuboidGC0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:      backend_ColumnStoreCBackend
  * Method:     sRehash0
  * Signature:  (I[II)I
  */

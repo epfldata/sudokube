@@ -8,7 +8,7 @@
 #include "common.h"
 #include <vector>
 #include <mutex>
-
+#include <iostream>
 struct ColumnStore {
     using KeyWord = uint64_t;
     using BitPos = std::vector<unsigned int>;
@@ -21,11 +21,21 @@ struct ColumnStore {
 //Do not call when unfrozen cuboids are present
     inline void clear() {
         std::lock_guard<std::mutex> lock(registryMutex);
-        for (auto cub: registry)
-            free(cub.ptr);
+        for (auto cub: registry){
+            if(cub.ptr != nullptr) {
+              free(cub.ptr);  //may have been freed already
+             }
+         }
         registry.clear();
     }
 
+    inline void cuboidGC(int h_id) {
+        std::lock_guard<std::mutex> lock(registryMutex);
+        unsigned int id = h_id > 0 ? h_id : -h_id;
+        auto& cub = registry[id];
+        free(cub.ptr);
+        cub.ptr = nullptr;
+    }
     /**
     Adds a dense or sparse cuboid to the registry
     @param cuboid Cuboid to be added

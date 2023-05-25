@@ -1,21 +1,23 @@
 package core
 
 import backend.CBackend
+import frontend.experiments.Tools
 import frontend.generators.{CubeGenerator, NYC, SSB}
+import util.ProgressIndicator
 
 import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
-class MaterializedQueryResult(cg: CubeGenerator) {
+class MaterializedQueryResult(cg: CubeGenerator, isPrefix: Boolean = true) {
   lazy val sch = cg.schemaInstance
   var baseCube: DataCube = null
-
+  val folder = if(isPrefix) "prefix" else "random"
   def ensureLoadBase() = if (baseCube == null)
     baseCube = cg.loadBase()
 
   def generateAndSaveQueries(nq: Int, qs: Int) = {
-    println(s"Generating $nq queries of length $qs for ${cg.inputname} dataset")
-    val queries = (0 until nq).map { i => sch.root.samplePrefix(qs).sorted.toVector }.distinct.toVector
-    val queryFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/queries.bin")
+    println(s"Generating $nq $folder queries of length $qs for ${cg.inputname} dataset")
+    val queries = (0 until nq).map { i => Tools.generateQuery(isPrefix, sch, qs)}.toVector
+    val queryFile = new File(s"cubedata/${cg.inputname}_queries/$folder/Q$qs/queries.bin")
     if (!queryFile.exists())
       queryFile.getParentFile.mkdirs()
     val queryOut = new ObjectOutputStream(new FileOutputStream(queryFile))
@@ -24,26 +26,25 @@ class MaterializedQueryResult(cg: CubeGenerator) {
 
     //write results
     ensureLoadBase()
-    print("Materializing query result   ")
+    val pi = new ProgressIndicator(queries.size, "Materializing query result ")
     queries.indices.foreach { queryIdx =>
-      print(queryIdx + "  ")
       val q = queries(queryIdx)
       val qres = baseCube.naive_eval(q)
-      val resFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/q${queryIdx}.bin")
+      val resFile = new File(s"cubedata/${cg.inputname}_queries/$folder/Q$qs/q${queryIdx}.bin")
       val resOut = new ObjectOutputStream(new FileOutputStream(resFile))
       resOut.writeObject(qres)
+      pi.step
     }
-    println()
   }
 
   def loadQueries(qs: Int) = {
-    val queryFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/queries.bin")
+    val queryFile = new File(s"cubedata/${cg.inputname}_queries/$folder/Q$qs/queries.bin")
     val queryIn = new ObjectInputStream(new FileInputStream(queryFile))
     queryIn.readObject().asInstanceOf[Vector[Vector[Int]]]
   }
 
   def loadQueryResult(qs: Int, queryIdx: Int) = {
-    val resFile = new File(s"cubedata/${cg.inputname}_queries/Q$qs/q${queryIdx}.bin")
+    val resFile = new File(s"cubedata/${cg.inputname}_queries/$folder/Q$qs/q${queryIdx}.bin")
     val resIn = new ObjectInputStream(new FileInputStream(resFile))
     resIn.readObject().asInstanceOf[Array[Double]]
   }
@@ -51,21 +52,21 @@ class MaterializedQueryResult(cg: CubeGenerator) {
 }
 
 object MaterializedQueryResult {
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]) {
     implicit val backend = CBackend.default
     val nq = 100
-    val qss = List(6, 9, 12, 15, 18, 21, 24)
+    val qss = List(2, 4)//List(8, 10, 14)//List(6, 9, 12, 15, 18, 21, 24)
 
-    val SSBQueries = new MaterializedQueryResult(SSB(100))
-    qss.foreach { qs =>
-      SSBQueries.generateAndSaveQueries(nq, qs)
+    val isPrefix = args.lift(0).map(_.toBoolean).getOrElse(true)
+    Vector(
+      new SSB(100),
+      new NYC()
+    ).foreach { cg =>
+      val mqr = new MaterializedQueryResult(cg, isPrefix)
+      qss.foreach { qs =>
+        mqr.generateAndSaveQueries(nq, qs)
+      }
+      backend.reset
     }
-    backend.reset
-
-    val nycQueries = new MaterializedQueryResult(new NYC)
-    qss.foreach { qs =>
-      nycQueries.generateAndSaveQueries(nq, qs)
-    }
-    backend.reset
   }
 }

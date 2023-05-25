@@ -516,7 +516,7 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
   /**
    * Converts moments to values using algorithm similar to FFT
    */
-  def fastSolve() = {
+  def fastSolve(handleNegative: Boolean = true) = {
     val result = sumValues.clone()
     var h = 1
     while (h < N) {
@@ -527,10 +527,10 @@ class MomentSolverAll[T: ClassTag](val qsize: Int, val strategy: Strategy = CoMo
             //special handling of negative values for these algorithms
             //this can only result in lower error (at least, I think so)
             case  _ =>
-              if (num.lt(diff, num.zero)) {
+              if (handleNegative && num.lt(diff, num.zero)) {
                 result(j + h) = result(j)
                 result(j) = num.zero
-              } else if (num.lt(result(j + h), num.zero)) {
+              } else if (handleNegative && num.lt(result(j + h), num.zero)) {
                 result(j + h) = num.zero
               } else
                 result(j) = diff

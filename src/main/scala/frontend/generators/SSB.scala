@@ -203,7 +203,13 @@ object SSBGen {
 
 
     val arg = args.lift(0).getOrElse("all")
-    val params = List((15, 14))
+
+    val params = List(
+      //(15, 18),
+      //(15, 14),
+      (15, 10), (15, 6),
+      (12, 14), (9, 14), (6, 14)
+    )
     val maxD = 30 // >15+14, so never passes threshold
 
     if ((arg equals "base") || (arg equals "all")) {

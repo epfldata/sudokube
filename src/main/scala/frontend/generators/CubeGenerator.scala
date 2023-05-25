@@ -6,6 +6,8 @@ import core.{DataCube, PartialDataCube}
 import frontend.schema.Schema2
 import util.BigBinary
 
+import java.io.FileNotFoundException
+
 abstract class CubeGenerator(val inputname: String)(implicit val backend: CBackend) {
   lazy val schemaInstance = schema()
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])]
@@ -25,8 +27,12 @@ abstract class CubeGenerator(val inputname: String)(implicit val backend: CBacke
     dc.savePrimaryMoments(baseName)
     dc
   }
-  def loadBase() = {
-    val base =  DataCube.load(baseName)
+  def loadBase(generateIfNotExists: Boolean = false) = {
+    val base = try {
+      DataCube.load(baseName)
+    } catch {
+      case ex: FileNotFoundException => if(generateIfNotExists) saveBase() else throw ex
+    }
     assert(schemaInstance.n_bits ==  base.index.n_bits, s"Schema bits = ${schemaInstance.n_bits} != ${base.index.n_bits} =  bits in base cuboid")
     base
   }

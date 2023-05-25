@@ -80,6 +80,8 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
    * Used in CBackend to unload all cuboids from RAM
    */
   def reset: Unit
+  //clears memory for a single cuboid from CBackend registry
+  def cuboidGC(id: HYBRID_T): Unit = ???
   /**
    * @param h Encoding for Dense/Sparse cuboids
    * @return true if `h` represents a Dense cuboid

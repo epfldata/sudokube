@@ -10,6 +10,7 @@ import core.cube.ArrayCuboidIndexFactory
 import core.materialization.{MaterializationStrategy, MaterializationStrategyInfo, OldRandomizedMaterializationStrategy}
 import core.solver.{Rational, RationalTools, SolverTools}
 import core.solver.lpp.{Interval, SliceSparseSolver}
+import frontend.schema.Schema2
 import generators._
 
 import scala.util.Random
@@ -34,7 +35,11 @@ object Tools {
 
   def qq(qsize: Int) = (0 to qsize - 1)
   def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toVector).take(qsize).sorted
-
+  def generateQuery(isPrefix: Boolean, sch: Schema2, qsize: Int) = if(isPrefix) {
+    sch.root.samplePrefix(qsize).sorted
+  } else {
+    rand_q(sch.n_bits, qsize)
+  }
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
     for(i <- 1 to n_it) a += sample()

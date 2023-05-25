@@ -55,7 +55,7 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
   override def denseToHybrid(d: Int): Int = -d
 
   override def reset: Unit = reset0()
-
+  override def cuboidGC(id: Int): Unit = cuboidGC0(id)
   override def readMultiCuboid(filename: String, idArray: Array[Int], isSparseArray: Array[Boolean], nbitsArray: Array[Int], sizeArray: Array[Int]): Map[Int, Cuboid] = {
     val backend_id_array = readMultiCuboid0(filename, isSparseArray, nbitsArray, sizeArray)
     (0 until idArray.length).map { i =>
