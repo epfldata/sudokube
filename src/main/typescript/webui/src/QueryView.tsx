@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
 import { Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme } from '@mui/material'
-import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip } from './QueryViewChips';
+import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip, MeasuresChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
 import { apiBaseUrl, useRootStore } from './RootStore';
@@ -36,6 +36,7 @@ export default observer(function Query() {
               store.dimensions = message.getCuboidDimsList();
               store.measures = message.getMeasuresList();
               store.measure = store.measures[0];
+              store.measure2 = store.measures[0];
             });
           })
         });
@@ -93,17 +94,19 @@ const SelectCube = observer(() => {
 
 const QueryParams = observer(() => {
   const { queryStore: store } = useRootStore();
+  const twoMeasures = store.aggregation === 'REG' || store.aggregation === 'COR';
   return (
     <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
       <Horizontal/>
       <Filters/>
       <Series/>
       <Grid item xs={6}>
-        <SelectionChip 
-          keyText = 'Measure' 
-          valueText = { store.measure } 
-          valueRange = { store.measures } 
-          onChange = { v => runInAction(() => store.measure = v) }
+        <MeasuresChip 
+          measure1 = { store.measure }
+          measure2 = { twoMeasures ? store.measure2 : undefined }
+          measures = { store.measures }
+          onChange1 = { v => runInAction(() => store.measure = v) }
+          onChange2 = { twoMeasures ? v => runInAction(() => store.measure2 = v) : undefined }
         />
         <SelectionChip 
           keyText = 'Aggregation' 
@@ -136,6 +139,7 @@ const QueryParams = observer(() => {
                 dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               measure: store.measure,
+              measure2: twoMeasures ? store.measure2 : undefined,
               aggregation: store.aggregation,
               solver: store.solver,
               isBatchMode: store.mode === 'Batch',
@@ -161,7 +165,7 @@ const QueryParams = observer(() => {
       </Grid>
     </Grid>
   )
-})
+});
 
 const Horizontal = observer(() => {
   const { queryStore: store } = useRootStore();

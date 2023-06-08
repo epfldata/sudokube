@@ -129,6 +129,7 @@ export class QueryStore {
 
   measures: string[] = ['Sales'];
   measure: string = 'Sales';
+  measure2: string = '';
 
   aggregations: string[] = ['SUM', 'AVG', 'COUNT', 'VAR', 'COR', 'REG'];
   aggregation: string = 'SUM';

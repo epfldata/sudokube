@@ -272,4 +272,56 @@ export const AddFilterChip = observer(() => {
       </DialogContent>
     </Dialog>
   </span>)
-})
+});
+
+export function MeasuresChip({ measure1, measure2, measures, onChange1, onChange2 }: {
+  measure1: string, measure2?: string, measures: string[], onChange1: (value: string) => void, onChange2?: (value: string) => void
+}) {
+  const [isDialogOpen, setDialogOpen] = React.useState(false);
+  return (<span>
+    <Chip 
+      style = {chipStyle}
+      variant = 'outlined'
+      label = { <span><b>Measures </b>{measure1 + (measure2 ? ', ' + measure2 : '')}</span> }
+      onClick = { () => { setDialogOpen(true) } } 
+    />
+    <Dialog open = {isDialogOpen}>
+      <DialogTitle> { "Select Measures" } </DialogTitle>
+      <DialogContent>
+        <FormControl sx = {{ m: 1, minWidth: 120 }}>
+          <InputLabel htmlFor = { "select-measure-1" }>{'Measure' + (measure2 ? ' 1' : '')}</InputLabel>
+          <Select
+            value = {measure1}
+            onChange = { e => {
+              measure1 = e.target.value;
+              onChange1(measure1);
+            } }
+            id = { 'select-measure-1' } label = {'Measure' + (measure2 ? ' 1' : '')}>
+            { measures.map(value => (
+              <MenuItem key = { 'select-measure-1-' + value } value = {value}> {value} </MenuItem>
+            )) }
+          </Select>
+        </FormControl>
+        { measure2 !== undefined ? (
+          <FormControl sx = {{ m: 1, minWidth: 120 }}>
+            <InputLabel htmlFor = { 'select-measure-2' }>Measure 2</InputLabel>
+            <Select
+              value = {measure2}
+              onChange = { e => {
+                measure2 = e.target.value;
+                onChange2!(measure2!);
+              } }
+              id = { 'select-measure-2' } label = 'Measure 2'>
+              { measures.map(value => (
+                <MenuItem key = { 'select-measure-2-' + value } value = {value}> {value} </MenuItem>
+              )) }
+            </Select>
+          </FormControl>
+        ) : null }
+        <DialogActions>
+          <Button onClick = { () => setDialogOpen(false) }>Done</Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
+  </span>)
+};
