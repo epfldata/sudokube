@@ -130,7 +130,7 @@ export class QueryStore {
   measures: string[] = ['Sales'];
   measure: string = 'Sales';
 
-  aggregations: string[] = ['SUM', 'AVG'];
+  aggregations: string[] = ['SUM', 'AVG', 'COUNT', 'VAR', 'COR', 'REG'];
   aggregation: string = 'SUM';
 
   solvers: string[] = ['Naive', 'Linear Programming', 'Moment', 'Graphical Model'];
