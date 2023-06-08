@@ -206,10 +206,11 @@ message QueryArgs {
   repeated DimensionDef horizontal = 1;
   repeated DimensionDef series = 2;
   string measure = 3;
-  string aggregation = 4;
-  string solver = 5;
-  bool is_batch_mode = 6;
-  uint32 prepared_cuboids_per_page = 8; //SBJ: Should it be part of different request?
+  string measure2 = 4;
+  string aggregation = 5;
+  string solver = 6;
+  bool is_batch_mode = 7;
+  uint32 prepared_cuboids_per_page = 8;
 }
 
 message XYPoint {
