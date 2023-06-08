@@ -53,3 +53,11 @@ class WebshopSales(implicit backend: CBackend)  extends CubeGenerator("WebshopSa
     new StaticSchema2(Vector(timeDims, customer, prodDims, locDims))
   }
 }
+
+object WebshopSales {
+  def main(args: Array[String]) {
+    implicit val be = CBackend.default
+    val cg = new WebshopSales()
+    cg.saveBase()
+  }
+}
