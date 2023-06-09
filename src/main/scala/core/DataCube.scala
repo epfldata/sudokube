@@ -296,15 +296,15 @@ class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
   }
 
   /** Saves the moments of this data cube in a trie data structure */
-  def saveAsTrie() = {
-    val filename = s"cubedata/${cubeName}_trie/${cubeName}.ctrie"
+  def saveAsTrie(dim: Int = 25, maxsize: Int = 1 << 30) = {
+    val filename = s"cubedata/triestore/$cubeName.trie"
+    println(s"Converting $cubeName to trie stored as $filename")
     val file = new File(filename)
     if (!file.exists())
       file.getParentFile.mkdirs()
 
-    val maxsize = 1L << 30
-    val dim = 25
-    val be = cuboids.head.backend.asInstanceOf[OriginalCBackend]
+    val be = cuboids.head.backend
+    assert(be == CBackend.triestore)
     val cubs = index.zipWithIndex.filter(_._1.length <= dim).map { case (cols, cid) =>
       val n = cols.length
       val cuboid = cuboids(cid)
@@ -314,9 +314,11 @@ class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
         case d: be.DenseCuboid => be.denseToHybrid(d.data)
         case s: be.SparseCuboid => be.sparseToHybrid(s.data)
       }
-      cols.sorted.toArray -> be_cid
-    }.toArray
-    be.saveAsTrie(cubs, filename, maxsize)
+      cols.sorted -> be_cid.asInstanceOf[Int]
+    }
+    val total = primaryMoments._1.toDouble
+    val pm = primaryMoments._2.map(_ / total)
+    CBackend.triestore.saveAsTrie(cubs, pm, filename, maxsize)
   }
 
   //TODO: FIX primary moments not necessarily saved under the same name as this cuboid

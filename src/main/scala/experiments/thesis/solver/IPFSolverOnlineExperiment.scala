@@ -1,18 +1,14 @@
 package experiments.thesis.solver
 
 import backend.CBackend
-import core.solver.Rational
-import core.solver.SolverTools.{intervalPrecision, mk_all_non_neg}
-import core.solver.lpp.{Interval, SliceSparseSolver}
+import core.solver.SolverTools._
+import core.solver.iterativeProportionalFittingSolver.NewVanillaIPFSolver
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
 import frontend.generators.{CubeGenerator, NYC, SSB}
 import util.{ManualStatsGatherer, Profiler}
 
-class LPSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String, f: SliceSparseSolver[Rational] => T, statToString: (T, Array[Double]) => String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"lp-solver-online", ename2) {
-
-  import core.solver.RationalTools._
-
+class IPFSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String, f: NewVanillaIPFSolver => T, statToString: (T, Array[Double]) => String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"ipf-online", ename2) {
   val header = "CubeName,RunID,Query,QSize,StatCounter,StatTime," + additionalHeaders
   fileout.println(header)
   def prepareOnline(dc: DataCube, query: IndexedSeq[Int]) = {
@@ -25,22 +21,19 @@ class LPSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String
     val query = qu.sorted
     Profiler.resetAll()
 
-    val b1 = mk_all_non_neg[Rational](1 << query.size)
-    val solver = new SliceSparseSolver[Rational](query.length, b1, Nil, Nil)
+    val pm = preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
+    val solver = new NewVanillaIPFSolver(query.length)
     val stg = new ManualStatsGatherer[T]()
     stg.task = () => f(solver)
     stg.start()
-    var l = prepareOnline(dc, query)
-    while (!(l.isEmpty) && solver.df > 0) {
-      val bits = l.head.queryIntersection
-      if (solver.shouldFetch(bits)) {
-        val fetched = dc.fetch2[Rational](List(l.head))
-        solver.add2(List(bits), fetched)
-        solver.gauss(solver.det_vars)
-        solver.compute_bounds
-        stg.record()
-      }
-      l = l.tail
+    val l = prepareOnline(dc, query)
+    val iter = l.toIterator
+    while (iter.hasNext) {
+      val current = iter.next()
+      val fetched = dc.fetch2[Double](List(current))
+      solver.add(current.queryIntersection, fetched)
+      solver.solve()
+      stg.record()
     }
     stg.finish()
     if (output) {
@@ -54,18 +47,14 @@ class LPSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String
 
 }
 
-object LPSolverOnlineExperiment extends ExperimentRunner {
-
-  import core.solver.RationalTools._
-
+object IPFSolverOnlineExperiment extends ExperimentRunner {
   val stats1 = {
-    def stats(s: SliceSparseSolver[Rational]) = (s.df, s.bounds.toVector)
-    def statsToString(stat: (Int, Vector[Interval[Rational]]), trueResult: Array[Double]) = {
-      val df = stat._1
-      val precision = intervalPrecision(trueResult, stat._2)
-      s"$df,$precision"
+    def stats(s: NewVanillaIPFSolver) = (s.solution.clone())
+    def statsToString(stat: Array[Double], trueResult: Array[Double]) = {
+      val errL1 = error(trueResult, stat)
+      s"$errL1"
     }
-    val header = "DOF,IntervalSpan"
+    val header = "ErrorL1"
     (header, stats(_), statsToString(_, _))
   }
 
@@ -76,11 +65,12 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
     }
     val logN = 15
     val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+    dc.loadPrimaryMoments(cg.baseName)
     val ename = s"${cg.inputname}-$isSMS-qsize"
     val (header, statf, strf) = stats1
-    val expt = new LPSolverOnlineExperiment(ename, header, statf, strf)
+    val expt = new IPFSolverOnlineExperiment(ename, header, statf, strf)
     val mqr = new MaterializedQueryResult(cg, isSMS)
-    Vector(2, 4, 6, 8).reverse.map { qs =>
+    Vector(6, 9, 12, 15).reverse.map { qs =>
       val queries = mqr.loadQueries(qs).take(numIters)
       queries.zipWithIndex.foreach { case (q, qidx) =>
         val trueRes = mqr.loadQueryResult(qs, qidx)
@@ -91,7 +81,7 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
   }
 
   def minD(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-    val qsize = 6
+    val qsize = 12
     val (minDLast, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
@@ -102,9 +92,10 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
     val mqr = new MaterializedQueryResult(cg, isSMS)
     val queries = mqr.loadQueries(qsize).take(numIters)
     val (header, statf, strf) = stats1
-    val expt = new LPSolverOnlineExperiment(ename, header, statf, strf)
+    val expt = new IPFSolverOnlineExperiment(ename, header, statf, strf)
     (6 to minDLast).by(4).reverse.map { minD =>
       val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
       queries.zipWithIndex.foreach { case (q, qidx) =>
         val trueResult = mqr.loadQueryResult(qsize, qidx)
         expt.run(dc, dc.cubeName, q, trueResult)
@@ -114,7 +105,7 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
   }
 
   def logN(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-    val qsize = 6
+    val qsize = 10
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
@@ -124,9 +115,10 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
     val mqr = new MaterializedQueryResult(cg, isSMS)
     val queries = mqr.loadQueries(qsize).take(numIters)
     val (header, statf, strf) = stats1
-    val expt = new LPSolverOnlineExperiment(ename, header, statf, strf)
+    val expt = new IPFSolverOnlineExperiment(ename, header, statf, strf)
     (6 to 15).by(3).reverse.map { logN =>
       val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
       queries.zipWithIndex.foreach { case (q, qidx) =>
         val trueResult = mqr.loadQueryResult(qsize, qidx)
         expt.run(dc, dc.cubeName, q, trueResult)
@@ -134,11 +126,11 @@ object LPSolverOnlineExperiment extends ExperimentRunner {
       be.reset
     }
   }
-
   def main(args: Array[String]) = {
     implicit val be = CBackend.default
     val nyc = new NYC()
     val ssb = new SSB(100)
+
     def func(param: String)(timestamp: String, numIters: Int) = {
       implicit val ni = numIters
       implicit val ts = timestamp

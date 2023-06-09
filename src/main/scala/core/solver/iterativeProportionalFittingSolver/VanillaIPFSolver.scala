@@ -91,13 +91,8 @@ class VanillaIPFSolver(override val querySize: Int,
 }
 
 
-class NewVanillaIPFSolver(override val querySize: Int,
-                          override val printErrorForEachIteration: Boolean = false,
-                          override val printErrorForEachUpdate: Boolean = false,
-                          override val trueResult: Array[Double] = null, /* for experimentation only */
-                          override val timeErrorFileOut: PrintStream = null, /* for experimentation only */
-                          override val cubeName: String = "", override val query: String = "" /* for experimentation only */) extends
-  VanillaIPFSolver(querySize, printErrorForEachIteration, printErrorForEachUpdate, trueResult, timeErrorFileOut, cubeName, query) {
+class NewVanillaIPFSolver(override val querySize: Int) extends
+  VanillaIPFSolver(querySize) {
   val temp = new Array[Double](1 << querySize)
   override def iterativeUpdate(iteration: Int): Double = {
     var totalDelta: Double = 0.0
@@ -107,6 +102,31 @@ class NewVanillaIPFSolver(override val querySize: Int,
 
     totalDelta
   }
+}
+
+/* Pass the 1-D marginals to the online solver so that it can start with 1D product distribution */
+class NewVanillaIPFOnlineSolver(override val querySize: Int, pmArray: Array[Double]) extends NewVanillaIPFSolver(querySize) {
+  def init() = {
+    var logh = 0
+    var h = 1
+    while(logh < querySize) {
+      val p = pmArray(logh)
+      val q = 1-p
+      var i = 0
+      while (i < N) {
+        var j = 0
+        while (j < h) {
+          totalDistribution(i + j) *= q
+          totalDistribution(i + j + h) *= p
+          j += 1
+        }
+        i += (h << 1)
+      }
+      logh += 1
+      h <<= 1
+    }
+  }
+  init()
 }
 
 class MSTVanillaIPFSolver(querySize: Int) extends IPFSolver(querySize, "MST IPF") {

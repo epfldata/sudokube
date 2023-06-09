@@ -130,7 +130,7 @@ object CoMomentSolverBatchExperiment extends ExperimentRunner{
     val ename = s"${cg.inputname}-$isSMS-minD-$handleNegative"
     val mqr = new MaterializedQueryResult(cg, isSMS)
     val queries = mqr.loadQueries(qsize).take(numIters)
-    val expt = new CoMomentSolverBatchExperiment(ename, handleNegative, false)
+    val expt = new CoMomentSolverBatchExperiment(ename, handleNegative, true)
     (6 to minDLast).by(4).reverse.map { minD =>
       val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
       dc.loadPrimaryMoments(cg.baseName)
@@ -152,7 +152,7 @@ object CoMomentSolverBatchExperiment extends ExperimentRunner{
     val ename = s"${cg.inputname}-$isSMS-logN-$handleNegative"
     val mqr = new MaterializedQueryResult(cg, isSMS)
     val queries = mqr.loadQueries(qsize).take(numIters)
-    val expt = new CoMomentSolverBatchExperiment(ename, handleNegative, false)
+    val expt = new CoMomentSolverBatchExperiment(ename, handleNegative, true)
     (6 to 15).by(3).reverse.map { logN =>
       val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
       dc.loadPrimaryMoments(cg.baseName)

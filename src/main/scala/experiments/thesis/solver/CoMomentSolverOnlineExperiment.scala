@@ -144,17 +144,17 @@ object CoMomentSolverOnlineExperiment extends ExperimentRunner {
         case "qsize-ssb-prefix" => qsize(ssb, true)
         case "qsize-ssb-random" => qsize(ssb, false)
 
-        case "logn-nyc-prefix" => logN(nyc, true)
-        case "logn-nyc-random" => logN(nyc, false)
-
-        case "logn-ssb-prefix" => logN(ssb, true)
-        case "logn-ssb-random" => logN(ssb, false)
-
-        case "mind-nyc-prefix" => minD(nyc, true)
-        case "mind-nyc-random" => minD(nyc, false)
-
-        case "mind-ssb-prefix" => minD(ssb, true)
-        case "mind-ssb-random" => minD(ssb, false)
+        //case "logn-nyc-prefix" => logN(nyc, true)
+        //case "logn-nyc-random" => logN(nyc, false)
+        //
+        //case "logn-ssb-prefix" => logN(ssb, true)
+        //case "logn-ssb-random" => logN(ssb, false)
+        //
+        //case "mind-nyc-prefix" => minD(nyc, true)
+        //case "mind-nyc-random" => minD(nyc, false)
+        //
+        //case "mind-ssb-prefix" => minD(ssb, true)
+        //case "mind-ssb-random" => minD(ssb, false)
 
         case s => throw new IllegalArgumentException(s)
       }

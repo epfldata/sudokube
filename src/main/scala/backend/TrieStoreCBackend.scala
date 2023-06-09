@@ -23,7 +23,7 @@ class TrieStoreCBackend extends CBackend(".csukcs") {
    * @param filename Name of file
    * @param maxSize Maximum node size in the trie. Once the trie capapcity is reached, no additional moments are stored
    */
-  def saveAsTrie(cuboids: Seq[(Seq[Int], HYBRID_T)], pm: Array[Double], filename: String, maxSize: Long): Unit = {
+  def saveAsTrie(cuboids: Seq[(Seq[Int], Int)], pm: Array[Double], filename: String, maxSize: Long): Unit = {
     initTrie0(maxSize)
     setPrimaryMoments0(pm)
     val pi = new ProgressIndicator(cuboids.size)

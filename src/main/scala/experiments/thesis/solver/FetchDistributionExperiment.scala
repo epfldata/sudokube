@@ -10,7 +10,7 @@ class FetchDistributionExperiment(ename2: String = "")(implicit timestampedFolde
   val header = "CubeName,RunID,Query,QSize," +
     "CuboidDim,SrcCuboidCount,DstCuboidCount,SrcCuboidsTotalBytes"
   fileout.println(header)
-  var maxDims = 30
+  var maxDims = 40
   def prepare(dc: DataCube, query: IndexedSeq[Int]) = {
     val l = Profiler(s"Prepare") { // Not doing prepare for primary moments
       dc.index.prepareBatch(query)

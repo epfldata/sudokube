@@ -60,7 +60,7 @@ object NaiveSolverExperiment extends ExperimentRunner {
   }
 
   def minD(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-    val qsize = 6
+    val qsize = if(isSMS) 6 else 4
     val (minDLast, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
@@ -82,7 +82,7 @@ object NaiveSolverExperiment extends ExperimentRunner {
   }
 
   def logN(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-    val qsize = 6
+    val qsize = if(isSMS) 6 else 4
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
