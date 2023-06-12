@@ -89,6 +89,16 @@ JNIEXPORT void JNICALL Java_backend_TrieStoreCBackend_loadTrie0
 }
 
 
+JNIEXPORT void JNICALL Java_backend_TrieStoreCBackend_reset0
+        (JNIEnv *env, jobject obj) {
+    trieStore.reset();
+#ifdef COLSTORE
+    store.clear();
+#endif
+#ifdef ROWSTORE
+    store.clear();
+#endif
+}
 JNIEXPORT jdoubleArray JNICALL Java_backend_TrieStoreCBackend_prepareFromTrie0
         (JNIEnv *env, jobject obj, jintArray jquery, jintArray jslice) {
     auto query = env->GetIntArrayElements(jquery, nullptr);

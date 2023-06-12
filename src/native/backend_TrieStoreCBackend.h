@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:      backend_TrieStoreCBackend
+ * Method:     reset0
+ * Signature:  ()V
+ */
+JNIEXPORT void JNICALL Java_backend_TrieStoreCBackend_reset0
+  (JNIEnv *, jobject);
+
+/*
+ * Class:      backend_TrieStoreCBackend
  * Method:     saveTrie0
  * Signature:  (Ljava/lang/String;)V
  */

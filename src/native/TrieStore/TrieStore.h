@@ -34,6 +34,10 @@ struct TrieStore {
     bool addSparseCuboidToTrie(ColumnStore &colStore, const std::vector<int> &cuboidDims, unsigned int s_id);
 #endif
 
+    void reset() {
+        delete[] globalSetTrie.nodes;
+        globalSetTrie = SetTrie<double>();
+    }
     void initTrie(size_t maxsize) { globalSetTrie.init(maxsize); }
 
     void setPrimaryMoments(double *pm, size_t s) {
@@ -58,12 +62,15 @@ struct TrieStore {
     void loadTrie(const char *filename) {
         globalSetTrie.loadFromFile(filename);
         std::string file2 = filename;
-        FILE *fp = fopen((file2 + "pmbin").c_str(), "rb");
+        std::string pmfilename = (file2 + "pmbin");
+        FILE *fp = fopen(pmfilename.c_str(), "rb");
+        if(!fp) throw std::runtime_error("Error opening primary moments " + pmfilename);
         int numCols;
         auto rv = fread(&numCols, sizeof(int), 1, fp);
         primaryMoments.reserve(numCols);
         for (int i = 0; i < numCols; i++) primaryMoments[i] = 1.0;
         rv = fread(&primaryMoments[0], sizeof(double), numCols, fp);
+        if(rv != numCols) throw std::runtime_error("incorrect number of primary moments read");
         fclose(fp);
     }
 

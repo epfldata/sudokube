@@ -195,8 +195,6 @@ class SSBSample(d0: Int)(implicit backend: CBackend) extends SSB(1) {
 }
 object SSBGen {
   def main(args: Array[String])  {
-    implicit val backend = CBackend.default
-    val cg = SSB(100)
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
@@ -206,25 +204,52 @@ object SSBGen {
 
     val params = List(
       //(15, 18),
-      //(15, 14),
+      (15, 14),
       (15, 10), (15, 6),
       (12, 14), (9, 14), (6, 14)
     )
     val maxD = 30 // >15+14, so never passes threshold
 
     if ((arg equals "base") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
+    }
+
+    if ((arg equals "RMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = SSB(100)
+      //params.foreach { case (logN, minD) =>
+        val dc = cg.loadRMS(15, 14, maxD)
+        dc.loadPrimaryMoments(cg.baseName)
+        dc.saveAsTrie(20)
+        backend.reset
+      //}
+    }
+    if ((arg equals "SMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = SSB(100)
+      //params.foreach { case (logN, minD) =>
+        val dc = cg.loadSMS(15, 14, maxD)
+        dc.loadPrimaryMoments(cg.baseName)
+        dc.saveAsTrie(20)
+        backend.reset
+      //}
     }
   }
 }

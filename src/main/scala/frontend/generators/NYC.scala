@@ -99,11 +99,8 @@ case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
 }
 
 object NYC {
-  implicit val backend = CBackend.colstore
 
   def main(args: Array[String]): Unit = {
-    println("Loading Schema")
-    val cg = new NYC
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
@@ -117,11 +114,15 @@ object NYC {
     val maxD = 40
 
     if ((arg equals "base") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = new NYC()
       if (resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = new NYC()
       if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) =>
         cg.saveRMS(logN, minD, maxD)
@@ -130,6 +131,8 @@ object NYC {
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = new NYC()
       if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) =>
         cg.saveSMS(logN, minD, maxD)
@@ -137,5 +140,24 @@ object NYC {
       }
     }
 
+    if ((arg equals "RMSTrie") || (arg equals "all")) {
+      //params.foreach { case (logN, minD) =>
+      implicit val backend = CBackend.triestore
+      val cg = new NYC()
+      val dc = cg.loadRMS(15, 18, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
+      //}
+    }
+    if ((arg equals "SMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = new NYC()
+      val dc = cg.loadSMS(15, 18, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
+      //}
+    }
   }
 }

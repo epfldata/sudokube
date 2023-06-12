@@ -12,12 +12,12 @@ import util.Profiler
 
 class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers", ename2) {
   val header = "CubeName,RunID,Query,QSize," +
-    "SolverName,StatTime,Er," +
+    "PrepareNaive,FetchNaive,TotalNaive," +
     "PrepareLP,FetchLP,SolveLP,TotalLP,ErrorLP," +
     "PrepareMoment,FetchMoment,SolveMoment,TotalMoment,ErrorMoment," +
     "PrepareIPF,FetchIPF,SolveIPF,TotalIPF,ErrorIPF"
   fileout.println(header)
-  def runNaive(dc: DataCube, query: IndexedSeq[Int], common: String) = {
+  def runNaive(dc: DataCube, query: IndexedSeq[Int]) = {
     Profiler.resetAll()
     val prepared = Profiler("PrepareNaive") { dc.index.prepareNaive(query) }
     val result = Profiler("FetchNaive") { dc.fetch(prepared).map(p => p.sm) }
@@ -28,7 +28,7 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
     s"$prepareTime,$fetchTime,$totalTime"
   }
 
-  def runLP(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String) = {
+  def runLP(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double]) = {
     Profiler.resetAll()
     if(query.size <= 10) {
       import core.solver.RationalTools._
@@ -60,7 +60,7 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
       s"prepare,fetch,solve,total,error"
     }
   }
-  def runMoment(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String) = {
+  def runMoment(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double]) = {
     Profiler.resetAll()
     val (prepared, pm) = Profiler("PrepareMoment") {
       dc.index.prepareBatch(query) -> SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
@@ -83,7 +83,7 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
   }
 
 
-  def runIPF(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String) = {
+  def runIPF(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double]) = {
     Profiler.resetAll()
     val prepared = Profiler("PrepareIPF") {
       dc.index.prepareBatch(query)
@@ -107,10 +107,12 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
   override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)] = Seq()): Unit = {
     val query = qu.sorted
     val common = s"$dcname,$runID,${qu.mkString(";")},${qu.size}"
-    runNaive(dc, query, common)
-    runLP(dc, query, trueResult, common)
-    runMoment(dc, query, trueResult, common)
-    runIPF(dc, query, trueResult, common)
+    val naive = runNaive(dc, query)
+    val lp = runLP(dc, query, trueResult)
+    val moment = runMoment(dc, query, trueResult)
+    val ipf = runIPF(dc, query, trueResult)
+    val row = s"$common,$naive,$lp,$moment,$ipf"
+    fileout.println(row)
     runID += 1
   }
 }

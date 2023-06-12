@@ -143,12 +143,12 @@ struct SetTrie {
             for (const int k: keypath) {
                 n = findOrInsert(n, k, value);
             }
-            if (n->value != -1 && std::abs(n->value - value) >= 0.01) {
-                std::cout << "NewValue " << value << "contradicts existing value " << n->value << " for path ";
-                for (const int k: keypath) std::cerr << k << " ";
-                std::cerr << std::endl;
-                throw std::runtime_error("Moment contradiction");
-            }
+//            if (n->value != -1 && std::abs(n->value - value) >= 0.01) {
+//                std::cout << "NewValue " << value << "contradicts existing value " << n->value << " for path ";
+//                for (const int k: keypath) std::cerr << k << " ";
+//                std::cerr << std::endl;
+//                throw std::runtime_error("Moment contradiction");
+//            }
             if (n->value == -1)
                 n->value = value;
         }
@@ -235,9 +235,11 @@ struct SetTrie {
 
     void loadFromFile(const char *filename) {
         FILE *fp = fopen(filename, "rb");
+        if(!fp) throw std::runtime_error("Error opening trie file " + std::string(filename));
         int b = fscanf(fp, "%lu", &count);
         init(count);
         int readElems = fread(nodes, sizeof(Node<V>), count, fp);
+        if(readElems != count) throw std::runtime_error("Incorrect entries read from trie");
         assert(readElems == count);
         fclose(fp);
 

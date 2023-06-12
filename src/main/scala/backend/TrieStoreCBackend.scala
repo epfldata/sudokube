@@ -5,6 +5,7 @@ import util.ProgressIndicator
 
 //TODO: Reusing rowstore extension
 class TrieStoreCBackend extends CBackend(".csukcs") {
+  @native override protected def reset0(): Unit
   @native protected def saveTrie0(filename: String)
   @native protected def loadTrie0(filename: String): Unit
   @native protected def initTrie0(maxSize: Long)
