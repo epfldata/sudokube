@@ -2,15 +2,24 @@ package frontend.generators
 
 import backend.CBackend
 import breeze.io.CSVReader
+import frontend.cubespec.Measure
 import frontend.schema.encoders.{DateCol, MemCol}
-import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
+import frontend.schema._
 import util.BigBinary
 
 import java.io.FileReader
 import java.util.Date
 
-case class Brazil()(implicit backend: CBackend) extends CubeGenerator("Brazil") {
+case class Brazil()(implicit backend: CBackend) extends StaticCubeGenerator("Brazil") {
   lazy val schemaAndData = generate()
+  override val measure = new Measure[StaticInput, Long] {
+    override val name: String = "Price"
+    override def compute(r: StaticInput): Long = {
+      val price = r(4)
+      (price.toDouble * 100).toLong
+    }
+  }
+
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val data = schemaAndData._2
     Vector(data.size -> data.iterator) //Only 1 partition
@@ -42,7 +51,7 @@ case class Brazil()(implicit backend: CBackend) extends CubeGenerator("Brazil") 
       val cust = custs(cid)
       val prod = products(pid)
       val sel = sellers(sid)
-      Vector(oid, iid, order(1), order(0), cust(0), cust(1), cust(2), pid, prod(0), sid, sel(0), sel(1), sel(2)) -> (price.toDouble * 100).toLong
+      Vector(oid, iid, order(1), order(0), cust(0), cust(1), cust(2), pid, prod(0), sid, sel(0), sel(1), sel(2)) -> measure.compute(r)
     }
     /*
        "order_id", "order_item_id"

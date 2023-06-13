@@ -132,6 +132,51 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
     if(this.isInstanceOf[ColumnStoreCBackend]) this.asInstanceOf[ColumnStoreCBackend].freezeMkAll(data)
     SparseCuboid(n_bits, data)
   }
+
+  /**
+   * Initializes base cuboids for multiple measures using multiple threads, each working on disjoint parts
+   * @param n_bits Number of dimensions
+   * @param its Array storing, for each thread, the number of key-value pairs as well as iterator to them
+   * @return Base Cuboids
+   */
+  def mkParallelMulti(n_bits: Int, numMeasures: Int, its: IndexedSeq[(Int, Iterator[(BigBinary, IndexedSeq[Long])])]): IndexedSeq[SparseCuboid] = {
+
+    val sizes = its.map(_._1)
+    val pi = new ProgressIndicator(its.size, "Building Base Cuboids", n_bits > 25)
+    val totalSize = sizes.sum
+    val offsets = Array.fill(its.size)(0)
+    (1 until its.size).foreach { i => offsets(i) = offsets(i - 1) + sizes(i - 1) }
+    val multidata = (0 until numMeasures).map{i => mkAll0(n_bits, totalSize)}
+
+    val recSize = (BitUtils.bitToBytes(n_bits)) + 8
+    implicit val ec = ExecutionContext.global
+    val futs = its.indices.map(i => Future {
+      val offset = offsets(i)
+      val numRecs = its(i)._1
+      val bufferedIterator = its(i)._2.toVector //WARNING: Materializing one entire partition here
+
+      multidata.zipWithIndex.map { case (data, dataidx) =>
+        val byteBuffer = java.nio.ByteBuffer.allocateDirect(numRecs * recSize)
+        byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
+        bufferedIterator.foreach { x =>
+          val ia_key = x._1.toByteArray(n_bits)
+          byteBuffer.put(ia_key)
+          byteBuffer.putLong(x._2(dataidx))
+        }
+        add_i(offset, data, n_bits, numRecs, byteBuffer)
+      }
+      pi.step
+      //println(" P"+i+s" from $offset to ${offset + count}")
+      //collection.immutable.BitSet((offset until offset + count):_*)
+    })
+    Await.result(Future.sequence(futs), Duration.Inf)
+    //assert(ranges.reduce(_ union _).size == totalSize)
+
+    multidata.map { data =>
+      if (this.isInstanceOf[ColumnStoreCBackend]) this.asInstanceOf[ColumnStoreCBackend].freezeMkAll(data)
+      SparseCuboid(n_bits, data)
+    }
+  }
   def mk(n_bits: Int, it: Iterator[(BigBinary, Long)]): SparseCuboid = {
     val data = mk0(n_bits)
     val transferUnits = 64

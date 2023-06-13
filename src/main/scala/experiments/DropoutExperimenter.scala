@@ -11,7 +11,7 @@ import frontend.generators.{CubeGenerator, NYC, SSB}
 object DropoutExperimenter {
   implicit val backend = CBackend.default
   def runDropoutExperiment(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int, querySize: Int, queryIndex: Int, policy: String)(implicit shouldRecord: Boolean): Unit = {
-    val cg: CubeGenerator = if (cubeGenerator == "NYC")  NYC() else SSB(100)
+    val cg = if (cubeGenerator == "NYC")  NYC() else SSB(100)
     val param = s"15_${minNumDimensions}_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"

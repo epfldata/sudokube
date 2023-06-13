@@ -1,13 +1,13 @@
 package experiments.thesis.solver
 
 import backend.CBackend
-import core.{DataCube, MaterializedQueryResult}
 import core.solver.iterativeProportionalFittingSolver.MSTVanillaIPFSolver
 import core.solver.lpp.SliceSparseSolver
 import core.solver.moment.CoMoment5SolverDouble
 import core.solver.{Rational, SolverTools}
+import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{NYC, SSB, StaticCubeGenerator}
 import util.Profiler
 
 class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers", ename2) {
@@ -119,7 +119,7 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
 
 object AllSolverExperiment extends ExperimentRunner {
 
-  def qsize(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+  def qsize(cg: StaticCubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)

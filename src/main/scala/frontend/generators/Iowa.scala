@@ -1,6 +1,7 @@
 package frontend.generators
 
 import backend.CBackend
+import frontend.cubespec.Measure
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
 import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
 
@@ -8,8 +9,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import scala.io.Source
 
-case class Iowa()(implicit backend: CBackend) extends CubeGenerator("IowaAll") {
+case class Iowa()(implicit backend: CBackend) extends StaticCubeGenerator("IowaAll") {
   lazy val schemaAndData = read(inputname)
+  override val measure = new Measure[StaticInput, Long] {
+    override val name: String = "Sale"
+    override def compute(r: StaticInput): Long = {
+      val header: Array[String] = ???
+      val valueIdx = header.indexOf("Sale (Dollars)")
+      val valueStr = r(valueIdx)
+      if (valueStr.isEmpty) 0L else (valueStr.toDouble * 100).toLong
+    }
+  }
   def generatePartitions() = {
     val data = schemaAndData._2
     Vector(data.size -> data.toIterator) //only one partition
@@ -26,7 +36,7 @@ case class Iowa()(implicit backend: CBackend) extends CubeGenerator("IowaAll") {
     val keyCols = Vector("Date", "County Number", "City", "Zip Code", "Store Location", "Store Number", "Item Number", "Category", "Vendor Number")
 
     val keyIdx = keyCols.map(c => header.indexOf(c))
-    val valueIdx = header.indexOf("Sale (Dollars)")
+
     val join = data.tail.map { r =>
       val f1 = new SimpleDateFormat("MM/dd/yyyy")
       val key = keyIdx.map {
@@ -37,8 +47,7 @@ case class Iowa()(implicit backend: CBackend) extends CubeGenerator("IowaAll") {
         }
         case i => r(i)
       }
-      val valueStr = r(valueIdx)
-      val value = if (valueStr.isEmpty) 0L else (valueStr.toDouble * 100).toLong
+      val value = measure.compute(r)
       (key, value)
     }
 

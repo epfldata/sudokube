@@ -3,7 +3,7 @@ package experiments.thesis.solver
 import backend.CBackend
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators._
+import frontend.generators.{StaticCubeGenerator => CubeGenerator, NYC, SSB}
 import util.Profiler
 
 class NaiveSolverExperiment(ename2: String = "")(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"naive-solver", ename2) {

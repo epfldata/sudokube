@@ -6,7 +6,7 @@ import core.solver.moment.Strategy.CoMoment
 import core.solver.moment.{CoMoment3Solver, CoMoment5SolverDouble, Moment1Transformer, MomentSolverAll}
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{StaticCubeGenerator => CubeGenerator, NYC, SSB}
 import planning.NewProjectionMetaData
 import util.Profiler
 

@@ -2,12 +2,12 @@ package core
 
 import backend.CBackend
 import frontend.experiments.Tools
-import frontend.generators.{CubeGenerator, NYC, RandomCubeGenerator, SSB, SSBSample}
+import frontend.generators._
 import util.ProgressIndicator
 
-import java.io.{File, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io._
 
-class MaterializedQueryResult(cg: CubeGenerator, isPrefix: Boolean = true) {
+class MaterializedQueryResult[I](cg: CubeGenerator[I], isPrefix: Boolean = true) {
   lazy val sch = cg.schemaInstance
   var baseCube: DataCube = null
   val folder = if(isPrefix) "prefix" else "random"

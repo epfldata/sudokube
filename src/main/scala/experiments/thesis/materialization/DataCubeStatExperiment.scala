@@ -3,7 +3,7 @@ package experiments.thesis.materialization
 import _root_.backend.CBackend
 import core.DataCube
 import experiments.{Experiment, ExperimentRunner}
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{StaticCubeGenerator, NYC, SSB}
 
 
 class DataCubeStatExperiment(ename2: String)(implicit timestampedFolder: String) extends Experiment(ename2, s"cube-stat",  "thesis/materialization") {
@@ -26,7 +26,7 @@ class DataCubeStatExperiment(ename2: String)(implicit timestampedFolder: String)
 }
 
 object DataCubeStatExperiment extends ExperimentRunner {
-  def expt(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, be: CBackend): Unit = {
+  def expt(cg: StaticCubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, be: CBackend): Unit = {
     val params = cg match {
       case n: NYC =>
         val maxD = 40

@@ -26,7 +26,7 @@ object ScoringFunctionsPerformanceExperimenter {
    * @param runs States how many runs (=queries) should be performed with that setup
    */
   def runScoringFunctionsPerformanceExperiment(cgName: String, d: Int, d0: Int, b: Double, q: Int, runs: Int, mode: String)(implicit shouldRecord: Boolean): Unit = {
-    val cg: CubeGenerator = cgName match {
+    val cg = cgName match {
       case "NYC" => new NYC()
       case "RANDOM" => RandomCubeGenerator(d, d0)
       case "SSB-1" => new SSB(1)

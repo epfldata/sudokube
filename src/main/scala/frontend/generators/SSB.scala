@@ -2,6 +2,7 @@ package frontend.generators
 
 import backend.CBackend
 import breeze.io.CSVReader
+import frontend.cubespec.{Measure, SingleColumnStaticMeasure}
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
 import util.Profiler
@@ -10,10 +11,19 @@ import java.io.FileReader
 import java.util.Date
 import scala.concurrent.ExecutionContext
 
-case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-sf$sf") {
+case class SSB(sf: Int)(implicit backend: CBackend) extends StaticCubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
+  val measure = new Measure[StaticInput, Long] {
+    override val name: String = "Amount"
+    override def compute(r: IndexedSeq[String]): Long = {
+      val ext_price = r(9)
+      val discount = r(11)
+      val tax = r(14)
+      val value = ext_price.toLong * (100 - discount.toInt) * (100 + tax.toInt) / 10000
+      value
+    }
+  }
 
-  override val measureName: String = "Amount"
   override def schema(): StaticSchema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
     import StaticDateCol._
@@ -111,17 +121,17 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
     Profiler.noprofile(s"readTbl$name") {
       val size = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').size
       val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|')
-      size -> tbl.map { r => colIdx.map(i => r(i))}
+      size -> tbl.map { r => colIdx.map(i => r(i)) }
     }
   }
   def fetchPart(name: String, colIdx: Vector[Int])(i: Int) = {
-    val num =  String.format("%03d",Int.box(i))
+    val num = String.format("%03d", Int.box(i))
     val n2 = name + "." + num
     //println("Reading " + n2)
     readTbl(n2, colIdx)
   }
 
-  def generate( ) = ???
+  def generate() = ???
   override def generatePartitions() = {
 
     //val date = readTbl("date", Vector(0, 2)).map(d => d.head -> Vector(sdf.parse(d(0)), d(1))).toMap
@@ -154,29 +164,28 @@ case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-
       val key = ordVales ++
         //date(dateid) ++
         custs(cid) ++
-      supps(sid) ++
+        supps(sid) ++
         parts(pid)
       assert(key.size == sch.columnVector.size)
 
-      val value = ext_price.toLong * (100 - discount.toInt) * (100 + tax.toInt) / 10000
-      sch.encode_tuple(key) -> value
+      sch.encode_tuple(key) -> measure.compute(r)
     }
 
     implicit val ec = ExecutionContext.global
-    val los = if(sf < 1)
+    val los = if (sf < 1)
       Vector(readTbl("lineorder", (0 until 17).toVector))
     else
-      (0 until sf*10).map { i => fetchPart("lineorder", (0 until 17).toVector)(i) }
+      (0 until sf * 10).map { i => fetchPart("lineorder", (0 until 17).toVector)(i) }
 
     //println("LO Parts  = " + los.size)
-    val jos = los.map{ case (n, it) => n -> it.map(joinFunc)}
+    val jos = los.map { case (n, it) => n -> it.map(joinFunc) }
 
     jos
   }
 }
 
 class SSBSample(d0: Int)(implicit backend: CBackend) extends SSB(1) {
-  override val inputname: String = "SSBSample_"+d0
+  override val inputname: String = "SSBSample_" + d0
   val numlines = (1 << d0) / 10
   assert(d0 >= 4 && d0 < 23)
   override def readTbl(name: String, colIdx: Vector[Int]) = {
@@ -193,8 +202,9 @@ class SSBSample(d0: Int)(implicit backend: CBackend) extends SSB(1) {
     }
   }
 }
+
 object SSBGen {
-  def main(args: Array[String])  {
+  def main(args: Array[String]) {
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
@@ -213,21 +223,21 @@ object SSBGen {
     if ((arg equals "base") || (arg equals "all")) {
       implicit val backend = CBackend.default
       val cg = SSB(100)
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
       implicit val backend = CBackend.default
       val cg = SSB(100)
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
       implicit val backend = CBackend.default
       val cg = SSB(100)
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
     }
 
@@ -235,20 +245,20 @@ object SSBGen {
       implicit val backend = CBackend.triestore
       val cg = SSB(100)
       //params.foreach { case (logN, minD) =>
-        val dc = cg.loadRMS(15, 14, maxD)
-        dc.loadPrimaryMoments(cg.baseName)
-        dc.saveAsTrie(20)
-        backend.reset
+      val dc = cg.loadRMS(15, 14, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
       //}
     }
     if ((arg equals "SMSTrie") || (arg equals "all")) {
       implicit val backend = CBackend.triestore
       val cg = SSB(100)
       //params.foreach { case (logN, minD) =>
-        val dc = cg.loadSMS(15, 14, maxD)
-        dc.loadPrimaryMoments(cg.baseName)
-        dc.saveAsTrie(20)
-        backend.reset
+      val dc = cg.loadSMS(15, 14, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
       //}
     }
   }

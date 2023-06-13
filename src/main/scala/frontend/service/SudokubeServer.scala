@@ -10,7 +10,9 @@ import com.typesafe.config.ConfigFactory
 import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import core.solver.SolverTools
 import core.solver.moment.CoMoment5SolverDouble
-import core.{DataCube, PartialDataCube}
+import core.{AbstractDataCube, DataCube, MultiDataCube, PartialDataCube}
+import frontend.cubespec.Aggregation._
+import frontend.cubespec.{CompositeMeasure, CountMeasure, Measure}
 import frontend.generators._
 import frontend.schema._
 import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, StaticColEncoder}
@@ -20,8 +22,7 @@ import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.io.File
 //#grpc-web
 
@@ -70,18 +71,18 @@ case class MyDimLevel(name: String, enc: ColEncoder[_]) {
       } else { //DynamicColEncoder
         val dynenc = enc.asInstanceOf[DynamicColEncoder[_]]
         val localOffset = 1 << (numBits - 1)
-        if(numBits == 1) {
+        if (numBits == 1) {
           Vector("NULL", "Not NULL").zipWithIndex
-        } else if(numBits - 1 == enc.bits.length ) {
+        } else if (numBits - 1 == enc.bits.length) {
           ("NULL" -> 0) +: (0 to enc.maxIdx).map(i => enc.decode_locally(i).toString).
-            zipWithIndex.map{case (v, i) => v -> (i + localOffset)}
+            zipWithIndex.map { case (v, i) => v -> (i + localOffset) }
         } else {
           val droppedBits = enc.bits.length - (numBits - 1)
           ("NULL" -> 0) +: (0 to enc.maxIdx).groupBy(_ >> droppedBits).toVector.sortBy(_._1).map { case (grp, idxes) =>
             val first = enc.decode_locally(idxes.min).toString
             val last = enc.decode_locally(idxes.max).toString
             first + " to " + last
-          }.zipWithIndex.map{case (v, i) => v -> (i + localOffset)}
+          }.zipWithIndex.map { case (v, i) => v -> (i + localOffset) }
         }
       }
     }
@@ -134,6 +135,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       case "SSB" => new SSB(100)
       case "NYC" => new NYC()
       case "WebshopSales" => new WebshopSales()
+      case "WebshopSalesMulti" => new WebshopSalesMulti()
       case "WebShopDyn" => new WebShopDyn()
       case "TinyData" => new TinyDataStatic()
       case "TinyDataDyn" => new TinyData()
@@ -147,8 +149,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
 
   object MaterializeState {
-    var cg: CubeGenerator = null
-    var baseCuboid: DataCube = null
+    var cg: AbstractCubeGenerator[_, _] = null
+    var baseCuboid: AbstractDataCube[_] = null
     //TODO: Merge into common parent
     var schema: Schema2 = null
     var columnMap: Map[String, ColEncoder[_]] = null
@@ -170,17 +172,18 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
 
   object QueryState {
-    var dc: DataCube = null
     var sch: Schema2 = null
     var hierarchy: Vector[MyDimHierarchy] = null
     var columnMap: Map[String, Map[String, (MyDimLevel, Int)]] = null
+
     val stats = collection.mutable.Map[String, Double]() withDefaultValue (0.0)
+
     var shownSliceValues: IndexedSeq[(String, Int, Boolean)] = null //value, original id, and isSelected
     var cubsFetched = 0
     var prepareCuboids = Seq[NewProjectionMetaData]()
     val filters = ArrayBuffer[(String, String, ArrayBuffer[(String, Int)])]()
     var filterCurrentDimArgs: (String, String) = null
-    var momentSolver: CoMoment5SolverDouble = null
+
     var isBatch = true
     var sortedQuery = IndexedSeq[Int]()
     var computeSortedIdx: ((Int, Int) => Int) = null
@@ -189,6 +192,14 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var validXvalues = Seq[(String, Int)]()
     var validYvalues = Seq[(String, Int)]()
     var prepareNumCuboidsInpage = 0
+
+    var cg: AbstractCubeGenerator[_, _] = null
+    var agg: AggregationFunction = SUM
+    var measures = IndexedSeq[String]()
+    var dcs: IndexedSeq[DataCube] = Vector()
+    var relevantDCs: IndexedSeq[DataCube] = Vector()
+    var postProcessFn: Function1[IndexedSeq[Array[Double]], Array[Double]] = null
+    var momentSolvers = IndexedSeq[CoMoment5SolverDouble]()
   }
 
   def bitsOfEncoder(enc: ColEncoder[_]) = enc match {
@@ -205,7 +216,6 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   }
   override def selectBaseCuboid(in: SelectBaseCuboidArgs): Future[SelectBaseCuboidResponse] = {
     import MaterializeState._
-    import SelectBaseCuboidResponse._
     val dsname = in.cuboid
     println("SelectBaseCuboid arg:" + in)
     Future {
@@ -217,7 +227,6 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       shownCuboids.clear()
       shownCuboidsManualView.clear()
       chosenCuboids.clear()
-      println("Base cuboid" + baseCuboid.cubeName + "  loaded")
       val res = SelectBaseCuboidResponse(dims)
       println("\t response: " + res)
       res
@@ -339,9 +348,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       val nbits = baseCuboid.index.n_bits
       val ms = PresetMaterializationStrategy(nbits, chosenCuboids :+ (0 until nbits)) //always add base cuboid
-      val dc = new PartialDataCube(cg.inputname + "_" + in.cubeName, baseCuboid.cubeName)
-      dc.buildPartial(ms)
-      dc.save()
+      cg.savePartial(ms, cg.inputname + "_" + in.cubeName)
       println("\t response: OK")
       Empty()
     }
@@ -353,8 +360,8 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     val file = File("cubedata")
     val potentialCubes = file.toDirectory.dirs.map(_.name)
     val dynamicCubes = potentialCubes.filter { fn =>
-      fn.startsWith("WebShopDyn") || fn.startsWith("TinyDataDyn")
-    } //only dynamic schema
+      fn.startsWith("WebShopDyn_") || fn.startsWith("TinyDataDyn_")
+    } //only dynamic schema, without subcubes
     //Give WebshopDyn as first entry
     val response = GetCubesResponse(("WebShopDyn_base" +: dynamicCubes.toVector).distinct)
     Future.successful(response)
@@ -364,11 +371,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       val cgName = in.cube.split("_")(0)
       val cg = getCubeGenerator(cgName)
-      dc = if (in.cube.endsWith("_base")) {
-        cg.loadBase()
-      } else {
-        PartialDataCube.load(in.cube, cg.baseName)
-      }
+      dc = cg.loadPartialOrBase(in.cube).asInstanceOf[DataCube] //SBJ: We won't load any multicube generator for this scenario
       sch = cg.schemaInstance.asInstanceOf[DynamicSchema2]
       columnMap = sch.columnVector.map { case LD2(name, enc) => name -> enc.asInstanceOf[DynamicColEncoder[_]] }.toMap
       totalTimeBits = columnMap(timeDimension).bits.size //exclude isNotNULL bit
@@ -491,7 +494,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   override def getDataCubesForQuery(in: Empty): Future[GetCubesResponse] = {
     println("GetDataCubes Explore")
     val file = File("cubedata")
-    val potentialCubes = file.toDirectory.dirs.map(_.name)
+    val potentialCubes = file.toDirectory.dirs.map(_.name).map(_.split("--")(0)) //represent all multi data cubes as one
     //Give Webshop as first entry
     val response = GetCubesResponse(("WebshopSales_base" +: potentialCubes.toVector).distinct)
     Future.successful(response)
@@ -502,14 +505,22 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       println("SelectDataCubeForQuery arg:" + in)
       val cgName = in.cube.split("_")(0)
-      val cg = getCubeGenerator(cgName)
-      //filters.clear()
-      dc = if (in.cube.endsWith("_base")) {
-        cg.loadBase()
-      } else {
-        PartialDataCube.load(in.cube, cg.baseName)
+      cg = getCubeGenerator(cgName)
+      dcs = cg match {
+        case mcg: MultiCubeGenerator[_] =>
+          val mdc = cg.loadPartialOrBase(in.cube).asInstanceOf[MultiDataCube]
+          mdc.dcs.foreach {
+            case dc: PartialDataCube => dc.loadPrimaryMoments(dc.basename)
+            case dc: DataCube => dc.loadPrimaryMoments(dc.cubeName)
+          }
+          mdc.dcs
+        case scg: CubeGenerator[_] =>
+          val dc = cg.loadPartialOrBase(in.cube).asInstanceOf[DataCube]
+          dc.loadPrimaryMoments(scg.baseName)
+          Vector(dc)
       }
-      dc.loadPrimaryMoments(cg.baseName)
+      //filters.clear()
+
       sch = cg.schemaInstance
       sch.initBeforeDecode()
       hierarchy = getDimHierarchy(sch.root)
@@ -519,7 +530,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       filterCurrentDimArgs = null
       val dims = hierarchy.map { h => DimHierarchy(h.name, h.flattenedLevels.map(_._1)) }
       val cuboidDims = sch.columnVector.map { case LD2(name, encoder) => CuboidDimension(name, bitsOfEncoder(encoder).size) }
-      val res = SelectDataCubeForQueryResponse(dims, cuboidDims, Vector(cg.measureName))
+      val measureNames = cg.measure match {
+        case multi: CompositeMeasure[_, _] => multi.allNames
+        case s: Measure[_, _] => Vector(s.name)
+      }
+      val res = SelectDataCubeForQueryResponse(dims, cuboidDims, measureNames)
       println("\t response:" + res)
       res
     }
@@ -592,20 +607,27 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
 
       if (isBatch) {
-        val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
-        Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array) } }
+        (relevantDCs zip momentSolvers).map { case (dc, momentSolver) =>
+          val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
+          Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array) } }
+        }
         cubsFetched += prepareCuboids.size
       }
       else {
         val nextCuboidToFetch = prepareCuboids(cubsFetched)
         cubsFetched += 1
-        val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
-        Profiler("Solve") { momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+        (relevantDCs zip momentSolvers).map { case (dc, momentSolver) =>
+          val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
+          Profiler("Solve") { momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+        }
       }
-      val sortedRes = Profiler("Solve") {
-        momentSolver.fillMissing()
-        momentSolver.solve()
+      val sortedResults = Profiler("Solve") {
+        momentSolvers.map { momentSolver =>
+          momentSolver.fillMissing()
+          momentSolver.solve()
+        }
       }
+      val sortedRes = postProcessFn(sortedResults)
       println("SortedRes = " + sortedRes.mkString(" "))
       println("DiceBits = " + diceBits)
       println("DiceArgs = " + diceArgs)
@@ -622,7 +644,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       stats("PrepareTime(ms)") += Profiler.getDurationMicro("Prepare") / 1000.0
       stats("FetchTime(ms)") += Profiler.getDurationMicro("Fetch") / 1000.0
       stats("SolveTime(ms)") += Profiler.getDurationMicro("Solve") / 1000.0
-      stats("DOF") = momentSolver.dof
+      stats("DOF") = momentSolvers.head.dof
 
 
       val statsToShow = stats.map(p => new QueryStatistic(p._1, p._2.toString)).toSeq
@@ -676,6 +698,32 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     stats.clear()
     cubsFetched = 0
     prepareNumCuboidsInpage = in.preparedCuboidsPerPage
+    agg = in.aggregation match {
+      case "SUM" => SUM
+      case "AVG" => AVERAGE
+      case "COUNT" => COUNT
+      case "VAR" => VARIANCE
+      case "COR" => CORRELATION
+      case "REG" => REGRESSION
+    }
+    measures = Vector(in.measure, in.measure2)
+    val defaultPostProcess = ((data: IndexedSeq[Array[Double]]) => data.head)
+    val (idxes, postProcess) = cg match {
+      case mcg: MultiCubeGenerator[_] =>
+        val r = mcg.measure.indexAndPostProcessQuery(agg, measures)
+        r._1 -> r._2
+      case scg: CubeGenerator[_] =>
+        if (agg == SUM && in.measure == scg.measure.name)
+          Vector(0) -> defaultPostProcess
+        else if (agg == COUNT && in.measure.isInstanceOf[CountMeasure[_]]) {
+          Vector(0) -> defaultPostProcess
+        }
+        else
+          throw new UnsupportedOperationException(s"Aggregation $agg on ${measures.mkString(",")} not supported")
+    }
+    relevantDCs = idxes.map { i => dcs(i) }
+    postProcessFn = postProcess
+
     println("StartQuery arg:" + in)
     Profiler.resetAll()
     val (xbits, xlabels, xtotal) = extractValidLabelsAndIndexesForDims(in.horizontal.reverse) //treat left most as most-significant
@@ -722,23 +770,22 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
     isBatch = in.isBatchMode
 
-    val numSeries =
-      prepareCuboids = Profiler("Prepare") {
-        if (isBatch)
-          dc.index.prepareBatch(sortedQuery)
-        else
-          dc.index.prepareOnline(sortedQuery, 2)
-      }
-    val pm = Profiler("Prepare") {
-      SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments)
+
+    prepareCuboids = Profiler("Prepare") {
+      if (isBatch) {
+        dcs.head.index.prepareBatch(sortedQuery)
+      } else
+        dcs.head.index.prepareOnline(sortedQuery, 2)
     }
-    momentSolver = Profiler("Solve") {
-      new CoMoment5SolverDouble(sortedQuery.size, isBatch, null, pm)
+    val pms = Profiler("Prepare") {
+      relevantDCs.map { dc => SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments) }
+    }
+    momentSolvers = Profiler("Solve") {
+      pms.map { pm => new CoMoment5SolverDouble(sortedQuery.size, isBatch, null, pm) }
     }
     runQuery()
   }
   override def continueQuery(in: Empty): Future[QueryResponse] = {
-    import QueryState._
     runQuery()
   }
 

@@ -2,22 +2,20 @@ package frontend.generators
 
 import backend.CBackend
 import com.github.tototoshi.csv.CSVReader
-import frontend.cubespec.Measure
+import frontend.cubespec.{CompositeMeasure, CountMeasure, SingleColumnStaticMeasure, SquareMeasure}
 import frontend.schema.encoders.{LazyMemCol, StaticNatCol}
-import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
+import frontend.schema.{BD2, LD2, StaticSchema2}
 import util.BigBinary
 
-import java.io.{BufferedInputStream, PrintStream}
+import java.io.PrintStream
 
-class WebshopSales(implicit backend: CBackend)  extends StaticCubeGenerator("WebshopSales") {
+class WebshopSalesMulti(implicit backend: CBackend)  extends MultiCubeGenerator[IndexedSeq[String]]("WebshopSalesMulti") {
   override lazy val schemaInstance = schema()
-  override val measure = new Measure[StaticInput, Long] {
-    override val name: String = "Price"
-    override def compute(sIdx: StaticInput): Long = {
-      StaticNatCol.floatToInt(2)(sIdx(15)).get.toLong
-    }
-  }
   val skipped = Set(0,4,6,10,12,14)
+  val countMeasure = new CountMeasure[IndexedSeq[String]]()
+  val priceMeasure = new SingleColumnStaticMeasure(15, "PriceTotal", x => StaticNatCol.floatToInt(2)(x).get.toLong)
+  val priceSqMeasure = new SquareMeasure(priceMeasure)
+  override val measure = new CompositeMeasure[IndexedSeq[String], Long](Vector(countMeasure, priceMeasure, priceSqMeasure))
   val notskipped = (0 to 14).toSet.diff(skipped).toVector.sorted
   def genUniq(col: Int): Unit = {
     val filename = s"tabledata/Webshop/sales.csv"
@@ -28,12 +26,13 @@ class WebshopSales(implicit backend: CBackend)  extends StaticCubeGenerator("Web
     data.foreach(fout.println)
     fout.close()
   }
-  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
+  def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, IndexedSeq[Long])])] = {
       val filename = s"tabledata/Webshop/sales.csv"
     val datasize = CSVReader.open(filename).iterator.drop(1).size
     val data = CSVReader.open(filename).iterator.drop(1).map { s =>
         val sIdx = s.toIndexedSeq
-        schemaInstance.encode_tuple(notskipped.map(i => sIdx(i))) -> measure.compute(sIdx)
+      val values = measure.compute(sIdx)
+        schemaInstance.encode_tuple(notskipped.map(i => sIdx(i))) -> values
       }
     Vector(datasize -> data)
   }
@@ -58,12 +57,13 @@ class WebshopSales(implicit backend: CBackend)  extends StaticCubeGenerator("Web
     val locDims = BD2("Location", Vector(continent, country), false)
     new StaticSchema2(Vector(timeDims, customer, prodDims, locDims))
   }
+
 }
 
-object WebshopSales {
+object WebshopSalesMulti {
   def main(args: Array[String]) {
     implicit val be = CBackend.default
-    val cg = new WebshopSales()
+    val cg = new WebshopSalesMulti()
     cg.saveBase()
   }
 }

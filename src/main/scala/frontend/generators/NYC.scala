@@ -1,23 +1,24 @@
 package frontend.generators
 
 import backend.CBackend
+import frontend.cubespec.CountMeasure
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
-import frontend.schema.{LD2, Schema2, StaticSchema2}
+import frontend.schema.{LD2, StaticSchema2}
 import util.BigBinary
 
 import java.util.Date
 import scala.io.Source
 
-case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
+case class NYC()(implicit backend: CBackend) extends StaticCubeGenerator("NYC") {
   override lazy val schemaInstance = schema()
+  val measure = new CountMeasure[StaticInput]()
 
-  override val measureName: String = "Count"
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
       val n2 = "all.part" + num + ".tsv"
       val size = read(n2).size
-      size -> read(n2).map(r => schemaInstance.encode_tuple(r) -> 1L)
+      size -> read(n2).map(r => schemaInstance.encode_tuple(r) -> measure.compute(r))
     }
     join
   }

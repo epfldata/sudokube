@@ -254,7 +254,7 @@ class ScoringFunctionsPerformanceExpt(ename2: String = "")(implicit shouldRecord
    * @param qname Name of the query (not used).
    * @param sliceValues Values for the slicing operation (not used).
    */
-  def runAll(cg: CubeGenerator, d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)])(implicit backend: Backend[Payload]): Unit = {
+  def runAll[I](cg: CubeGenerator[I], d0: Int, b: Double,  dcname: String, qus: Array[IndexedSeq[Int]], trueResults: Array[Array[Double]], output: Boolean, qname: String, sliceValues: Seq[(Int, Int)])(implicit backend: Backend[Payload]): Unit = {
     val runs = qus.length
     println(s"Scoring experiment for ${cg.inputname}, d0=$d0 b=$b querySize = ${qus.head.size}  numQueries = ${qus.length}")
     (2 to d0).foreach(k => {

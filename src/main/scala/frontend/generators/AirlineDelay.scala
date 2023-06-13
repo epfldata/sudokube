@@ -1,18 +1,19 @@
 package frontend.generators
 
 import backend.CBackend
-import frontend.schema.{BD2, Dim2, LD2, Schema2, StaticSchema2}
-import util.BigBinary
-import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import com.github.tototoshi.csv._
+import frontend.cubespec.ConstantMeasure
+import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
+import frontend.schema.{BD2, Dim2, LD2, StaticSchema2}
+import util.BigBinary
 
 import java.util.Date
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.io.Source
 
-class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDelay") {
+class AirlineDelay(implicit backend: CBackend) extends StaticCubeGenerator("AirlineDelay") {
   override lazy val schemaInstance: StaticSchema2 = schema()
+  override val measure = new ConstantMeasure[StaticInput]("Count", 1L)
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     implicit val ec = ExecutionContext.global
     val join = (0 until 1000).map { i =>
@@ -22,7 +23,7 @@ class AirlineDelay(implicit backend: CBackend) extends CubeGenerator("AirlineDel
         val n2 = "airline.part" + num + ".csv"
 
         val size = read(n2).size
-        val it = read(n2).map(r => schemaInstance.encode_tuple(r) -> 1L)
+        val it = read(n2).map(r => schemaInstance.encode_tuple(r) -> measure.compute(r))
         println(s"Finish Reading partition $i for size")
         size -> it
       }

@@ -7,7 +7,7 @@ import core.solver.SolverTools.error
 import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
 import core.solver.moment.{CoMoment5SolverDouble, Moment1Transformer}
 import core.{DataCube, PartialDataCube}
-import frontend.generators.{CubeGenerator, SSBSample}
+import frontend.generators.{StaticCubeGenerator, SSBSample}
 import util.{Profiler, ProgressIndicator, Util}
 
 class MaterializationErrorExpt(ename2: String = "")(implicit timestampedFolder: String) extends Experiment(s"ipf-moment-batch", ename2, "materialization") {
@@ -125,7 +125,7 @@ class MaterializationStatsExpt(ename2: String = "")(implicit timestampedFolder: 
     val ms = pieces(bIdx-1)
     (b, k, ms)
   }
-  def run2(dc: DataCube, dcname: String, cg: CubeGenerator): Unit = {
+  def run2(dc: DataCube, dcname: String, cg: StaticCubeGenerator): Unit = {
     val (b, k, ms) = budgetDimLevelAndMSFromName(dcname)
     val n = cg.schemaInstance.n_bits
     val total = if(ms == "random")

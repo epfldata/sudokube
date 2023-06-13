@@ -18,6 +18,17 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 
+abstract class AbstractDataCube[+O] {
+  var cuboids: Array[Cuboid]
+  var index: CuboidIndex
+
+}
+
+class MultiDataCube(val dcs: IndexedSeq[DataCube]) extends AbstractDataCube[IndexedSeq[Long]] {
+  override var cuboids = dcs.head.cuboids
+  override var index: CuboidIndex = dcs.head.index
+}
+
 /** To create a DataCube, must either
   * (1) call DataCube.build(full_cube, matstrat) or
   * (2) call (companion object) DataCube.load(..)
@@ -30,7 +41,7 @@ import scala.reflect.ClassTag
   * to the data held in the backend.
   */
 @SerialVersionUID(2L)
-class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
+class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) extends AbstractDataCube[Long] {
 
   /* protected */
   var cuboids = Array[Cuboid]()
@@ -344,7 +355,7 @@ class DataCube(var cubeName: String = "")(implicit backend: Backend[Payload]) {
     @param cubeName the name for this data cube
   * @param basename The name of the data cube storing the full cuboid. This will be fetched at runtime.
   */
-class PartialDataCube(cn: String, basename: String)(implicit val backend: Backend[Payload]) extends DataCube(cn) {
+class PartialDataCube(cn: String, val basename: String)(implicit val backend: Backend[Payload]) extends DataCube(cn) {
   lazy val base = DataCube.load(basename)
 
    def buildPartial(m: MaterializationStrategy, indexFactory: CuboidIndexFactory = CuboidIndexFactory.default, cb: CubeBuilder = CubeBuilder.default) = buildFrom(base, m, indexFactory, cb)

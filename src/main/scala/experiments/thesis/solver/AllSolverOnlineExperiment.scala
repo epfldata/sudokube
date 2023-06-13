@@ -2,15 +2,15 @@ package experiments.thesis.solver
 
 import backend.CBackend
 import core.solver.SolverTools.{mk_all_non_neg, preparePrimaryMomentsForQuery}
-import core.solver.iterativeProportionalFittingSolver.{MSTVanillaIPFSolver, NewVanillaIPFSolver}
+import core.solver.iterativeProportionalFittingSolver.NewVanillaIPFSolver
 import core.solver.lpp.{Interval, SliceSparseSolver}
 import core.solver.moment.CoMoment5SolverDouble
 import core.solver.{Rational, SolverTools}
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{NYC, SSB, StaticCubeGenerator}
 import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol}
-import util.{ManualStatsGatherer, Profiler}
+import util.ManualStatsGatherer
 
 class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers-online", ename2) {
   val header = "CubeName,RunID,Query,QSize," +
@@ -120,7 +120,7 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
 
 object AllSolverOnlineExperiment extends ExperimentRunner {
 
-  def expt(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+  def expt(cg: StaticCubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
@@ -142,7 +142,7 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     be.reset
   }
 
-  def manual(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+  def manual(cg: StaticCubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)

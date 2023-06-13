@@ -6,7 +6,7 @@ import core.solver.SolverTools.{intervalPrecision, mk_all_non_neg}
 import core.solver.lpp.{Interval, SliceSparseSolver}
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{StaticCubeGenerator => CubeGenerator, NYC, SSB}
 import util.{ManualStatsGatherer, Profiler}
 
 class LPSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String, f: SliceSparseSolver[Rational] => T, statToString: (T, Array[Double]) => String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"lp-solver-online", ename2) {

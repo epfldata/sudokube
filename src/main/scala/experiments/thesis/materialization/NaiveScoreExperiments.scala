@@ -38,7 +38,7 @@ class NaiveScoreExperiments(ename2: String = "")(implicit timestampedFolder: Str
 
 object NaiveScoreExperiments extends ExperimentRunner {
   implicit val be = CBackend.default
-  def singlelevel(cg: CubeGenerator, b: Int, qs: Int)(implicit timestampedFolder: String, numIters: Int) = {
+  def singlelevel[I](cg: CubeGenerator[I], b: Int, qs: Int)(implicit timestampedFolder: String, numIters: Int) = {
     val ename = s"${cg.inputname}_${b}_${qs}"
     val expt = new NaiveScoreExperiments(ename)
     val mqr = new MaterializedQueryResult(cg, false)

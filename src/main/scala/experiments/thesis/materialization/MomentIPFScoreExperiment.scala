@@ -160,7 +160,7 @@ class MomentIPFScoreExperiment(ename2: String = "")(implicit timestampedFolder: 
 
 object MomentIPFScoreExperiment extends ExperimentRunner {
   implicit val be = CBackend.default
-  def singlelevel(cg: CubeGenerator, b: Int, qs: Int)(implicit timestampedFolder: String, numIters: Int) = {
+  def singlelevel[I](cg: CubeGenerator[I], b: Int, qs: Int)(implicit timestampedFolder: String, numIters: Int) = {
     val ename = s"${cg.inputname}_${b}_${qs}"
     val expt = new MomentIPFScoreExperiment(ename)
     val mqr = new MaterializedQueryResult(cg, false)

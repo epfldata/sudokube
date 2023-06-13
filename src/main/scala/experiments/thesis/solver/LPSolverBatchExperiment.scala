@@ -6,7 +6,7 @@ import core.solver.lpp.SliceSparseSolver
 import core.solver.{Rational, SolverTools}
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators._
+import frontend.generators.{StaticCubeGenerator => CubeGenerator, NYC, SSB}
 import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler}
 

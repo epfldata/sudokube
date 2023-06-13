@@ -24,7 +24,7 @@ class RandomProjectionExperiment(ename2: String = "")(implicit timestampedFolder
     val density = (1 - exp(-power))
     math.pow(2, k) * density
   }
-  def simulatedProjectionSize(k: Int, dc: DataCube, cg: CubeGenerator, isPrefix: Boolean) = {
+  def simulatedProjectionSize[I](k: Int, dc: DataCube, cg: CubeGenerator[I], isPrefix: Boolean) = {
     val pi = new ProgressIndicator(numIters, s"Projecting to ${k} dimensions from ${dc.index.n_bits}")
     val total = (0 until numIters).map { i =>
       val query = Tools.generateQuery(isPrefix, cg.schemaInstance, k)
@@ -84,7 +84,7 @@ object InfeasibilityExperimenter extends ExperimentRunner{
     be.reset
   }
 
-  def compareRandomToReal(cg: CubeGenerator)(implicit timestampFolder: String, numIters: Int): Unit = {
+  def compareRandomToReal[I](cg: CubeGenerator[I])(implicit timestampFolder: String, numIters: Int): Unit = {
     val dc = cg.loadBase()
     val d = cg.schemaInstance.n_bits
     val d0 = cg match {

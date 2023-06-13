@@ -5,7 +5,7 @@ import experiments.{Experiment, ExperimentRunner}
 import backend.CBackend
 import core.solver.SolverTools
 import core.solver.moment.CoMoment5SolverDouble
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{CubeGenerator, NYC, SSB, StaticCubeGenerator}
 import util.Profiler
 
 class TrieStoreExperiment(ename2: String = "")(implicit timestampedFolder: String, numIters: Int) extends Experiment(ename2, s"trie-store-expt", "thesis/backend") {
@@ -71,7 +71,7 @@ class TrieStoreExperiment(ename2: String = "")(implicit timestampedFolder: Strin
 }
 
 object TrieStoreExperiment extends ExperimentRunner {
-  def qsize(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+  def qsize(cg: StaticCubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)

@@ -2,7 +2,7 @@ package experiments
 
 import backend.CBackend
 import core.{MaterializedQueryResult, PartialDataCube}
-import frontend.generators.{AirlineDelay, CubeGenerator, NYC, SSB}
+import frontend.generators.{AirlineDelay, StaticCubeGenerator, NYC, SSB}
 import frontend.schema.encoders.ColEncoder
 
 import java.io.{File, PrintStream}
@@ -16,7 +16,7 @@ object IPFExperimenter {
   implicit var backend: CBackend = CBackend.colstore
   var backendName = "colstore"
 
-  def cuboid_stats(isSMS: Boolean, cg: CubeGenerator) = {
+  def cuboid_stats(isSMS: Boolean, cg: StaticCubeGenerator) = {
     val maxD = 40
     val params = List(
       (15, 6), (15, 10), (15, 14),
@@ -45,7 +45,7 @@ object IPFExperimenter {
 
   def manual_online(cubeGenerator: String)(implicit timestampedFolder: String): Unit = {
     val (query, qName, cg) = if (cubeGenerator == "NYC") {
-      val cg: CubeGenerator = NYC()
+      val cg = NYC()
       val sch = cg.schemaInstance
       val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
       val registrState = encMap("Registration State").bits
@@ -54,7 +54,7 @@ object IPFExperimenter {
       val query = queryCols.reduce(_ ++ _).sorted
       (query, qName, cg)
     } else {
-      val cg: CubeGenerator = new AirlineDelay()
+      val cg = new AirlineDelay()
       val sch = cg.schemaInstance
       val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
 
@@ -275,7 +275,7 @@ object IPFExperimenter {
   }
 
   def ipf_moment_compareTimeError(isSMS: Boolean, cubeGenerator: String, minNumDimensions: Int)(implicit numIters: Int, timestampedFolder: String): Unit = {
-    val cg: CubeGenerator = if (cubeGenerator == "NYC") NYC() else SSB(100)
+    val cg = if (cubeGenerator == "NYC") NYC() else SSB(100)
     val param = s"15_${minNumDimensions}_30"
     val ms = if (isSMS) "sms3" else "rms3"
     val name = s"_${ms}_$param"

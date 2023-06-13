@@ -4,13 +4,18 @@ import backend.CBackend
 import core.PartialDataCube
 import core.materialization.SingleSizeMaterializationStrategy
 import frontend.Sampling
+import frontend.cubespec.Measure
 import frontend.schema.encoders.BinaryCol
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
 
 import scala.util.Random
 
-case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend) extends CubeGenerator(s"Random-$n_bits-$d0") {
+case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend) extends CubeGenerator[Unit](s"Random-$n_bits-$d0") {
+  override val measure = new Measure[Unit, Long]{
+    override val name: String = "Value"
+    override def compute(row: Unit) = 1L
+  }
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val numRows = 1 << d0
     val numPartsWith1000 = (numRows >> 10) max 1
@@ -39,7 +44,7 @@ case class RandomCubeGenerator(n_bits: Int, d0: Int)(implicit backend: CBackend)
       }
       val shuffle = array
       val chunksize = (numRows / numParts).toInt
-      (0 until numParts).map(i => chunksize -> shuffle.slice(i * chunksize, (i + 1) * chunksize).iterator.map(i => BigBinary(i) -> 1L))
+      (0 until numParts).map(i => chunksize -> shuffle.slice(i * chunksize, (i + 1) * chunksize).iterator.map(i => BigBinary(i) -> measure.compute()))
     }
     else {
       ???

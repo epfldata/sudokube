@@ -5,7 +5,7 @@ import core.solver.SolverTools._
 import core.solver.moment.CoMoment5SolverDouble
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
-import frontend.generators.{CubeGenerator, NYC, SSB}
+import frontend.generators.{StaticCubeGenerator => CubeGenerator, NYC, SSB}
 import util.{ManualStatsGatherer, Profiler}
 
 class CoMomentSolverOnlineExperiment[T](ename2: String = "", additionalHeaders: String, f: CoMoment5SolverDouble => T, statToString: (T, Array[Double]) => String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"comoment-online", ename2) {
