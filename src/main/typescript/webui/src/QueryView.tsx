@@ -48,7 +48,7 @@ export default observer(function Query() {
       <SelectCube/>
       <QueryParams/>
       <Cuboids isShown = {store.isRunComplete}/>
-      <Chart isShown = {store.isRunComplete}/>
+      <Chart isShown = {store.isRunComplete} hasBounds = { store.solver === 'Linear Programming' }/>
       <Metrics isShown = {store.isRunComplete}/>
     </Container>
   )
@@ -324,18 +324,34 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
   </div> );
 })
 
-const Chart = observer(({isShown}: {isShown: boolean}) => {
+const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: boolean}) => {
   if (!isShown) {
     return null;
   }
   const { queryStore: store } = useRootStore();
-  const legendsHeight = store.result.data.length * 20;
+  
+  const rgbColorPalette = [
+    [232, 193, 160],
+    [244, 117, 96],
+    [241, 225, 91],
+    [232, 168, 56],
+    [97, 205, 187],
+    [151, 227, 213]
+  ];
+  const defaultColors = rgbColorPalette.map(rgbArray => 'rgba(' + rgbArray.join(',') + ',1)');
+  const linearProgrammingColors = rgbColorPalette.flatMap(rgbArray => [
+    'rgba(' + rgbArray.join(',') + ',1)',
+    'rgba(' + rgbArray.join(',') + ',0.5)',
+    'rgba(' + rgbArray.join(',') + ',0.5)'
+  ]);
+
   return ( <div>
     <h3>Current result</h3>
-    <div style={{ width: '100%', height: 400 + legendsHeight, margin: 0 }}>
+    <div style={{ width: '100%', height: 400, margin: 0 }}>
       <ResponsiveLine
         data = { store.result.data }
-        margin={{ top: 5, right: 75, bottom: legendsHeight + 30, left: 75 }}
+        colors = { hasBounds ? linearProgrammingColors : defaultColors }
+        margin={{ top: 5, right: 75, bottom: 30, left: 75 }}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -372,33 +388,25 @@ const Chart = observer(({isShown}: {isShown: boolean}) => {
             <div>y: <b>{point.data.y}</b></div>
           </div>
         )}
-        legends={[
-          {
-            anchor: 'bottom-right',
-            direction: 'column',
-            justify: false,
-            translateX: 0,
-            translateY: legendsHeight + 30,
-            itemsSpacing: 0,
-            itemDirection: 'right-to-left',
-            itemWidth: 80,
-            itemHeight: 20,
-            itemOpacity: 0.75,
-            symbolSize: 12,
-            symbolShape: 'circle',
-            symbolBorderColor: 'rgba(0, 0, 0, .5)',
-            effects: [
-              {
-                on: 'hover',
-                style: {
-                  itemBackground: 'rgba(0, 0, 0, .03)',
-                  itemOpacity: 1
-                }
-              }
-            ]
-          }
-        ]}
       />
+    </div>
+    <div style = {{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+      { store.result.data.flatMap((seriesData, index) =>
+        hasBounds && index % 3 != 0
+          ? []
+          : [(<span style = {{ margin: '0px 10px', display: 'inline' }}>
+            <svg style = {{ width: 11, height: 10, padding: 0, margin: 0, marginRight: 5 }}>
+              <circle
+                r={5} cx={5} cy={5}
+                fill={defaultColors[(hasBounds ? (index / 3) : index) % rgbColorPalette.length]}
+                opacity={1}
+                stroke-width={0} stroke='rgba(0, 0, 0, .5)'
+                style = {{ pointerEvents: 'none' }}
+              />
+            </svg>
+            <span style = {{ fontSize: 13 }}>{seriesData.id}</span>
+          </span>)]
+      )}
     </div>
   </div> );
 })
