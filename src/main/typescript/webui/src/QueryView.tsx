@@ -44,7 +44,7 @@ export default observer(function Query() {
     });
   }, []);
   return (
-    <Container style = {{ paddingTop: '20px' }}>
+    <Container style = {{ padding: '20px 0px' }}>
       <SelectCube/>
       <QueryParams/>
       <Cuboids isShown = {store.isRunComplete}/>
