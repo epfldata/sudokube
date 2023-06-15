@@ -7,7 +7,7 @@ import { observer } from 'mobx-react-lite';
 import { apiBaseUrl, useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { grpc } from '@improbable-eng/grpc-web';
 import { CuboidDimension, DeleteFilterArgs, Empty, GetCubesResponse, GetFiltersResponse, GetPreparedCuboidsArgs, GetPreparedCuboidsResponse, QueryArgs, QueryResponse, SelectDataCubeArgs, SelectDataCubeForQueryResponse } from './_proto/sudokubeRPC_pb';
 import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
@@ -94,7 +94,8 @@ const SelectCube = observer(() => {
 
 const QueryParams = observer(() => {
   const { queryStore: store } = useRootStore();
-  const twoMeasures = store.aggregation === 'REG' || store.aggregation === 'COR';
+  const [solver, setSolver] = useState(store.solver);
+  const hasTwoMeasures = store.aggregation === 'REG' || store.aggregation === 'COR';
   return (
     <Grid container maxHeight='30vh' overflow='scroll' style={{ paddingTop: '1px', paddingBottom: '1px' }}>
       <Horizontal/>
@@ -103,10 +104,10 @@ const QueryParams = observer(() => {
       <Grid item xs={6}>
         <MeasuresChip 
           measure1 = { store.measure }
-          measure2 = { twoMeasures ? store.measure2 : undefined }
+          measure2 = { hasTwoMeasures ? store.measure2 : undefined }
           measures = { store.measures }
           onChange1 = { v => runInAction(() => store.measure = v) }
-          onChange2 = { twoMeasures ? v => runInAction(() => store.measure2 = v) : undefined }
+          onChange2 = { hasTwoMeasures ? v => runInAction(() => store.measure2 = v) : undefined }
         />
         <SelectionChip 
           keyText = 'Aggregation' 
@@ -116,9 +117,9 @@ const QueryParams = observer(() => {
         />
         <SelectionChip 
           keyText = 'Solver' 
-          valueText = { store.solver } 
+          valueText = { solver } 
           valueRange = { store.solvers } 
-          onChange = { v => runInAction(() => store.solver = v) }
+          onChange = { setSolver }
         />
         <SelectionChip
           keyText = 'Mode'
@@ -127,6 +128,7 @@ const QueryParams = observer(() => {
           onChange = { v => runInAction(() => store.mode = v) }
         />
         <ButtonChip label = 'Run' variant = 'filled' onClick = {() => {
+          runInAction(() => store.solver = solver);
           grpc.unary(SudokubeService.startQuery, {
             host: apiBaseUrl,
             request: buildMessage(new QueryArgs(), {
@@ -139,7 +141,7 @@ const QueryParams = observer(() => {
                 dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
               })),
               measure: store.measure,
-              measure2: twoMeasures ? store.measure2 : undefined,
+              measure2: hasTwoMeasures ? store.measure2 : undefined,
               aggregation: store.aggregation,
               solver: store.solver,
               isBatchMode: store.mode === 'Batch',
@@ -330,19 +332,17 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
   }
   const { queryStore: store } = useRootStore();
   
-  const rgbColorPalette = [
-    [232, 193, 160],
-    [244, 117, 96],
-    [241, 225, 91],
-    [232, 168, 56],
-    [97, 205, 187],
-    [151, 227, 213]
+  const colorsRgbHex = [
+    0xe41a1c, 0x377eb8, 0x4daf4a, 0x984ea3, 0xff7f00, 0xffff33, 0xa65628, 0xf781bf, 0x999999
   ];
-  const defaultColors = rgbColorPalette.map(rgbArray => 'rgba(' + rgbArray.join(',') + ',1)');
-  const linearProgrammingColors = rgbColorPalette.flatMap(rgbArray => [
-    'rgba(' + rgbArray.join(',') + ',1)',
-    'rgba(' + rgbArray.join(',') + ',0.5)',
-    'rgba(' + rgbArray.join(',') + ',0.5)'
+  const colorsRgbJoined = colorsRgbHex.map(hex => 
+    [(hex >> 16), (hex >> 8) & 0xff, hex & 0xff].join(',')
+  );
+  const defaultColors = colorsRgbJoined.map(rgb => 'rgba(' + rgb + ',1)');
+  const seriesWithBoundsColors = colorsRgbJoined.flatMap(rgb => [
+    'rgba(' + rgb + ',1)',
+    'rgba(' + rgb + ',0.2)',
+    'rgba(' + rgb + ',0.2)'
   ]);
 
   return ( <div>
@@ -350,7 +350,7 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
     <div style={{ width: '100%', height: 400, margin: 0 }}>
       <ResponsiveLine
         data = { store.result.data }
-        colors = { hasBounds ? linearProgrammingColors : defaultColors }
+        colors = { hasBounds ? seriesWithBoundsColors : defaultColors }
         margin={{ top: 5, right: 75, bottom: 30, left: 75 }}
         yScale={{
           type: 'linear',
@@ -398,7 +398,7 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
             <svg style = {{ width: 11, height: 10, padding: 0, margin: 0, marginRight: 5 }}>
               <circle
                 r={5} cx={5} cy={5}
-                fill={defaultColors[(hasBounds ? (index / 3) : index) % rgbColorPalette.length]}
+                fill={defaultColors[(hasBounds ? (index / 3) : index) % colorsRgbHex.length]}
                 opacity={1}
                 stroke-width={0} stroke='rgba(0, 0, 0, .5)'
                 style = {{ pointerEvents: 'none' }}
