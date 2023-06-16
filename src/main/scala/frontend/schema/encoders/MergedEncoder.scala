@@ -24,10 +24,10 @@ class MergedMemColEncoder[T](e1: MemCol[T], e2: MemCol[T]) extends ColEncoder[T]
     val e2bitpos = e2.bits.map(i => 1 << query.indexOf(i)).sum //e2.bits is sorted
     val allbitspos = e1bitpos + e2bitpos + e2isNotNullMask //exclude e1nullmask
 
-    val str = "123 Warehousing"
-            println("E1: " + e1.allBits + "   E2: " + e2.allBits + "   combined: " + allBits)
-    println(s"string $str  e1Index = " + e1.decode_map.indexOf(str) + "   e2Index = " + e2.decode_map.indexOf(str) + "  combined = " + combinedValues.indexOf(str))
-    println(s"allbitpos = " + BitUtils.IntToSet(allbitspos))
+    //val str = "123 Warehousing"
+    //        println("E1: " + e1.allBits + "   E2: " + e2.allBits + "   combined: " + allBits)
+    //println(s"string $str  e1Index = " + e1.decode_map.indexOf(str) + "   e2Index = " + e2.decode_map.indexOf(str) + "  combined = " + combinedValues.indexOf(str))
+    //println(s"allbitpos = " + BitUtils.IntToSet(allbitspos))
     def keyfn(key: Int, value: Double) = {
       val e1IsNull = (key & e1isNotNullMask) == 0
       val e2IsNull = (key & e2isNotNullMask) == 0
@@ -42,16 +42,16 @@ class MergedMemColEncoder[T](e1: MemCol[T], e2: MemCol[T]) extends ColEncoder[T]
         assert(e2IsNull) //there can be key with both not null, but its value MUST be zero
         //Cannot include nullBit in unproject (bits have to be sorted)
         val res = BitUtils.unprojectIntWithInt(e1IdxMap(keyLocalE1) , allbitspos) + mergedIsNotNullMask
-        if(e1.decode_locally(keyLocalE1) == str) {
-          println(s"key = $key  case E1 keyE1=$keyLocalE1  keyE2=$keyLocalE2  res=$res value=$value")
-        }
+        //if(e1.decode_locally(keyLocalE1) == str) {
+        //  println(s"key = $key  case E1 keyE1=$keyLocalE1  keyE2=$keyLocalE2  res=$res value=$value")
+        //}
         res
       } else if (!e2IsNull) {
         assert(e1IsNull)
         val res = BitUtils.unprojectIntWithInt(e2IdxMap(keyLocalE2) , allbitspos) + mergedIsNotNullMask
-        if (e2.decode_locally(keyLocalE2) == "123 Warehousing") {
-          println(s"key = $key  case E2 keyE1=$keyLocalE1  keyE2=$keyLocalE2  res=$res=pup(${e2IdxMap(keyLocalE2)})+${mergedIsNotNullMask}  $value")
-        }
+        //if (e2.decode_locally(keyLocalE2) == "123 Warehousing") {
+        //  println(s"key = $key  case E2 keyE1=$keyLocalE1  keyE2=$keyLocalE2  res=$res=pup(${e2IdxMap(keyLocalE2)})+${mergedIsNotNullMask}  $value")
+        //}
         res
       } else {
         0

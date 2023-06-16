@@ -15,6 +15,8 @@ import core.solver.moment.MomentSolverAll
 sealed class METHOD
 case object MOMENT extends METHOD
 case object NAIVE extends METHOD
+case object LPP extends METHOD
+case object IPF extends METHOD
 
 sealed class BOOL_METHOD
 case object EXIST extends BOOL_METHOD

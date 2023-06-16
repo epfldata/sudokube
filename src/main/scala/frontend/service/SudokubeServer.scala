@@ -8,16 +8,19 @@ import akka.stream.Materializer
 import backend.CBackend
 import com.typesafe.config.ConfigFactory
 import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
-import core.solver.SolverTools
+import core.solver.iterativeProportionalFittingSolver.EffectiveIPFSolver
+import core.solver.lpp.SliceSparseSolver
 import core.solver.moment.CoMoment5SolverDouble
+import core.solver.{NaiveSolver, Rational, SolverTools}
 import core.{AbstractDataCube, DataCube, MultiDataCube, PartialDataCube}
 import frontend.cubespec.Aggregation._
 import frontend.cubespec.{CompositeMeasure, CountMeasure, Measure}
 import frontend.generators._
 import frontend.schema._
-import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, MemCol, MergedMemColEncoder, StaticColEncoder}
+import frontend.schema.encoders._
 import frontend.service.GetRenameTimeResponse.ResultRow
 import frontend.service.SelectDataCubeForQueryResponse.DimHierarchy
+import frontend._
 import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler, Util}
 
@@ -103,10 +106,10 @@ case class MyDimHierarchy(name: String, levels: IndexedSeq[MyDimLevel]) {
   lazy val flattenedLevels = {
     levels.flatMap { l =>
       val totalbits = l.bits.size
-      if(l.enc.isInstanceOf[MergedMemColEncoder[_]])
+      if (l.enc.isInstanceOf[MergedMemColEncoder[_]])
         Vector(l.fullName(totalbits) -> (l, totalbits)) //only level corresponding to all bits
       else
-      (1 to totalbits).map { nb => l.fullName(nb) -> (l, nb) } //exclude 0-bit level
+        (1 to totalbits).map { nb => l.fullName(nb) -> (l, nb) } //exclude 0-bit level
     }
   }
   lazy val flattenedLevelsMap = flattenedLevels.toMap
@@ -157,7 +160,6 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   object MaterializeState {
     var cg: AbstractCubeGenerator[_, _] = null
     var baseCuboid: AbstractDataCube[_] = null
-    //TODO: Merge into common parent
     var schema: Schema2 = null
     var columnMap: Map[String, ColEncoder[_]] = null
     val chosenCuboids = ArrayBuffer[IndexedSeq[Int]]()
@@ -167,10 +169,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
   object ExploreState {
     var dc: DataCube = null
-    var cg: AbstractCubeGenerator[_, _] = null
+    var cg: AbstractCubeGenerator[_, _] with DynamicCubeGenerator = null
     var sch: DynamicSchema2 = null
     var columnMap: Map[String, DynamicColEncoder[_]] = null
-    val timeDimension: String = "RowId"
+    val timeDimension = cg.timeDimension.getOrElse("RowId")
     var totalTimeBits = 5
     var exploreResult = 0 //0 -> No info, 1 -> ColIsAdded, 2 -> ColIsDeleted
     val sliceArray = collection.mutable.ArrayBuffer[Boolean]() //0 in this array refers to the leftmost, most significant bit in dimension
@@ -207,14 +209,11 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var relevantDCs: IndexedSeq[DataCube] = Vector()
     var postProcessFn: Function1[IndexedSeq[Array[Double]], Array[Double]] = null
     var mergingViewTransformFn: Function1[Array[Double], Array[Double]] = null
-    var momentSolvers = IndexedSeq[CoMoment5SolverDouble]()
+    var solvers = IndexedSeq[Object]()
+    var solverType: METHOD = NAIVE
   }
 
 
-
-  def bitsToBools(total: Int, cuboidBits: Set[Int]) = {
-    (0 until total).reverse.map { b => cuboidBits contains b }
-  }
   /* Materialize */
   override def getBaseCuboids(in: Empty): Future[BaseCuboidResponse] = {
     Future.successful(BaseCuboidResponse(List("WebshopSales", "NYC", "SSB", "WebShopDyn", "TinyData", "TinyDataDyn")))
@@ -375,7 +374,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     import ExploreState._
     Future {
       val cgName = in.cube.split("_")(0)
-      cg = getCubeGenerator(cgName)
+      cg = getCubeGenerator(cgName).asInstanceOf[AbstractCubeGenerator[_, _] with DynamicCubeGenerator] //We will only load dynamic here
       dc = cg match {
         case mcg: MultiCubeGenerator[_] =>
           mcg.loadPartialOrBase(in.cube).asInstanceOf[MultiDataCube].dcs.head //we run only count queries. Assume count is first
@@ -639,51 +638,131 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
 
       if (isBatch) {
-        (relevantDCs zip momentSolvers).map { case (dc, momentSolver) =>
-          val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
-          Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array) } }
+        (relevantDCs zip solvers).foreach { case (dc, solver) =>
+          solverType match {
+            case NAIVE => Profiler("Fetch") {
+              val result = dc.fetch2[Double](prepareCuboids)
+              val naivesolver = solver.asInstanceOf[NaiveSolver]
+              naivesolver.add(result)
+
+            }
+            case LPP =>
+              import core.solver.RationalTools._
+              val lpSolver = solver.asInstanceOf[SliceSparseSolver[Rational]]
+              val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Rational](List(pm)) } }
+              Profiler("Solve") { allFetched.foreach { case (bits, array) => lpSolver.add2(List(bits), array) } }
+            case MOMENT =>
+              val momentSolver = solver.asInstanceOf[CoMoment5SolverDouble]
+              val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
+              Profiler("Solve") { allFetched.foreach { case (bits, array) => momentSolver.add(bits, array) } }
+            case IPF =>
+              val ipfSolver = solver.asInstanceOf[EffectiveIPFSolver]
+              val allFetched = Profiler("Fetch") { prepareCuboids.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) } }
+              Profiler("Solve") { allFetched.foreach { case (bits, array) => ipfSolver.add(bits, array) } }
+          }
         }
         cubsFetched += prepareCuboids.size
       }
       else {
         val nextCuboidToFetch = prepareCuboids(cubsFetched)
         cubsFetched += 1
-        (relevantDCs zip momentSolvers).map { case (dc, momentSolver) =>
-          val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
-          Profiler("Solve") { momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+        (relevantDCs zip solvers).foreach { case (dc, solver) =>
+          solverType match {
+            case NAIVE => Profiler("Fetch") {
+              val result = dc.fetch2[Double](prepareCuboids)
+              val naivesolver = solver.asInstanceOf[NaiveSolver]
+              naivesolver.add(result)
+            }
+            case LPP =>
+              val lpSolver = solver.asInstanceOf[SliceSparseSolver[Rational]]
+              import core.solver.RationalTools._
+              val fetchedData = Profiler("Fetch") { dc.fetch2[Rational](List(nextCuboidToFetch)) }
+              Profiler("Solve") { lpSolver.add2(List(nextCuboidToFetch.queryIntersection), fetchedData) }
+            case MOMENT =>
+              val momentSolver = solver.asInstanceOf[CoMoment5SolverDouble]
+              val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
+              Profiler("Solve") { momentSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+            case IPF =>
+              val ipfSolver = solver.asInstanceOf[EffectiveIPFSolver]
+              val fetchedData = Profiler("Fetch") { dc.fetch2[Double](List(nextCuboidToFetch)) }
+              Profiler("Solve") { ipfSolver.add(nextCuboidToFetch.queryIntersection, fetchedData) }
+          }
         }
       }
-      val sortedResults = Profiler("Solve") {
-        //FIXME
-        relevantDCs.map{dc => dc.naive_eval(sortedQuery)}
-        //momentSolvers.map { momentSolver =>
-        //  momentSolver.fillMissing()
-        //  momentSolver.solve()
-        //}
-      }
-      val sortedRes = postProcessFn(sortedResults)
-      val viewTransformedRes = mergingViewTransformFn(sortedRes)
-      //println("SortedRes = " + sortedRes.mkString(" "))
-      //println("ViewTransformedRes =" + viewTransformedRes.mkString(" "))
-      //println("DiceBits = " + diceBits)
-      //println("DiceArgs = " + diceArgs)
-      val diceRes = Util.dice(viewTransformedRes, diceBits, diceArgs)
-      //println("diceRes = " + diceRes.mkString(" "))
-      val series = validYvalues.reverse.map { case (ylabel, yid) => //we reverse the order of series
-        SeriesData(ylabel, validXvalues.map { case (xlabel, xid) =>
-          val si = computeSortedIdx(xid, yid)
-          if(ylabel == "123 Warehousing"){
-            println(s"ABC si=$si xid=$xid yid=$yid")
+      val (series, dof) = if(solverType != LPP) {
+        val (sortedResults, dof) = Profiler("Solve") {
+          solverType match {
+            case NAIVE =>
+              solvers.map { solver =>
+                solver.asInstanceOf[NaiveSolver].solution
+              } -> 0
+            case MOMENT =>
+              solvers.map { solver =>
+                val momentSolver = solver.asInstanceOf[CoMoment5SolverDouble]
+                momentSolver.fillMissing()
+                momentSolver.solve()
+              } -> solvers.head.asInstanceOf[CoMoment5SolverDouble].dof
+            case IPF =>
+              solvers.map { solver =>
+                val ipfSolver = solver.asInstanceOf[EffectiveIPFSolver]
+                ipfSolver.solve()
+              } -> solvers.head.asInstanceOf[EffectiveIPFSolver].dof
           }
-          XYPoint(xlabel, diceRes(si).toFloat)
-        })
+        }
+        val sortedRes = postProcessFn(sortedResults)
+        val viewTransformedRes = mergingViewTransformFn(sortedRes)
+        //println("SortedRes = " + sortedRes.mkString(" "))
+        //println("ViewTransformedRes =" + viewTransformedRes.mkString(" "))
+        //println("DiceBits = " + diceBits)
+        //println("DiceArgs = " + diceArgs)
+        val diceRes = Util.dice(viewTransformedRes, diceBits, diceArgs)
+        //println("diceRes = " + diceRes.mkString(" "))
+        val series = validYvalues.reverse.map { case (ylabel, yid) => //we reverse the order of series
+          SeriesData(ylabel, validXvalues.map { case (xlabel, xid) =>
+            val si = computeSortedIdx(xid, yid)
+            XYPoint(xlabel, diceRes(si).toFloat)
+          })
+        }
+        (series, dof)
+      } else {
+        assert(solvers.size == 1)
+        val lpSolver = solvers.head.asInstanceOf[SliceSparseSolver[Rational]]
+        val bounds = Profiler("Solve") {
+          lpSolver.gauss(lpSolver.det_vars)
+          lpSolver.compute_bounds
+          lpSolver.bounds.toArray.map(x => (x.lb.get.toDouble, x.ub.get.toDouble))
+        }
+        //skip postProcessFn , we only have single measure
+        //skip view transformation, not supported for LP
+        val lower = bounds.map(_._1)
+        val upper = bounds.map(_._2)
+        val diceResLower = Util.dice(lower, diceBits, diceArgs)
+        val diceResUpper = Util.dice(upper, diceBits, diceArgs)
+        val diceResMiddle = (diceResLower zip diceResUpper).map{case (l, u) => (l + u)/2}
+        val series = validYvalues.reverse.flatMap { case (ylabel, yid) => //we reverse the order of series
+          Vector(
+            SeriesData(ylabel+"-low", validXvalues.map { case (xlabel, xid) =>
+            val si = computeSortedIdx(xid, yid)
+            XYPoint(xlabel, diceResLower(si).toFloat)
+          }),
+            SeriesData(ylabel + "-mid", validXvalues.map { case (xlabel, xid) =>
+              val si = computeSortedIdx(xid, yid)
+              XYPoint(xlabel, diceResMiddle(si).toFloat)
+            }),
+              SeriesData(ylabel + "-high", validXvalues.map { case (xlabel, xid) =>
+              val si = computeSortedIdx(xid, yid)
+              XYPoint(xlabel, diceResUpper(si).toFloat)
+            })
+          )
+        }
+        (series, lpSolver.df)
       }
       println("AllSeries")
-      series.sortBy(_.seriesName).map{s => s.seriesName + ":" + s.data.map{xy => xy.x -> xy.y}.mkString(" ")}.foreach(println)
+      series.sortBy(_.seriesName).map { s => s.seriesName + ":" + s.data.map { xy => xy.x -> xy.y }.mkString(" ") }.foreach(println)
       stats("PrepareTime(ms)") += Profiler.getDurationMicro("Prepare") / 1000.0
       stats("FetchTime(ms)") += Profiler.getDurationMicro("Fetch") / 1000.0
       stats("SolveTime(ms)") += Profiler.getDurationMicro("Solve") / 1000.0
-      stats("DOF") = momentSolvers.head.dof
+      stats("DOF") = dof
 
 
       val statsToShow = stats.map(p => new QueryStatistic(p._1, p._2.toString)).toSeq
@@ -745,7 +824,21 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       case "COR" => CORRELATION
       case "REG" => REGRESSION
     }
+    solverType = in.solver match {
+      case "Naive" => NAIVE
+      case "Linear Programming" => LPP
+      case "Moment" => MOMENT
+      case "Graphical Model" => IPF
+    }
+    if (solverType == LPP && agg != SUM) {
+      throw new IllegalArgumentException(s"$agg not supported with Linear Programming solver")
+    }
+    if(solverType == LPP && cg.isInstanceOf[TransformedViewCubeGenerator[_]]) {
+      throw new IllegalArgumentException(s"Linear Programming solver is not supported for views")
+    }
+
     measures = Vector(in.measure, in.measure2)
+
     val defaultPostProcess = ((data: IndexedSeq[Array[Double]]) => data.head)
     val (idxes, postProcess) = cg match {
       case mcg: MultiCubeGenerator[_] =>
@@ -810,21 +903,43 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     isBatch = in.isBatchMode
 
     val idFn = (r: Array[Double]) => r
-    if(cg.isInstanceOf[TransformedViewCubeGenerator[_]]) {
+    if (cg.isInstanceOf[TransformedViewCubeGenerator[_]]) {
       val mergedCols = cg.schemaInstance.columnVector.map(_.encoder).filter(_.isInstanceOf[MergedMemColEncoder[_]]).map(_.asInstanceOf[MergedMemColEncoder[_]])
-      mergingViewTransformFn = mergedCols.foldLeft(idFn){case (acc, cur) => acc andThen cur.getTransformFunction(sortedQuery)}
+      mergingViewTransformFn = mergedCols.foldLeft(idFn) { case (acc, cur) => acc andThen cur.getTransformFunction(sortedQuery) }
+    } else {
+      mergingViewTransformFn = idFn
     }
     prepareCuboids = Profiler("Prepare") {
-      if (isBatch) {
+      if (solverType == NAIVE) {
+        dcs.head.index.prepareNaive(sortedQuery)
+      }
+      else if (isBatch) {
         dcs.head.index.prepareBatch(sortedQuery)
       } else
         dcs.head.index.prepareOnline(sortedQuery, 2)
     }
-    val pms = Profiler("Prepare") {
-      relevantDCs.map { dc => SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments) }
-    }
-    momentSolvers = Profiler("Solve") {
-      pms.map { pm => new CoMoment5SolverDouble(sortedQuery.size, isBatch, null, pm) }
+
+    solverType match {
+      case NAIVE => solvers = relevantDCs.map { dc => new NaiveSolver() }
+      case LPP =>
+        import core.solver.RationalTools._
+        solvers = Profiler("Solve") {
+          relevantDCs.map { dc =>
+            val b1 = SolverTools.mk_all_non_neg[Rational](1 << sortedQuery.size)
+            new SliceSparseSolver[Rational](sortedQuery.length, b1, Nil, Nil)
+          }
+        }
+      case MOMENT =>
+        val pms = Profiler("Prepare") {
+          relevantDCs.map { dc => SolverTools.preparePrimaryMomentsForQuery[Double](sortedQuery, dc.primaryMoments) }
+        }
+        solvers = Profiler("Solve") {
+          pms.map { pm => new CoMoment5SolverDouble(sortedQuery.size, isBatch, null, pm) }
+        }
+      case IPF =>
+        solvers = Profiler("Solve") {
+          relevantDCs.map { dc => new EffectiveIPFSolver(sortedQuery.size) }
+        }
     }
     runQuery()
   }

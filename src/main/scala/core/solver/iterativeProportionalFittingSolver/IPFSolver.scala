@@ -1,6 +1,6 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.BitUtils
+import util.{BitUtils, SubsetIterator}
 
 /**
  * Abstract definition of a iterative proportional fitting solver.
@@ -14,6 +14,8 @@ abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
   val N: Int = 1 << querySize
   var clusters: Set[Cluster] = Set[Cluster]()
   var oneDimMarginals: Array[Array[Double]] = null
+  val knownSet = collection.mutable.BitSet()
+  def dof = N - knownSet.size
     // To support dropout experiments where some variables are not covered by any cuboid but we can remember the one-dimensional marginal distribution
   var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
   var solution: Array[Double] = Array[Double]() // the un-normalized total distribution
@@ -34,6 +36,8 @@ abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
    */
   def add(marginalVariables: Int, marginalDistribution: Array[Double]): Cluster = {
     normalizationFactor = marginalDistribution.sum
+    val sIt = new SubsetIterator(BitUtils.IntToSet(marginalVariables).toVector.sorted, querySize)
+    knownSet ++= sIt
     val cluster = Cluster(marginalVariables, marginalDistribution.map(_ / normalizationFactor))
     clusters += cluster
     cluster
