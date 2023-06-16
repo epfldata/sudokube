@@ -47,7 +47,7 @@ object SudokubeServer {
     val grpcWebServiceHandlers = WebHandler.grpcWebHandler(sudokubeService)
 
     Http()
-      .newServerAt("localhost", 8081)
+      .newServerAt("0.0.0.0", 8081)
       .bind(grpcWebServiceHandlers)
       //#grpc-web
       .foreach { binding => println(s"gRPC-Web server bound to: ${binding.localAddress}") }
@@ -172,7 +172,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     var cg: AbstractCubeGenerator[_, _] with DynamicCubeGenerator = null
     var sch: DynamicSchema2 = null
     var columnMap: Map[String, DynamicColEncoder[_]] = null
-    val timeDimension = cg.timeDimension.getOrElse("RowId")
+    val timeDimension = "RowId" //cg.timeDimension.getOrElse("RowId")
     var totalTimeBits = 5
     var exploreResult = 0 //0 -> No info, 1 -> ColIsAdded, 2 -> ColIsDeleted
     val sliceArray = collection.mutable.ArrayBuffer[Boolean]() //0 in this array refers to the leftmost, most significant bit in dimension

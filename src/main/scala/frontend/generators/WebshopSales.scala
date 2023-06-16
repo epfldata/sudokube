@@ -39,7 +39,7 @@ class WebshopSales(implicit backend: CBackend)  extends StaticCubeGenerator("Web
   }
   override protected def schema(): StaticSchema2 = {
     //List(7,8,9,11,13).foreach(genUniq)
-    def uniq(i: Int) = s"tabledata/webshop/uniq/col$i.uniq"
+    def uniq(i: Int) = s"tabledata/Webshop/uniq/col$i.uniq"
     val year = LD2[Int]("Year", new StaticNatCol(2014, 2015, StaticNatCol.defaultToInt, nullable = false))
     val quarter = LD2[Int]("Quarter", new StaticNatCol(1, 4, StaticNatCol.defaultToInt, nullable = false))
     val month = LD2[Int]("Month", new StaticNatCol(1, 12, StaticNatCol.defaultToInt, nullable = false))
