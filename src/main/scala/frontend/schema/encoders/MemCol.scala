@@ -91,7 +91,7 @@ class MemCol[T](init_size: Int = 8
 
 
   //def decode_locally(i: Int, default: T): T = vals.getOrElse(i, default)
-  def decode_locally(i: Int): T = decode_map(i)
+  def decode_locally(i: Int): T = if(i <= maxIdx) decode_map(i) else null.asInstanceOf[T]
 }
 
 class NestedMemCol[T](partition: T => (T, T), initvalues:Seq[T])(implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T]  {

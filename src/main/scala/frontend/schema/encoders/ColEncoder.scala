@@ -14,6 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
   def bits: IndexedSeq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
+  def allBits: IndexedSeq[Int] = bits
   def bitsMin : Int  //equivalent to bits.min
   def isRange: Boolean //equivalent to bits.isInstanceOf[Range]
   def encode_locally(v: T) : Int // 0 ...maxIdx for valid values. NULL is encoded as 0
@@ -143,6 +144,7 @@ abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) ext
   val isNotNullBit = bitPosRegistry.increment(1)
   val isNotNullBI = BigInt(1) << isNotNullBit
   override def bits: IndexedSeq[Int] = register.bits
+  override def allBits: IndexedSeq[Int] = bits :+ isNotNullBit
   override def bitsMin: Int = register.bitsMin
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx

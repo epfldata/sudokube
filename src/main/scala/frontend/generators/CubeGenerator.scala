@@ -5,7 +5,7 @@ import core.materialization.{MaterializationStrategy, RandomizedMaterializationS
 import core.solver.SolverTools
 import core.{AbstractDataCube, DataCube, PartialDataCube}
 import frontend.cubespec.Measure
-import frontend.schema.Schema2
+import frontend.schema.{Schema2, TransformedSchema}
 import util.BigBinary
 
 import java.io.FileNotFoundException
@@ -25,6 +25,20 @@ abstract class AbstractCubeGenerator[-I, +O](implicit val backend: CBackend) {
   def loadRMS(logN: Int, minD: Int, maxD: Int): AbstractDataCube[O]
   def saveSMS(logN: Int, minD: Int, maxD: Int): Unit
   def loadSMS(logN: Int, minD: Int, maxD: Int): AbstractDataCube[O]
+}
+
+case class TransformedViewCubeGenerator[-I](otherCG: CubeGenerator[I], viewname: String)(override implicit val backend: CBackend)  extends CubeGenerator[I](viewname){
+  override protected def schema(): Schema2 = TransformedSchema.load(viewname)
+  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = ???
+  override val measure = otherCG.measure
+  override def loadBase(generateIfNotExists: Boolean): DataCube = otherCG.loadBase(generateIfNotExists)
+  override def saveBase(): DataCube = ???
+  override def loadPartial(partialName: String): PartialDataCube = otherCG.loadPartial(partialName)
+  override def savePartial(m: MaterializationStrategy, partialName: String): Unit = ???
+  override def saveRMS(logN: Int, minD: Int, maxD: Int): Unit = ???
+  override def loadRMS(logN: Int, minD: Int, maxD: Int) = ???
+  override def saveSMS(logN: Int, minD: Int, maxD: Int): Unit = ???
+  override def loadSMS(logN: Int, minD: Int, maxD: Int) = ???
 }
 
 abstract class CubeGenerator[-I](override val inputname: String)(override implicit val backend: CBackend) extends AbstractCubeGenerator[I, Long] {

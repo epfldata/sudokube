@@ -4,7 +4,7 @@ import backend.CBackend
 import breeze.io.CSVReader
 import frontend.JsonReader
 import frontend.cubespec.{CompositeMeasure, ConstantMeasure, CountMeasure, Measure, SingleColumnDynamicMeasure, SquareMeasure}
-import frontend.schema.DynamicSchema2
+import frontend.schema.{DynamicSchema2, LD2}
 import util.{BigBinary, Profiler}
 
 import java.io.{File, FileReader}
@@ -112,6 +112,7 @@ class WebShopDyn(implicit be: CBackend) extends DynamicSchemaCubeGenerator("WebS
 
 class TinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TinyDataDyn", "tabledata/TinyData/data.csv", Some("Value"))
 
+class TestTinyData(implicit be: CBackend) extends DynamicSchemaCubeGenerator("TestDataDyn", "tabledata/TinyData/test.json", None)
 class TinyDataMulti(measureColNames: IndexedSeq[String], measures: IndexedSeq[Measure[Map[String, Object], Long]])(implicit be: CBackend) extends DynamicSchemaMultiCubeGenerator("TinyDataMultiDyn", "tabledata/TinyData/multidata.csv", measureColNames, measures)
 
 object DynamicSchemaCubeGenerator {
