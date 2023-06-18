@@ -275,17 +275,19 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
         }}
         onPaginationChange={(updater: any) => {
           const model = updater({pageIndex: store.cuboidsPage, pageSize: store.cuboidsPageSize});
-          store.cuboidsPage = model.pageIndex;
-          store.cuboidsPageSize = model.pageSize;
+          runInAction(() => {
+            store.cuboidsPage = model.pageIndex;
+            store.cuboidsPageSize = model.pageSize;
+          });
           grpc.unary(SudokubeService.getPreparedCuboids, {
             host: apiBaseUrl,
             request: buildMessage(new GetPreparedCuboidsArgs(), {
               requestedPageId: model.pageIndex,
               numRowsInPage: model.pageSize
             }),
-            onEnd: res => {
+            onEnd: res => runInAction(() => {
               store.preparedCuboids = (res.message as GetPreparedCuboidsResponse).getCuboidsList()
-            }
+            })
           });
         }}
         muiBottomToolbarProps = {{
