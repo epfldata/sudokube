@@ -150,7 +150,7 @@ const QueryParams = observer(() => {
             onEnd: res => {
               const message = res.message as QueryResponse;
               runInAction(() => {
-                store.cuboidsPage = message.getCuboidsPageId();
+                store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
                 store.preparedCuboids = message.getCuboidsList();
                 store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
                 store.isQueryComplete = message.getIsComplete();
