@@ -14,6 +14,8 @@ import { SudokubeService } from './_proto/sudokubeRPC_pb_service';
 import { buildMessage } from './Utils';
 import { cuboidToRow } from './MaterializationView';
 import MaterialReactTable, { MRT_ColumnDef } from 'material-react-table';
+import { format } from 'd3-format';
+import { ScaleValue } from '@nivo/scales/dist/types/types';
 
 export default observer(function Query() {
   const { queryStore: store, errorStore } = useRootStore();
@@ -412,6 +414,8 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
     'rgba(' + rgb + ',0.2)'
   ]);
 
+  const yValueFormatter = (v: ScaleValue) => v as number < 1e+6 ? v.toString() : format('>-.2g')(v as number);
+
   return ( <div>
     <h3>Current result</h3>
     <div style={{ width: '100%', height: 400, margin: 0 }}>
@@ -426,7 +430,8 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
           stacked: false,
           reverse: false
         }}
-        yFormat=' >-.2f'
+        yFormat = {yValueFormatter}
+        axisLeft = {{ format: yValueFormatter }}
         axisTop={null}
         axisRight={null}
         pointLabelYOffset={-12}

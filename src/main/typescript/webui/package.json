@@ -10,6 +10,7 @@
     "@mui/material": "latest",
     "@mui/x-data-grid": "^6.1.0",
     "@nivo/line": "^0.80.0",
+    "@types/d3-format": "^3.0.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "material-react-table": "^1.11.3",
