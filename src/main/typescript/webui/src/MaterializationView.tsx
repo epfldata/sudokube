@@ -521,7 +521,6 @@ const ChosenCuboids = observer(() => {
             store.chosenCuboidsPage = model.pageIndex;
             store.chosenCuboidsPageSize = model.pageSize;
           });
-          console.log(model)
           fetchChosenCuboids(store, errorStore);
         }}
         muiBottomToolbarProps = {{
