@@ -2,11 +2,11 @@ package frontend.service
 
 import akka.actor.ActorSystem
 import akka.grpc.GrpcServiceException
-import akka.grpc.scaladsl.{MetadataBuilder, WebHandler}
+import akka.grpc.scaladsl.WebHandler
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.settings.ServerSettings
 import akka.stream.Materializer
-import akka.util.ByteString
 import backend.CBackend
 import com.typesafe.config.ConfigFactory
 import core.materialization.{PresetMaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
@@ -28,6 +28,7 @@ import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler, Util}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.io.File
 //#grpc-web
@@ -37,7 +38,8 @@ object SudokubeServer {
   def main(args: Array[String]): Unit = {
     // important to enable HTTP/2 in ActorSystem's config
     val conf =
-      ConfigFactory.parseString("akka.http.server.enable-http2 = on").withFallback(ConfigFactory.defaultApplication())
+      ConfigFactory.parseString("akka.http.server.enable-http2 = on")
+        .withFallback(ConfigFactory.defaultApplication())
     implicit val sys: ActorSystem = ActorSystem("HelloWorld", conf)
     implicit val ec: ExecutionContext = sys.dispatcher
 
@@ -45,12 +47,12 @@ object SudokubeServer {
     // explicit types not needed but included in example for clarity
     val sudokubeService: PartialFunction[HttpRequest, Future[HttpResponse]] =
     SudokubeServiceHandler.partial(new SudokubeServiceImpl())
-
     //#grpc-web
-    val grpcWebServiceHandlers = WebHandler.grpcWebHandler(sudokubeService)
 
+    val grpcWebServiceHandlers = WebHandler.grpcWebHandler(sudokubeService)
     Http()
       .newServerAt("0.0.0.0", 8081)
+      .adaptSettings(x => x.withTimeouts(x.timeouts.withRequestTimeout(Duration.Inf)))
       .bind(grpcWebServiceHandlers)
       //#grpc-web
       .foreach { binding => println(s"gRPC-Web server bound to: ${binding.localAddress}") }
@@ -126,12 +128,25 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       children.map(c => getDimHierarchy(c)).reduce(_ ++ _)
     } else {
       //assuming all children are LD2 here
-      val levels = children.map { case LD2(name, encoder) =>
-        MyDimLevel(name, encoder)
+      val levels = children.flatMap {
+        case LD2(name, encoder) if encoder.isInstanceOf[StaticDateCol]=>
+          val date = encoder.asInstanceOf[StaticDateCol]
+          val l2 = date.internalEncoders.map {
+          case (iname, ienc) => MyDimLevel(name + "-" + iname, ienc)
+          }
+          l2
+        case LD2(name, encoder) => Vector(MyDimLevel(name, encoder))
       }
       val hierarchy = MyDimHierarchy(rootname, levels)
       Vector(hierarchy)
     }
+    case LD2(name, encoder) if encoder.isInstanceOf[StaticDateCol] =>
+      val date = encoder.asInstanceOf[StaticDateCol]
+      val levels = date.internalEncoders.map { case (iname, ienc) =>
+        MyDimLevel(name + "-" + iname, ienc)
+      }
+      val hierarchy = MyDimHierarchy(name, levels)
+      Vector(hierarchy)
     case LD2(name, encoder) =>
       val level = MyDimLevel(name, encoder)
       val hierarchy = MyDimHierarchy(name, Vector(level))
@@ -139,8 +154,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     case r@DynBD2() => r.children.values.map(c => getDimHierarchy(c)).reduce(_ ++ _)
   }
   def getCubeGenerator(cname: String, fullname: String = ""): AbstractCubeGenerator[_, _] = {
+    print(s"cname = $cname")
     cname match {
-      case "SSB" => new SSB(100)
+      case "SSB-sf100" => new SSB(100)
       case "NYC" => new NYC()
       //case "WebshopSales" => new WebshopSales()
       case "WebshopSalesMulti" => new WebshopSalesMulti()
@@ -843,7 +859,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val response = QueryResponse(fetchedCuboidPageNum, cuboidsToDisplay, fetchedCuboidIDwithinPage, isComplete, series, statsToShow)
         response
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
+        case ex: Exception =>
+          ex.printStackTrace(System.err)
+          throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -1006,7 +1024,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
             }
         }
       } catch {
-        case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
+        case ex: Exception =>
+          ex.printStackTrace(System.err)
+          Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
       }
       runQuery()
     }

@@ -5,6 +5,7 @@ import util.BigBinary
 
 import java.text.SimpleDateFormat
 import java.util.Date
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.util.{Random, Try}
 
@@ -20,6 +21,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
   val hrCol = new NatCol(if(allocateHr) 23 else 0)
   val minCol = new NatCol(if(allocateMin) 60 else 0)
   val secCol = new NatCol(if(allocateSec) 60 else 0)
+
 
   override def bits: IndexedSeq[Int] = yCol.bits ++ mCol.bits ++ dCol.bits ++ hrCol.bits ++ minCol.bits ++ secCol.bits
 
@@ -96,6 +98,29 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   val hourCol = new StaticNatCol(0, 23 ,_.asInstanceOf[Option[Date]].map(_.getHours))
   val minuteCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getMinutes))
   val secondsCol = new StaticNatCol(0, 59, _.asInstanceOf[Option[Date]].map(_.getSeconds))
+
+  def internalEncoders = {
+    val encoders = new ArrayBuffer[(String, ColEncoder[_])]()
+    if (maxYear >= minYear) {
+      encoders += "Year" -> yearCol
+    }
+    if (allocateMonth) {
+      encoders += "Month" -> monthCol
+    }
+    if (allocateDay) {
+      encoders += "Day" -> dayCol
+    }
+    if (allocateHr) {
+      encoders += "Hour" -> hourCol
+    }
+    if (allocateMin) {
+      encoders += "Minutes" -> minuteCol
+    }
+    if (allocateSec) {
+      encoders += "Seconds" -> secondsCol
+    }
+    encoders.toVector
+  }
 
 
   override def set_bits(offset: Int): Int = {
