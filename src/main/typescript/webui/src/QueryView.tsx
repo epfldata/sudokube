@@ -40,7 +40,6 @@ export default observer(function Query() {
           request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
           onEnd: response => runInAction(() => {
             if (response.status !== 0) {
-              console.log(response);
               runInAction(() => {
                 errorStore.errorMessage = response.statusMessage;
                 errorStore.isErrorPopupOpen = true;
