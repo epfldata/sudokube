@@ -118,7 +118,7 @@ export function FilterChip({ text, onDelete }: {
 }
 
 export const AddFilterChip = observer(() => {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [dimensionIndex, setDimensionIndex] = useState(0);
   const [level, setLevel] = useState('');
@@ -153,6 +153,13 @@ export const AddFilterChip = observer(() => {
         numRowsInPage: newPageSize ?? pageSize
       }),
       onEnd: (res => {
+        if (res.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = res.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
         const message = res.message as GetSliceValueResponse;
         setValues(message.getValuesList());
         const newModel: MRT_RowSelectionState = {};
@@ -166,7 +173,16 @@ export const AddFilterChip = observer(() => {
     grpc.unary(SudokubeService.getFilters, {
       host: apiBaseUrl,
       request: new Empty(),
-      onEnd: (res => runInAction(() => store.filters = (res.message as GetFiltersResponse).getFiltersList()))
+      onEnd: response => {
+        if (response.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = response.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
+        runInAction(() => store.filters = (response.message as GetFiltersResponse).getFiltersList());
+      }
     })
   }, []);
 
@@ -262,7 +278,14 @@ export const AddFilterChip = observer(() => {
               request: buildMessage(new SetSliceValuesArgs(), {
                 isSelectedList: Array.from(values.keys()).map(i => rowSelectionModel[String(i)])
               }),
-              onEnd: () => {
+              onEnd: response => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
                 fetchFilters();
                 setDialogOpen(false);
               }

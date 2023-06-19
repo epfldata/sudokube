@@ -10,6 +10,7 @@ import Query from './QueryView';
 import Materialization from './MaterializationView';
 import { RootStore, RootStoreContextProvider } from './RootStore';
 import ExploreTransform from './ExploreTransformView';
+import { ErrorPopup } from './ErrorPopup';
 
 export default function App({rootStore}: {rootStore: RootStore}) {
   return (
@@ -34,6 +35,7 @@ export default function App({rootStore}: {rootStore: RootStore}) {
             <Route path = '/explore-transform' element = {<ExploreTransform/>} />
           </Routes>
         </BrowserRouter>
+        <ErrorPopup/>
       </Container>
     </RootStoreContextProvider>
   );

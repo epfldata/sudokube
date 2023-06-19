@@ -17,8 +17,9 @@ import {Empty, BaseCuboidResponse, SelectBaseCuboidArgs, SelectBaseCuboidRespons
 import { buildMessage } from './Utils';
 import MaterialReactTable, { MRT_ColumnDef, MRT_RowSelectionState } from 'material-react-table';
 import { Delete } from '@mui/icons-material';
+import { ErrorStore } from './ErrorStore';
 
-const fetchChosenCuboids = (store: MaterializationStore) => {
+const fetchChosenCuboids = (store: MaterializationStore, errorStore: ErrorStore) => {
   grpc.unary(SudokubeService.getChosenCuboids, {
     host: apiBaseUrl,
     request: buildMessage(new GetCuboidsArgs(), {
@@ -26,14 +27,23 @@ const fetchChosenCuboids = (store: MaterializationStore) => {
       requestedPageId: store.chosenCuboidsPage,
       rowsPerPage: store.chosenCuboidsPageSize
     }),
-    onEnd: res => runInAction(() => {
-      store.chosenCuboids = (res.message as GetChosenCuboidsResponse)!.getCuboidsList();
-    })
+    onEnd: response => {
+      if (response.status !== 0) {
+        runInAction(() => {
+          errorStore.errorMessage = response.statusMessage;
+          errorStore.isErrorPopupOpen = true;
+        });
+        return;
+      }
+      runInAction(() => {
+        store.chosenCuboids = (response.message as GetChosenCuboidsResponse)!.getCuboidsList();
+      })
+    }
   });
 }
 
 export default observer(function Materialization() {
-  const { materializationStore: store } = useRootStore();
+  const { materializationStore: store, errorStore } = useRootStore();
   const [cubeName, setCubeName] = useState('');
   const [isSuccessDialogOpen, setSuccessDialogOpen] = useState(false);
 
@@ -41,23 +51,40 @@ export default observer(function Materialization() {
     grpc.unary(SudokubeService.getBaseCuboids, {
       host: apiBaseUrl,
       request: new Empty(),
-      onEnd: res => runInAction(() => {
-        store.datasets = (res.message as BaseCuboidResponse)!.toObject().cuboidsList;
-        store.selectedDataset = store.datasets[0];
+      onEnd: response => {
+        if (response.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = response.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
+        runInAction(() => {
+          store.datasets = (response.message as BaseCuboidResponse)!.toObject().cuboidsList;
+          store.selectedDataset = store.datasets[0];
+        });
         grpc.unary(SudokubeService.selectBaseCuboid, {
           host: apiBaseUrl,
           request: buildMessage(new SelectBaseCuboidArgs(), { cuboid: store.selectedDataset }),
-          onEnd: res => runInAction(() => {
-            store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
-          })
+          onEnd: response => {
+            if (response.status !== 0) {
+              runInAction(() => {
+                errorStore.errorMessage = response.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
+            runInAction(() => {
+              store.dimensions = (response.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
+            })
+          }
         });
-      })
+      }
     });
   }, []);
 
   useEffect(() => setCubeName(''), [store.selectedDataset]);
 
-  // TODO: Add strategies
   runInAction(() => {
     store.strategies = [
       {
@@ -101,7 +128,16 @@ export default observer(function Materialization() {
           grpc.unary(SudokubeService.materializeCuboids, {
             host: apiBaseUrl,
             request: buildMessage(new MaterializeArgs(), { cubeName: cubeName }),
-            onEnd: () => runInAction(() => setSuccessDialogOpen(true))
+            onEnd: response => {
+              if (response.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = response.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
+              runInAction(() => setSuccessDialogOpen(true))
+            }
           })
         } }>Materialize</Button>
         <Dialog open = {isSuccessDialogOpen}>
@@ -117,7 +153,7 @@ export default observer(function Materialization() {
 })
 
 const SelectDataset = observer(() => {
-  const { materializationStore: store } = useRootStore();
+  const { materializationStore: store, errorStore } = useRootStore();
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-dataset">Dataset</InputLabel>
@@ -132,10 +168,19 @@ const SelectDataset = observer(() => {
             grpc.unary(SudokubeService.selectBaseCuboid, {
               host: apiBaseUrl,
               request: selectBaseCuboidArgs,
-              onEnd: res => runInAction(() => {
-                store.chosenCuboidsFilters = [];
-                store.dimensions = (res.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
-              })
+              onEnd: response => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
+                runInAction(() => {
+                  store.chosenCuboidsFilters = [];
+                  store.dimensions = (response.message as SelectBaseCuboidResponse)!.toObject().dimensionsList;
+                })
+              }
             });
         })}>
         { store.datasets.map((dataset, index) => (
@@ -147,7 +192,7 @@ const SelectDataset = observer(() => {
 })
 
 const SpecifyStrategy = observer(() => {
-  const { materializationStore: store } = useRootStore();
+  const { materializationStore: store, errorStore } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   return ( <span>
     <ButtonChip label = 'Use predefined strategy' variant = 'outlined' onClick = { () => setDialogOpen(true) } />
@@ -210,9 +255,16 @@ const SpecifyStrategy = observer(() => {
                 name: store.strategies[store.strategyIndex].name,
                 argsList: store.strategyParameters
               }),
-              onEnd: () => {
+              onEnd: response => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
                 setDialogOpen(false);
-                fetchChosenCuboids(store);
+                fetchChosenCuboids(store, errorStore);
               }
             });
           } }>Confirm</Button>
@@ -223,7 +275,7 @@ const SpecifyStrategy = observer(() => {
 })
 
 const ManuallyChooseCuboids = observer(() => {
-  const { materializationStore: store } = useRootStore();
+  const { materializationStore: store, errorStore } = useRootStore();
   const dimensions = store.dimensions;
   const [isCuboidsDialogOpen, setCuboidsDialogOpen] = React.useState(false);
   const [page, setPage] = useState(0), [pageSize, setPageSize] = useState(10);
@@ -240,7 +292,14 @@ const ManuallyChooseCuboids = observer(() => {
         requestedPageId: newPage ?? page,
         rowsPerPage: newPageSize ?? pageSize
       }),
-      onEnd: res => runInAction(() => {
+      onEnd: res => {
+        if (res.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = res.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
         const rpcCuboidsList = (res.message as GetAvailableCuboidsResponse)!.getCuboidsList();
         setCuboids(rpcCuboidsList.map(cuboid => buildMessage(new CuboidDef(), {
           dimensionsList: cuboid.getDimensionsList()
@@ -248,7 +307,7 @@ const ManuallyChooseCuboids = observer(() => {
         const newRowSelectionModel: MRT_RowSelectionState = {};
         rpcCuboidsList.forEach((cuboid, index) => { newRowSelectionModel[String(index)] = cuboid.getIsChosen() });
         setRowSelectionModel(newRowSelectionModel);
-      })
+      }
     });
   }
 
@@ -319,7 +378,14 @@ const ManuallyChooseCuboids = observer(() => {
                 request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
                   isChosenList: Array.from(cuboids.keys()).map(i => rowSelectionModel[String(i)])
                 }),
-                onEnd: () => {
+                onEnd: response => {
+                  if (response.status !== 0) {
+                    runInAction(() => {
+                      errorStore.errorMessage = response.statusMessage;
+                      errorStore.isErrorPopupOpen = true;
+                    });
+                    return;
+                  }
                   setPage(model.pageIndex);
                   setPageSize(model.pageSize);
                   fetchAvailableCuboids({newPage: model.pageIndex, newPageSize: model.pageSize});
@@ -346,9 +412,16 @@ const ManuallyChooseCuboids = observer(() => {
               request: buildMessage(new ManuallyUpdateCuboidsArgs(), {
                 isChosenList: Array.from(cuboids.keys()).map(i => rowSelectionModel[String(i)])
               }),
-              onEnd: () => {
+              onEnd: response => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
                 setCuboidsDialogOpen(false); 
-                fetchChosenCuboids(store);
+                fetchChosenCuboids(store, errorStore);
               }
             });
           } }>Confirm</Button>
@@ -359,14 +432,14 @@ const ManuallyChooseCuboids = observer(() => {
 });
 
 const ChosenCuboids = observer(() => {
-  const { materializationStore: store } = useRootStore();
+  const { materializationStore: store, errorStore } = useRootStore();
 
   useEffect(() => {
     runInAction(() => {
       store.chosenCuboidsFilters = [];
       store.chosenCuboidsPage = 0;
     });
-    fetchChosenCuboids(store);
+    fetchChosenCuboids(store, errorStore);
   }, [store.selectedDataset]);
 
   return ( <div>
@@ -381,7 +454,7 @@ const ChosenCuboids = observer(() => {
                 store.chosenCuboidsFilters.splice(index, 1);
                 store.chosenCuboidsPage = 0;
               });
-              fetchChosenCuboids(store);
+              fetchChosenCuboids(store, errorStore);
             } }
           /> 
         )) }
@@ -394,7 +467,7 @@ const ChosenCuboids = observer(() => {
             }));
             store.chosenCuboidsPage = 0;
           });
-          fetchChosenCuboids(store);
+          fetchChosenCuboids(store, errorStore);
         }} />
       </Grid>
     </Grid>
@@ -414,8 +487,15 @@ const ChosenCuboids = observer(() => {
                   request: buildMessage(new DeleteSelectedCuboidArgs(), {
                     cuboidIdWithinPage: row.id
                   }),
-                  onEnd: () => {
-                    fetchChosenCuboids(store);
+                  onEnd: response => {
+                    if (response.status !== 0) {
+                      runInAction(() => {
+                        errorStore.errorMessage = response.statusMessage;
+                        errorStore.isErrorPopupOpen = true;
+                      });
+                      return;
+                    }
+                    fetchChosenCuboids(store, errorStore);
                   }
                 });
               }}>
@@ -442,7 +522,7 @@ const ChosenCuboids = observer(() => {
             store.chosenCuboidsPageSize = model.pageSize;
           });
           console.log(model)
-          fetchChosenCuboids(store);
+          fetchChosenCuboids(store, errorStore);
         }}
         muiBottomToolbarProps = {{
           sx: {

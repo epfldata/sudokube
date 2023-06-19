@@ -11,12 +11,19 @@ import { Empty, GetCubesResponse, GetRenameTimeArgs, GetRenameTimeResponse, IsRe
 import { buildMessage } from "./Utils";
 
 export default observer(function ExploreTransformView() {
-  const { exploreTransformStore: store } = useRootStore();
+  const { exploreTransformStore: store, errorStore } = useRootStore();
   useEffect(() => {
     grpc.unary(SudokubeService.getDataCubesForExplore, {
       host: apiBaseUrl,
       request: new Empty(),
       onEnd: response => {
+        if (response.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = response.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
         runInAction(() => {
           store.cubes = (response.message as GetCubesResponse)?.getCubesList();
           store.cube = store.cubes[0];
@@ -24,9 +31,18 @@ export default observer(function ExploreTransformView() {
         grpc.unary(SudokubeService.selectDataCubeForExplore, {
           host: apiBaseUrl,
           request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
-          onEnd: response => runInAction(() => {
-            store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
-          })
+          onEnd: response => {
+            if (response.status !== 0) {
+              runInAction(() => {
+                errorStore.errorMessage = response.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
+            runInAction(() => {
+              store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+            })
+          }
         })
       }
     });
@@ -42,7 +58,7 @@ export default observer(function ExploreTransformView() {
 })
 
 const SelectCube = observer(() => {
-  const { exploreTransformStore: store } = useRootStore();
+  const { exploreTransformStore: store, errorStore } = useRootStore();
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
@@ -57,9 +73,18 @@ const SelectCube = observer(() => {
             grpc.unary(SudokubeService.selectDataCubeForExplore, {
               host: apiBaseUrl,
               request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
-              onEnd: response => runInAction(() => {
-                store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
-              })
+              onEnd: response => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
+                runInAction(() => {
+                  store.dimensions = (response.message as SelectDataCubeForExploreResponse)?.getDimNamesList();
+                })
+              }
             })
           })
         } }>
@@ -72,7 +97,7 @@ const SelectCube = observer(() => {
 })
 
 const CheckRename = observer(() => {
-  const { exploreTransformStore: store } = useRootStore();
+  const { exploreTransformStore: store, errorStore } = useRootStore();
   const [dimension1, setDimension1] = useState(store.dimensions[0]);
   const [dimension2, setDimension2] = useState(store.dimensions[1]);
   const [dimensionsNullCounts, setDimensionsNullCounts] = useState([0, 0, 0, 0]);
@@ -126,6 +151,13 @@ const CheckRename = observer(() => {
             dimension2: dimension2
           }),
           onEnd: response => {
+            if (response.status !== 0) {
+              runInAction(() => {
+                errorStore.errorMessage = response.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
             const { resultList: nullCounts, isRenamed } = (response.message as IsRenamedQueryResponse).toObject();
             setDimensionsNullCounts(nullCounts);
             setRenameCheckResult(isRenamed);
@@ -198,7 +230,7 @@ const CheckRename = observer(() => {
 })
 
 const FindRenameTime = observer(() => {
-  const { exploreTransformStore: store } = useRootStore();
+  const { exploreTransformStore: store, errorStore } = useRootStore();
 
   const [dimension, setDimension] = useState(store.dimensions[0] ?? '');
   const [isStepShown, setStepShown] = useState(false);
@@ -270,6 +302,13 @@ const FindRenameTime = observer(() => {
           host: apiBaseUrl,
           request: buildMessage(new GetRenameTimeArgs, {dimensionName: dimension}),
           onEnd: response => {
+            if (response.status !== 0) {
+              runInAction(() => {
+                errorStore.errorMessage = response.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
             const {
               numTimeBits,
               isComplete,
@@ -322,6 +361,13 @@ const FindRenameTime = observer(() => {
             host: apiBaseUrl,
             request: new Empty(),
             onEnd: response => {
+              if (response.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = response.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
               const {
                 numTimeBits,
                 isComplete,
@@ -348,7 +394,7 @@ const FindRenameTime = observer(() => {
 })
 
 const Transform = observer(() => {
-  const { exploreTransformStore: store } = useRootStore();
+  const { exploreTransformStore: store, errorStore } = useRootStore();
   const [newCubeName, setNewCubeName] = useState('');
   const [isComplete, setComplete] = useState(false);
 
@@ -440,7 +486,16 @@ const Transform = observer(() => {
           colsList: store.transformations.map(transformation => buildMessage(new MergeColumnDef(), transformation)),
           newCubeName: newCubeName
         }),
-        onEnd: () => setComplete(true)
+        onEnd: response => {
+          if (response.status !== 0) {
+            runInAction(() => {
+              errorStore.errorMessage = response.statusMessage;
+              errorStore.isErrorPopupOpen = true;
+            });
+            return;
+          }
+          setComplete(true)
+        }
       });
     }}>Transform</Button>
     <Dialog open = {isComplete}>

@@ -4,6 +4,7 @@ import { ReactNode, createContext, useContext } from 'react';
 import { QueryStore } from './QueryStore';
 import MaterializationStore from './MaterializationStore';
 import { ExploreTransformStore } from './ExploreTransformStore';
+import { ErrorStore } from './ErrorStore';
 
 export const apiBaseUrl = "http://sudokube.ddns.net:8081";
 
@@ -11,11 +12,13 @@ export class RootStore {
   readonly materializationStore: MaterializationStore;
   readonly exploreTransformStore: ExploreTransformStore;
   readonly queryStore: QueryStore;
+  readonly errorStore: ErrorStore;
   constructor() {
     makeAutoObservable(this);
     this.materializationStore = new MaterializationStore();
     this.exploreTransformStore = new ExploreTransformStore();
     this.queryStore = new QueryStore();
+    this.errorStore = new ErrorStore();
   }
 }
 

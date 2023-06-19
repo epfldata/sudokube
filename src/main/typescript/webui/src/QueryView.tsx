@@ -16,12 +16,19 @@ import { cuboidToRow } from './MaterializationView';
 import MaterialReactTable, { MRT_ColumnDef } from 'material-react-table';
 
 export default observer(function Query() {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   useEffect(() => {
     grpc.unary(SudokubeService.getDataCubesForQuery, {
       host: apiBaseUrl,
       request: new Empty(),
       onEnd: response => {
+        if (response.status !== 0) {
+          runInAction(() => {
+            errorStore.errorMessage = response.statusMessage;
+            errorStore.isErrorPopupOpen = true;
+          });
+          return;
+        }
         runInAction(() => {
           store.cubes = (response.message as GetCubesResponse)?.getCubesList();
           store.cube = store.cubes[0];
@@ -30,6 +37,14 @@ export default observer(function Query() {
           host: apiBaseUrl,
           request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
           onEnd: response => runInAction(() => {
+            if (response.status !== 0) {
+              console.log(response);
+              runInAction(() => {
+                errorStore.errorMessage = response.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
             const message = response.message as SelectDataCubeForQueryResponse;
             runInAction(() => {
               store.dimensionHierarchy = message.getDimHierarchyList();
@@ -55,7 +70,7 @@ export default observer(function Query() {
 })
 
 const SelectCube = observer(() => {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   return ( <div>
     <FormControl sx = {{ minWidth: 200 }}>
       <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
@@ -70,6 +85,13 @@ const SelectCube = observer(() => {
             host: apiBaseUrl,
             request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
             onEnd: response => runInAction(() => {
+              if (response.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = response.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
               const message = response.message as SelectDataCubeForQueryResponse;
               runInAction(() => {
                 store.dimensionHierarchy = message.getDimHierarchyList();
@@ -93,7 +115,7 @@ const SelectCube = observer(() => {
 })
 
 const QueryParams = observer(() => {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   const [solver, setSolver] = useState(store.solver);
   const hasTwoMeasures = store.aggregation === 'REG' || store.aggregation === 'COR';
   return (
@@ -148,6 +170,13 @@ const QueryParams = observer(() => {
               preparedCuboidsPerPage: store.cuboidsPageSize
             }),
             onEnd: res => {
+              if (res.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = res.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
               const message = res.message as QueryResponse;
               runInAction(() => {
                 store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
@@ -191,7 +220,7 @@ const Horizontal = observer(() => {
 });
 
 const Filters = observer(() => {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   return (
     <Grid item xs={6}>
       { store.filters.map((d, i) => (<FilterChip
@@ -201,11 +230,29 @@ const Filters = observer(() => {
           grpc.unary(SudokubeService.deleteFilter, {
             host: apiBaseUrl,
             request: buildMessage(new DeleteFilterArgs(), { index: i }),
-            onEnd: () => {
+            onEnd: response => {
+              if (response.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = response.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
               grpc.unary(SudokubeService.getFilters, {
                 host: apiBaseUrl,
                 request: new Empty(),
-                onEnd: (res => runInAction(() => store.filters = (res.message as GetFiltersResponse).getFiltersList()))
+                onEnd: (response => {
+                  if (response.status !== 0) {
+                    runInAction(() => {
+                      errorStore.errorMessage = response.statusMessage;
+                      errorStore.isErrorPopupOpen = true;
+                    });
+                    return;
+                  }
+                  runInAction(() => 
+                    store.filters = (response.message as GetFiltersResponse).getFiltersList()
+                  );
+                })
               });
             }
           })
@@ -241,7 +288,7 @@ const Series = observer(() => {
 });
 
 const Cuboids = observer(({isShown}: {isShown: boolean}) => {
-  const { queryStore: store } = useRootStore();
+  const { queryStore: store, errorStore } = useRootStore();
   if (!isShown) {
     return null;
   }
@@ -285,9 +332,18 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
               requestedPageId: model.pageIndex,
               numRowsInPage: model.pageSize
             }),
-            onEnd: res => runInAction(() => {
-              store.preparedCuboids = (res.message as GetPreparedCuboidsResponse).getCuboidsList()
-            })
+            onEnd: response => {
+              if (response.status !== 0) {
+                runInAction(() => {
+                  errorStore.errorMessage = response.statusMessage;
+                  errorStore.isErrorPopupOpen = true;
+                });
+                return;
+              }
+              runInAction(() => {
+                store.preparedCuboids = (response.message as GetPreparedCuboidsResponse).getCuboidsList()
+              })
+            }
           });
         }}
         muiBottomToolbarProps = {{
@@ -308,6 +364,13 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
           host: apiBaseUrl,
           request: new Empty(),
           onEnd: res => {
+            if (res.status !== 0) {
+              runInAction(() => {
+                errorStore.errorMessage = res.statusMessage;
+                errorStore.isErrorPopupOpen = true;
+              });
+              return;
+            }
             const message = res.message as QueryResponse;
             runInAction(() => {
               store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
