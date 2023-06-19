@@ -76,20 +76,21 @@ object Util {
 
   /**
    *  Aggregation of multiple slices. SLOW!!
+   *  AggCols and DiceCols may have overlap
    *  One entry per value in diceValues
    *  Each entry in diceValues must have same size as diceCols and contains mapping (0/1) for each col
    */
 
-  def dice[T: ClassTag : Fractional](a: Array[T], diceCols: Seq[Int], diceValues: Seq[Seq[Int]]) = {
-    val allColsInt = a.length - 1
-    val diceColsInt = diceCols.map(1 << _).sum
-    val diceInts = diceValues.map{ dv => dv.zip(diceCols).map{case (v, c) => v << c}.sum}
-    val aggColsInt = allColsInt - diceColsInt
-    val aggN = a.length >> diceCols.length
+  def dice[T: ClassTag : Fractional](a: Array[T], aggCols: Seq[Int], diceCols: Seq[Int], diceValues: Seq[Seq[Int]]) = {
+    val diceInts = diceValues.map { dv => dv.zip(diceCols).map { case (v, c) => v << c }.sum }
+    val aggColsInt = aggCols.map(1 << _).sum
+    val commonColsMask = aggCols.intersect(diceCols).map(1 << _).sum
+    val aggN = 1 << aggCols.length
     val result = new Array[T](aggN)
     (0 until aggN).map { i0 =>
       val i = BitUtils.unprojectIntWithInt(i0, aggColsInt)
-      result(i0) = diceInts.map{di => a(i + di)}.sum
+      result(i0) = diceInts.filter { di => (di & commonColsMask) == (i & commonColsMask) } //only include dice values that agree with aggValue
+        .map { di => a(i | di) }.sum //Bitwise OR needed because of overlap
     }
     result
   }
@@ -131,7 +132,7 @@ object Util {
   }
 
   /** makes a sz-element ArrayBuffer and initializes each i-th field with
-      init_v(i).
+   *init_v(i).
    */
   def mkAB[T](sz: Int, init_v: Int => T) = {
     val ab = collection.mutable.ArrayBuffer[T]()
@@ -203,8 +204,8 @@ object Util {
     s.zipWithIndex.filter { case (_, i) => is.contains(i) }.map(_._1)
 
   /** careful -- this method may not terminate in case nondeterministic
-       function <sample> cannot supply n distinct values, and it will be
-       SLOW if we are asking for closeto the maximum of distinct values.
+   *function <sample> cannot supply n distinct values, and it will be
+   *SLOW if we are asking for closeto the maximum of distinct values.
    */
   def collect_n[T](n: Int, sample: () => T): List[T] = {
     val s = collection.mutable.Set[T]()
@@ -217,7 +218,7 @@ object Util {
     var totalAttempts = 0
     var successAttemps = 0
     while (s.size < n && totalAttempts <= factor * n) {
-      if(s.add(sample()))
+      if (s.add(sample()))
         successAttemps += 1
       totalAttempts += 1
     }
@@ -228,13 +229,13 @@ object Util {
     collect_n[Int](k, () => scala.util.Random.nextInt(n)).sorted
 
   /** compares two lists by the first element on which they disagree.
-      If one of the lists is a prefix of the other, the function says they
-      are equal! (Meant for lists of equal length.)
-
-      Example:
-      {{{
-      lists_lt(List(1,5,2,6,3,6), List(1,5,1,9,9,9)) =>  <
-      }}}
+   *If one of the lists is a prefix of the other, the function says they
+   *are equal! (Meant for lists of equal length.)
+   *
+   *Example:
+   *{{{
+   *lists_lt(List(1,5,2,6,3,6), List(1,5,1,9,9,9)) =>  <
+   *}}}
    */
   def lists_lt(l1: Seq[Int], l2: Seq[Int]) = {
     val i = l1.zip(l2).indexWhere((x: (Int, Int)) => x._1 != x._2)

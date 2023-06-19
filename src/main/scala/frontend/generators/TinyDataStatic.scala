@@ -4,20 +4,16 @@ import backend.CBackend
 import frontend.schema._
 import util.BigBinary
 import com.github.tototoshi.csv.CSVReader
-import frontend.cubespec.Measure
+import frontend.cubespec.{CompositeMeasure, CountMeasure, Measure, SingleColumnStaticMeasure}
 import frontend.schema.encoders.{StaticMemCol, StaticNatCol}
 
-class TinyDataStatic(implicit backend: CBackend) extends StaticCubeGenerator("TinyData") {
+class TinyDataStatic(implicit backend: CBackend) extends MultiCubeGenerator[IndexedSeq[String]]("TinyData") {
   override lazy val schemaInstance = schema()
-  override val measure = new Measure[StaticInput, Long] {
-    override val name: String = "Value"
-    override def compute(sIdx: StaticInput): Long = {
-      val value = sIdx.last
-      StaticNatCol.defaultToInt(value).get.toLong
-    }
-  }
 
-  override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
+  val countMeasure = new CountMeasure()
+  val valueMeasure = new SingleColumnStaticMeasure(2, "Value", StaticNatCol.defaultToInt(_).get.toLong)
+  override val measure =new CompositeMeasure(Vector(countMeasure, valueMeasure))
+  override def generatePartitions() = {
     val filename = s"tabledata/TinyData/data.csv"
     val datasize = CSVReader.open(filename).iterator.drop(1).size
     val data = CSVReader.open(filename).iterator.drop(1).map { s =>

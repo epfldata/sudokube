@@ -2,24 +2,27 @@ package frontend.generators
 
 import backend.CBackend
 import com.github.tototoshi.csv.CSVReader
-import frontend.cubespec.{CompositeMeasure, CountMeasure, SingleColumnStaticMeasure, SquareMeasure}
+import frontend.cubespec.{CompositeMeasure, CountMeasure, ProductMeasure, SingleColumnStaticMeasure, SquareMeasure}
 import frontend.schema.encoders.{LazyMemCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, StaticSchema2}
 import util.BigBinary
 
 import java.io.PrintStream
 
-class WebshopSalesMulti(implicit backend: CBackend)  extends MultiCubeGenerator[IndexedSeq[String]]("WebshopSalesMulti") {
+class WebshopSalesMulti(implicit backend: CBackend) extends MultiCubeGenerator[IndexedSeq[String]]("WebshopSalesMulti") {
   override lazy val schemaInstance = schema()
-  val skipped = Set(0,4,6,10,12,14)
+  val skipped = Set(0, 4, 6, 10, 12)
   val countMeasure = new CountMeasure[IndexedSeq[String]]()
   val priceMeasure = new SingleColumnStaticMeasure(15, "PriceTotal", x => StaticNatCol.floatToInt(2)(x).get.toLong)
   val priceSqMeasure = new SquareMeasure(priceMeasure)
-  override val measure = new CompositeMeasure[IndexedSeq[String], Long](Vector(countMeasure, priceMeasure, priceSqMeasure))
-  val notskipped = (0 to 14).toSet.diff(skipped).toVector.sorted
+  val qtyMeasure = new SingleColumnStaticMeasure(14, "Quantity", x => StaticNatCol.defaultToInt(x).get.toLong)
+  val qtySqMeasure = new SquareMeasure(qtyMeasure)
+  val qtyPriceMeasure = new ProductMeasure(priceMeasure, qtyMeasure)
+  override val measure = new CompositeMeasure[IndexedSeq[String], Long](Vector(countMeasure, priceMeasure, priceSqMeasure, qtyMeasure, qtySqMeasure, qtyPriceMeasure))
+  val notskipped = (0 to 13).toSet.diff(skipped).toVector.sorted
   def genUniq(col: Int): Unit = {
     val filename = s"tabledata/Webshop/sales.csv"
-    val data = CSVReader.open(filename).all.tail.map{ s =>
+    val data = CSVReader.open(filename).all.tail.map { s =>
       s(col)
     }.distinct.sorted
     val fout = new PrintStream(s"tabledata/Webshop/uniq/col$col.uniq")
@@ -27,18 +30,18 @@ class WebshopSalesMulti(implicit backend: CBackend)  extends MultiCubeGenerator[
     fout.close()
   }
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, IndexedSeq[Long])])] = {
-      val filename = s"tabledata/Webshop/sales.csv"
+    val filename = s"tabledata/Webshop/sales.csv"
     val datasize = CSVReader.open(filename).iterator.drop(1).size
     val data = CSVReader.open(filename).iterator.drop(1).map { s =>
-        val sIdx = s.toIndexedSeq
+      val sIdx = s.toIndexedSeq
       val values = measure.compute(sIdx)
-        schemaInstance.encode_tuple(notskipped.map(i => sIdx(i))) -> values
-      }
+      schemaInstance.encode_tuple(notskipped.map(i => sIdx(i))) -> values
+    }
     Vector(datasize -> data)
   }
   override protected def schema(): StaticSchema2 = {
     //List(7,8,9,11,13).foreach(genUniq)
-    def uniq(i: Int) = s"tabledata/webshop/uniq/col$i.uniq"
+    def uniq(i: Int) = s"tabledata/Webshop/uniq/col$i.uniq"
     val year = LD2[Int]("Year", new StaticNatCol(2014, 2015, StaticNatCol.defaultToInt, nullable = false))
     val quarter = LD2[Int]("Quarter", new StaticNatCol(1, 4, StaticNatCol.defaultToInt, nullable = false))
     val month = LD2[Int]("Month", new StaticNatCol(1, 12, StaticNatCol.defaultToInt, nullable = false))
