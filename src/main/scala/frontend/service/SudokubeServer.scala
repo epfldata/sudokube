@@ -240,7 +240,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         println("\t response: " + res)
         res
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -288,7 +288,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       println("\t response: " + res)
       Future.successful(res)
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 
@@ -354,7 +354,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         println("\t response: " + res)
         res
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -395,7 +395,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val response = GetCubesResponse(("WebShopDyn_base" +: dynamicCubes.toVector).distinct)
       Future.successful(response)
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
   override def selectDataCubeForExplore(in: SelectDataCubeArgs): Future[SelectDataCubeForExploreResponse] = {
@@ -416,7 +416,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         totalTimeBits = columnMap(timeDimension).bits.size //exclude isNotNULL bit
         SelectDataCubeForExploreResponse(columnMap.keys.toVector)
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -439,7 +439,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val response = IsRenamedQueryResponse(result, isRenamed)
         response
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -518,7 +518,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         println(string)
         GetRenameTimeResponse(totalTimeBits, !isContinue, currentSlice, Vector(row0, row1), string)
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -611,7 +611,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         println("\t response:" + res)
         res
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -634,7 +634,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       println("\t response: " + response)
       Future.successful(response)
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 
@@ -646,7 +646,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       println("\t response : " + response)
       Future.successful(response)
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 
@@ -676,7 +676,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       }
       Future.successful(Empty())
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 
@@ -688,7 +688,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       println("\t response: OK")
       Future.successful(Empty())
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 
@@ -843,7 +843,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
         val response = QueryResponse(fetchedCuboidPageNum, cuboidsToDisplay, fetchedCuboidIDwithinPage, isComplete, series, statsToShow)
         response
       } catch {
-        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex))
+        case ex: Exception => throw new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString))
       }
     }
   }
@@ -1006,7 +1006,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
             }
         }
       } catch {
-        case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+        case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
       }
       runQuery()
     }
@@ -1029,7 +1029,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val response = GetPreparedCuboidsResponse(cuboidsToDisplay)
       Future.successful(response)
     } catch {
-      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex)))
+      case ex: Exception => Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
     }
   }
 }
