@@ -414,6 +414,7 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
   ]);
 
   const yValueFormatter = (v: ScaleValue) => v as number < 1e+6 ? v.toString() : format('>-.2g')(v as number);
+  const rotateXAxisValues = store.result.data[0]?.data.length > 8;
 
   return ( <div>
     <h3>Current result</h3>
@@ -421,7 +422,7 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
       <ResponsiveLine
         data = { store.result.data }
         colors = { hasBounds ? seriesWithBoundsColors : defaultColors }
-        margin={{ top: 5, right: 75, bottom: 30, left: 75 }}
+        margin={{ top: 5, right: 75, bottom: rotateXAxisValues ? 100 : 30, left: 100 }}
         yScale={{
           type: 'linear',
           min: 'auto',
@@ -431,6 +432,7 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
         }}
         yFormat = {yValueFormatter}
         axisLeft = {{ format: yValueFormatter }}
+        axisBottom = {{ tickRotation: rotateXAxisValues ? -30 : 0 }}
         axisTop={null}
         axisRight={null}
         pointLabelYOffset={-12}
