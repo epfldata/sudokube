@@ -1,7 +1,8 @@
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select } from "@mui/material"
 import React, { ReactNode } from "react"
+import { observer } from "mobx-react-lite";
 
-export function InChipButton({ icon, onClick }: { icon: ReactNode, onClick: () => void }) {
+export const InChipButton = observer(({ icon, onClick }: { icon: ReactNode, onClick: () => void }) => {
   return (
     <Button 
       style={{
@@ -13,16 +14,17 @@ export function InChipButton({ icon, onClick }: { icon: ReactNode, onClick: () =
       {icon}
     </Button>
   )
-}
+});
   
 export const chipStyle = {
   height: '22px',
   marginLeft: '0px', marginRight: '5px', marginTop: '0px', marginBottom: '5px'
 }
 
-export function SelectionChip({ keyText, valueText, valueRange, onChange }: {
-  keyText: ReactNode, valueText: ReactNode, valueRange: string[], onChange: (value: string) => void
-}) {
+export const SelectionChip = observer(({ keyText, valueText, valueRange, disabled, onChange }: {
+  keyText: ReactNode, valueText: ReactNode, valueRange: string[],
+  disabled?: boolean, onChange: (value: string) => void
+}) => {
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   return (<span>
     <Chip 
@@ -30,6 +32,7 @@ export function SelectionChip({ keyText, valueText, valueRange, onChange }: {
       variant = 'outlined'
       label = { <span><b>{keyText} </b>{valueText}</span> }
       onClick = { () => { setDialogOpen(true) } } 
+      disabled = {disabled ?? false}
     />
     <Dialog open = {isDialogOpen}>
       <DialogTitle> { "Select " + keyText } </DialogTitle>
@@ -55,13 +58,14 @@ export function SelectionChip({ keyText, valueText, valueRange, onChange }: {
       </DialogContent>
     </Dialog>
   </span>)
-}
+});
 
-export function ButtonChip({ label, variant, onClick }: {
+export const ButtonChip = observer(({ label, variant, onClick, disabled }: {
   label: string, 
-  variant: 'outlined' | 'filled'
-  onClick: React.MouseEventHandler<HTMLDivElement>
-}) {
+  variant: 'outlined' | 'filled',
+  onClick: React.MouseEventHandler<HTMLDivElement>,
+  disabled?: boolean
+}) => {
   return (
     <Chip
       label = {label}
@@ -69,6 +73,7 @@ export function ButtonChip({ label, variant, onClick }: {
       variant = {variant}
       color = 'primary'
       onClick = {onClick}
+      disabled = {disabled ?? false}
     />
   )
-}
+});

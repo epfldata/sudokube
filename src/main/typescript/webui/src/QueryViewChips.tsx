@@ -45,7 +45,7 @@ export function DimensionChip({ type, text, zoomIn, zoomOut, onDelete }: {
   />)
 }
 
-export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
+export const AddDimensionChip = observer(({ type }: { type: 'Horizontal' | 'Series'}) => {
   const { queryStore: store } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   const [dimensionIndex, setDimensionIndex] = React.useState(0);
@@ -63,6 +63,7 @@ export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
       label = 'Add ...'
       color = 'primary'
       onClick = {() => { setDialogOpen(true) }}
+      disabled = {!store.isCubeLoaded}
     />
 
     <Dialog open = {isDialogOpen}>
@@ -103,7 +104,7 @@ export function AddDimensionChip({ type }: { type: 'Horizontal' | 'Series'}) {
       </DialogContent>
     </Dialog>
   </span>)
-}
+});
 
 export function FilterChip({ text, onDelete }: {
   text: ReactNode, onDelete: ((event: any) => void) | undefined 
@@ -191,6 +192,7 @@ export const AddFilterChip = observer(() => {
       icon = { <FilterAltIcon style = {{ height: '18px' }} /> }
       label = 'Add ...'
       onClick = { () => setDialogOpen(true) }
+      disabled = {!store.isCubeLoaded}
       style = {chipStyle}
       variant = 'outlined'
       color = 'primary'
@@ -297,9 +299,11 @@ export const AddFilterChip = observer(() => {
   </span>)
 });
 
-export function MeasuresChip({ measure1, measure2, measures, onChange1, onChange2 }: {
-  measure1: string, measure2?: string, measures: string[], onChange1: (value: string) => void, onChange2?: (value: string) => void
-}) {
+export const MeasuresChip = observer(({ measure1, measure2, measures, onChange1, onChange2 }: {
+  measure1: string, measure2?: string, measures: string[],
+  onChange1: (value: string) => void, onChange2?: (value: string) => void
+}) => {
+  const { queryStore: store } = useRootStore();
   const [isDialogOpen, setDialogOpen] = React.useState(false);
   return (<span>
     <Chip 
@@ -307,6 +311,7 @@ export function MeasuresChip({ measure1, measure2, measures, onChange1, onChange
       variant = 'outlined'
       label = { <span><b>Measures </b>{measure1 + (measure2 ? ', ' + measure2 : '')}</span> }
       onClick = { () => { setDialogOpen(true) } } 
+      disabled = {!store.isCubeLoaded}
     />
     <Dialog open = {isDialogOpen}>
       <DialogTitle> { "Select Measures" } </DialogTitle>
@@ -347,4 +352,4 @@ export function MeasuresChip({ measure1, measure2, measures, onChange1, onChange
       </DialogContent>
     </Dialog>
   </span>)
-};
+});

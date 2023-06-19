@@ -120,6 +120,9 @@ type Metric = {
 export class QueryStore {
   cubes: string[] = [];
   cube: string = '';
+  isCubeLoaded: boolean = false;
+  isCubeLoadingFailed: boolean = false;
+
   dimensionHierarchy: SelectDataCubeForQueryResponse.DimHierarchy[] = [];
   dimensions: CuboidDimension[] = [];
 

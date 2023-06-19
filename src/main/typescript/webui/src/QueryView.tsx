@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Container from '@mui/material/Container';
-import { Button, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme } from '@mui/material'
+import { Button, CircularProgress, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, useTheme } from '@mui/material'
 import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip, MeasuresChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
@@ -28,6 +28,7 @@ export default observer(function Query() {
           runInAction(() => {
             errorStore.errorMessage = response.statusMessage;
             errorStore.isErrorPopupOpen = true;
+            store.isCubeLoadingFailed = true;
           });
           return;
         }
@@ -53,6 +54,7 @@ export default observer(function Query() {
               store.measures = message.getMeasuresList();
               store.measure = store.measures[0];
               store.measure2 = store.measures[0];
+              store.isCubeLoaded = true;
             });
           })
         });
@@ -72,49 +74,61 @@ export default observer(function Query() {
 
 const SelectCube = observer(() => {
   const { queryStore: store, errorStore } = useRootStore();
-  return ( <div>
-    <FormControl sx = {{ minWidth: 200 }}>
-      <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
-      <Select
-        id = "select-cube" label = "Select Cube"
-        style = {{ marginBottom: 10 }}
-        size = 'small'
-        value = { store.cube }
-        onChange = { e => {
-          runInAction(() => {
-            store.cube = e.target.value
-            store.horizontal = [];
-            store.series = [];
-            store.filters = [];
-          });
-          grpc.unary(SudokubeService.selectDataCubeForQuery, {
-            host: apiBaseUrl,
-            request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
-            onEnd: response => runInAction(() => {
-              if (response.status !== 0) {
+  return (
+    <div style = {{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+      <FormControl sx = {{ minWidth: 200 }}>
+        <InputLabel htmlFor = "select-cube">Select Cube</InputLabel>
+        <Select
+          id = "select-cube" label = "Select Cube"
+          size = 'small'
+          value = { store.cube }
+          onChange = { e => {
+            runInAction(() => {
+              store.cube = e.target.value;
+              store.isCubeLoaded = false;
+              store.isCubeLoadingFailed = false;
+              store.horizontal = [];
+              store.series = [];
+              store.filters = [];
+            });
+            grpc.unary(SudokubeService.selectDataCubeForQuery, {
+              host: apiBaseUrl,
+              request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
+              onEnd: response => runInAction(() => {
+                if (response.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = response.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                    store.isCubeLoadingFailed = true;
+                  });
+                  return;
+                }
+                const message = response.message as SelectDataCubeForQueryResponse;
                 runInAction(() => {
-                  errorStore.errorMessage = response.statusMessage;
-                  errorStore.isErrorPopupOpen = true;
+                  store.dimensionHierarchy = message.getDimHierarchyList();
+                  store.dimensions = message.getCuboidDimsList();
+                  store.measures = message.getMeasuresList();
+                  store.measure = store.measures[0];
+                  store.isCubeLoaded = true;
+                  store.isRunComplete = false; // Hide the results
                 });
-                return;
-              }
-              const message = response.message as SelectDataCubeForQueryResponse;
-              runInAction(() => {
-                store.dimensionHierarchy = message.getDimHierarchyList();
-                store.dimensions = message.getCuboidDimsList();
-                store.measures = message.getMeasuresList();
-                store.measure = store.measures[0];
-                store.isRunComplete = false; // Hide the results
-              });
-            })
-          });
-        } }>
-        { store.cubes.map(cube => (
-          <MenuItem key = { 'select-cube-' + cube } value = {cube}>{cube}</MenuItem>
-        )) }
-      </Select>
-    </FormControl>
-  </div> );
+              })
+            });
+          } }>
+          { store.cubes.map(cube => (
+            <MenuItem key = { 'select-cube-' + cube } value = {cube}>{cube}</MenuItem>
+          )) }
+        </Select>
+      </FormControl>
+
+      <span
+        hidden = { store.isCubeLoaded || store.isCubeLoadingFailed }
+        style = {{ verticalAlign: 'middle', marginLeft: 10 }} 
+      >
+        <CircularProgress size = '1.5rem' style = {{ verticalAlign: 'middle' }} />
+      </span>
+    </div> 
+  );
 })
 
 const QueryParams = observer(() => {
@@ -138,64 +152,72 @@ const QueryParams = observer(() => {
           keyText = 'Aggregation' 
           valueText = { store.aggregation } 
           valueRange = { store.aggregations } 
+          disabled = { !store.isCubeLoaded }
           onChange = { v => runInAction(() => store.aggregation = v) }
         />
         <SelectionChip 
           keyText = 'Solver' 
           valueText = { solver } 
           valueRange = { store.solvers } 
+          disabled = { !store.isCubeLoaded }
           onChange = { setSolver }
         />
         <SelectionChip
           keyText = 'Mode'
           valueText = { store.mode }
           valueRange = { store.modes }
+          disabled = { !store.isCubeLoaded }
           onChange = { v => runInAction(() => store.mode = v) }
         />
-        <ButtonChip label = 'Run' variant = 'filled' onClick = {() => {
-          runInAction(() => store.solver = solver);
-          grpc.unary(SudokubeService.startQuery, {
-            host: apiBaseUrl,
-            request: buildMessage(new QueryArgs(), {
-              horizontalList: store.horizontal.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
-                dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
-              })),
-              seriesList: store.series.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
-                dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
-                dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
-              })),
-              measure: store.measure,
-              measure2: hasTwoMeasures ? store.measure2 : undefined,
-              aggregation: store.aggregation,
-              solver: store.solver,
-              isBatchMode: store.mode === 'Batch',
-              preparedCuboidsPerPage: store.cuboidsPageSize
-            }),
-            onEnd: res => {
-              if (res.status !== 0) {
+        <ButtonChip 
+          label = 'Run' 
+          variant = 'filled' 
+          onClick = {() => {
+            runInAction(() => store.solver = solver);
+            grpc.unary(SudokubeService.startQuery, {
+              host: apiBaseUrl,
+              request: buildMessage(new QueryArgs(), {
+                horizontalList: store.horizontal.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
+                  dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
+                  dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+                })),
+                seriesList: store.series.map(dimension => buildMessage(new QueryArgs.DimensionDef(), {
+                  dimensionName: store.dimensionHierarchy[dimension.dimensionIndex].getDimName(),
+                  dimensionLevel: store.dimensionHierarchy[dimension.dimensionIndex].getLevelsList()[dimension.dimensionLevelIndex]
+                })),
+                measure: store.measure,
+                measure2: hasTwoMeasures ? store.measure2 : undefined,
+                aggregation: store.aggregation,
+                solver: store.solver,
+                isBatchMode: store.mode === 'Batch',
+                preparedCuboidsPerPage: store.cuboidsPageSize
+              }),
+              onEnd: res => {
+                if (res.status !== 0) {
+                  runInAction(() => {
+                    errorStore.errorMessage = res.statusMessage;
+                    errorStore.isErrorPopupOpen = true;
+                  });
+                  return;
+                }
+                const message = res.message as QueryResponse;
                 runInAction(() => {
-                  errorStore.errorMessage = res.statusMessage;
-                  errorStore.isErrorPopupOpen = true;
-                });
-                return;
+                  store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
+                  store.preparedCuboids = message.getCuboidsList();
+                  store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
+                  store.isQueryComplete = message.getIsComplete();
+                  store.result = { data: message.getSeriesList().map(seriesData => ({
+                    id: seriesData.getSeriesName(),
+                    data: seriesData.getDataList().map(point => point.toObject())
+                  })) };
+                  store.metrics = message.getStatsList().map(stat => stat.toObject());
+                  store.isRunComplete = true;
+                })
               }
-              const message = res.message as QueryResponse;
-              runInAction(() => {
-                store.cuboidsPage = store.currentCuboidPage = message.getCuboidsPageId();
-                store.preparedCuboids = message.getCuboidsList();
-                store.currentCuboidIdWithinPage = message.getCurrentCuboidIdWithinPage();
-                store.isQueryComplete = message.getIsComplete();
-                store.result = { data: message.getSeriesList().map(seriesData => ({
-                  id: seriesData.getSeriesName(),
-                  data: seriesData.getDataList().map(point => point.toObject())
-                })) };
-                store.metrics = message.getStatsList().map(stat => stat.toObject());
-                store.isRunComplete = true;
-              })
-            }
-          })
-        }} />
+            })
+          }}
+          disabled = { !store.isCubeLoaded }
+        />
       </Grid>
     </Grid>
   )
