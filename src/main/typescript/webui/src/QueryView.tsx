@@ -80,7 +80,12 @@ const SelectCube = observer(() => {
         size = 'small'
         value = { store.cube }
         onChange = { e => {
-          runInAction(() => store.cube = e.target.value);
+          runInAction(() => {
+            store.cube = e.target.value
+            store.horizontal = [];
+            store.series = [];
+            store.filters = [];
+          });
           grpc.unary(SudokubeService.selectDataCubeForQuery, {
             host: apiBaseUrl,
             request: buildMessage(new SelectDataCubeArgs(), {cube: store.cube}),
@@ -98,9 +103,6 @@ const SelectCube = observer(() => {
                 store.dimensions = message.getCuboidDimsList();
                 store.measures = message.getMeasuresList();
                 store.measure = store.measures[0];
-                store.horizontal = [];
-                store.series = [];
-                store.filters = [];
                 store.isRunComplete = false; // Hide the results
               });
             })
