@@ -143,7 +143,9 @@ export class QueryStore {
   modes: string[] = ['Batch', 'Online'];
   mode: string = 'Online';
 
-  isRunComplete: boolean = false;
+  showResults: boolean = false;
+  isInitialResultLoading: boolean = false;
+  isUpdatedResultLoading: boolean = false;
   isQueryComplete: boolean = false;
 
   cuboidsPage: number = 0;

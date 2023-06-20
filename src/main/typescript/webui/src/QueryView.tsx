@@ -65,9 +65,9 @@ export default observer(function Query() {
     <Container style = {{ padding: '20px 0px' }}>
       <SelectCube/>
       <QueryParams/>
-      <Cuboids isShown = {store.isRunComplete}/>
-      <Chart isShown = {store.isRunComplete} hasBounds = { store.solver === 'Linear Programming' }/>
-      <Metrics isShown = {store.isRunComplete}/>
+      <Cuboids isShown = {store.showResults}/>
+      <Chart isShown = {store.showResults} hasBounds = { store.solver === 'Linear Programming' }/>
+      <Metrics isShown = {store.showResults}/>
     </Container>
   )
 })
@@ -110,7 +110,7 @@ const SelectCube = observer(() => {
                   store.measures = message.getMeasuresList();
                   store.measure = store.measures[0];
                   store.isCubeLoaded = true;
-                  store.isRunComplete = false; // Hide the results
+                  store.showResults = false; // Hide the results
                 });
               })
             });
@@ -170,9 +170,19 @@ const QueryParams = observer(() => {
           onChange = { v => runInAction(() => store.mode = v) }
         />
         <ButtonChip 
-          label = 'Run' 
+          label = {
+            <span>
+              <span>Run</span>
+              <span
+                hidden = { !store.isInitialResultLoading }
+              >
+                <CircularProgress size='0.8rem' color = 'secondary' style = {{ verticalAlign: 'middle' }} />
+              </span>
+            </span>
+          }
           variant = 'filled' 
           onClick = {() => {
+            runInAction(() => store.isInitialResultLoading = true);
             grpc.unary(SudokubeService.startQuery, {
               host: apiBaseUrl,
               request: buildMessage(new QueryArgs(), {
@@ -192,7 +202,10 @@ const QueryParams = observer(() => {
                 preparedCuboidsPerPage: store.cuboidsPageSize
               }),
               onEnd: res => {
-                runInAction(() => store.solver = solver);
+                runInAction(() => {
+                  store.isInitialResultLoading = false;
+                  store.solver = solver;
+                });
                 if (res.status !== 0) {
                   runInAction(() => {
                     errorStore.errorMessage = res.statusMessage;
@@ -211,7 +224,7 @@ const QueryParams = observer(() => {
                     data: seriesData.getDataList().map(point => point.toObject())
                   })) };
                   store.metrics = message.getStatsList().map(stat => stat.toObject());
-                  store.isRunComplete = true;
+                  store.showResults = true;
                 })
               }
             })
@@ -385,10 +398,12 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
     <Button
       disabled = {store.isQueryComplete}
       onClick = {() => {
+        runInAction(() => store.isUpdatedResultLoading = true);
         grpc.unary(SudokubeService.continueQuery, {
           host: apiBaseUrl,
           request: new Empty(),
           onEnd: res => {
+            runInAction(() => store.isUpdatedResultLoading = false);
             if (res.status !== 0) {
               runInAction(() => {
                 errorStore.errorMessage = res.statusMessage;
@@ -407,7 +422,7 @@ const Cuboids = observer(({isShown}: {isShown: boolean}) => {
                 data: seriesData.getDataList().map(point => point.toObject())
               })) };
               store.metrics = message.getStatsList().map(stat => stat.toObject());
-              store.isRunComplete = true;
+              store.showResults = true;
             })
           }
         })
@@ -439,7 +454,12 @@ const Chart = observer(({isShown, hasBounds}: {isShown: boolean, hasBounds: bool
   const rotateXAxisValues = store.result.data[0]?.data.length > 8;
 
   return ( <div>
-    <h3>Current result</h3>
+    <h3 style = {{ alignItems: 'center' }}>
+      <span>Current result</span>
+      <span hidden = {!store.isUpdatedResultLoading}>
+        <CircularProgress size = '1rem' style = {{ marginLeft: 10, verticalAlign: 'middle' }} />
+      </span>
+    </h3>
     <div style={{ width: '100%', height: 400, margin: 0 }}>
       <ResponsiveLine
         data = { store.result.data }

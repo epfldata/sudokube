@@ -1,5 +1,5 @@
 import { Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select } from "@mui/material"
-import React, { ReactNode } from "react"
+import React, { ReactElement, ReactNode } from "react"
 import { observer } from "mobx-react-lite";
 
 export const InChipButton = observer(({ icon, onClick }: { icon: ReactNode, onClick: () => void }) => {
@@ -61,7 +61,7 @@ export const SelectionChip = observer(({ keyText, valueText, valueRange, disable
 });
 
 export const ButtonChip = observer(({ label, variant, onClick, disabled }: {
-  label: string, 
+  label: ReactElement | string, 
   variant: 'outlined' | 'filled',
   onClick: React.MouseEventHandler<HTMLDivElement>,
   disabled?: boolean
