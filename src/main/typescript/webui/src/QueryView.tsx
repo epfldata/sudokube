@@ -173,7 +173,6 @@ const QueryParams = observer(() => {
           label = 'Run' 
           variant = 'filled' 
           onClick = {() => {
-            runInAction(() => store.solver = solver);
             grpc.unary(SudokubeService.startQuery, {
               host: apiBaseUrl,
               request: buildMessage(new QueryArgs(), {
@@ -188,11 +187,12 @@ const QueryParams = observer(() => {
                 measure: store.measure,
                 measure2: hasTwoMeasures ? store.measure2 : undefined,
                 aggregation: store.aggregation,
-                solver: store.solver,
+                solver: solver,
                 isBatchMode: store.mode === 'Batch',
                 preparedCuboidsPerPage: store.cuboidsPageSize
               }),
               onEnd: res => {
+                runInAction(() => store.solver = solver);
                 if (res.status !== 0) {
                   runInAction(() => {
                     errorStore.errorMessage = res.statusMessage;
