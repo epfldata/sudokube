@@ -62,25 +62,6 @@ export class QueryCube {
   isLoading: boolean = false;
   constructor() {
     makeAutoObservable(this);
-    this.loadDimensionHierarchy();
-  }
-  loadDimensionHierarchy() {
-    const sampleMetadata = require('./sample-metadata.json');
-    this.dimensionHierarchy = sampleMetadata.dimensionHierarchy;
-    runInAction(() => this.dimensions = [
-      { name: 'Country', numBits: 6 }, 
-      { name: 'City', numBits: 6 },
-      { name: 'Year', numBits: 6 },
-      { name: 'Month', numBits: 5 }, 
-      { name: 'Day', numBits: 6 }
-    ]);
-    // this.isLoading = true
-    // this.transportLayer.fetchTodos().then(fetchedTodos => {
-    //   runInAction(() => {
-    //       fetchedTodos.forEach(json => this.updateTodoFromServer(json))
-    //       this.isLoading = false
-    //   })
-    // })
   }
 }
 
