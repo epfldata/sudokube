@@ -4,7 +4,7 @@ import backend.CBackend
 import frontend.schema._
 import util.BigBinary
 import com.github.tototoshi.csv.CSVReader
-import frontend.cubespec.{CompositeMeasure, CountMeasure, Measure, SingleColumnStaticMeasure}
+import frontend.cubespec.{CompositeMeasure, CountMeasure, Measure, SingleColumnStaticMeasure, SquareMeasure}
 import frontend.schema.encoders.{StaticMemCol, StaticNatCol}
 
 class TinyDataStatic(implicit backend: CBackend) extends MultiCubeGenerator[IndexedSeq[String]]("TinyData") {
@@ -12,7 +12,8 @@ class TinyDataStatic(implicit backend: CBackend) extends MultiCubeGenerator[Inde
 
   val countMeasure = new CountMeasure()
   val valueMeasure = new SingleColumnStaticMeasure(2, "Value", StaticNatCol.defaultToInt(_).get.toLong)
-  override val measure =new CompositeMeasure(Vector(countMeasure, valueMeasure))
+  val valueSqMeasure = new SquareMeasure(valueMeasure)
+  override val measure =new CompositeMeasure(Vector(countMeasure, valueMeasure,valueSqMeasure))
   override def generatePartitions() = {
     val filename = s"tabledata/TinyData/data.csv"
     val datasize = CSVReader.open(filename).iterator.drop(1).size

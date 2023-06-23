@@ -123,12 +123,14 @@ case class MyDimHierarchy(name: String, levels: IndexedSeq[MyDimLevel]) {
 class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
   implicit val backend = CBackend.default
   implicit val ec = ExecutionContext.global
-  def getDimHierarchy(dim: Dim2): Vector[MyDimHierarchy] = dim match {
-    case BD2(rootname, children, cross) => if (cross) {
-      children.map(c => getDimHierarchy(c)).reduce(_ ++ _)
+  def getDimHierarchy(dim: Dim2, shouldReverse: Boolean): Vector[MyDimHierarchy] = dim match {
+    case BD2(rootname, children, cross) =>
+      val childrenOrdered = if(shouldReverse) children.reverse else children
+      if (cross) {
+      childrenOrdered.map(c => getDimHierarchy(c, shouldReverse)).reduce(_ ++ _)
     } else {
       //assuming all children are LD2 here
-      val levels = children.flatMap {
+      val levels = childrenOrdered.flatMap {
         case LD2(name, encoder) if encoder.isInstanceOf[StaticDateCol]=>
           val date = encoder.asInstanceOf[StaticDateCol]
           val l2 = date.internalEncoders.map {
@@ -151,7 +153,9 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       val level = MyDimLevel(name, encoder)
       val hierarchy = MyDimHierarchy(name, Vector(level))
       Vector(hierarchy)
-    case r@DynBD2() => r.children.values.map(c => getDimHierarchy(c)).reduce(_ ++ _)
+    case r@DynBD2() =>
+      val childrenOrdered = if(shouldReverse) r.children.values.toVector.reverse else r.children.values.toVector
+      childrenOrdered.map(c => getDimHierarchy(c, shouldReverse)).reduce(_ ++ _)
   }
   def getCubeGenerator(cname: String, fullname: String = ""): AbstractCubeGenerator[_, _] = {
     print(s"cname = $cname")
@@ -162,8 +166,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
       case "WebshopSalesMulti" => new WebshopSalesMulti()
       case "WebShopDyn" => new WebShopDyn()
       case "TinyData" => new TinyDataStatic()
-      case "TestDataDyn" => new TestTinyData()
-      case "TinyDataDyn" => new TinyData()
+      case "TinyDataDyn" =>  TinyDataMulti.example()
       case s if s.startsWith("TransformedView") =>
         val otherCG = getCubeGenerator(s.drop("TransformedView".length)).asInstanceOf[CubeGenerator[_]]
         new TransformedViewCubeGenerator(otherCG, fullname)
@@ -587,6 +590,7 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
     Future {
       try {
         println("SelectDataCubeForQuery arg:" + in)
+        backend.reset
         val cgName = in.cube.split("_")(0)
         cg = getCubeGenerator(cgName, in.cube)
         dcs = cg match {
@@ -609,10 +613,10 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
 
         }
         //filters.clear()
-
+        val shouldReverse = (cg.isInstanceOf[NYC] || cg.isInstanceOf[SSB])
         sch = cg.schemaInstance
         sch.initBeforeDecode()
-        hierarchy = getDimHierarchy(sch.root)
+        hierarchy = getDimHierarchy(sch.root, shouldReverse)
         columnMap = hierarchy.map { h => h.name -> h.flattenedLevelsMap }.toMap
         shownSliceValues = null
         filters.clear()
@@ -1023,12 +1027,12 @@ class SudokubeServiceImpl(implicit mat: Materializer) extends SudokubeService {
               relevantDCs.map { dc => new NewVanillaIPFSolver(sortedQuery.size) }
             }
         }
+        runQuery()
       } catch {
         case ex: Exception =>
           ex.printStackTrace(System.err)
           Future.failed(new GrpcServiceException(Status.INTERNAL.withCause(ex).withDescription(ex.toString)))
       }
-      runQuery()
     }
   }
 

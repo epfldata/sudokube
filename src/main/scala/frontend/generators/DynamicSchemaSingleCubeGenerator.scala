@@ -3,7 +3,8 @@ package frontend.generators
 import backend.CBackend
 import breeze.io.CSVReader
 import frontend.JsonReader
-import frontend.cubespec.{CompositeMeasure, ConstantMeasure, CountMeasure, Measure, SingleColumnDynamicMeasure, SquareMeasure}
+import frontend.cubespec.{CompositeMeasure, ConstantMeasure, CountMeasure, Measure, ProductMeasure, SingleColumnDynamicMeasure, SquareMeasure}
+import frontend.generators.DynamicSchemaSingleCubeGenerator.defaultToLong
 import frontend.schema.{DynamicSchema2, LD2}
 import util.{BigBinary, Profiler}
 
@@ -102,9 +103,9 @@ class DynamicSchemaMultiCubeGenerator(override val inputname: String,
       } else
         throw new UnsupportedOperationException("Only CSV or JSON supported")
     }
-   var tupleNum = 0
+    var tupleNum = 0
     val data = if (measures.isEmpty) {
-      items.map{l =>
+      items.map { l =>
         val x = if (timeDimension.isDefined && !l.contains(timeDimension.get)) {
           l + (timeDimension.get -> tupleNum.toString)
         } else l
@@ -137,11 +138,23 @@ class DynamicSchemaMultiCubeGenerator(override val inputname: String,
 
 class WebShopDyn(implicit be: CBackend) extends DynamicSchemaSingleCubeGenerator("WebShopDyn", "tabledata/Webshop/salesDyn.json")
 
-class TinyData(implicit be: CBackend) extends DynamicSchemaSingleCubeGenerator("TinyDataDyn", "tabledata/TinyData/data.csv", Some("Value"))
+//class TinyData(implicit be: CBackend) extends DynamicSchemaSingleCubeGenerator("TinyDataDyn", "tabledata/TinyData/data.csv", Some("Value"))
 
-class TestTinyData(implicit be: CBackend) extends DynamicSchemaSingleCubeGenerator("TestDataDyn", "tabledata/TinyData/test.json", None)
+//class TestTinyData(implicit be: CBackend) extends DynamicSchemaSingleCubeGenerator("TestDataDyn", "tabledata/TinyData/test.json", None)
 
-class TinyDataMulti(measureColNames: IndexedSeq[String], measures: IndexedSeq[Measure[Map[String, Object], Long]])(implicit be: CBackend) extends DynamicSchemaMultiCubeGenerator("TinyDataMultiDyn", "tabledata/TinyData/multidata.csv", measureColNames, measures)
+class TinyDataMulti(measureColNames: IndexedSeq[String], measures: IndexedSeq[Measure[Map[String, Object], Long]])(implicit be: CBackend) extends DynamicSchemaMultiCubeGenerator("TinyDataDyn", "tabledata/TinyData/multidata.csv", measureColNames, measures)
+
+object TinyDataMulti {
+  def example()(implicit be: CBackend) = {
+    val val1 = new SingleColumnDynamicMeasure("Value1", "Value1", defaultToLong)
+    val val1Sq = new SquareMeasure(val1)
+    val count = new CountMeasure()
+    val val2 = new SingleColumnDynamicMeasure("Value2", "Value2", defaultToLong)
+    val val2Sq = new SquareMeasure(val2)
+    val prod = new ProductMeasure(val1, val2)
+    new TinyDataMulti(Vector("Value1, Value2"), Vector(count, val1, val1Sq, val2, val2Sq, prod))
+  }
+}
 
 object DynamicSchemaSingleCubeGenerator {
   def defaultToLong(v: Object) = v match {
@@ -152,14 +165,9 @@ object DynamicSchemaSingleCubeGenerator {
   def main(args: Array[String]): Unit = {
     implicit val be = CBackend.default
     new WebShopDyn().saveBase()
-    new TinyData().saveBase()
-
 
     type DynamicInput = Map[String, Object]
-    val measures = collection.mutable.ArrayBuffer[Measure[DynamicInput, Long]]()
-    val val1 = new SingleColumnDynamicMeasure("Value1", "Value1", defaultToLong)
-    val val1Sq = new SquareMeasure(val1)
-    val count = new CountMeasure()
-    //val cg = new DynamicSchemaMultiCubeGenerator()
+    val cg = TinyDataMulti.example()
+    cg.saveBase()
   }
 }
