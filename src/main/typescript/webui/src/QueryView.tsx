@@ -4,7 +4,8 @@ import { Button, CircularProgress, FormControl, Grid, InputLabel, MenuItem, Sele
 import { DimensionChip, AddDimensionChip, FilterChip, AddFilterChip, MeasuresChip } from './QueryViewChips';
 import { ResponsiveLine } from '@nivo/line';
 import { observer } from 'mobx-react-lite';
-import { apiBaseUrl, useRootStore } from './RootStore';
+import { apiBaseUrl } from "./configs";
+import { useRootStore } from './RootStore';
 import { ButtonChip, SelectionChip } from './GenericChips';
 import { runInAction } from 'mobx';
 import { useEffect, useState } from 'react';

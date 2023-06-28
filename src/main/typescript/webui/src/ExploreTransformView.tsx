@@ -1,7 +1,8 @@
 import { Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import React, { ReactNode, useEffect, useState } from "react";
-import { apiBaseUrl, useRootStore } from "./RootStore";
+import { apiBaseUrl } from "./configs";
+import { useRootStore } from "./RootStore";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { runInAction } from "mobx";
