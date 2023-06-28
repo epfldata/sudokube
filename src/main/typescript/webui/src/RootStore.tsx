@@ -6,7 +6,7 @@ import MaterializationStore from './MaterializationStore';
 import { ExploreTransformStore } from './ExploreTransformStore';
 import { ErrorStore } from './ErrorStore';
 
-export const apiBaseUrl = "http://sudokube.ddns.net:8081";
+export const apiBaseUrl = "http://localhost:8081";
 
 export class RootStore {
   readonly materializationStore: MaterializationStore;
