@@ -13,7 +13,7 @@ import util.Profiler
 class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers", ename2) {
   val header = "CubeName,RunID,Query,QSize," +
     "PrepareNaive,FetchNaive,TotalNaive," +
-    "PrepareLP,FetchLP,SolveLP,TotalLP,ErrorLP," +
+    "PrepareLP,FetchLP,SolveLP,TotalLP,ErrorLP,MidpointErrorLP," +
     "PrepareMoment,FetchMoment,SolveMoment,TotalMoment,ErrorMoment," +
     "PrepareIPF,FetchIPF,SolveIPF,TotalIPF,ErrorIPF"
   fileout.println(header)
@@ -55,7 +55,9 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
       val solveTime = Profiler.getDurationMicro("SolveLP")
       val totalTime = prepareTime + fetchTime + solveTime
       val error = SolverTools.intervalPrecision(trueResult, result)
-      s"$prepareTime,$fetchTime,$solveTime,$totalTime,$error"
+      val mid = result.toArray.map(i => (i.lb.get + i.ub.get) / 2)
+      val midError = SolverTools.error(trueResult, mid)
+      s"$prepareTime,$fetchTime,$solveTime,$totalTime,$error,$midError"
     } else {
       s"prepare,fetch,solve,total,error"
     }

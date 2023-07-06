@@ -1,0 +1,31 @@
+experiments.thesis.solver.AllSolverExperiment qsize-nyc-prefix
+experiments.thesis.solver.AllSolverExperiment qsize-nyc-random
+experiments.thesis.solver.AllSolverExperiment qsize-ssb-prefix
+experiments.thesis.solver.AllSolverExperiment qsize-ssb-random
+
+experiments.thesis.solver.AllSolverOnlineExperiment ssb-random
+experiments.thesis.solver.AllSolverOnlineExperiment ssb-prefix
+experiments.thesis.solver.AllSolverOnlineExperiment nyc-random
+experiments.thesis.solver.AllSolverOnlineExperiment nyc-prefix
+
+experiments.thesis.solver.FetchDistributionExperiment qsize-nyc-prefix
+experiments.thesis.solver.FetchDistributionExperiment qsize-nyc-random
+experiments.thesis.solver.FetchDistributionExperiment qsize-ssb-prefix
+experiments.thesis.solver.FetchDistributionExperiment qsize-ssb-random
+
+experiments.thesis.solver.NaiveSolverExperiment qsize-nyc-prefix
+experiments.thesis.solver.NaiveSolverExperiment qsize-nyc-random
+experiments.thesis.solver.NaiveSolverExperiment qsize-ssb-prefix
+experiments.thesis.solver.NaiveSolverExperiment qsize-ssb-random
+
+experiments.thesis.backend.BackendExperiment source-size-sparse
+experiments.thesis.backend.BackendExperiment source-size-dense
+
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-prefix-true
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-prefix-false
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-random-true
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-random-false
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-ssb-prefix-true
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-ssb-prefix-false
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-ssb-random-true
+experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-ssb-random-false
