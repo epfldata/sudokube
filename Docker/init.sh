@@ -23,6 +23,14 @@ unzip sbt-1.2.7.zip && mv sbt /opt/sbt && rm sbt-1.2.7.zip
 echo "export PATH=/var/data/sudokube/sudokube/scripts:/opt/sbt/bin:$PATH" >> /root/.profile
 echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> /root/.profile
 
+
+echo "Host *.iccluster.epfl.ch
+      	User root
+      	StrictHostKeyChecking no
+      	UserKnownHostsFile=/dev/null
+      	LogLevel ERROR
+      " >> ~/.ssh/config
+
 #copy rclone conf
 mkdir -p /var/data/sudokube/sudokube
 cd /var/data/sudokube/sudokube
