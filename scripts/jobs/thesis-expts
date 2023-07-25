@@ -53,10 +53,6 @@ experiments.thesis.solver.FetchDistributionExperiment mind-nyc-random
 experiments.thesis.solver.FetchDistributionExperiment mind-ssb-prefix
 experiments.thesis.solver.FetchDistributionExperiment mind-ssb-random
 
-experiments.thesis.solver.NaiveSolverExperiment qsize-nyc-prefix
-experiments.thesis.solver.NaiveSolverExperiment qsize-nyc-random
-experiments.thesis.solver.NaiveSolverExperiment qsize-ssb-prefix
-experiments.thesis.solver.NaiveSolverExperiment qsize-ssb-random
 
 experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-prefix-true
 experiments.thesis.solver.CoMomentSolverBatchExperiment qsize-nyc-prefix-false

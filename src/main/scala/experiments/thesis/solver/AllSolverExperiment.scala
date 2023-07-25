@@ -59,7 +59,7 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
       val midError = SolverTools.error(trueResult, mid)
       s"$prepareTime,$fetchTime,$solveTime,$totalTime,$error,$midError"
     } else {
-      s"prepare,fetch,solve,total,error"
+      s"prepare,fetch,solve,total,errorspan,errormid"
     }
   }
   def runMoment(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double]) = {
