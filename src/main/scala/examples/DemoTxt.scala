@@ -144,6 +144,113 @@ object DemoTxt {
     solver.verifySolution()
   }
 
+  /** Demo for creating new data cube without using UserCube frontend */
+  def sales_demo(): Unit = {
+    //Set backend
+    implicit val be = CBackend.default
+
+    /**
+    Load cube generator for sales data in file `tabledata/TinyData/data.csv``
+     */
+    val cubeGenerator = new TinyDataStatic()
+    val schema = cubeGenerator.schemaInstance
+
+    val cubename = "mysalescube"
+
+    /* ----------------- Building Data cube. TO BE RUN ONLY ONCE  -------------------*/
+    /** Load base cuboid of the dataset and generate it if it does not exist
+     * See also [[frontend.generators.CubeGenerator#saveBase()]] */
+    val baseCuboid = cubeGenerator.loadBase(true)
+
+    /** Define instance of [[core.materialization.MaterializationStrategy]]
+     *  See also [[RandomizedMaterializationStrategy]], [[SchemaBasedMaterializationStrategy]]
+     * */
+
+    val mstrat = new PresetMaterializationStrategy(schema.n_bits, Vector(
+      Vector(0, 1),
+      Vector(1, 3),
+      Vector(0, 2, 3),
+      (0 until schema.n_bits) //base cuboid must be always included at last position
+    ))
+
+    /** Build data cube. See also [[frontend.generators.CubeGenerator#saveSMS(int, int, int)]] */
+    /** We store as partial data cube with external reference to base cuboid to avoid storing
+     * base cuboid twice */
+    val dataCube = new PartialDataCube(cubename, cubeGenerator.baseName)
+    dataCube.buildPartial(mstrat)
+    dataCube.save()
+    //Compute 1-D marginals and total
+    dataCube.primaryMoments = SolverTools.primaryMoments(dataCube)
+    dataCube.savePrimaryMoments(cubeGenerator.baseName)
+
+    /*------------------------- Loading Data Cube ---------------------*/
+    val dc = PartialDataCube.load(cubename, cubeGenerator.baseName)
+    dc.loadPrimaryMoments(cubeGenerator.baseName)
+
+    //val query = Vector(0, 1, 3)
+    /** See also [[frontend.service.MyDimLevel]] */
+    val colMap = schema.columnVector.map { e => e.name -> e.encoder.bits }.toMap
+
+
+    val query = (colMap("Quarter").takeRight(1) ++ colMap("City")).sorted
+
+
+    /** Measure Execution Time using [[Profiler]]. First clear everything */
+    Profiler.resetAll()
+
+    val trueResult = Profiler("NaiveTime") {
+      dc.naive_eval(query) // Querying using Naive Solver
+    }
+
+    /*------------------- Querying using Moment Solver-----------*/
+
+    /**
+     * Prepare phase.
+     * Find cuboids relevant to answering query.
+     * Find primary moments associated with dimensions in query
+     */
+
+    val (prepared, pm) = Profiler("PrepareMoment") {
+      dc.index.prepareBatch(query) -> SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
+    }
+
+    /** Fetch phase
+     * Fetch cuboids from backend after projecting down to relevant dimensions
+     * */
+    val fetched = Profiler("FetchMoment") {
+      prepared.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) }
+    }
+
+    /** Solve phase using moment solver */
+    val result = Profiler("SolveMoment") {
+      val s = new CoMoment5SolverDouble(query.size, true, null, pm)
+      fetched.foreach { case (cols, data) => s.add(cols, data) }
+      s.fillMissing()
+      s.solve(true) //with heuristics to avoid negative values
+    }
+    val prepareTime = Profiler.getDurationMicro("PrepareMoment")
+    val fetchTime = Profiler.getDurationMicro("FetchMoment")
+    val solveTime = Profiler.getDurationMicro("SolveMoment")
+    val totalTime = prepareTime + fetchTime + solveTime
+    val naiveTime = Profiler.getDurationMicro("NaiveTime")
+    val error = SolverTools.error(result, trueResult)
+    fetched.foreach{x => println(x._1 + "  ::  " + x._2.mkString(" "))}
+    println(s"""
+            Query: ${query.mkString(",")}
+            True Result: ${trueResult.mkString(" ")}
+            Approx Result: ${result.mkString("  ")}
+
+            PrepareTime: $prepareTime us
+            FetchTime: $fetchTime us
+            SolveTime: $solveTime us
+            TotalTime: $totalTime us
+            Error: $error
+
+            NaiveTime: $naiveTime us
+            """)
+  }
+
+
   /** Demo for frontend stuff */
   def cooking_demo(): Unit = {
 
@@ -394,6 +501,25 @@ object DemoTxt {
     //}
   }
 
+  def online_demo(): Unit = {
+    implicit val be = CBackend.default
+    val cg = new TinyDataStatic()
+    val sch = cg.schemaInstance
+
+    val dc = cg.loadBase()
+    val baseCuboid = dc.cuboids.last.asInstanceOf[be.SparseCuboid]
+
+    val data1 = baseCuboid.fetch64(0)
+    println("Initial")
+    data1.filter(x => x._1.toBigInt != 0 || x._2 !=0).foreach(println)
+
+    baseCuboid.randomShuffle()
+
+    val data2 = baseCuboid.fetch64(0)
+    println("After Shuffle")
+    data2.filter(x => x._1.toBigInt != 0 || x._2 !=0).foreach(println)
+
+  }
   def main(args: Array[String]): Unit = {
     //momentSolver()
     //backend_naive()
