@@ -25,6 +25,7 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
   protected def sRehash0(s_id: Int, pos: Array[Int], mode: Int): Int = ???
   protected def dRehash0(d_id: Int, pos: Array[Int]): Int = ???
 
+  protected def sShuffle0(s_id: Int): Unit = ???
   protected def sRehashSlice0(s_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long] = ???
   protected def dRehashSlice0(d_id: Int, pos: Array[Int], mask: Array[Boolean]): Array[Long] = ???
 
@@ -205,6 +206,9 @@ abstract class CBackend(ext: String) extends Backend[Payload](ext) {
   protected def dRehash(n_bits: Int, d_id: Int, d_bits: Int, bitpos: IndexedSeq[Int]): Int = {
     dRehash0(d_id, bitpos.toArray)
   }
+
+
+  override protected def sShuffle(s_id: Int) = sShuffle0(s_id)
 
   override protected def sRehashSlice(a: Int, bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = sRehashSlice0(a, bitpos.toArray, maskArray)
   override protected def dRehashSlice(a: Int, bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = dRehashSlice0(a, bitpos.toArray, maskArray)

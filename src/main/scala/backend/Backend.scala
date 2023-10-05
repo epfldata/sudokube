@@ -205,7 +205,7 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
   protected def sRehashSlice(a: SPARSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
   /** Rehash with slice on dense cuboid to dense and fetch */
   protected def dRehashSlice(a: DENSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
-
+  protected def sShuffle(id: SPARSE_T): Unit = ???
   /**
    * Stores non-zero cells as a sequence of key-value pairs. Key is cell address and Value is fact value in the cell
    */
@@ -239,6 +239,11 @@ abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
 
     def fetch64(wordId: Int): Vector[(BigBinary, Long)] = sFetch64(n_bits, data, wordId)
     def projectFetch64(wordId: Int, bitpos: BITPOS_T) : Array[Long] = sProjectAndFetch64(data, wordId, bitpos)
+
+    /**
+     * Randomly shuffles the entries in the sparse cuboid.
+     * */
+    def randomShuffle() = sShuffle(data)
   }
 
   /**

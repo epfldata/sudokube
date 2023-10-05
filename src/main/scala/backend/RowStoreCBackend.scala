@@ -9,6 +9,7 @@ class RowStoreCBackend extends CBackend(".csuk") {
   @native override protected def sRehash0(s_id: Int, pos: Array[Int], mode: Int): Int
   @native override protected def dRehash0(d_id: Int, pos: Array[Int]): Int
 
+  @native override protected def sShuffle0(s_id: Int): Unit
   @native override protected def dFetch0(d_id: Int): Array[Long]
 
   @native override protected def sSize0(id: Int): Int

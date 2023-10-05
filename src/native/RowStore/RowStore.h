@@ -287,7 +287,13 @@ struct RowStore {
  */
     unsigned int drehash(unsigned int d_id, const BitPos &bitpos);
 
-
+    /**
+   Takes a sparse cuboid and shuffles it in place
+   **/
+    void sShuffle(unsigned int s_id) {
+        SparseCuboidRow sparseCuboid(read(s_id));
+        sparseCuboid.randomShuffle();
+    }
 };
 
 

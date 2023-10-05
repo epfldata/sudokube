@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
+#include <random>
 
 typedef unsigned char byte;
 typedef int64_t Value;  //we have Java Long as value
@@ -95,10 +96,13 @@ struct SparseCuboidRow : Cuboid {
         keySize = bitsToBytes(numCols);
         recSize = keySize + sizeof(Value);
     }
+
     void randomShuffle() {
         byte tempRec[recSize];
-        for(size_t r = numRows-1; r > 0 ; r--) {
-            size_t r2 = rand() % r;
+        std::default_random_engine generator;
+        for (size_t r = numRows - 1; r > 0; r--) {
+            std::uniform_int_distribution<size_t> distribution(0, r-1);
+            size_t r2 = distribution(generator);
             memcpy(tempRec, getKey(r), recSize);
             memcpy(getKey(r), getKey(r2), recSize);
             memcpy(getKey(r2), tempRec, recSize);
@@ -190,5 +194,46 @@ struct SparseCuboidCol : Cuboid {
     inline uint64_t *getVal(size_t i) {
         return (uint64_t *) ptr + i;
     }
+
+    void randomShuffle() {
+        std::default_random_engine generator;
+        //random generator for position within word
+        std::uniform_int_distribution<size_t> distI(0, 63);
+        //Iterate over each group of 64 rows
+        for (size_t w = numRowsInWords-1; w > 0; w--) {
+            //random generator for finding previous word to swap with
+            std::uniform_int_distribution<size_t> distW(0, w-1);
+            //Iterate over rows within group
+            for(int i = 0; i < 64; i++) {
+                size_t r = (w << 6) + i;
+                size_t w2 = distW(generator); //find random word before this
+                size_t i2 = distI(generator); //find random position within that word
+                size_t r2 = (w2 << 6) + i2;
+
+                //swap values
+                uint64_t  tempValue = *getVal(r);
+                *getVal(r) = *getVal(r2);
+                *getVal(r2) = tempValue;
+
+                //swap bits in each column
+                for(int c = 0; c < numCols; c++) {
+                    //changes applied in place
+                    uint64_t &k1 = *getKey(c, w); //reference to full word for first key
+                    uint64_t &k2 = *getKey(c, w2); //for second key
+
+                    size_t b1 = (k1 >> i) & 1; //get bit at position i
+                    size_t b2 = (k2 >> i2) & 1;
+
+                    k1 = k1 & ~(1 << i); //clear bits at position i
+                    k2 = k2 & ~(1 << i2);
+
+                    //add bits of the other
+                    k1 = k1 | (b2 << i);
+                    k2 = k2 | (b1 << i2);
+                }
+            }
+        }
+    }
 };
+
 #endif //SUDOKUBECBACKEND_COMMON_H

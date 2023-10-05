@@ -25,6 +25,14 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_cuboidGC0
 
 /*
  * Class:      backend_ColumnStoreCBackend
+ * Method:     sShuffle0
+ * Signature:  (I)V
+ */
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sShuffle0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:      backend_ColumnStoreCBackend
  * Method:     sRehash0
  * Signature:  (I[II)I
  */

@@ -179,3 +179,8 @@ JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_writeMultiCuboid0
     env->ReleaseBooleanArrayElements(jIsSparse, isSparseArray, 0);
     env->ReleaseIntArrayElements(jIds, idArray, 0);
 }
+
+JNIEXPORT void JNICALL Java_backend_ColumnStoreCBackend_sShuffle0
+  (JNIEnv *env, jobject obj, jint sid) {
+    colStore.sShuffle(sid);
+  }

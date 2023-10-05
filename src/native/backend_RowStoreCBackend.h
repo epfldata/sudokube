@@ -33,6 +33,14 @@ JNIEXPORT jint JNICALL Java_backend_RowStoreCBackend_dRehash0
 
 /*
  * Class:      backend_RowStoreCBackend
+ * Method:     sShuffle0
+ * Signature:  (I)V
+ */
+JNIEXPORT void JNICALL Java_backend_RowStoreCBackend_sShuffle0
+  (JNIEnv *, jobject, jint);
+
+/*
+ * Class:      backend_RowStoreCBackend
  * Method:     dFetch0
  * Signature:  (I)[J
  */
