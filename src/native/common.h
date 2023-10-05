@@ -212,6 +212,7 @@ struct SparseCuboidCol : Cuboid {
 
                 //swap values
                 uint64_t  tempValue = *getVal(r);
+                if(tempValue == 0) continue; //Don't swap rows at the end with no entries
                 *getVal(r) = *getVal(r2);
                 *getVal(r2) = tempValue;
 
@@ -231,6 +232,38 @@ struct SparseCuboidCol : Cuboid {
                     k1 = k1 | (b2 << i);
                     k2 = k2 | (b1 << i2);
                 }
+            }
+        }
+
+        //Shuffle within the first word
+        size_t w=0, w2=0;
+        for(int i = 63; i > 0; i--) {
+            size_t r = (w << 6) + i;
+            distI = std::uniform_int_distribution<size_t>(0, i-1);
+            size_t i2 = distI(generator); //find random position within that word
+            size_t r2 = (w2 << 6) + i2;
+
+            //swap values
+            uint64_t  tempValue = *getVal(r);
+            if(tempValue == 0) continue; //Don't swap rows at the end with no entries
+
+            *getVal(r) = *getVal(r2);
+            *getVal(r2) = tempValue;
+            //swap bits in each column
+            for(int c = 0; c < numCols; c++) {
+                //changes applied in place
+                uint64_t &k1 = *getKey(c, w); //reference to full word for first key
+                uint64_t &k2 = *getKey(c, w2); //for second key
+
+                size_t b1 = (k1 >> i) & 1; //get bit at position i
+                size_t b2 = (k2 >> i2) & 1;
+
+                k1 = k1 & ~(1 << i); //clear bits at position i
+                k2 = k2 & ~(1 << i2);
+
+                //add bits of the other
+                k1 = k1 | (b2 << i);
+                k2 = k2 | (b1 << i2);
             }
         }
     }
