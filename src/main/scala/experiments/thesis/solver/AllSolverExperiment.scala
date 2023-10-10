@@ -142,52 +142,53 @@ object AllSolverExperiment extends ExperimentRunner {
     be.reset
   }
 
-  //def minD(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-  //  val qsize = if (isSMS) 6 else 4
-  //  val (minDLast, maxD) = cg match {
-  //    case n: NYC => (18, 40)
-  //    case s: SSB => (14, 30)
-  //  }
-  //  val logN = 15
-  //
-  //  val ename = s"${cg.inputname}-$isSMS-minD"
-  //  //we allow queries to repeat.
-  //  val mqr = new MaterializedQueryResult(cg, isSMS)
-  //  val queries = mqr.loadQueries(qsize).take(numIters)
-  //  val expt = new AllSolverExperiment(ename)
-  //  (6 to minDLast).by(4).reverse.map { minD =>
-  //    val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
-  //    dc.loadPrimaryMoments(cg.baseName)
-  //    queries.zipWithIndex.foreach { case (q, qidx) =>
-  //        val trueResult = mqr.loadQueryResult(qs, qidx)
-  //        expt.run(dc, dc.cubeName, q, trueResult)
-  //      }
-  //    be.reset
-  //  }
-  //}
+  def minD(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+    val qsize = if (isSMS) 6 else 4
+    val (minDLast, maxD) = cg match {
+      case n: NYC => (18, 40)
+      case s: SSB => (14, 30)
+    }
+    val logN = 15
 
-  //def logN(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
-  //  val qsize = if (isSMS) 6 else 4
-  //  val (minD, maxD) = cg match {
-  //    case n: NYC => (18, 40)
-  //    case s: SSB => (14, 30)
-  //  }
-  //
-  //  val ename = s"${cg.inputname}-$isSMS-logN"
-  //  //we allow queries to repeat.
-  //  val mqr = new MaterializedQueryResult(cg, isSMS)
-  //  val queries = mqr.loadQueries(qsize).take(numIters)
-  //  val expt = new AllSolverExperiment(ename)
-  //  (6 to 15).by(3).reverse.map { logN =>
-  //    val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
-  //    dc.loadPrimaryMoments(cg.baseName)
-  //    queries.zipWithIndex.foreach { case (q, qidx) =>
-  //        val trueResult = mqr.loadQueryResult(qs, qidx)
-  //        expt.run(dc, dc.cubeName, q, trueResult)
-  //      }
-  //    be.reset
-  //  }
-  //}
+    val ename = s"${cg.inputname}-$isSMS-minD"
+    //we allow queries to repeat.
+    val mqr = new MaterializedQueryResult(cg, isSMS)
+    val queries = mqr.loadQueries(qsize).take(numIters)
+    val expt = new AllSolverExperiment(ename)
+    (6 to minDLast).by(4).reverse.map { minD =>
+      val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      queries.zipWithIndex.foreach { case (q, qidx) =>
+          val trueResult = mqr.loadQueryResult(qsize, qidx)
+          expt.run(dc, dc.cubeName, q, trueResult)
+        }
+      be.reset
+    }
+  }
+
+  def logN(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+    val qsize = 14
+    val (minD, maxD) = cg match {
+      case n: NYC => (18, 40)
+      case s: SSB => (14, 30)
+    }
+
+    val ename = s"${cg.inputname}-$isSMS-logN"
+    //we allow queries to repeat.
+
+    val mqr = new MaterializedQueryResult(cg, isSMS)
+    val queries = mqr.loadQueries(qsize).take(numIters)
+    val expt = new AllSolverExperiment(ename)
+    (6 to 15).by(3).reverse.map { logN =>
+      val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      queries.zipWithIndex.foreach { case (q, qidx) =>
+          val trueResult = mqr.loadQueryResult(qsize, qidx)
+          expt.run(dc, dc.cubeName, q, trueResult)
+        }
+      be.reset
+    }
+  }
 
   def main(args: Array[String]) {
     implicit val be = CBackend.default
@@ -205,17 +206,17 @@ object AllSolverExperiment extends ExperimentRunner {
         case "qsize-ssb-prefix" => qsize(ssb, true)
         case "qsize-ssb-random" => qsize(ssb, false)
 
-        //case "logn-nyc-prefix" => logN(nyc, true)
-        //case "logn-nyc-random" => logN(nyc, false)
-        //
-        //case "logn-ssb-prefix" => logN(ssb, true)
-        //case "logn-ssb-random" => logN(ssb, false)
-        //
-        //case "mind-nyc-prefix" => minD(nyc, true)
-        //case "mind-nyc-random" => minD(nyc, false)
-        //
-        //case "mind-ssb-prefix" => minD(ssb, true)
-        //case "mind-ssb-random" => minD(ssb, false)
+        case "logn-nyc-prefix" => logN(nyc, true)
+        case "logn-nyc-random" => logN(nyc, false)
+
+        case "logn-ssb-prefix" => logN(ssb, true)
+        case "logn-ssb-random" => logN(ssb, false)
+
+        case "mind-nyc-prefix" => minD(nyc, true)
+        case "mind-nyc-random" => minD(nyc, false)
+
+        case "mind-ssb-prefix" => minD(ssb, true)
+        case "mind-ssb-random" => minD(ssb, false)
 
         case s => throw new IllegalArgumentException(s)
       }

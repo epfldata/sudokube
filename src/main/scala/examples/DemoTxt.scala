@@ -233,7 +233,7 @@ object DemoTxt {
     val solveTime = Profiler.getDurationMicro("SolveMoment")
     val totalTime = prepareTime + fetchTime + solveTime
     val naiveTime = Profiler.getDurationMicro("NaiveTime")
-    val error = SolverTools.error(result, trueResult)
+    val error = SolverTools.error(trueResult, result)
     fetched.foreach{x => println(x._1 + "  ::  " + x._2.mkString(" "))}
     println(s"""
             Query: ${query.mkString(",")}

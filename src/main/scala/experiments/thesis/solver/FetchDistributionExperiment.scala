@@ -51,7 +51,7 @@ object FetchDistributionExperiment extends ExperimentRunner {
     val ename = s"${cg.inputname}-$isSMS-qsize"
     val expt = new FetchDistributionExperiment(ename)
     val mqr = new MaterializedQueryResult(cg, isSMS)
-    Vector(6, 8, 10, 12).reverse.map { qs =>
+    Vector(2, 4, 6, 8, 10, 12, 14, 18).reverse.map { qs =>
       val queries = mqr.loadQueries(qs).take(numIters)
       queries.zipWithIndex.foreach { case (q, qidx) =>
         expt.run(dc, dc.cubeName, q)
