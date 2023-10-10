@@ -8,6 +8,12 @@ class NaiveSamplingSolver(val qsize: Int,  totalSamples: Double) {
   val unnormalizedSolution= Array.fill(N)(0L)
   var sampleSum = 0.0
   var moments = Array.fill(qsize)(0.0)
+
+  /** Add samples to the existing set of samples and update results
+   *  The array [[samples]] contains both keys and values.
+   *  The even positions contain the key (max 64 dimensions)
+   *  and the odd positions contain the value
+   * */
   def addSample(samples: Array[Long]): Unit = {
     val thisSampleSize = samples.size >> 1
     numSamples +=  thisSampleSize

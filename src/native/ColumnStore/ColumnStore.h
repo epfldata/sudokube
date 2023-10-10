@@ -212,7 +212,25 @@ struct ColumnStore {
  * @return Pointer to array containing the data of the specified dense cuboid
  */
     Value *fetch(unsigned int id, size_t &numRows);
+
+    /**
+     Fetches a single word containing 64 rows and their values from a sparse cuboid.
+     @param id Id of the cuboid
+     @param wordId  Offset of groups of 64 rows from the start
+     @param resultArray  Pointer to array storing key and value in sparse row format
+    **/
     SparseCuboidRow fetch64Sparse(unsigned int id, size_t wordId, void* resultPtr);
+
+        /**
+         Fetches a single word containing 64 rows and their values from a sparse cuboid.
+         Additionally projects the keys using a bit mask.
+
+         @param id Id of the cuboid
+         @param wordId  Offset of groups of 64 rows from the start
+         @param resultArray  Pointer to array storing key and value in sparse row format
+         Projected key is assumed to be less than 64 bits and one 64 bit integer is allocated each for key and value
+
+        **/
     void projectAndfetch64Sparse(unsigned int id, size_t wordId, uint64_t * resultArray, const BitPos& bitpos);
     /**
  *  Unloads cuboid from RAM

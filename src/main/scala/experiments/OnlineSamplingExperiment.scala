@@ -1,10 +1,13 @@
 package experiments
 
-import core.DataCube
+import backend.CBackend
+import core.{DataCube, MaterializedQueryResult}
 import core.solver.SolverTools
 import core.solver.iterativeProportionalFittingSolver.{MSTVanillaIPFSolver, VanillaIPFSolver}
 import core.solver.moment.CoMoment5SolverDouble
 import core.solver.sampling.{IPFSamplingSolver, MomentSamplingSolver, NaiveSamplingSolver}
+import frontend.experiments.Tools
+import frontend.generators._
 import util.{Profiler, ProgressIndicator}
 
 import java.io.{File, PrintStream}
@@ -275,4 +278,49 @@ class OnlineSamplingExperiment(ename2: String = "")(implicit timestampedFolder: 
     //runIPFOnline(14, "nomix")(dc, dcname, qu, trueResult)
   }
 
+}
+
+object OnlineSamplingExperiment extends ExperimentRunner {
+  def qsize(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+    val (minD, maxD) = cg match {
+      case n: NYC => (18, 40)
+      case s: SSB => (14, 30)
+    }
+    val logN = 15
+    val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+    dc.loadPrimaryMoments(cg.baseName)
+    val ename = s"${cg.inputname}-$isSMS-qsize"
+    val expt = new OnlineSamplingExperiment(ename)
+    //val mqr = new MaterializedQueryResult(cg, isSMS)  //for loading pre-generated queries and results
+    Vector(10, 12, 14, 18).reverse.map { qs =>
+      val queries = (0 until numIters).map
+      { i => Tools.generateQuery(isSMS, cg.schemaInstance, qs) } //generate fresh queries
+      //val queries = mqr.loadQueries(qs).take(numIters)
+      queries.zipWithIndex.foreach { case (q, qidx) =>
+        val trueResult = dc.naive_eval(q)
+        //val trueResult = mqr.loadQueryResult(qs, qidx)
+        expt.run(dc, dc.cubeName, q, trueResult)
+      }
+    }
+    be.reset
+  }
+  def main(args: Array[String]): Unit = {
+    implicit val be = CBackend.default
+    val nyc = new NYC()
+    val ssb = new SSB(100)
+
+    def func(param: String)(timestamp: String, numIters: Int) = {
+      implicit val ni = numIters
+      implicit val ts = timestamp
+      param match {
+        case "qsize-nyc-prefix" => qsize(nyc, true)
+        case "qsize-nyc-random" => qsize(nyc, false)
+
+        case "qsize-ssb-prefix" => qsize(ssb, true)
+        case "qsize-ssb-random" => qsize(ssb, false)
+      }
+    }
+
+    run_expt(func)(args)
+  }
 }

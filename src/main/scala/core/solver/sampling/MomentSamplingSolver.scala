@@ -67,6 +67,12 @@ class MomentSamplingSolver(val qsize: Int, primaryMoments: Seq[(Int, Double)], v
       knownSet += i
     }
   }
+
+  /** Add samples to the existing set of samples and update results
+   * The array [[samples]] contains both keys and values.
+   * The even positions contain the key (max 64 dimensions)
+   * and the odd positions contain the value
+   * */
   def addSample(samples: Array[Long]): Unit = {
     val numSamplesLocal = samples.length >> 1
     (0 until numSamplesLocal).foreach { i =>
