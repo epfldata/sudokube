@@ -86,11 +86,14 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
 
 
   def runIPF(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String) = {
+    val pm = preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
     val solver = new NewVanillaIPFSolver(query.length)
     val stg = new ManualStatsGatherer[Array[Double]]()
     stg.task = () => solver.solution.clone()
     stg.start()
     val l = dc.index.prepareOnline(query, 2)
+    solver.initializeWithProductDistribution(pm)
+    stg.record()
     val iter = l.toIterator
     while (iter.hasNext) {
       val current = iter.next()

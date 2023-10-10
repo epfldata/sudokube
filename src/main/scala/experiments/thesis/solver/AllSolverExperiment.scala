@@ -90,11 +90,16 @@ class AllSolverExperiment(ename2: String)(implicit timestampedFolder: String, nu
     val prepared = Profiler("PrepareIPF") {
       dc.index.prepareBatch(query)
     }
+    val pm = Profiler("PrepareIPF") {
+      SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
+    }
+
     val fetched = Profiler("FetchIPF") {
       prepared.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) }
     }
     val result = Profiler("SolveIPF") {
       val s = new MSTVanillaIPFSolver(query.size)
+      s.initializeWithProductDistribution(pm)
       fetched.foreach { case (cols, data) => s.add(cols, data) }
       s.solve()
     }

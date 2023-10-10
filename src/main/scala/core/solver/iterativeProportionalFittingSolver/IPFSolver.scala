@@ -17,6 +17,36 @@ abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
     // To support dropout experiments where some variables are not covered by any cuboid but we can remember the one-dimensional marginal distribution
   var totalDistribution: Array[Double] = Array.fill(N)(1.0 / N) // Initialize to uniform
   var solution: Array[Double] = Array[Double]() // the un-normalized total distribution
+ def initializeWithProductDistribution(primaryMoments: Seq[(Int, Double)]) = {
+   assert(primaryMoments.head._1 == 0)
+   val total = primaryMoments.head._2
+   totalDistribution = Array.fill(N)(total)
+   val pmArray = new Array[Double](querySize)
+   var logh = 0
+   primaryMoments.tail.foreach { case (i, m) =>
+     assert((1 << logh) == i)
+     pmArray(logh) = m / total
+     logh += 1
+   }
+   oneDimMarginals = pmArray.map{theta => Array(1.0-theta, theta)}
+   var h = 1
+   logh = 0
+   while (h < N) {
+     val ph = pmArray(logh)
+     var i = 0
+     while (i < N) {
+       var j = 0
+       while (j < h) {
+         totalDistribution(i + j) *= (1 - ph)
+         totalDistribution(i + j + h) *= ph
+         j += 1
+       }
+       i += (h << 1)
+     }
+     h <<= 1
+     logh += 1
+   }
+ }
   def getSolution: Array[Double] = {
     val distributionSum = totalDistribution.sum
       // This normalization only applies for loopy IPF solvers which generate a probability distribution not summing to 1.
