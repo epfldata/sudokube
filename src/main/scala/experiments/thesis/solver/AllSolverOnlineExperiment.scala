@@ -9,13 +9,18 @@ import core.solver.{Rational, SolverTools}
 import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
 import frontend.generators.{CubeGenerator, NYC, SSB}
-import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol}
+import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol, StaticNatCol}
 import util.{ManualStatsGatherer, Profiler}
 
 class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers-online", ename2) {
-  val header = "CubeName,RunID,Query,QSize," +
+  val header = "CubeName,RunID,Query,QSize,QName," +
     "SolverName,StatCounter,StatTime,Error"
   fileout.println(header)
+  var runNaive = true
+  var runLP = false
+  var runIPF = true
+  var runMoment = true
+
   def runNaive(dc: DataCube, query: IndexedSeq[Int], common: String) = {
     val stg = new ManualStatsGatherer[Double]()
     stg.task = () => 0.0
@@ -93,7 +98,7 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
     stg.start()
     val l = dc.index.prepareOnline(query, 2)
     solver.initializeWithProductDistribution(pm)
-    stg.record()
+    //    stg.record()
     val iter = l.toIterator
     while (iter.hasNext) {
       val current = iter.next()
@@ -111,12 +116,12 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
 
   override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)] = Seq()): Unit = {
     val query = qu.sorted
-    val common = s"$dcname,$runID,${qu.mkString(";")},${qu.size}"
-    val naiveRes = runNaive(dc, query, common)
-    val correctRes = if(trueResult != null) trueResult else naiveRes
-    //runLP(dc, query, correctRes, common)
-    runMoment(dc, query, correctRes, common)
-    runIPF(dc, query, correctRes, common)
+    val common = s"$dcname,$runID,${qu.mkString(";")},${qu.size},$qname"
+    val naiveRes = if (runNaive) runNaive(dc, query, common) else null
+    val correctRes = if (trueResult != null) trueResult else naiveRes
+    if (runLP) runLP(dc, query, correctRes, common)
+    if (runMoment) runMoment(dc, query, correctRes, common)
+    if (runIPF) runIPF(dc, query, correctRes, common)
     runID += 1
   }
 }
@@ -145,7 +150,7 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     be.reset
   }
 
-  def manual(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+  def manual_queries(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
     val (minD, maxD) = cg match {
       case n: NYC => (18, 40)
       case s: SSB => (14, 30)
@@ -153,27 +158,161 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     val logN = 15
     val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
     dc.loadPrimaryMoments(cg.baseName)
-    val ename = s"${cg.inputname}-$isSMS-manual"
+    val ename = s"${cg.inputname}-$isSMS-manual-queries"
     val expt = new AllSolverOnlineExperiment(ename)
+    expt.runNaive = false
+    expt.runLP = false
+    expt.runMoment = false
+    expt.runIPF = true
     val sch = cg.schemaInstance
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
-    val (query, qname) = cg match {
+    val queries = cg match {
       case n: NYC =>
         val year = encMap("Issue Date").asInstanceOf[StaticDateCol].yearCol.bits
-        val month = encMap("Issue Date").asInstanceOf[StaticDateCol].monthCol.bits
-        Vector(year, month).reduce(_ ++ _) -> "issue_date_year;issue_date_month"
+        val issuePrecinct = encMap("Issuer Precinct").asInstanceOf[LazyMemCol].bits
+        val state = encMap("Registration State").asInstanceOf[LazyMemCol].bits
+        val body = encMap("Vehicle Body Type").asInstanceOf[LazyMemCol].bits
+        val make = encMap("Vehicle Make").asInstanceOf[LazyMemCol].bits
+        val ptype = encMap("Plate Type").asInstanceOf[LazyMemCol].bits
+        val agency = encMap("Issuing Agency").asInstanceOf[LazyMemCol].bits
+        val squad = encMap("Issuer Squad").asInstanceOf[LazyMemCol].bits
+        val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
+        val color = encMap("Vehicle Color").asInstanceOf[LazyMemCol].bits
+        val lawsect = encMap("Law Section").asInstanceOf[LazyMemCol].bits
+        val code = encMap("Violation Code").asInstanceOf[LazyMemCol].bits
+        val county = encMap("Violation County").asInstanceOf[LazyMemCol].bits
+        Vector(
+          Vector(ptype.drop(3), state.drop(3), code.drop(3)) -> "plate_type/8;registration_state/8;violation_code/8;",
+          Vector(year.drop(3), body.drop(8), agency) -> "issue_date_year/8;vehicle_body_type/256;issuing_agency",
+          Vector(squad.drop(2), lawsect, county) -> "issuer_squad/4;law_section;violation_county",
+          Vector(make.drop(11), color.drop(10), issuePrecinct.drop(6), precinct.drop(6)) -> "vehicle_make/2048;vehicle_color/1024;issuer_precinct/64;violation_precinct/64"
+        )
       case s: SSB =>
         val date = encMap("order_date").asInstanceOf[StaticDateCol]
         val year = date.yearCol.bits
+        val discount = encMap("discount").asInstanceOf[StaticNatCol].bits
+        val qty = encMap("quantity").asInstanceOf[StaticNatCol].bits
+        val category = encMap("category").asInstanceOf[LazyMemCol].bits
         val brand = encMap("brand").asInstanceOf[LazyMemCol].bits
-        Vector(year, brand).reduce(_ ++ _) -> "d_year;p_brand1"
+        val snation = encMap("supp_nation").asInstanceOf[LazyMemCol].bits
+        val sregion = encMap("supp_region").asInstanceOf[LazyMemCol].bits
+        val scity = encMap("supp_city").asInstanceOf[LazyMemCol].bits
+        val cregion = encMap("cust_region").asInstanceOf[LazyMemCol].bits
+        val mfgr = encMap("mfgr").asInstanceOf[LazyMemCol].bits
+        val tax = encMap("tax").asInstanceOf[StaticNatCol].bits
+        val mktSegment = encMap("cust_mkt_segment").asInstanceOf[LazyMemCol].bits
+        val ord_prio = encMap("ord_priority").asInstanceOf[LazyMemCol].bits
+        val commit_year = encMap("commit_date").asInstanceOf[StaticDateCol].yearCol.bits
+        Vector(
+          Vector(ord_prio, mktSegment, category, commit_year) -> "ord_priority;mkt_segment;commit_date_year;category",
+          Vector(year, discount, qty) -> "d_year;lo_discount;lo_quantity",
+          Vector(scity, mfgr, tax) -> "s_city;mfgr;tax",
+          Vector(brand.drop(1), snation, cregion) -> "brand/2;s_nation;cust_region"
+        )
     }
-    val qs = query.size
-    (0 until numIters).foreach{i =>
-      expt.run(dc, dc.cubeName, query, null, qname = qname + s"($qs-D)")
+
+    (0 until numIters).foreach { i =>
+      queries.foreach { case (queryDims, qname) =>
+        val query = queryDims.reduce(_ ++ _).sorted
+        val qs = query.size
+        val trueResult = dc.naive_eval(query)
+        expt.run(dc, dc.cubeName, query, trueResult, qname = qname + s"($qs-D)")
+      }
     }
   }
 
+  def manual_solvers(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+    val (minD, maxD) = cg match {
+      case n: NYC => (18, 40)
+      case s: SSB => (14, 30)
+    }
+    val logN = 15
+    val dc = if (isSMS) cg.loadSMS(logN, minD, maxD) else cg.loadRMS(logN, minD, maxD)
+    dc.loadPrimaryMoments(cg.baseName)
+    val ename = s"${cg.inputname}-$isSMS-manual-solvers"
+    val expt = new AllSolverOnlineExperiment(ename)
+    expt.runNaive = true
+    expt.runLP = false
+    expt.runMoment = true
+    expt.runIPF = true
+    val sch = cg.schemaInstance
+    val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
+    val queries = cg match {
+      case n: NYC =>
+        val squad = encMap("Issuer Squad").asInstanceOf[LazyMemCol].bits
+        val lawsect = encMap("Law Section").asInstanceOf[LazyMemCol].bits
+        val county = encMap("Violation County").asInstanceOf[LazyMemCol].bits
+        Vector(
+          Vector(squad.drop(2), lawsect, county) -> "issuer_squad/4;law_section;violation_county"
+        )
+      case s: SSB =>
+        val category = encMap("category").asInstanceOf[LazyMemCol].bits
+        val mktSegment = encMap("cust_mkt_segment").asInstanceOf[LazyMemCol].bits
+        val ord_prio = encMap("ord_priority").asInstanceOf[LazyMemCol].bits
+        val commit_year = encMap("commit_date").asInstanceOf[StaticDateCol].yearCol.bits
+        Vector(
+          Vector(ord_prio, mktSegment, category, commit_year) -> "ord_prio;mkt_segment;commit_year;category",
+        )
+    }
+
+
+    queries.foreach { case (queryDims, qname) =>
+      val query = queryDims.reduce(_ ++ _).sorted
+      val qs = query.size
+      val trueResult = dc.naive_eval(query)
+      (0 until numIters).foreach { i => //same query run back to back
+        expt.run(dc, dc.cubeName, query, trueResult, qname = qname + s"($qs-D)")
+      }
+    }
+  }
+
+  def manual_matparams(cg: CubeGenerator, isSMS: Boolean)(implicit timestampedFolder: String, numIters: Int, be: CBackend) = {
+    val params = cg match {
+      case n: NYC => Vector((15, 18, 40), (15, 14, 40), (15, 10, 40), (12, 18, 40), (9, 18, 40))
+      case s: SSB => Vector((15, 14, 30), (15, 10, 30), (15, 6, 30), (12, 14, 30), (9, 14, 30))
+    }
+    val ename = s"${cg.inputname}-$isSMS-manual-matparams"
+    val expt = new AllSolverOnlineExperiment(ename)
+    expt.runNaive = false
+    expt.runLP = false
+    expt.runMoment = false
+    expt.runIPF = true
+    val sch = cg.schemaInstance
+    val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
+    val queries = cg match {
+      case n: NYC =>
+        val issuePrecinct = encMap("Issuer Precinct").asInstanceOf[LazyMemCol].bits
+        val make = encMap("Vehicle Make").asInstanceOf[LazyMemCol].bits
+        val color = encMap("Vehicle Color").asInstanceOf[LazyMemCol].bits
+        val precinct = encMap("Violation Precinct").asInstanceOf[LazyMemCol].bits
+        Vector(
+          Vector(make.drop(11), color.drop(10), issuePrecinct.drop(6), precinct.drop(6)) -> "vehicle_make/2048;vehicle_color/1024;issuer_precinct/64;violation_precinct/64"
+        )
+      case s: SSB =>
+        val date = encMap("order_date").asInstanceOf[StaticDateCol]
+        val brand = encMap("brand").asInstanceOf[LazyMemCol].bits
+        val snation = encMap("supp_nation").asInstanceOf[LazyMemCol].bits
+        val cregion = encMap("cust_region").asInstanceOf[LazyMemCol].bits
+        Vector(
+          Vector(brand.drop(1), snation, cregion) -> "brand/2;s_nation;cust_region"
+        )
+    }
+
+
+    params.foreach { case (logn, mind, maxd) =>
+      val dc = cg.loadSMS(logn, mind, maxd)
+      dc.loadPrimaryMoments(cg.baseName)
+      queries.foreach { case (queryDims, qname) =>
+        val query = queryDims.reduce(_ ++ _).sorted
+        val qs = query.size
+        val trueResult = dc.naive_eval(query)
+        (0 until numIters).foreach { i => //same query run back to back
+          expt.run(dc, dc.cubeName, query, trueResult, qname = qname + s"($qs-D)")
+        }
+      }
+      dc.backend.reset
+    }
+  }
 
   def main(args: Array[String]) {
     implicit val be = CBackend.default
@@ -191,9 +330,16 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
         case "ssb-prefix" => expt(ssb, true)
         case "ssb-random" => expt(ssb, false)
 
+        case "manual-nyc-prefix-queries" => manual_queries(nyc, true)
+        case "manual-ssb-prefix-queries" => manual_queries(ssb, true)
+        case "manual-nyc-prefix-solvers" => manual_solvers(nyc, true)
+        case "manual-ssb-prefix-solvers" => manual_solvers(ssb, true)
+        case "manual-nyc-prefix-matparams" => manual_matparams(nyc, true)
+        case "manual-ssb-prefix-matparams" => manual_matparams(ssb, true)
         case s => throw new IllegalArgumentException(s)
       }
     }
+
     run_expt(func)(args)
   }
 }

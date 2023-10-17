@@ -46,6 +46,7 @@ abstract class IPFSolver(val querySize: Int, val solverName: String = "") {
      h <<= 1
      logh += 1
    }
+   solution = totalDistribution
  }
   def getSolution: Array[Double] = {
     val distributionSum = totalDistribution.sum
