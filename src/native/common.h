@@ -225,8 +225,8 @@ struct SparseCuboidCol : Cuboid {
                     size_t b1 = (k1 >> i) & 1; //get bit at position i
                     size_t b2 = (k2 >> i2) & 1;
 
-                    k1 = k1 & ~(1 << i); //clear bits at position i
-                    k2 = k2 & ~(1 << i2);
+                    k1 = k1 & ~(1ul << i); //clear bits at position i
+                    k2 = k2 & ~(1ul << i2);
 
                     //add bits of the other
                     k1 = k1 | (b2 << i);
@@ -258,8 +258,8 @@ struct SparseCuboidCol : Cuboid {
                 size_t b1 = (k1 >> i) & 1; //get bit at position i
                 size_t b2 = (k2 >> i2) & 1;
 
-                k1 = k1 & ~(1 << i); //clear bits at position i
-                k2 = k2 & ~(1 << i2);
+                k1 = k1 & ~(1ul << i); //clear bits at position i
+                k2 = k2 & ~(1ul << i2);
 
                 //add bits of the other
                 k1 = k1 | (b2 << i);
