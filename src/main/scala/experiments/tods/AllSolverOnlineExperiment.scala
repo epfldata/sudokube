@@ -82,10 +82,11 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
       solver.solve(true)
       stg.record()
     }
+    val suffixName = if(errorFix) "with fix" else "no fix"
     stg.finish()
     stg.stats.foreach { case (time, count, stat) =>
       val error = SolverTools.error(trueResult, stat)
-      fileout.println(s"$common,Moment-$errorFix,$count,$time,$error")
+      fileout.println(s"$common,Moment ($suffixName),$count,$time,$error")
     }
   }
 

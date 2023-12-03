@@ -1,5 +1,10 @@
-experiments.tods.DataCubeStatExperiment
-experiments.tods.CuboidDistribution
+experiments.tods.DataCubeStatExperiment nyc-prefix
+experiments.tods.DataCubeStatExperiment nyc-random
+experiments.tods.DataCubeStatExperiment ssb-prefix
+experiments.tods.DataCubeStatExperiment ssb-random
+
+experiments.tods.CuboidDistribution nyc
+experiments.tods.CuboidDistribution ssb
 
 experiments.tods.NaiveSolverExperiment qsize-nyc-prefix
 experiments.tods.NaiveSolverExperiment qsize-nyc-random
