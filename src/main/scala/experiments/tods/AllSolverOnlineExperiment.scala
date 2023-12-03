@@ -1,8 +1,8 @@
-package experiments.thesis.solver
+package experiments.tods
 
 import backend.CBackend
 import core.solver.SolverTools.{mk_all_non_neg, preparePrimaryMomentsForQuery}
-import core.solver.iterativeProportionalFittingSolver.{MSTVanillaIPFSolver, NewVanillaIPFSolver}
+import core.solver.iterativeProportionalFittingSolver.NewVanillaIPFSolver
 import core.solver.lpp.{Interval, SliceSparseSolver}
 import core.solver.moment.CoMoment5SolverDouble
 import core.solver.{Rational, SolverTools}
@@ -10,16 +10,16 @@ import core.{DataCube, MaterializedQueryResult}
 import experiments.ExperimentRunner
 import frontend.generators.{CubeGenerator, NYC, SSB}
 import frontend.schema.encoders.{ColEncoder, LazyMemCol, StaticDateCol, StaticNatCol}
-import util.{ManualStatsGatherer, Profiler}
+import util.ManualStatsGatherer
 
 class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: String, numIters: Int) extends SolverExperiment(s"all-solvers-online", ename2) {
   val header = "CubeName,RunID,Query,QSize,QName," +
     "SolverName,StatCounter,StatTime,Error"
   fileout.println(header)
-  var runNaive = true
-  var runLP = false
-  var runIPF = true
-  var runMoment = true
+  var shouldRunNaive = true
+  var shouldRunLP = false
+  var shouldRunIPF = true
+  var shouldRunMoment = true
 
   def runNaive(dc: DataCube, query: IndexedSeq[Int], common: String) = {
     val stg = new ManualStatsGatherer[Double]()
@@ -65,7 +65,7 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
     }
   }
 
-  def runMoment(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String) = {
+  def runMoment(dc: DataCube, query: IndexedSeq[Int], trueResult: Array[Double], common: String, errorFix: Boolean) = {
 
     val pm = preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
     val solver = new CoMoment5SolverDouble(query.length, false, null, pm)
@@ -85,7 +85,7 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
     stg.finish()
     stg.stats.foreach { case (time, count, stat) =>
       val error = SolverTools.error(trueResult, stat)
-      fileout.println(s"$common,Moment,$count,$time,$error")
+      fileout.println(s"$common,Moment-$errorFix,$count,$time,$error")
     }
   }
 
@@ -117,11 +117,14 @@ class AllSolverOnlineExperiment(ename2: String)(implicit timestampedFolder: Stri
   override def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)] = Seq()): Unit = {
     val query = qu.sorted
     val common = s"$dcname,$runID,${qu.mkString(";")},${qu.size},$qname"
-    val naiveRes = if (runNaive) runNaive(dc, query, common) else null
+    val naiveRes = if (shouldRunNaive) runNaive(dc, query, common) else null
     val correctRes = if (trueResult != null) trueResult else naiveRes
-    if (runLP) runLP(dc, query, correctRes, common)
-    if (runMoment) runMoment(dc, query, correctRes, common)
-    if (runIPF) runIPF(dc, query, correctRes, common)
+    if (shouldRunLP) runLP(dc, query, correctRes, common)
+    if (shouldRunMoment) {
+      runMoment(dc, query, correctRes, common, true)
+      runMoment(dc, query, correctRes, common, false)
+    }
+    if (shouldRunIPF) runIPF(dc, query, correctRes, common)
     runID += 1
   }
 }
@@ -160,10 +163,10 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     dc.loadPrimaryMoments(cg.baseName)
     val ename = s"${cg.inputname}-$isSMS-manual-queries"
     val expt = new AllSolverOnlineExperiment(ename)
-    expt.runNaive = false
-    expt.runLP = false
-    expt.runMoment = false
-    expt.runIPF = true
+    expt.shouldRunNaive = false
+    expt.shouldRunLP = false
+    expt.shouldRunMoment = false
+    expt.shouldRunIPF = true
     val sch = cg.schemaInstance
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
     val queries = cg match {
@@ -231,10 +234,10 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     dc.loadPrimaryMoments(cg.baseName)
     val ename = s"${cg.inputname}-$isSMS-manual-solvers"
     val expt = new AllSolverOnlineExperiment(ename)
-    expt.runNaive = true
-    expt.runLP = false
-    expt.runMoment = true
-    expt.runIPF = true
+    expt.shouldRunNaive = true
+    expt.shouldRunLP = false
+    expt.shouldRunMoment = true
+    expt.shouldRunIPF = true
     val sch = cg.schemaInstance
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
     val queries = cg match {
@@ -288,10 +291,10 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
     }
     val ename = s"${cg.inputname}-$isSMS-manual-matparams"
     val expt = new AllSolverOnlineExperiment(ename)
-    expt.runNaive = false
-    expt.runLP = false
-    expt.runMoment = false
-    expt.runIPF = true
+    expt.shouldRunNaive = false
+    expt.shouldRunLP = false
+    expt.shouldRunMoment = false
+    expt.shouldRunIPF = true
     val sch = cg.schemaInstance
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
     val queries = cg match {
@@ -343,13 +346,12 @@ object AllSolverOnlineExperiment extends ExperimentRunner {
         case "nyc-prefix" => expt(nyc, true)
         case "nyc-random" => expt(nyc, false)
 
-        case "ssb-prefix" => expt(ssb, true)
-        case "ssb-random" => expt(ssb, false)
-
         case "manual-nyc-prefix-queries" => manual_queries(nyc, true)
         case "manual-ssb-prefix-queries" => manual_queries(ssb, true)
+
         case "manual-nyc-prefix-solvers" => manual_solvers(nyc, true)
         case "manual-ssb-prefix-solvers" => manual_solvers(ssb, true)
+
         case "manual-nyc-prefix-matparams" => manual_matparams(nyc, true)
         case "manual-ssb-prefix-matparams" => manual_matparams(ssb, true)
         case s => throw new IllegalArgumentException(s)
