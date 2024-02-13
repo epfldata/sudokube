@@ -2,13 +2,13 @@
 ## Requirements
 This project has the following dependencies:
 - sbt
-- JDK (version >= 8)
+- JDK (version 8)
 - gcc
 - cmake
 
 ## Instructions to build the shared library libCBackend
 - Set the environment variable `JAVA_HOME` to the home directory of the JDK installation. The folder `${JAVA_HOME}/include` must contain the header file `jni.h`
-- Run `make` from the root directory of the project
+- Run `sbt nativeCompile` from the root directory of the project
 
 ## Instructions to run
 - Edit the file `.jvmopts` in the root directory of the project to set the maximum Java heap size to the desirable amount.
