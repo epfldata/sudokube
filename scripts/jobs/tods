@@ -3,7 +3,6 @@ experiments.tods.DataCubeStatExperiment nyc-random
 experiments.tods.DataCubeStatExperiment ssb-prefix
 experiments.tods.DataCubeStatExperiment ssb-random
 
-experiments.tods.CuboidDistribution nyc
 experiments.tods.CuboidDistribution ssb
 
 experiments.tods.NaiveSolverExperiment qsize-nyc-prefix

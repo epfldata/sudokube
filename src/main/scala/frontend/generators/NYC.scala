@@ -108,8 +108,8 @@ object NYC {
     val arg = args.lift(0).getOrElse("all")
     val params = List(
       (15, 18),
-      (15, 14), (15, 10), (15, 6),
-      (12, 18), (9, 18), (6, 18)
+      (15, 14), (15, 10),
+      (12, 18), (9, 18),
     )
     val maxD = 40
 

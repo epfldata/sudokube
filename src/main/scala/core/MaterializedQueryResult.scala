@@ -55,7 +55,7 @@ object MaterializedQueryResult {
   def main(args: Array[String]) {
     implicit val backend = CBackend.default
     val nq = 100
-    val qss = List(6, 10, 14)//List(2, 4)//List(8, 10, 14)//List(6, 9, 12, 15, 18, 21, 24)
+    val qss = List(2, 4, 6, 9, 8, 10, 12, 14, 15, 18)
 
     val isPrefix = args.lift(0).map(_.toBoolean).getOrElse(true)
     val cg = args(1) match {
