@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <exception>
 #include <random>
+#include <stdexcept>
 
 typedef unsigned char byte;
 typedef int64_t Value;  //we have Java Long as value
