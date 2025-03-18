@@ -40,3 +40,7 @@ The complete reproducibility package can be found under [experiments/vldb2022_su
 
 ## Run Experiments comparing Graphical Model Solvers and Moment Solvers
 - See file [IPF Experimenter](src/main/scala/experiments/IPFExperimenter.scala)
+
+## Run Experiments from our TODS 2025 paper
+The complete reproducibility package can be found under [experiments/tods2025_sudokube_reproducibility.zip.](experiments/tods2025_sudokube_reproducibility.zip)
+
