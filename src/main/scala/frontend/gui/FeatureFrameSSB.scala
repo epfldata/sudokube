@@ -1,5 +1,6 @@
 package frontend.gui
 
+import backend.CBackend
 import core._
 import core.solver.{Rational, RationalTools}
 import core.solver.lpp.SparseSolver
@@ -18,7 +19,7 @@ import scala.swing.BorderPanel.Position.{Center, South}
 import scala.swing._
 import scala.swing.event.{ButtonClicked, SelectionChanged}
 
-case class FeatureFrameSSB(sf: Int, dc: DataCube, cheap_size: Int) {
+case class FeatureFrameSSB(sf: Int, dc: DataCube, cheap_size: Int)(implicit backend: CBackend) {
   val dataset = new YIntervalSeriesCollection
 
   var naiveSeries =  new YIntervalSeries("Naive")

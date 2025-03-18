@@ -59,12 +59,12 @@ class UserCube(val cubeName: String, val cube: DataCube, val sch: Schema) {
    * @return the first thresh bits of a specific field, or a Nil
    */
   @tailrec
-  final def accCorrespondingBits(field: String, thresh: Int, acc: List[Int], n: Int = sch.n_bits-1): List[Int] = {
-    if (n >= 0  && acc.size < thresh) {
+  final def accCorrespondingBits(field: String, thresh: Int, acc: List[Int], n: Int = sch.n_bits - 1): List[Int] = {
+    if (n >= 0 && acc.size < thresh) {
       if (sch.decode_dim(Vector(n)).head.map(x => x.split("[= ]").apply(0)).head.equals(field)) {
-        accCorrespondingBits(field, thresh, n :: acc, n-1)
+        accCorrespondingBits(field, thresh, n :: acc, n - 1)
       } else {
-        accCorrespondingBits(field, thresh, acc, n-1)
+        accCorrespondingBits(field, thresh, acc, n - 1)
       }
     } else {
       acc
@@ -138,7 +138,7 @@ class UserCube(val cubeName: String, val cube: DataCube, val sch: Schema) {
       res = resultArrayTuple.map(x => (groupByMethod(ArrayFunctions.findValueOfPrefix(x._1, q._1, true)), ArrayFunctions.findValueOfPrefix(x._1, aggregateDim, false))).
         groupBy(x => x._1).map(value =>
         (value._1, value._2.foldLeft(0.0)((acc, x) =>
-            acc + x._2.toString.toDouble
+          acc + x._2.toString.toDouble
         ))
       )
     }
@@ -273,7 +273,7 @@ class UserCube(val cubeName: String, val cube: DataCube, val sch: Schema) {
 }
 
 object UserCube {
-
+  implicit val backend = CBackend.default
   /**
    * create a UserCube from a saved file
    *
@@ -298,7 +298,7 @@ object UserCube {
     val R = sch.read(filename, Some(fieldToConsider), x => x.toString.toLong)
     val m = new RandomizedMaterializationStrategy(sch.n_bits, 8, 4) //8, 4 numbers can be optimized
     val dc = new DataCube(cubeName)
-    val baseCuboid = CBackend.b.mk(sch.n_bits, R.toIterator)
+    val baseCuboid = backend.mk(sch.n_bits, R.toIterator)
     dc.build(baseCuboid, m)
     new UserCube(cubeName, dc, sch)
   }

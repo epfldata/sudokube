@@ -1,88 +1,261 @@
 package core.solver.moment
 
+import core.DataCube
+import planning.NewProjectionMetaData
 import util.{BitUtils, Profiler}
 
 import scala.reflect.ClassTag
 
-class CoMoment5SliceSolver[T: ClassTag : Fractional](totalsize: Int, slicevalue: IndexedSeq[Int], batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver(totalsize, batchmode, transformer, primaryMoments) {
-  val solverName = "Comoment5Slice"
-  val aggsize = totalsize - slicevalue.length
-  val aggN = 1 << aggsize
-  var pmMap: Map[Int, T] = null
-
+/**
+ * @param totalsize Total dimensionality of query including both aggregation and slice
+ * @param sliceList List of slice dimensions (index relative to query) along with value. MUST be in increasing order of positions
+ * @param batchmode Batch or online mode NOT USED
+ * @param transformer NOT USED
+ * @param primaryMoments Total sum and 1-D moments in the increasing order of dims
+ */
+class CoMoment5SliceSolver[T: Fractional : ClassTag](totalsize: Int, sliceList: Seq[(Int, Int)], batchmode: Boolean, transformer: MomentTransformer[T], primaryMoments: Seq[(Int, T)]) extends MomentSolver[T](totalsize - sliceList.size, batchmode, transformer, primaryMoments) {
+  //transformer is not used
+  val solverName = "Comoment5Slice2"
+  var pmArray = new Array[T](totalsize)
   override def init(): Unit = {}
 
   init2()
 
   def init2(): Unit = {
-    moments = Array.fill(N)(num.zero) //using moments array for comoments
+    moments = Array.fill[T](N)(num.zero) //using moments array for comoments. We only allocate for final result
     val total = primaryMoments.head._2
-    moments(0) = total
     assert(primaryMoments.head._1 == 0)
-    assert(transformer.isInstanceOf[Moment1Transformer[_]])
-    pmMap = primaryMoments.map { case (i, m) => i -> num.div(m, total) }.toMap
-
-    knownSet += 0
-    (0 until totalsize).foreach { b => knownSet += (1 << b) }
+    //assert(transformer.isInstanceOf[Moment1Transformer[_]])
+    var logh = 0
+    primaryMoments.tail.foreach { case (i, m) =>
+      assert((1 << logh) == i)
+      pmArray(logh) = num.div(m, total)
+      logh += 1
+    }
+    // moments(0) is known, but we need it to be present in momentsToAdd
 
   }
 
-  override def solve(hn: Boolean = true) = {
-    solution = transformer.getValues(moments.takeRight(aggN), hn)
+  override def solve(handleNegative: Boolean): Array[T] = {
+    val result = moments.clone()
+    var h = 1
+    var i = 0
+    var j = 0
+    /* Kronecker product with matrix to convert m to x
+        1 -1
+        0  1
+     */
+    while (h < N) {
+      i = 0
+      while (i < N) {
+        j = i
+        while (j < i + h) {
+          val diff = num.minus(result(j), result(j + h))
+          if (!handleNegative || (num.gteq(diff, num.zero) && num.gteq(result(j + h), num.zero)))
+            result(j) = diff
+          else if (num.lt(diff, num.zero)) {
+            result(j + h) = result(j)
+            result(j) = num.zero
+          } else {
+            result(j + h) = num.zero
+          }
+          j += 1
+        }
+        i += h << 1
+      }
+      h = h << 1
+    }
+    solution = result
     solution
   }
 
+  def fetchAndAdd(pms: Seq[NewProjectionMetaData], dc: DataCube) = {
+    ???
+  }
+
   override def add(eqnColSet: Int, values: Array[T]) {
-    val  colsLength = BitUtils.sizeOfSet(eqnColSet)
-    val n0 = 1 << colsLength
+    val (colsLength, cols, n0, mn0, sliceMP, sliceDimInCuboid, aggColSet, aggColSetInCuboid) = Profiler("Solve.Add.Init") {
+      val colsLength = BitUtils.sizeOfSet(eqnColSet)
+      val cols = BitUtils.IntToSet(eqnColSet).reverse.toVector
+      var sliceMP = num.fromInt(1)
+      var colsOffsetInCuboid = 0
+      var aggcolsOffsetInQuery = 0
+      var curDim = 0
+      var twoPowercurDim = 1
+      var sliceDimInCuboid = List[(Int, Int, Int)]()
+      var logm0 = 0
+      var aggColSet = 0
+      var aggColSetInCuboid = 0
 
-    val newMomentIndices = (0 until n0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet)).
-      filter({ case (i0, i) => !knownSet.contains(i) })
+      //Iterate over all dims in eqnColsSet; this list is assumed to be in increasing order of dims
+      sliceList.foreach { case (dim, sv) =>
+        while (curDim < dim) {
+          if ((twoPowercurDim & eqnColSet) != 0) {
+            aggColSet |= (1 << aggcolsOffsetInQuery)
+            aggColSetInCuboid |= (1 << colsOffsetInCuboid)
+            colsOffsetInCuboid += 1
+          }
+          curDim += 1
+          twoPowercurDim <<= 1
+          aggcolsOffsetInQuery += 1
+        }
+        if ((twoPowercurDim & eqnColSet) != 0) { //slice dim in cuboid
+          //decreasing order of dims here
+          sliceDimInCuboid = (dim, sv, colsOffsetInCuboid) :: sliceDimInCuboid
+          logm0 += 1
+        } else { //slicedim not in cuboid
+          val p = pmArray(dim)
+          val pq = if (sv == 1) p else num.minus(num.fromInt(1), p)
+          sliceMP = num.times(sliceMP, pq)
+        }
 
-    if (false) {
-      // need less than log(n0) moments -- find individually
-      //TODO: Optimized method to find comoments
+        if ((twoPowercurDim & eqnColSet) != 0) {
+          colsOffsetInCuboid += 1
+        }
+        curDim += 1
+        twoPowercurDim <<= 1
+      }
+
+      while (twoPowercurDim <= eqnColSet) {
+        if ((twoPowercurDim & eqnColSet) != 0) {
+          aggColSet |= (1 << aggcolsOffsetInQuery)
+          aggColSetInCuboid |= (1 << colsOffsetInCuboid)
+          colsOffsetInCuboid += 1
+        }
+        curDim += 1
+        twoPowercurDim <<= 1
+        aggcolsOffsetInQuery += 1
+      }
+
+      val mn0 = 1 << colsLength
+      val logn0 = colsLength - logm0
+      val n0 = 1 << logn0
+
+      (colsLength, cols, n0, mn0, sliceMP, sliceDimInCuboid, aggColSet, aggColSetInCuboid)
     }
-    else {
-      //need more than log(n0) moments -- do moment transform and filter
-      val projectedMomentProduct = (0 until colsLength).map { case b =>
-        val i0 = 1 << b
-        val i = BitUtils.unprojectIntWithInt(i0, eqnColSet)
-        i0 -> pmMap(i)
-      }.toMap + (0 -> pmMap(0))
-      val cuboid_moments = transformer.getCoMoments(values, projectedMomentProduct)
-      newMomentIndices.foreach { case (i0, i) =>
-        momentsToAdd += i -> cuboid_moments(i0)
-        knownSet += i
+
+    val pupIndices = Profiler("Solve.Add.NewMomentIndices.PUP") {
+      (0 until mn0).map(i0 => i0 -> BitUtils.unprojectIntWithInt(i0, eqnColSet))
+    }
+    val (knownIndices, unknownIndices) = Profiler("Solve.Add.NewMomentIndices.Partition") {
+      pupIndices.partition { case (i0, i) => knownSet.contains(i) }
+    }
+
+    //Both slice and agg dims
+    val cuboid_moments = Profiler("Solve.Add.allmoments") {
+      val result = values.clone()
+      var logh0 = 0
+      var h0 = 1
+      var i0 = 0
+      var j0 = 0
+      /*
+      Kronecker product with matrix to convert x to mu
+          1 1
+          -p 1-p
+       */
+      while (logh0 < colsLength) {
+        i0 = 0
+        val p = pmArray(cols(logh0))
+        while (i0 < mn0) {
+          j0 = i0
+          while (j0 < i0 + h0) {
+            val first = num.plus(result(j0), result(j0 + h0))
+            val second = num.minus(result(j0 + h0), num.times(p, first))
+            result(j0) = first
+            result(j0 + h0) = second
+            j0 += 1
+          }
+          i0 += (h0 << 1)
+        }
+        h0 <<= 1
+        logh0 += 1
+      }
+      result
+    }
+    Profiler("Solve.Add.ClearKnownMoments") {
+      //set known ones to 0 to avoid double counting
+      knownIndices.foreach { case (i0, i) => cuboid_moments(i0) = num.zero }
+    }
+
+    //Convert to conditional moments by applying transformations on slice dims of this cudoid
+    //followed by slice dims not in cuboid. The latter is obtained by multiplying every value by sliceMP
+    Profiler("Solve.Add.ConvertToConditional") {
+
+      /*
+        Kronecker product with matrix
+                b=0 b=1
+          sv=0  1-p   -1
+          sv=1  p   1
+         */
+
+      var localsliceCols = 0
+      //sliceDimInCuboid is sorted in decreasing order of logh and logh0; we process high dims first before lower
+      sliceDimInCuboid.foreach { case (logh, sv, logh0) =>
+        val p = pmArray(logh)
+        var i0 = 0
+        while (i0 < mn0) {
+          val h0 = 1 << logh0
+          //if ((i0 & localsliceCols) == 0) { //only consider those that agree with slice; we move everything to 0-slot.
+          var j0 = i0
+          while (j0 < i0 + h0) {
+            val result = if (sv == 1) {
+              num.plus(num.times(cuboid_moments(j0), p), cuboid_moments(j0 + h0))
+            } else {
+              num.minus(num.times(cuboid_moments(j0), num.minus(num.fromInt(1), p)), cuboid_moments(j0 + h0))
+            }
+            cuboid_moments(j0) = result //always put in 0-slot
+            j0 += 1
+          }
+          //}
+          i0 += (h0 << 1)
+        }
+        localsliceCols |= (1 << logh0)
+      }
+    }
+
+    Profiler("Solve.Add.addKnown") {
+      knownSet ++= unknownIndices.map(_._2)
+    }
+
+    Profiler("Solve.Add.addMoments") {
+      (0 until n0).map { i0 =>
+        val i0agg = BitUtils.unprojectIntWithInt(i0, aggColSetInCuboid)
+        val iagg = BitUtils.unprojectIntWithInt(i0, aggColSet)
+        val v = cuboid_moments(i0agg)
+        if (v != num.zero) {
+          momentsToAdd += iagg -> num.times(v, sliceMP)
+        }
       }
     }
   }
 
+
   def fillMissing() = {
-    Profiler("MomentsAdd") {
-      momentsToAdd.foreach { case (i, m) =>
-        moments(i) = m
+
+    Profiler("SliceMomentsAdd") {
+      momentsToAdd.foreach {
+        case (i, m) =>
+          moments(i) = num.plus(moments(i), m)
       }
     }
-    var h = N >> 1
-    var sliceIdx = if (slicevalue.nonEmpty) slicevalue.indices.last else -1
-    var start = 0
-    while (h > 0) {
-      val name = if (sliceIdx >= 0) "SliceExtrapolate" else "MomentExtrapolate"
-      Profiler(name) {
-        (start until N by h * 2).foreach { i =>
-          (i until i + h).foreach { j =>
-            val term = num.plus(moments(j + h), num.times(pmMap(h), moments(j)))
-            if (sliceIdx < 0 || slicevalue(sliceIdx) == 1) { //slice 1 or agg
-              moments(j + h) = term
-            } else { //slice 0
-              moments(j + h) = num.minus(moments(j), term)
-            }
+
+    val aggCols = ((0 until totalsize).toSet.diff(sliceList.map(_._1).toSet)).toVector.sorted
+    Profiler("MomentExtrapolate") {
+      var h = 1
+      var logh = 0
+      while (h < N) {
+        val p = pmArray(aggCols(logh)) // logh^th aggdim
+        var i = 0
+        while (i < N) {
+          var j = i
+          while (j < i + h) {
+            moments(j + h) = num.plus(moments(j + h), num.times(p, moments(j)))
+            j += 1
           }
+          i += (h << 1)
         }
-        if (h >= aggN) start += h
-        h >>= 1
-        sliceIdx -= 1
+        logh += 1
+        h <<= 1
       }
     }
   }

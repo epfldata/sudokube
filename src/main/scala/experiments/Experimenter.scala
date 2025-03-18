@@ -8,7 +8,7 @@ import core.solver.moment.Strategy._
 import core.solver.moment._
 import core.solver.{Rational, RationalTools, SolverTools}
 import frontend.experiments.Tools
-import frontend.generators.{MicroBench, NYC, SSB}
+import frontend.generators.{AirlineDelay, MicroBench, NYC, SSB}
 import frontend.schema.encoders._
 import util.{BitUtils, Profiler, Util}
 
@@ -17,9 +17,9 @@ import scala.reflect.ClassTag
 import scala.util.Random
 
 object Experimenter {
-
+  implicit val backend = CBackend.colstore
   def schemas(): Unit = {
-    List(NYC, SSB(100)).foreach { cg =>
+    List(NYC(), SSB(100)).foreach { cg =>
       val sch = cg.schemaInstance
       println(cg.inputname)
       sch.columnVector.map(c => c.name + ", " + c.encoder.bits.size).foreach(println)
@@ -29,7 +29,7 @@ object Experimenter {
 
   def cuboid_distribution(isSMS: Boolean) = {
     val ms = if (isSMS) "sms3" else "rms3"
-    val cg = NYC
+    val cg = NYC()
     val maxD = 30
     val nycmaxD = 30
     val cubes = List(
@@ -47,6 +47,7 @@ object Experimenter {
       println(s"Getting cuboid distribution for $n")
       val logN = names(2).toInt
       val minD = names(3).toInt
+
       val dc = PartialDataCube.load(n, cg.baseName)
       val projMap = dc.index.groupBy(_.length).mapValues(_.length).withDefaultValue(0)
       val projs = (0 to maxD).map(i => projMap(i)).mkString(",")
@@ -92,7 +93,6 @@ object Experimenter {
       val minD = names(1).toInt
       val rmsname = cgname + "_rms3_" + cubename
       val smsname = cgname + "_sms3_" + cubename
-
       println(s"Getting storage overhead for $rmsname")
       val dcrms = PartialDataCube.load(rmsname, cgname + "_base")
       val basesize = dcrms.cuboids.last.numBytes
@@ -125,7 +125,6 @@ object Experimenter {
 
   def lpp_query_dimensionality(isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
     val cg = SSB(100)
-
     val param = "15_14_30"
     val ms = (if (isSMS) "sms3" else "rms3")
     val name = s"_${ms}_${param}"
@@ -149,73 +148,82 @@ object Experimenter {
         expt.run(dc, fullname, q, null, true, sliceValues = Vector())
       }
     }
-
-
     dc.cuboids.head.backend.reset
   }
 
 
-  def momentCompareFixedSlice()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg = SSB(100)
-    val param = "15_14_30"
-    val ms = "sms3"
-    val name = s"_${ms}_${param}"
-    val fullname = cg.inputname + name
-    val dc = PartialDataCube.load(fullname, cg.baseName)
-    dc.loadPrimaryMoments(cg.inputname + "_base")
-
-    val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedslice")
-    //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
-    val qss = List(9, 12, 15, 18, 21, 24)
-    qss.foreach { qs =>
-      println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Slice for MS = $ms Query Dimensionality = $qs")
-      val queries = mq.loadQueries(qs).take(numIters)
-      val ql = queries.length
-      queries.zipWithIndex.foreach { case (q, i) =>
-        println(s"Dim=$qs Query ${i + 1}/$ql")
-        val trueResult = mq.loadQueryResult(qs, i)
-        expt.run(dc, fullname, q, trueResult, true, sliceValues = Vector(1, 0, 0, 0, 1, 1, 0, 0))
-      }
-    }
-
-  }
-
-  def momentCompareFixedTotal()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg = SSB(100)
-    val param = "15_14_30"
+  def momentCompareFixedAgg()(implicit timestampedFolder: String, numIters: Int): Unit = {
+    val cg = new NYC()
+    val param = "15_18_40"
     val ms = "sms3"
     val name = s"_${ms}_${param}"
     val fullname = cg.inputname + name
     val dc = PartialDataCube.load(fullname, cg.baseName)
     dc.loadPrimaryMoments(cg.baseName)
 
-    val mq = new MaterializedQueryResult(cg)
-    val expt = new MomentSolverCompareBatchExpt("fixedtotal")
+    CBackend.triestore.loadTrie("triestore/NYC_sms3_15_18_40_CS.trie")
+
+    //val mq = new MaterializedQueryResult(cg)
+    val expt = new MomentSolverCompareBatchExpt(s"fixedagg-${cg.inputname}", "slicing-expt")
+    //if (shouldRecord) expt.w‡armup()  //warmup has only 6 bits
+
+    val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
+    val aggsize = 14
+    sss.foreach { ss =>
+      println(s"\n\nMoment Solver Strategy Comparison Experiment Fixed Aggregation for MS = $ms  Dimensionality = $ss + $aggsize")
+      val qs = ss + aggsize
+      val queries = (0 until numIters).map(i => cg.schemaInstance.root.samplePrefix(qs)).distinct //mq.loadQueries(qs).take(numIters)
+      val ql = queries.length
+      queries.zipWithIndex.foreach { case (q, i) =>
+        println(s"Dim=$qs Query ${i + 1}/$ql")
+        val trueResult = dc.naive_eval(q.sorted) //mq.loadQueryResult(qs, i)
+        val svs = if (ss == 0) Nil else {
+          Util.collect_n(ss, () => Random.nextInt(qs)).sorted.map(i => i -> Random.nextInt(2))
+        }
+        expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
+      }
+    }
+   backend.reset
+  }
+
+  def momentCompareFixedTotal()(implicit timestampedFolder: String, numIters: Int): Unit = {
+    val cg = new NYC()
+    val param = "15_18_40"
+    val ms = "sms3"
+    val name = s"_${ms}_${param}"
+    val fullname = cg.inputname + name
+    val dc = PartialDataCube.load(fullname, cg.baseName)
+    dc.loadPrimaryMoments(cg.baseName)
+
+    CBackend.triestore.loadTrie("triestore/NYC_sms3_15_18_40_CS.trie")
+
+    //val mq = new MaterializedQueryResult(cg)
+    val expt = new MomentSolverCompareBatchExpt(s"fixedtotal-${cg.inputname}", "slicing-expt")
     //if (shouldRecord) expt.warmup()  //warmup has only 6 bits
-    val sss = List(24)
+    //expt.warmup() //Warmup does not have true result, NULLpointerException
+    val sss = List(0, 1, 2, 3, 4, 6, 8, 10)
     //val sss = List( 18, 21)
     val qs = 24
-    val queries = mq.loadQueries(qs).take(numIters)
+
+    val queries = (0 until numIters).map(i => cg.schemaInstance.root.samplePrefix(qs)).distinct //mq.loadQueries(qs).take(numIters)
     val ql = queries.length
     println(s"\n\nMoment Solver Strategy Comparison Fixed Total Experiment for MS = $ms")
     queries.zipWithIndex.foreach { case (q, i) =>
-      println(s"Dim=$qs Query ${i + 1}/$ql")
-      val trueResult = mq.loadQueryResult(qs, i)
+      println(s"Dim=$qs Query ${i + 1}/$ql ${q.mkString(" ")}")
+      val trueResult = dc.naive_eval(q.sorted) //mq.loadQueryResult(qs, i)
       sss.foreach { ss =>
-        val svs = if(ss == 0) Vector()  else {
-          BitUtils.intToMask(ss, Random.nextInt(1 << ss))
+        val svs = if (ss == 0) Nil else {
+          Util.collect_n(ss, () => Random.nextInt(qs)).sorted.map(i => i -> Random.nextInt(2))
         }
         println(s" Slice Dimensionality = $ss  slice=${svs.mkString(":")}")
         expt.run(dc, fullname, q, trueResult, true, sliceValues = svs)
       }
     }
-
-
+    backend.reset
   }
 
   def trieExpt[T: ClassTag : Fractional]()(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-
+    val be = CBackend.original
     val cg = SSB(100)
     val param = "15_14_30"
     val ms = "sms3"
@@ -225,7 +233,7 @@ object Experimenter {
     dc.loadPrimaryMoments(cg.inputname + "_base")
     //val trie = dc.loadTrie(fullname)
     val trie_filename = s"cubedata/${fullname}_trie/${fullname}.ctrie"
-    CBackend.b.loadTrie(trie_filename)
+    be.loadTrie(trie_filename)
     val sch = cg.schema()
 
     def momentSolve(q: IndexedSeq[Int]) = {
@@ -260,11 +268,12 @@ object Experimenter {
     }
 
     def trieSolve(q: IndexedSeq[Int]) = {
+      val be = CBackend.original
       val pm = Profiler("Trie Prepare pm") {
         SolverTools.preparePrimaryMomentsForQuery(q, dc.primaryMoments)
       }
       val moments = Profiler("Trie Moments") {
-        CBackend.b.prepareFromTrie(q)
+        be.prepareFromTrie(q)
       }
       val result2 = Profiler(s"Trie Solve") {
         val s = Profiler(s"TrieMoment Constructor") {
@@ -363,7 +372,7 @@ object Experimenter {
   }
 
   def moment_mat_params(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int) = {
-    val cg = NYC
+    val cg = NYC()
     val params = List(
       (13, 10),
       (15, 6), (15, 10), (15, 14),
@@ -417,7 +426,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
         val q = 0 until cg.n_bits
@@ -442,7 +451,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -468,7 +477,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -493,7 +502,7 @@ object Experimenter {
         sch.initBeforeEncode()
         val dc = new DataCube()
         val m = MaterializationStrategy.all_cuboids(cg.n_bits)
-        val baseCuboid = CBackend.b.mkParallel(sch.n_bits, r_its)
+        val baseCuboid = backend.mkParallel(sch.n_bits, r_its)
         dc.build(baseCuboid, m)
         dc.primaryMoments = SolverTools.primaryMoments(dc, false)
 
@@ -638,7 +647,7 @@ object Experimenter {
   }
 
   def manualNYC(strategy: Strategy, isSMS: Boolean)(implicit shouldRecord: Boolean, numIters: Int): Unit = {
-    val cg = NYC
+    val cg = NYC()
     val sch = cg.schema()
     val encMap = sch.columnVector.map(c => c.name -> c.encoder).toMap[String, ColEncoder[_]]
 
@@ -687,6 +696,7 @@ object Experimenter {
   def main(args: Array[String]) {
     implicit val shouldRecord = true
     implicit val numIters = 100
+    implicit val timestampedFolder = args.lift(1).getOrElse(Experiment.now())
     import RationalTools._
     val strategy = CoMoment3
     args.lift(0).getOrElse("debug") match {
@@ -706,7 +716,7 @@ object Experimenter {
         moment_mat_params(strategy, false)
       case "Fig10-SMS" =>
         moment_mat_params(strategy, true)
-      case "Fig11"  =>
+      case "Fig11" =>
         mb_dims()
         mb_stddev()
         mb_prob()
@@ -714,14 +724,14 @@ object Experimenter {
         schemas()
       case "moment01" => moment01[Rational]()
       case "momentcompare" =>
-        //momentCompareFixedSlice()
+        momentCompareFixedAgg()
         momentCompareFixedTotal()
       case "Fig12-SSB" =>
         manualSSB(strategy, true)
       case "Fig12-NYC" =>
         manualNYC(strategy, true)
       case expt =>
-        throw new IllegalArgumentException("Unknown experiment name "+ expt)
+        throw new IllegalArgumentException("Unknown experiment name " + expt)
     }
   }
 }

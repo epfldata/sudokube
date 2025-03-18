@@ -2,24 +2,27 @@ package examples
 
 import backend._
 import breeze.linalg.DenseMatrix
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
+import com.github.tototoshi.csv.CSVReader
 import core._
-import core.cube.OptimizedArrayCuboidIndex
-import core.ds.settrie.SetTrieForMoments
 import core.materialization._
 import core.solver.RationalTools._
 import core.solver.SolverTools.error
 import core.solver._
 import core.solver.iterativeProportionalFittingSolver.{EffectiveIPFSolver, IPFUtils, VanillaIPFSolver}
-import core.solver.moment.Strategy._
 import core.solver.moment._
 import frontend._
 import frontend.experiments.Tools
 import frontend.generators._
-import frontend.gui.{FeatureFrame, FeatureFrameSSB}
-import frontend.schema.encoders.StaticNatCol
-import frontend.schema.{LD2, StaticSchema2}
+import frontend.gui.{FeatureFrameSSB, MaterializationView, QueryView}
+import frontend.schema.DynamicSchema
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, MemCol}
+import util.BitUtils._
 import util._
-import BitUtils._
+
+import java.io.FileWriter
 import scala.reflect.ClassTag
 import scala.util.Random
 
@@ -31,10 +34,10 @@ object DemoTxt {
     //0 and 1D moments are required for MomentSolver that we precompute here
     val pm = List(0 -> 17, 1 -> 4, 2 -> 7, 4 -> 12).map(x => x._1 -> num.fromInt(x._2))
     val total = 3 //total query bits
-    val slice = Vector(1,1,1).reverse  //slicing for the top k-bits in the order of least significant to most significant
+    val slice = Vector(2->1, 1->0).reverse //slicing for the top k-bits in the order of least significant to most significant
     val agg = total - slice.length //how many bits for aggregation
 
-    val solver = new CoMoment5SliceSolver2[T](total ,slice,true, Moment1Transformer(), pm)
+    val solver = new CoMoment5SliceSolver[T](total, slice, true, Moment1Transformer(), pm)
     //val solver = new CoMoment5SliceSolver[T](total ,slice,true, Moment1Transformer(), pm)
     //val solver = new CoMoment5Solver[T](total ,true, Moment1Transformer(), pm)
 
@@ -63,11 +66,11 @@ object DemoTxt {
   }
 
   def vanillaIPFSolver(): Unit = { // Bad case for IPF — 2000+ iterations
-    val actual = Array(0, 1, 1, 1, 1, 0, 0, 0).map(_.toDouble)
-    val solver = new VanillaIPFSolver(3, true, actual)
-    solver.add(List(0, 1), Array(1, 1, 1, 1).map(_.toDouble))
-    solver.add(List(1, 2), Array(1, 2, 1, 0).map(_.toDouble))
-    solver.add(List(0, 2), Array(1, 2, 1, 0).map(_.toDouble))
+    val actual = Array(1, 1000, 1000, 1000, 1000, 1000, 1000, 1).map(_.toDouble)
+    val solver = new VanillaIPFSolver(3, true, false, actual)
+    solver.add(BitUtils.SetToInt(List(0, 1)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
+    solver.add(BitUtils.SetToInt(List(1, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
+    solver.add(BitUtils.SetToInt(List(0, 2)), Array(1001, 2000, 2000, 1001).map(_.toDouble))
     val result = solver.solve()
     println(result.mkString(" "))
     println("Error = " + error(actual, result))
@@ -81,12 +84,12 @@ object DemoTxt {
 
     val solver = new EffectiveIPFSolver(6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(BitUtils.SetToInt(marginalVariables), clustersDistribution)
     }
 
     val result = solver.solve()
@@ -101,14 +104,14 @@ object DemoTxt {
     val actual: Array[Double] = Array.fill(1 << 6)(0)
     (0 until 1 << 6).foreach(i => actual(i) = randomGenerator.nextInt(100))
 
-    val solver = new VanillaIPFSolver(6)
+    val solver = new VanillaIPFSolver(6, true, false, actual)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
 
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
-      solver.add(marginalVariables, clustersDistribution)
+      solver.add(BitUtils.SetToInt(marginalVariables), clustersDistribution)
     }
 
     val result = solver.solve()
@@ -125,10 +128,10 @@ object DemoTxt {
 
     val solver = new MomentSolverAll[Rational](6)
     val marginalDistributions: Map[Seq[Int], Array[Double]] =
-      Seq(Seq(0,1), Seq(1,2), Seq(2,3), Seq(0,3,4), Seq(4,5)).map(marginalVariables =>
+      Seq(Seq(0, 1), Seq(1, 2), Seq(2, 3), Seq(0, 3, 4), Seq(4, 5)).map(marginalVariables =>
         marginalVariables -> IPFUtils.getMarginalDistribution(6, actual, marginalVariables.size, SetToInt(marginalVariables))
       ).toMap
-    implicit def listToInt =SetToInt(_)
+    implicit def listToInt = SetToInt(_)
     marginalDistributions.foreach { case (marginalVariables, clustersDistribution) =>
       solver.add(marginalVariables, clustersDistribution.map(n => Rational(BigInt(n.toInt), 1)))
     }
@@ -140,6 +143,113 @@ object DemoTxt {
     println("Error = " + error(actual, result))
     solver.verifySolution()
   }
+
+  /** Demo for creating new data cube without using UserCube frontend */
+  def sales_demo(): Unit = {
+    //Set backend
+    implicit val be = CBackend.default
+
+    /**
+    Load cube generator for sales data in file `tabledata/TinyData/data.csv``
+     */
+    val cubeGenerator = new TinyDataStatic()
+    val schema = cubeGenerator.schemaInstance
+
+    val cubename = "mysalescube"
+
+    /* ----------------- Building Data cube. TO BE RUN ONLY ONCE  -------------------*/
+    /** Load base cuboid of the dataset and generate it if it does not exist
+     * See also [[frontend.generators.CubeGenerator#saveBase()]] */
+    val baseCuboid = cubeGenerator.loadBase(true)
+
+    /** Define instance of [[core.materialization.MaterializationStrategy]]
+     *  See also [[RandomizedMaterializationStrategy]], [[SchemaBasedMaterializationStrategy]]
+     * */
+
+    val mstrat = new PresetMaterializationStrategy(schema.n_bits, Vector(
+      Vector(0, 1),
+      Vector(1, 3),
+      Vector(0, 2, 3),
+      (0 until schema.n_bits) //base cuboid must be always included at last position
+    ))
+
+    /** Build data cube. See also [[frontend.generators.CubeGenerator#saveSMS(int, int, int)]] */
+    /** We store as partial data cube with external reference to base cuboid to avoid storing
+     * base cuboid twice */
+    val dataCube = new PartialDataCube(cubename, cubeGenerator.baseName)
+    dataCube.buildPartial(mstrat)
+    dataCube.save()
+    //Compute 1-D marginals and total
+    dataCube.primaryMoments = SolverTools.primaryMoments(dataCube)
+    dataCube.savePrimaryMoments(cubeGenerator.baseName)
+
+    /*------------------------- Loading Data Cube ---------------------*/
+    val dc = PartialDataCube.load(cubename, cubeGenerator.baseName)
+    dc.loadPrimaryMoments(cubeGenerator.baseName)
+
+    //val query = Vector(0, 1, 3)
+    /** See also [[frontend.service.MyDimLevel]] */
+    val colMap = schema.columnVector.map { e => e.name -> e.encoder.bits }.toMap
+
+
+    val query = (colMap("Quarter").takeRight(1) ++ colMap("City")).sorted
+
+
+    /** Measure Execution Time using [[Profiler]]. First clear everything */
+    Profiler.resetAll()
+
+    val trueResult = Profiler("NaiveTime") {
+      dc.naive_eval(query) // Querying using Naive Solver
+    }
+
+    /*------------------- Querying using Moment Solver-----------*/
+
+    /**
+     * Prepare phase.
+     * Find cuboids relevant to answering query.
+     * Find primary moments associated with dimensions in query
+     */
+
+    val (prepared, pm) = Profiler("PrepareMoment") {
+      dc.index.prepareBatch(query) -> SolverTools.preparePrimaryMomentsForQuery[Double](query, dc.primaryMoments)
+    }
+
+    /** Fetch phase
+     * Fetch cuboids from backend after projecting down to relevant dimensions
+     * */
+    val fetched = Profiler("FetchMoment") {
+      prepared.map { pm => pm.queryIntersection -> dc.fetch2[Double](List(pm)) }
+    }
+
+    /** Solve phase using moment solver */
+    val result = Profiler("SolveMoment") {
+      val s = new CoMoment5SolverDouble(query.size, true, null, pm)
+      fetched.foreach { case (cols, data) => s.add(cols, data) }
+      s.fillMissing()
+      s.solve(true) //with heuristics to avoid negative values
+    }
+    val prepareTime = Profiler.getDurationMicro("PrepareMoment")
+    val fetchTime = Profiler.getDurationMicro("FetchMoment")
+    val solveTime = Profiler.getDurationMicro("SolveMoment")
+    val totalTime = prepareTime + fetchTime + solveTime
+    val naiveTime = Profiler.getDurationMicro("NaiveTime")
+    val error = SolverTools.error(trueResult, result)
+    fetched.foreach{x => println(x._1 + "  ::  " + x._2.mkString(" "))}
+    println(s"""
+            Query: ${query.mkString(",")}
+            True Result: ${trueResult.mkString(" ")}
+            Approx Result: ${result.mkString("  ")}
+
+            PrepareTime: $prepareTime us
+            FetchTime: $fetchTime us
+            SolveTime: $solveTime us
+            TotalTime: $totalTime us
+            Error: $error
+
+            NaiveTime: $naiveTime us
+            """)
+  }
+
 
   /** Demo for frontend stuff */
   def cooking_demo(): Unit = {
@@ -165,7 +275,7 @@ object DemoTxt {
     println(tuple._2.mkString("left header\n(", "\n ", ")\n"))
     println(tuple._3.mkString("values\n(", ", ", ")\n \n"))
 
-  //can query for array of tuples with bit format
+    //can query for array of tuples with bit format
     var array = userCube.query(Vector(("Type", 2, Nil), ("price", 2, Nil)), Vector(), AND, MOMENT, TUPLES_BIT).asInstanceOf[Array[
       Any]].map(x => x.asInstanceOf[(String, Any)])
     println(array.mkString("(", "\n ", ")\n \n"))
@@ -200,7 +310,7 @@ object DemoTxt {
       str1.toString.equals("cheap") && !str2.toString.equals("Dish")
     }
 
-    def transformForGroupBy(src : String): String = {
+    def transformForGroupBy(src: String): String = {
       src match {
         case "Europe" | "Italy" | "France" => "European"
         case _ => "Non-European"
@@ -226,7 +336,8 @@ object DemoTxt {
     val query_size = 5
     val rnd = new Random(1L)
     val data = (0 until n_rows).map(i => BigBinary(rnd.nextInt(1 << n_bits)) -> rnd.nextInt(10).toLong)
-    val fullcub = CBackend.b.mk(n_bits, data.toIterator)
+    implicit val backend = CBackend.default
+    val fullcub = backend.mk(n_bits, data.toIterator)
     println("Full Cuboid data = " + data.mkString("  "))
     val dc = new DataCube()
     val m = new RandomizedMaterializationStrategy(n_bits, 6, 2)
@@ -241,19 +352,176 @@ object DemoTxt {
 
   /** GUI demo for SSB */
   def ssb_demo() = {
+    implicit val backend = CBackend.default
     val sf = 100
     val cg = SSB(sf)
     val logN = 15
     val minD = 14
     val maxD = 30
 
-    /** WARNING: This cube must have been built already. See [[frontend.generators.SSBGen]] **/
+    /** WARNING: This cube must have been built already. See [[frontend.generators.SSBGen]] * */
     val dc = cg.loadSMS(logN, minD, maxD)
     val display = FeatureFrameSSB(sf, dc, 50)
   }
 
+  def demo(): Unit = {
+    import frontend.schema._
+    implicit val be = backend.CBackend.colstore
+    val cg = new WebshopSales()
+    cg.saveBase()
+    val dc = cg.loadBase()
+    val sch = cg.schemaInstance
+     println("NumRows = " + dc.cuboids.last.size)
+    println("NumBits = " + sch.n_bits + "   " + dc.index.n_bits)
+    sch.columnVector.foreach{case LD2(n, e) => println(n + " -> " + e.bits.mkString(","))}
+    println(dc.naive_eval(Vector(0, 26, 27)).mkString(" "))
+    val display = new QueryView(sch, dc)
+    val d2 = new MaterializationView()
+  }
+
+  def genDynSchemaData(): Unit = {
+    case class SchemaChange(id: Int, newName: String, rownum: Int)
+    val changes = collection.mutable.PriorityQueue[SchemaChange]()(Ordering.by(x => -x.rownum))
+
+    changes += SchemaChange(6, "CompanyID", 20)
+    //changes += SchemaChange(6, "CompanyNumber", 40)
+    changes += SchemaChange(7, "CompanyName", 31)
+    //changes += SchemaChange(13, "CountryName", 43)
+    //changes += SchemaChange(8, "Category", 84)
+    //changes += SchemaChange(9, "Product", 85)
+    //changes += SchemaChange(4, "WeekNo", 100)
+    //changes += SchemaChange(1, "SaleYr", 130)
+
+    val filename = s"tabledata/Webshop/sales.csv"
+    val datasize = CSVReader.open(filename).iterator.drop(1).size
+    val allData = CSVReader.open(filename).all().toVector
+
+    val mapper = new ObjectMapper() with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+    val outfilename = s"tabledata/Webshop/salesDyn.json"
+    val fileWriter = new FileWriter(outfilename)
+    val sequenceWriter = mapper.writerWithDefaultPrettyPrinter().writeValuesAsArray(fileWriter)
+
+    val currentHeader = allData.head.toArray
+    currentHeader.zipWithIndex.foreach{case (h, i) => println(i, h)}
+    var nextChange = changes.head
+    allData.tail.zipWithIndex.foreach { case (d, i) =>
+      if (!changes.isEmpty) {
+        while (i == nextChange.rownum && !changes.isEmpty) {
+          currentHeader(nextChange.id) = nextChange.newName
+          //println("Changing header " + nextChange.id + "  to  " + nextChange.newName + " at row " + i)
+            changes.dequeue()
+          if (!changes.isEmpty) {
+            nextChange = changes.head
+          }
+        }
+      }
+      val row = d.toVector.zip(currentHeader).map { case (v, k) => (k, v) }.toMap
+      sequenceWriter.write( row )
+    }
+    sequenceWriter.close()
+  }
+
+  def demo2() = {
+    implicit val be  = CBackend.rowstore
+    val sch = new DynamicSchema
+    val data = sch.read("multi7.json" )
+    val m = new DynamicSchemaMaterializationStrategy(sch, 10, 5, 15)
+    val basename = "multischema"
+    val dc = new DataCube(basename)
+    val baseCuboid = be.mkAll(sch.n_bits, data)
+    dc.build(baseCuboid, m)
+    dc.save()
+    dc.primaryMoments = SolverTools.primaryMoments(dc)
+    dc.savePrimaryMoments(basename)
+    println("nbits = " + sch.n_bits)
+    println("nrows = " + data.size)
+    dc.cuboids.groupBy(_.n_bits).mapValues(_.map(_.numBytes).sum).toList.sortBy(_._1).foreach{println}
+
+    implicit def toDynEncoder[T](c: ColEncoder[T]) = c.asInstanceOf[DynamicColEncoder[T]]
+    val alltimebits = sch.columns("ID").bits
+    val numallTimeBits = alltimebits.size
+    val n = "col1.col8"
+    val en = sch.columns(n)
+    println("Time bits = " + sch.columns("ID").bits + s"[${sch.columns("ID").isNotNullBit}]")
+    //sch.columnList.foreach{ case (n, en) =>
+      println("Col " + n + " :: " + en.bits + s"[${en.isNotNullBit}] =  " + (en.bits.size+1) + " bits")
+     var continue = true
+      var numsliceTimeBits = 0
+      val slice  = collection.mutable.ArrayBuffer[(Int, Int)]()
+      slice += en.isNotNullBit -> 1
+      while(continue) {
+        val end =  numallTimeBits-numsliceTimeBits
+        val q =  ((end - 1) until end).map(alltimebits(_))
+        val slicedims = slice.map(_._1)
+        println("Current sliceDimensions = " + slicedims.mkString(" "))
+        println("Current sliceValue = " + slice.map(_._2).mkString(" "))
+        println("Current query = " + q)
+        val qsorted = (q ++ slicedims).sorted
+        println("Full query = " + qsorted)
+        val qres = dc.naive_eval(qsorted)
+        val slice2 = slice.map{case (b, v) => qsorted.indexOf(b) -> v}.sortBy(_._1)
+
+        val list = dc.index.prepareBatch(qsorted)
+        list.foreach{pm =>
+          val present = BitUtils.IntToSet(pm.queryIntersection).map(i => qsorted(i))
+          val missing = qsorted.diff(present)
+          println(s"Present = ${present.mkString(" ")}  Missing = ${missing.mkString(" ")}  Cost = ${pm.cuboidCost} #Present=${pm.queryIntersectionSize}")
+        }
+
+        val qresslice = Util.slice(qres, slice2)
+        //println("True result = " + qres.mkString("  "))
+        println("True Slice result = " + qresslice.mkString("  "))
+
+
+        val fetched = list.map{ pm =>(pm.queryIntersection, dc.fetch2[Double](List(pm)))}
+
+        val ipfsolver = new VanillaIPFSolver(qsorted.size)
+        fetched.foreach { case (bits, array) => ipfsolver.add(bits, array) }
+        val ipfres = ipfsolver.solve()
+        val ipfslice = Util.slice(ipfres, slice2)
+        //println("IPF result = " + ipfres.mkString("  "))
+        println("IPF Slice result = " + ipfslice.mkString("  "))
+        val ipferror = SolverTools.error(qres, ipfres)
+        //println("IPF error =" + ipferror)
+
+        val primaryMoments = SolverTools.preparePrimaryMomentsForQuery[Double](qsorted, dc.primaryMoments)
+        val momentsolver = new CoMoment5SliceSolver[Double](qsorted.size, slice2, true, new Moment1Transformer, primaryMoments)
+        fetched.foreach{ case (bits, array) => momentsolver.add(bits, array) }
+        momentsolver.fillMissing()
+        val momentres = momentsolver.solve()
+        println("Moment Slice result = " + momentres.mkString("  "))
+
+        println("Enter slice bit: ")
+        val sbit: Int = scala.io.StdIn.readLine().toInt
+        continue = sbit < 2
+        slice += q.max -> sbit
+        numsliceTimeBits += 1
+      }
+    //}
+  }
+
+  def online_demo(): Unit = {
+    implicit val be = CBackend.default
+    val cg = new TinyDataStatic()
+    val sch = cg.schemaInstance
+
+    val dc = cg.loadBase()
+    val baseCuboid = dc.cuboids.last.asInstanceOf[be.SparseCuboid]
+
+    val data1 = baseCuboid.fetch64(0)
+    println("Initial")
+    data1.filter(x => x._1.toBigInt != 0 || x._2 !=0).foreach(println)
+
+    baseCuboid.randomShuffle()
+
+    val data2 = baseCuboid.fetch64(0)
+    println("After Shuffle")
+    data2.filter(x => x._1.toBigInt != 0 || x._2 !=0).foreach(println)
+
+  }
   def main(args: Array[String]): Unit = {
-    momentSolver()
+    //momentSolver()
     //backend_naive()
     //ssb_demo()
     //cooking_demo()
@@ -261,5 +529,8 @@ object DemoTxt {
     //effectiveIPFSolver()
     //vanillaIPFSolver2()
     //momentSolver3()
+    //demo()
+    genDynSchemaData()
+    //demo2()
   }
 }

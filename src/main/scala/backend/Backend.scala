@@ -22,10 +22,7 @@ abstract class Cuboid {
    */
   def numBytes: Long
 
-  /**
-   * Garbage collect this cuboid and de-allocate space (only for CBackend)
-   */
-  def gc: Unit
+
 
   /**
    * Type to specify what dimensions we want to keep after projection. For example, if a cuboid contains dimensions
@@ -60,7 +57,7 @@ abstract class Cuboid {
  * @tparam MEASURES_T  Type for the fact values in each cell of the cuboid, currently [[Payload]] that stores sum and interval
  *                     TODO: Change to Long.
  */
-abstract class Backend[MEASURES_T] {
+abstract class Backend[MEASURES_T](val cuboidFileExtension: String) {
   /**
    * Identifier for Sparse Cuboid
    */
@@ -83,6 +80,8 @@ abstract class Backend[MEASURES_T] {
    * Used in CBackend to unload all cuboids from RAM
    */
   def reset: Unit
+  //clears memory for a single cuboid from CBackend registry
+  def cuboidGC(id: HYBRID_T): Unit = ???
   /**
    * @param h Encoding for Dense/Sparse cuboids
    * @return true if `h` represents a Dense cuboid
@@ -129,29 +128,6 @@ abstract class Backend[MEASURES_T] {
    */
   def writeMultiCuboid(filename: String, cuboidsArray: Array[Cuboid]): Unit
 
-  /**
-   * Saves the contents of given cuboids using a Trie that stores its moments
-   * Experimental feature only in CBackend
-   * @param cuboids Array storing, for each cuboid that is to be stored in the trie, the dimensions in that cuboid
-   *                (encoded as Int) as well as identifier to the Cuboid
-   * @param filename Name of file
-   * @param maxSize Maximum node size in the trie. Once the trie capapcity is reached, no additional moments are stored
-   */
-  def saveAsTrie(cuboids: Array[(Array[Int], HYBRID_T)], filename: String, maxSize: Long): Unit
-
-  /**
-   * Loads Trie representation of Cuboids from a file into memory
-   * Experimental feature only in CBackend
-   * @param filename Name of the file
-   */
-  def loadTrie(filename: String): Unit
-  /**
-   * Finds moments relevant to a given query from the trie storing moments of several cuboids
-   * @return Map containing the value of the moment for the available projections of the query (normalized and encoded using Int)
-   *         TODO: Change to MEASURE_T
-   *         @see [[core.solver.SolverTools.preparePrimaryMomentsForQuery]]
-   */
-  def prepareFromTrie(query: IndexedSeq[Int]) : Seq[(Int, Long)]
 
   /**
    * Initializes a base cuboid with streamed data
@@ -200,11 +176,8 @@ abstract class Backend[MEASURES_T] {
    */
   protected def dFetch(data: DENSE_T) : Array[MEASURES_T]
 
-  /**
-   * Unload cuboid from memory.
-   * Experimental feature used in CBackend
-   */
-  protected def cuboidGC(data: HYBRID_T): Unit
+  protected def sFetch64(n_bits: Int, data: SPARSE_T, wordID: Int): Vector[(BigBinary, Long)] = ???
+  protected def sProjectAndFetch64(data: SPARSE_T, wordID: Int, bitpos: BITPOS_T): Array[Long] = ???
 
   /**
    * Number of non-zero cells of a SparseCuboid
@@ -232,7 +205,7 @@ abstract class Backend[MEASURES_T] {
   protected def sRehashSlice(a: SPARSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
   /** Rehash with slice on dense cuboid to dense and fetch */
   protected def dRehashSlice(a: DENSE_T, BITPOS_T: BITPOS_T, maskArray: Array[Boolean]): Array[Long]
-
+  protected def sShuffle(id: SPARSE_T): Unit = ???
   /**
    * Stores non-zero cells as a sequence of key-value pairs. Key is cell address and Value is fact value in the cell
    */
@@ -243,9 +216,7 @@ abstract class Backend[MEASURES_T] {
 
     def size = sSize(data)
     def numBytes: Long = sNumBytes(data)
-    override def gc = {
-      cuboidGC(sparseToHybrid(data))
-    }
+
     override def rehash(bitpos: BITPOS_T): Cuboid = {
       val h = hybridRehash(data, bitpos)
       if(isDense(h))
@@ -265,6 +236,14 @@ abstract class Backend[MEASURES_T] {
 
     override def rehashWithSliceAndFetch(bitpos: BITPOS_T, maskArray: Array[Boolean]): Array[Long] = sRehashSlice(data, bitpos, maskArray)
     def backend = be_this
+
+    def fetch64(wordId: Int): Vector[(BigBinary, Long)] = sFetch64(n_bits, data, wordId)
+    def projectFetch64(wordId: Int, bitpos: BITPOS_T) : Array[Long] = sProjectAndFetch64(data, wordId, bitpos)
+
+    /**
+     * Randomly shuffles the entries in the sparse cuboid.
+     * */
+    def randomShuffle() = sShuffle(data)
   }
 
   /**
@@ -294,7 +273,7 @@ abstract class Backend[MEASURES_T] {
 
     /** Returns the contents of cuboid as an array. Only available for [[DenseCuboid]] */
     def fetch: Array[MEASURES_T] = dFetch(data)
-    override def gc: Unit = cuboidGC(denseToHybrid(data))
+
     def backend = be_this
   }
 }

@@ -1,16 +1,18 @@
 package frontend.generators
-import backend.CBackend
+import backend.{Backend, CBackend}
 import core.materialization.{MaterializationStrategy, RandomizedMaterializationStrategy, SchemaBasedMaterializationStrategy}
 import core.solver.SolverTools
 import core.{DataCube, PartialDataCube}
 import frontend.schema.Schema2
 import util.BigBinary
 
-abstract class CubeGenerator(val inputname: String) {
+import java.io.FileNotFoundException
+
+abstract class CubeGenerator(val inputname: String)(implicit val backend: CBackend) {
   lazy val schemaInstance = schema()
   def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])]
-
-  val baseName = inputname + "_base"
+  val measureName: String = "" //FIXME: Only one measure for now
+  lazy val baseName = inputname + "_base"
   def saveBase() = {
     val r_its = generatePartitions()
     schemaInstance.initBeforeEncode()
@@ -18,18 +20,24 @@ abstract class CubeGenerator(val inputname: String) {
     val m = MaterializationStrategy.only_base_cuboid(schemaInstance.n_bits)
     val dc = new DataCube(baseName)
     //sch.save(inputname)
-    val baseCuboid = CBackend.b.mkParallel(schemaInstance.n_bits, r_its)
+    val baseCuboid = backend.mkParallel(schemaInstance.n_bits, r_its)
     dc.build(baseCuboid, m)
     dc.save()
     dc.primaryMoments = SolverTools.primaryMoments(dc)
     dc.savePrimaryMoments(baseName)
     dc
   }
-  def loadBase() = {
-    DataCube.load(baseName)
+  def loadBase(generateIfNotExists: Boolean = false) = {
+    val base = try {
+      DataCube.load(baseName)
+    } catch {
+      case ex: FileNotFoundException => if(generateIfNotExists) saveBase() else throw ex
+    }
+    assert(schemaInstance.n_bits ==  base.index.n_bits, s"Schema bits = ${schemaInstance.n_bits} != ${base.index.n_bits} =  bits in base cuboid")
+    base
   }
   def saveRMS(logN: Int, minD: Int, maxD: Int) = {
-    val rms = new RandomizedMaterializationStrategy(schemaInstance.n_bits, logN, minD)
+    val rms = new RandomizedMaterializationStrategy(schemaInstance.n_bits, logN, minD, maxD)
     val rmsname = s"${inputname}_rms3_${logN}_${minD}_${maxD}"
     val dc2 = new PartialDataCube(rmsname, baseName)
     println(s"Building DataCube $rmsname")
@@ -44,7 +52,7 @@ abstract class CubeGenerator(val inputname: String) {
   }
 
   def saveSMS(logN: Int, minD: Int, maxD: Int) = {
-    val sms = new SchemaBasedMaterializationStrategy(schemaInstance, logN, minD)
+    val sms = new SchemaBasedMaterializationStrategy(schemaInstance, logN, minD, maxD)
     val smsname = s"${inputname}_sms3_${logN}_${minD}_${maxD}"
     val dc3 = new PartialDataCube(smsname, baseName)
     println(s"Building DataCube $smsname")

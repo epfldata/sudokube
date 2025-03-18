@@ -1,5 +1,4 @@
-package core.solver.iterativeProportionalFittingSolver
-
+import core.solver.iterativeProportionalFittingSolver.{Cluster, IPFUtils, VanillaIPFSolver}
 import core.solver.SolverTools.error
 import core.solver.moment.Strategy._
 import core.solver.moment.MomentSolverAll
@@ -9,12 +8,13 @@ import util.{BitUtils, Profiler}
 import scala.util.Random
 
 /**
- * TODO: extending FlatSpec with Matchers in org.scalatest._ ? (Cannot resolve symbol)
+ * Test the functionalities of the vanilla IPF solver.
+ * Currently using JUnit, but may be able to extend FlatSpec with Matchers in org.scalatest._ ? (Cannot resolve symbol when I tried.)
  * @author Zhekai Jiang
  */
 class VanillaIPFTest {
   private val eps = 1e-3
-  implicit def listToInt = BitUtils.SetToInt(_)
+  implicit def listToInt: Seq[Int] => Int = BitUtils.SetToInt
   @Test
   def testAdd(): Unit = {
     val solver = new VanillaIPFSolver(3)
@@ -132,7 +132,7 @@ class VanillaIPFTest {
     val solver = new VanillaIPFSolver(2)
     solver.add(Seq(0), Array(0.4, 0.6))
     solver.add(Seq(1), Array(0.3, 0.7))
-    val totalDelta = solver.iterativeUpdate()
+    val totalDelta = solver.iterativeUpdate(1)
     for ((i, p) <- Seq((0, 0.12), (1, 0.18), (2, 0.28), (3, 0.42))) {
       assertApprox(solver.totalDistribution(i), p)
     }

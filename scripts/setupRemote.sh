@@ -16,6 +16,9 @@ case "$nickname" in
 "kube4")
   line=33
   ;;
+"kube5")
+  line=41
+  ;;
 *)
   echo "First argument must be kube1 or kube2"
   exit
@@ -37,4 +40,4 @@ ssh datadell "scp ~/.ssh/id* $nickname:/root/.ssh"
 
 ssh $nickname 'chmod +x ./init.sh && ./init.sh'
 scripts/sync.sh $nickname
-ssh $nickname 'PATH=/opt/sbt/bin:$PATH;JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 bash -c "cd /var/data/sudokube/sudokube &&  make "'
+ssh $nickname 'PATH=/opt/sbt/bin:$PATH;JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 bash -c "cd /var/data/sudokube/sudokube &&  sbt nativeCompile "'

@@ -53,7 +53,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val n_bits = 200
 
     val R = (1 to N).map { i => BigBinary(i) -> i.toLong }
-    val be: Backend[Payload] = CBackend.b
+    implicit val be: Backend[Payload] = CBackend.default
     val full_cube = be.mkAll(n_bits, R)
     val m = MaterializationStrategy.only_base_cuboid(n_bits)
     val dc1 = new DataCube(name)
@@ -79,7 +79,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     val R = (0 to 15).map(i => BigBinary(i) -> i.toLong)
-    val be: Backend[Payload] = CBackend.b
+    implicit val be: Backend[Payload] = CBackend.default
     val full_cube = be.mkAll(n_bits, R)
     val m = OldRandomizedMaterializationStrategy(schema.n_bits, 1, 1)
 
@@ -119,7 +119,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     val R = TupleGenerator(schema, n_rows, Sampling.f1)
-    val be: Backend[Payload] = CBackend.b
+    implicit val be: Backend[Payload] = CBackend.default
     val full_cube = be.mk(n_bits, R)
     val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
     val dc1 = new DataCube(name)
@@ -156,7 +156,7 @@ class MultiCuboidSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     val R = TupleGenerator(schema, n_rows, Sampling.f1)
-    val be: Backend[Payload] = CBackend.b
+    implicit val be: Backend[Payload] = CBackend.default
     val full_cube = be.mk(n_bits, R)
     val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
 

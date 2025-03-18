@@ -20,14 +20,15 @@ class StaticMemCol[T](val n_bits : Int, vals: Seq[T]) extends StaticColEncoder[T
   def encode_locally(key: T) : Int = encode_map(key)
   def decode_locally(i: Int) : T   = decode_map(i)
 
-  def maxIdx = (1 << bits.length) - 1
+  val maxIdx = vals.length - 1
 }
 
+//WARNING: map_f must be thread_safe
 class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf[String]) extends StaticColEncoder[String] {
   type T = String
   var encode_map: Map[T, Int] = null
   var decode_map: Vector[T] = null
-  val maxIdx =  Source.fromFile(filename).getLines().size
+  val maxIdx =  Source.fromFile(filename).getLines().size-1
 
   override def initializeBeforeEncoding(implicit ec: ExecutionContext) = {
       Future {
@@ -46,7 +47,7 @@ class LazyMemCol(val filename: String, val map_f: Any => String = _.asInstanceOf
   }
 
   override def encode_locally(v: T): Int = encode_map(v)
-  override def decode_locally(i: Int): T = decode_map(i)
+  override def decode_locally(i: Int): T = if(i <= maxIdx) decode_map(i) else null.asInstanceOf[T]
   override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
 
   override def prefixUpto(size: Int): Set[IndexedSeq[Int]] = {
@@ -63,12 +64,12 @@ class MemCol[T](init_size: Int = 8
                ) (implicit bitPosRegistry: BitPosRegistry)  extends DynamicColEncoder[T] {
 
 
-  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), bits)
+  override def queries(): Set[IndexedSeq[Int]] = Set(Vector(), Vector(isNotNullBit), bits:+ isNotNullBit)
 
   /* protected */
   var encode_map = new mutable.HashMap[T, Int]
   var decode_map = new collection.mutable.ArrayBuffer[T](init_size)
-  register.registerIdx(init_size)
+  register.registerIdx(init_size - 1)
 
   def this(init_values: Seq[T])(implicit bitPosRegistry: BitPosRegistry) = {
     this(init_values.size)

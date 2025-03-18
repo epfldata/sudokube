@@ -20,8 +20,9 @@ object BitUtils {
     result
   }
 
+  def bitToBytes(n_bits: Int) = (n_bits + 8) >> 3 //TODO: Change to +7
 
-  /**  Returns a function for projecting a BigBinary b using a sequence of bit positions we keep (and dropping others)
+  /** Returns a function for projecting a BigBinary b using a sequence of bit positions we keep (and dropping others)
    * @param bitpos indicates positions of bits that are to be kept
    * @example {{{
     scala> def f = mk_project_bitpos_f(Vector(0, 2))
@@ -87,7 +88,7 @@ object BitUtils {
 
   /**
    *  Special case of group values where universe is 0 until universeLength and bits is encoded using Int
-   *  */
+   * */
   def group_values_Int(bits: Int, universeLength: Int): Seq[Seq[BigBinary]] = {
     assert(universeLength < 31)
     val universeInt = (1 << universeLength) - 1
@@ -98,7 +99,7 @@ object BitUtils {
     val n_vals2 = 1 << (universeLength - bitsLength)
 
     for (i <- 0 to n_vals1 - 1) yield {
-      val ii =  unprojectIntWithInt(i, bits)
+      val ii = unprojectIntWithInt(i, bits)
       for (j <- 0 to n_vals2 - 1) yield BigBinary(ii + unprojectIntWithInt(j, bits2))
     }
   }
@@ -196,7 +197,7 @@ object BitUtils {
   def sizeOfSet(i: Int) = {
     var hw = 0
     var i2 = i
-    while(i2 > 0) {
+    while (i2 > 0) {
       if ((i2 & 1) != 0)
         hw += 1
       i2 >>= 1
@@ -231,7 +232,7 @@ object BitUtils {
     var pos = 0
     while (i2 > 0 && idx2 > 0) {
 
-      if ((idx2 & 0x1 ) == 1) {
+      if ((idx2 & 0x1) == 1) {
         result += (i2 & 0x1) << pos
         pos += 1
       }
@@ -258,5 +259,49 @@ object BitUtils {
     result
   }
 }
+class PupIterator(twoPowerZeroPos: IndexedSeq[Int], universeLength: Int) extends Iterator[Int] {
+  assert(universeLength < 31)
+  val N = 1 << universeLength
+  val K = twoPowerZeroPos.length
+  assert(K == 0 || twoPowerZeroPos.max < N)
+  assert(K <= 1 || twoPowerZeroPos(0) > twoPowerZeroPos(K - 1)) //sorted in decreasing order
+  val is = Array.fill(K + 1)(0)
+  def reset(): Unit = {
+    is.indices.foreach { i => is(i) = 0 }
+  }
+  override def hasNext: Boolean = is(0) < N
+  override def next(): Int = {
+    val ret = is(K)
+    is(K) += 1
+    var k = K
+    var continue = true
+    while (k > 0 && continue) {
+      if (is(k) >= is(k - 1) + twoPowerZeroPos(k - 1)) {
+        is(k - 1) += (twoPowerZeroPos(k - 1) << 1)
+        k -= 1
+      } else {
+        continue = false
+      }
+    }
+    while (k < K) {
+      is(k + 1) = is(k)
+      k += 1
+    }
+    ret
+  }
+}
 
+class SubsetIterator(bits: IndexedSeq[Int], universeLength: Int) extends PupIterator((0 until universeLength).diff(bits).reverse.map(i => 1 << i), universeLength)
+
+class GroupedValuesIterator(bits: IndexedSeq[Int], universeLength: Int) extends Iterator[IndexedSeq[Int]] {
+  val (zps1, zps2) = (0 until universeLength).reverse.partition(bits.contains(_))
+  val pupIterator1 = new PupIterator(zps1.map(1 << _), universeLength) //iterator of values with bits in `bits` set to zero, i.e offset within a group
+  val pupIterator2 = new PupIterator(zps2.map(1 << _), universeLength) //iterator of values with bits not in `bits` set to zero, i.e. first element of each group
+  override def hasNext: Boolean = pupIterator2.hasNext
+  override def next(): IndexedSeq[Int] = {
+    val s = pupIterator2.next()
+    pupIterator1.reset()
+    pupIterator1.toVector.map(i => i + s)
+  }
+}
 

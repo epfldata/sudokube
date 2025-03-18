@@ -9,15 +9,16 @@ Technical details can be found in our VLDB'22 paper, [High-dimensional Data Cube
 ## Requirements
 This project has the following dependencies:
 - sbt
-- JDK Version 8
+- JDK (version 8)
 - gcc
-- make
+- cmake
 
 ## Instructions to build the shared library libCBackend
 - Set the environment variable `JAVA_HOME` to the home directory of the JDK installation. The folder `${JAVA_HOME}/include` must contain the header file `jni.h`
-- Run `make` from the root directory of the project
+- Run `sbt nativeCompile` from the root directory of the project
 
 ## Instructions to run
+- Edit the file `.jvmopts` in the root directory of the project to set the maximum Java heap size to the desirable amount.
 - Run `sbt test` from the root directory of the project to run all the tests
 - Run `sbt "runMain <classname>"` to run some class containing the main method, for example, `example.Demotxt`
 
@@ -33,16 +34,13 @@ that is used in deciding what cuboids are materialized to zero. This can be disa
 	+ Run `sbt "runMain frontend.generators.Warmup"`
 
 
-## Run Experiments from our paper
+## Run Experiments from our VLDB 2022 paper
 The complete reproducibility package can be found under [experiments/vldb2022_sudokube_reproducibility.zip.](experiments/vldb2022_sudokube_reproducibility.zip)
-- sbt --error 'runMain experiments.Experimenter Fig7'
-- sbt --error 'runMain experiments.Experimenter Tab1'
-- sbt --error 'runMain experiments.Experimenter Fig8-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig8-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig9-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig9-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig10-RMS'
-- sbt --error 'runMain experiments.Experimenter Fig10-SMS'
-- sbt --error 'runMain experiments.Experimenter Fig11'
-- sbt --error 'runMain experiments.Experimenter Fig12-NYC'
-- sbt --error 'runMain experiments.Experimenter Fig12-SSB'
+
+
+## Run Experiments comparing Graphical Model Solvers and Moment Solvers
+- See file [IPF Experimenter](src/main/scala/experiments/IPFExperimenter.scala)
+
+## Run Experiments from our TODS 2025 paper
+The complete reproducibility package can be found under [experiments/tods2025_sudokube_reproducibility.zip.](experiments/tods2025_sudokube_reproducibility.zip)
+

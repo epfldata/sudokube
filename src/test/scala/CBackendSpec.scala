@@ -17,9 +17,9 @@ class CBackendSpec extends FlatSpec with Matchers {
   import util._
   import BitUtils._
 
-  "CBackend simple absolute test" should "work" in {
+  "CBackend simple absolute test1" should "work" in {
     def my_mk(d: Int, l: List[(Int, Int)]) =
-      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
+      CBackend.default.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
     val c = my_mk(2, List((2,1), (0,3), (3,7)))
     val d = c.rehash_to_sparse(Array(0, 1)) // keep both dimensions
@@ -30,50 +30,52 @@ class CBackendSpec extends FlatSpec with Matchers {
   "CBackend simple absolute test2" should "work" in {
 
     def my_mk(d: Int, l: Seq[(Int, Int)]) =
-      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
+      CBackend.default.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
 
     val c = my_mk(100, (1 to 20).map(i => (i, i)))
 
     assert(c.size == 20)
-    assert(c.numBytes == 420)
+    val baseBytes = if(CBackend.default == CBackend.colstore) 164 * 8 else 420
+    assert(c.numBytes == baseBytes)
     def toMask(d : Int, pos: Set[Int]) = (0 until d).filter { i => pos.contains(i)}
 
     val m0 = Set(0, 1, 2, 3, 4)
     val m1 = m0 ++ Set(20, 21, 22, 23, 24)
     val cs1 = c.rehash(toMask(100, m1))
-    assert(cs1.isInstanceOf[CBackend.b.SparseCuboid])
+    assert(cs1.isInstanceOf[CBackend.default.SparseCuboid])
 
     val cs2 = c.rehash_to_sparse(toMask(100, m1))
-    assert(cs2.isInstanceOf[CBackend.b.SparseCuboid])
+    assert(cs2.isInstanceOf[CBackend.default.SparseCuboid])
 
 
     assert(cs1.size == 20)
     assert(cs1.size == cs2.size)
-    assert(cs1.numBytes == 200)
+    val cs1bytes = if(CBackend.default == CBackend.colstore) 74 * 8 else 200
+    assert(cs1.numBytes == cs1bytes)
     assert(cs1.numBytes == cs2.numBytes)
 
 
     val cd1 = c.rehash(toMask(100, m0))
-    assert(cd1.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cd1.isInstanceOf[CBackend.default.DenseCuboid])
     assert(cd1.size == 32)
     assert(cd1.numBytes == 256)
 
 
     val cd2 = c.rehash_to_dense(toMask(100, m0))
-    assert(cd2.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cd2.isInstanceOf[CBackend.default.DenseCuboid])
     assert(cd2.size == 32)
     assert(cd2.numBytes == 256)
 
 
     val cs1d1 = cs1.rehash(toMask(10, m0))
-    assert(cs1d1.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cs1d1.isInstanceOf[CBackend.default.DenseCuboid])
     assert(cs1d1.size == 32)
     assert(cs1d1.numBytes == 256)
 
 
     val cs1d2 = cs1.rehash_to_dense(toMask(10, m0))
-    assert(cs1d2.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(cs1d2.isInstanceOf[CBackend.default.DenseCuboid])
     assert(cs1d2.size == 32)
     assert(cs1d2.numBytes == 256)
 
@@ -81,29 +83,29 @@ class CBackendSpec extends FlatSpec with Matchers {
     val res = Array.fill(32)(0.0)
     (1 to 20).foreach{ i => res(i) = i.toDouble}
 
-    val results = List(cd1, cd2, cs1d1, cs1d2).map{dcub => dcub.asInstanceOf[CBackend.b.DenseCuboid].fetch.map(_.sm)}
+    val results = List(cd1, cd2, cs1d1, cs1d2).map{dcub => dcub.asInstanceOf[CBackend.default.DenseCuboid].fetch.map(_.sm)}
     assert(results.map(_.sameElements(res)).reduce(_ && _))
   }
 
   "CBackend simple absolute test3" should "work" in {
 
     def my_mk(d: Int, l: Seq[(Int, Int)]) =
-      CBackend.b.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
+      CBackend.default.mkAll(d, l.map(x => (BigBinary(x._1), x._2.toLong)))
 
 
     val c = my_mk(100, (1 to 20).map(i => (i, i)))
 
     def toMask(d : Int, pos: Set[Int]) = (0 until d).filter(i => pos.contains(i))
     val c1 = c.rehash(toMask(100, Set(0,2,3)))
-    assert(c1.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(c1.isInstanceOf[CBackend.default.DenseCuboid])
     val c2_ = c.rehash(toMask(100, Set(0, 2, 3, 20, 30)))
     val c2 = c2_.rehash(toMask(5, Set(0,1,2)))
-    assert(c2.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(c2.isInstanceOf[CBackend.default.DenseCuboid])
 
     val c3__ = c.rehash(toMask(100, Set(0,1,2,3,7,10,90)))
     val c3_ = c3__.rehash(toMask(7, Set(0,1,2,3,5)))
     val c3  = c3_.rehash(toMask(5, Set(0, 2, 3)))
-    assert(c3.isInstanceOf[CBackend.b.DenseCuboid])
+    assert(c3.isInstanceOf[CBackend.default.DenseCuboid])
     val res = List(
     0+2+16+18,
     1+3+17+19,
@@ -113,7 +115,7 @@ class CBackendSpec extends FlatSpec with Matchers {
     9+11,
     12+14,
     13+15).map(_.toDouble).toArray
-    val results = List(c1, c2, c3).map{dcub => dcub.asInstanceOf[CBackend.b.DenseCuboid].fetch.map(_.sm)}
+    val results = List(c1, c2, c3).map{dcub => dcub.asInstanceOf[CBackend.default.DenseCuboid].fetch.map(_.sm)}
     assert(results.map(_.sameElements(res)).reduce(_ && _))
   }
 
@@ -134,9 +136,9 @@ class CBackendSpec extends FlatSpec with Matchers {
     val n_bits = 70
     val schema = StaticSchema.mk(n_bits)
 
-    for(it <- 1 to 50) {
-      val R   = TupleGenerator(schema, 100, Sampling.f1).toList
-      val c   = CBackend.b.mkAll(n_bits, R)
+    for(it <- 1 to 500) {
+      val R   = TupleGenerator(schema, 1000, Sampling.f1).toList
+      val c   = CBackend.default.mkAll(n_bits, R)
       val q1  = Util.rnd_choose(n_bits,    6).toIndexedSeq
       val q2  = Util.rnd_choose(q1.length, 3).toIndexedSeq
       val qmask = mk_mask(n_bits, q2.map(q1(_)))
@@ -159,7 +161,7 @@ class CBackendSpec extends FlatSpec with Matchers {
       val m = OldRandomizedMaterializationStrategy(n_bits, 1, 1.05)
       val dc = new JailBrokenDataCube(m, c)
       val r5 = dc.getCuboids.last.rehash_to_dense(qmask)
-                 .asInstanceOf[CBackend.b.DenseCuboid].fetch.toList
+                 .asInstanceOf[CBackend.default.DenseCuboid].fetch.toList
 
       assert(r1 == r5, "FAILURE C != DataCube.to_dense")
 
@@ -172,11 +174,11 @@ class CBackendSpec extends FlatSpec with Matchers {
     val schema = StaticSchema.mk(n_bits)
 
     val R = TupleGenerator(schema, n_rows, Sampling.f1).toList
-    val be = Vector(CBackend.b, ScalaBackend)
-    val full_cube = be.map(_.mkAll(n_bits, R))
+    val bes = Vector(CBackend.default, ScalaBackend)
+    val full_cube = bes.map(be => be -> be.mkAll(n_bits, R))
     val m = OldRandomizedMaterializationStrategy(schema.n_bits, rf, base)
-    val dcs = full_cube.map { fc =>
-      val dc = new DataCube()
+    val dcs = full_cube.map { case(be, fc) =>
+      val dc = new DataCube()(be)
       dc.build(fc, m)
       dc
     }
@@ -204,7 +206,9 @@ class CBackendSpec extends FlatSpec with Matchers {
     randomTest(15, 100000, 1, 100, 14)
   }
 */
+
   "CBackend Trie results" should "be correct " in {
+    val be = CBackend.original
     val cubename = "CBackendTrieTest"
     val filename = "cubedata/" + cubename + "/" + cubename + ".ctrie"
     val file = new File(filename)
@@ -225,7 +229,7 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     data.foreach{case (BigBinary(k), v) => dataArray(k.toInt) += v }
 
-    val base = CBackend.b.mk(nbits, data.toIterator)
+    val base = be.mk(nbits, data.toIterator)
     val all = 0 until nbits
     val densecub = base.rehash_to_dense(all)
     val densearray = densecub.fetch.map(_.sm )
@@ -233,14 +237,13 @@ class CBackendSpec extends FlatSpec with Matchers {
 
     val denseMoments = Moment1Transformer[Double]().getMoments(densearray)
 
-    CBackend.b.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
-    val trieResult  = CBackend.b.prepareFromTrie((0 until nbits))
+    be.saveAsTrie(Array((0 until nbits).toArray -> base.data), filename, N * 2)
+    val trieResult  = be.prepareFromTrie((0 until nbits))
     val trieMomentArray = Array.fill(N)(0.0)
     trieResult.foreach{case (k, v) => trieMomentArray(k) += v.toDouble }
     val total = dataArray.sum
     trieMomentArray.zip(denseMoments).zipWithIndex.foreach{case ((t,d), i) => if(t.toLong != d.toLong) println(s"$i :: trie ${t.toLong}  actual ${d.toLong}")}
     assert(trieMomentArray.sameElements(denseMoments))
-
   }
 }
 

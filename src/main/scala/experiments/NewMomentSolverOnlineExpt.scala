@@ -20,7 +20,7 @@ class NewMomentSolverOnlineExpt(strategy: Strategy, ename2: String = "", contain
 
   var queryCounter = 0
 
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
     Profiler.resetAll()
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)

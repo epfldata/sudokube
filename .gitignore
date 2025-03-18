@@ -1,9 +1,10 @@
 target
 .idea
+.bsp
 *.csuk
 *.dc
-*.txt
-libCBackend.*
+*.dylib
+*.so
 expdata/*
 cubedata/*
 tabledata/**/*.tbl
@@ -11,3 +12,5 @@ tabledata/**/*.uniq
 tabledata/**/*.tsv
 data/*
 figs/*
+plot-scripts/*
+**/cmake-build-debug/**

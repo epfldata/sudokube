@@ -1,3 +1,2 @@
 -Xmx8g
--Djava.library.path=.
--XX:+UseConcMarkSweepGC
+-Djava.library.path=.:src/native/TrieStore/target/bin:src/native/Original/target/bin:src/native/ColumnStore/target/bin:src/native/RowStore/target/bin

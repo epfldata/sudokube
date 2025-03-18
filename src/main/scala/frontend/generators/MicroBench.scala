@@ -1,18 +1,18 @@
 package frontend.generators
 
+import backend.CBackend
 import core.DataCube
-import frontend.schema.encoders.StaticNatCol
-import frontend.schema.encoders.StaticNatCol.defaultToInt
-import frontend.schema.{LD2, Schema2, StaticSchema2, StructuredDynamicSchema}
+import frontend.schema.encoders.BinaryCol
+import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
 
 import scala.util.Random
 
-case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double) extends CubeGenerator(s"microbench_${n_bits}_${total}_${stddev}_${prob}") {
+case class MicroBench(n_bits: Int, total: Long, stddev: Double, prob: Double)(implicit backend: CBackend) extends CubeGenerator(s"microbench_${n_bits}_${total}_${stddev}_${prob}") {
 
   //println("\n\n----------------------\n" + inputname)
   override def schema(): Schema2 = {
-    val enc = (0 until n_bits).map { i => new LD2(s"D$i", new StaticNatCol(0, 1, defaultToInt)) }.toVector
+    val enc = (0 until n_bits).map { i => new LD2(s"D$i", new BinaryCol) }.toVector
     val sch = new StaticSchema2(enc)
     assert(sch.n_bits == n_bits)
     sch

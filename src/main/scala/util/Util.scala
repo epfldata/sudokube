@@ -1,12 +1,15 @@
 //package ch.epfl.data.sudokube
 package util
 
+import backend.CBackend
 import core.PartialDataCube
+
+import scala.reflect.ClassTag
 
 
 class ProgressIndicator(num_steps: Int, name: String = "", showProgress: Boolean = true) {
   private val one_percent = num_steps.toDouble / 100
-  private var done = 0
+  var done = 0
   private val startTime = System.nanoTime()
   if (showProgress) {
     print(name + "  ")
@@ -56,10 +59,57 @@ object SloppyFractionalInt {
 
 
 object Util {
-  def slice[T](a: Array[T], sliceValues: IndexedSeq[Int]) = {
-    val start = BitUtils.maskToInt(sliceValues)
-    val aggN = a.length >> sliceValues.length
-    a.slice(aggN * start, aggN * (start + 1))
+  //slice position relative to query
+  def slice[T: ClassTag](a: Array[T], slice: Seq[(Int, Int)]) = {
+    val allCols = a.length - 1
+    val sliceCols = slice.map(x => 1 << x._1).sum
+    val sliceInt = slice.map(x => x._2 << x._1).sum
+    val aggCols = allCols - sliceCols
+    val aggN = a.length >> slice.length
+    val result = new Array[T](aggN)
+    (0 until aggN).map { i0 =>
+      val i = BitUtils.unprojectIntWithInt(i0, aggCols)
+      result(i0) = a(i + sliceInt)
+    }
+    result
+  }
+
+  /**
+   *  Aggregation of multiple slices. SLOW!!
+   *  One entry per value in diceValues
+   *  Each entry in diceValues must have same size as diceCols and contains mapping (0/1) for each col
+   */
+
+  def dice[T: ClassTag : Fractional](a: Array[T], diceCols: Seq[Int], diceValues: Seq[Seq[Int]]) = {
+    val allColsInt = a.length - 1
+    val diceColsInt = diceCols.map(1 << _).sum
+    val diceInts = diceValues.map{ dv => dv.zip(diceCols).map{case (v, c) => v << c}.sum}
+    val aggColsInt = allColsInt - diceColsInt
+    val aggN = a.length >> diceCols.length
+    val result = new Array[T](aggN)
+    (0 until aggN).map { i0 =>
+      val i = BitUtils.unprojectIntWithInt(i0, aggColsInt)
+      result(i0) = diceInts.map{di => a(i + di)}.sum
+    }
+    result
+  }
+  /** returns a function that takes as input key in source(sorted result)
+   * and outputs key in destination(original order)
+   *  dst(f(i)) <- src(i)
+   * */
+  def permute_sortedIdx_to_unsortedIdx(q_unsorted: IndexedSeq[Int]) = {
+    val q_sorted = q_unsorted.sorted
+    val perm = q_sorted.map(b => q_unsorted.indexOf(b)).toArray
+    (i: Int) => BitUtils.permute_bits(q_sorted.size, perm)(i)
+  }
+
+  /** returns a function that takes as input key in dest and outputs key in src
+   *  dst(i) <- src(f(i))
+   * */
+  def permute_unsortedIdx_to_sortedIdx(q_unsorted: IndexedSeq[Int]) = {
+    val q_sorted = q_unsorted.sorted
+    val perm = q_unsorted.map(b => q_sorted.indexOf(b)).toArray
+    (i: Int) => BitUtils.permute_bits(q_sorted.size, perm)(i)
   }
 
   //converts long to type T
@@ -70,7 +120,7 @@ object Util {
   }
 
   //Displays storage statistics per cuboid size
-  def stats(dcname: String, basename: String) = {
+  def stats(dcname: String, basename: String)(implicit backend: CBackend) = {
     val dc = PartialDataCube.load(dcname, basename)
     dc.cuboids.map { c => (c.n_bits, c.numBytes) }.groupBy(_._1).mapValues { cs =>
       val count = cs.length
@@ -121,8 +171,8 @@ object Util {
     var inter_int = 0
     var index = 1
     var result = List[Int]()
-    while(x != Nil && y != Nil) {
-      if(x.head > y.head)
+    while (x != Nil && y != Nil) {
+      if (x.head > y.head)
         y = y.tail
       else if (x.head < y.head) {
         index = index << 1
@@ -159,6 +209,18 @@ object Util {
   def collect_n[T](n: Int, sample: () => T): List[T] = {
     val s = collection.mutable.Set[T]()
     while (s.size < n) s.add(sample())
+    s.toList
+  }
+
+  def collect_n_withAbort[T](n: Int, sample: () => T, factor: Double): List[T] = {
+    val s = collection.mutable.Set[T]()
+    var totalAttempts = 0
+    var successAttemps = 0
+    while (s.size < n && totalAttempts <= factor * n) {
+      if(s.add(sample()))
+        successAttemps += 1
+      totalAttempts += 1
+    }
     s.toList
   }
 

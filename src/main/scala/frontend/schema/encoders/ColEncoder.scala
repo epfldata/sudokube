@@ -14,31 +14,18 @@ import scala.concurrent.{ExecutionContext, Future}
 abstract class ColEncoder[T] extends Serializable {
   // abstract members
   def bits: IndexedSeq[Int] //FIXME: TODO: Ensure that bits are in increasing order for all encoders
-  def bitsMin : Int
-  def isRange: Boolean
-  def encode_locally(v: T) : Int
-  def decode_locally(i: Int): T
-  def maxIdx : Int
+  def bitsMin : Int  //equivalent to bits.min
+  def isRange: Boolean //equivalent to bits.isInstanceOf[Range]
+  def encode_locally(v: T) : Int // 0 ...maxIdx for valid values. NULL is encoded as 0
+  def decode_locally(i: Int): T //i must be between 0 and maxIdx
+  def maxIdx : Int  //maximum possible value returned by encode_locally. Count is given by maxIdx+1
   def queries(): Set[IndexedSeq[Int]]
   def initializeBeforeEncoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
   def initializeBeforeDecoding(implicit ec: ExecutionContext): Future[Unit] = Future.unit
   def queriesUpto(qsize: Int) : Set[IndexedSeq[Int]] = queries().filter(_.length <= qsize)
   def prefixUpto(size: Int) : Set[IndexedSeq[Int]] = queriesUpto(size) //override for non-prefix columns such as MemCol
   def samplePrefix(size: Int): IndexedSeq[Int] = bits.takeRight(size) //override for nested columns such as Date
-  def encode(v: T): BigBinary = { //overriden by nested encoders
-    val v0 = encode_locally(v)
-    if (isRange) {
-      val v1 = BigInt(v0)
-      val v2 = if (v1 > 0) {
-        v1 << bitsMin
-      } else BigInt(0)
-      BigBinary(v2)
-    }
-    else {
-      val v2 = BigBinary(v0).pup(bits)
-      v2
-    }
-  }
+  def encode(v: T): BigBinary
 
   def encode_any(v: Any) : BigBinary = {
     //encode(v.asInstanceOf[T])
@@ -128,12 +115,54 @@ abstract class StaticColEncoder[T] extends ColEncoder[T] {
     bits = (offset until offset + n_bits)
     offset + n_bits
   }
+
+  //encoding for static columns, no new value can be added
+  override def encode(v: T): BigBinary = {
+    if (bits.isEmpty) BigBinary(0)
+    else {
+      val v0 = encode_locally(v)
+      if (v0 > maxIdx) throw new RuntimeException(s"Local encoding $v0 of value $v exceeds expected maximum $maxIdx for encoder of type ${this.getClass.getCanonicalName} and bits ${bits}")
+      if (v0 < 0) throw new RuntimeException(s"Local encoding $v0 of value $v is negative for encoder of type ${this.getClass.getCanonicalName} and bits ${bits}")
+      if (isRange) {
+        val v1 = BigInt(v0)
+        val v2 = if (v1 > 0) {
+          v1 << bitsMin
+        } else BigInt(0)
+        BigBinary(v2)
+      }
+      else {
+        val v2 = BigBinary(v0).pup(bits)
+        v2
+      }
+    }
+  }
 }
 
 abstract class DynamicColEncoder[T](implicit bitPosRegistry: BitPosRegistry) extends ColEncoder[T] {
   val register = new RegisterIdx(bitPosRegistry)
+  val isNotNullBit = bitPosRegistry.increment(1)
+  val isNotNullBI = BigInt(1) << isNotNullBit
   override def bits: IndexedSeq[Int] = register.bits
   override def bitsMin: Int = register.bitsMin
   override def isRange: Boolean = register.isRange
   override def maxIdx: Int = register.maxIdx
+  override def samplePrefix(size: Int): IndexedSeq[Int] = bits.takeRight(size - 1) :+ isNotNullBit
+  override def encode(v: T): BigBinary = {
+    val data = {
+      val v1 = BigInt(encode_locally(v))
+      if (v1 > 0) {
+        if (isRange)
+          BigBinary(v1 << bitsMin)
+        else
+          BigBinary(v1).pup(bits)
+      } else BigBinary(0)
+    }
+    data + BigBinary(isNotNullBI)
+  }
+
+  def decode2(b: BigBinary): Option[T] = {
+    if ((b.toBigInt & isNotNullBI) equals isNotNullBI) {
+      Some(decode(b))
+    } else None
+  }
 }

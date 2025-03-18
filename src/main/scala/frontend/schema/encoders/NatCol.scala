@@ -1,5 +1,6 @@
 package frontend.schema.encoders
 
+import frontend.schema.encoders.StaticNatCol.{defaultToInt}
 import frontend.schema.{BitPosRegistry, RegisterIdx}
 import util.BigBinary
 
@@ -20,7 +21,7 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
     case s: String if Try(s.toInt).isSuccess => encode(s.toInt)
     case _ => BigBinary(0)
   }
-  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l)).toSet //bits are stored in highest to lowest order
+  override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.take(l):+ isNotNullBit).toSet //bits are stored in highest to lowest order
   def encode_locally(v: Int): Int = {
     assert(v >= 0)
     register.registerIdx(v); v
@@ -28,16 +29,21 @@ class NatCol(max_value: Int = 0)(implicit bitPosRegistry: BitPosRegistry)  exten
   def decode_locally(i: Int) = i
 }
 
-//Encodes difference from min_value-1. Error or empty values are encoded as 0
-class StaticNatCol(min_value: Int, max_value: Int, map_f : Any => Option[Int]) extends StaticColEncoder[Int] {
-  override def encode_locally(v: Int): Int = (v-min_value+1)
-  override def decode_locally(i: Int): Int = i + min_value - 1
+//Encodes difference from min_value or min_value-1 depending on whether it is nullable. Error or empty values are always encoded as 0
+class StaticNatCol(min_value: Int, max_value: Int, map_f: Any => Option[Int], nullable: Boolean = true) extends StaticColEncoder[Int] {
+  val nullOff = if(nullable) 1 else 0
+  override def encode_locally(v: Int): Int = (v - min_value + nullOff)
+  override def decode_locally(i: Int): Int = i + min_value - nullOff
   override def encode_any(v: Any): BigBinary = map_f(v).map(x => encode(x)).getOrElse(BigBinary(0))
-  override def maxIdx: Int = if(max_value >= min_value) max_value - min_value + 1 else 0
+  override def maxIdx: Int = if(max_value >= min_value) max_value - min_value + nullOff else 0
   override def queries(): Set[IndexedSeq[Int]] = (0 to bits.length).map(l => bits.takeRight(l)).toSet  //storing bits in lowest to highest order
-  override def n_bits: Int = if(max_value < min_value) 0 else math.ceil(math.log(max_value-min_value + 1)/math.log(2)).toInt
+  override def n_bits: Int = if (max_value < min_value) 0 else math.ceil(math.log(maxIdx + 1) / math.log(2)).toInt  // size = log(len); len = maxIdx + 1
 }
+
+class BinaryCol extends StaticNatCol(0, 1, defaultToInt, false)
+
 object StaticNatCol {
+
   def defaultToInt(v: Any) = v match {
     case i: Int => Some(i)
     case s: String => Try(s.toInt).toOption
@@ -48,13 +54,13 @@ object StaticNatCol {
       case s: String => Try{s.toDouble}.toOption
       case d: Double => Some(d)
     }
-    dval.map(d => math.round(d * mult))
+    dval.map(d => math.round(d * mult).toInt)
   }
-  def fromFile(filename: String, map_f: Any => Option[Int] = defaultToInt) = {
+  def fromFile(filename: String, map_f: Any => Option[Int] = defaultToInt, nullable: Boolean = true) = {
     val lines = Source.fromFile(filename).getLines().map(map_f).flatten.toSeq
     val min = lines.min
     val max = lines.max
-    new StaticNatCol(min, max, map_f)
+    new StaticNatCol(min, max, map_f, nullable)
   }
 }
 class FixedPointCol(decimal: Int = 2, max_val: Double = 0.0)(implicit bitPosRegistry: BitPosRegistry) extends DynamicColEncoder[Double] {

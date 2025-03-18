@@ -1,5 +1,6 @@
 package experiments
 
+import backend.{Backend, Payload}
 import core.DataCube
 import frontend.experiments.Tools
 
@@ -8,25 +9,17 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.util.Random
 
-abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRecord: Boolean) {
+abstract class Experiment(exptname: String, exptname2: String, dataSubfolder: String = ".")(implicit timestampedFolder: String = "latest") {
   val fileout = {
-    val isFinal = true
-    val (timestamp, folder) = {
-      if (isFinal) ("final", ".")
-      else if (shouldRecord) {
-        val datetime = LocalDateTime.now
-        (DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(datetime), DateTimeFormatter.ofPattern("yyyyMMdd").format(datetime))
-      } else ("dummy", "dummy")
-    }
-    val file = new File(s"expdata/$folder/${exptname2}_${exptname}_${timestamp}.csv")
+    val file = new File(s"expdata/$dataSubfolder/$timestampedFolder/${exptname2}_${exptname}.csv")
     if (!file.exists())
       file.getParentFile.mkdirs()
     new PrintStream(file)
   }
 
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: IndexedSeq[Int]): Unit
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit
 
-  def warmup(nw: Int = 10) = {
+  def warmup(nw: Int = 10)(implicit backend: Backend[Payload]) = {
     val name = "Warmup"
     val dcwarm = DataCube.load(name)
     dcwarm.loadPrimaryMoments(name)
@@ -37,5 +30,12 @@ abstract class Experiment(exptname: String, exptname2: String)(implicit shouldRe
 
     qs.foreach(q => run(dcwarm, name, q, null, false, sliceValues = Vector()))
     println("Warmup Complete")
+  }
+}
+
+object Experiment {
+  def now() = {
+    val formatter = DateTimeFormatter.ofPattern("yyyyMM/dd/HHmmss")
+    formatter.format(LocalDateTime.now())
   }
 }

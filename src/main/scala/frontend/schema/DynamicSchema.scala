@@ -1,9 +1,11 @@
 //package ch.epfl.data.sudokube
 package frontend.schema
-import frontend.schema.encoders.{ColEncoder, MemCol, NatCol}
+import frontend.schema.encoders.{ColEncoder, DynamicColEncoder, MemCol, NatCol}
+import util.BigBinaryTools._
 import util._
 
-import java.io.{File, FileOutputStream, ObjectOutputStream}
+import java.io._
+import scala.util.Random
 
 
 /** A schema that can grow dynamically.
@@ -94,12 +96,100 @@ class DynamicSchema extends Schema {
       c.encode_any(math.abs(vi)) + sgn_enc
     }
     else {
-      val c = columns.getOrElse(key, new MemCol[Option[String]]( List[Option[String]](None)))
+      val c = columns.getOrElse(key, new MemCol[String](2))
       columns(key) = c
-      c.encode_any(Some(v))
+      c.encode_any(v)
     }
+  def samplePrefix(total: Int) = {
+    import math._
+    val count = collection.mutable.HashMap[Int, Int]().withDefaultValue(0)
+    var remaining = total
+    val cols = columnList
+    while(remaining > 0) {
+      val prob = Random.nextDouble()
+      val factor = if(prob < 0.5)
+        1.0
+      else if(prob < 0.75)
+        0.75
+      else if(prob < 0.875)
+        0.5
+      else
+        0.25
 
+      val index  = Random.nextInt(cols.size)
+      val nbits = ceil(factor * remaining).toInt min (cols(index)._2.bits.size - count(index))
+      count(index) += nbits
+      remaining -= nbits
+    }
+    val bitsCollection = count.map { case (idx, nbits) =>
+      val col = cols(idx)._2.asInstanceOf[DynamicColEncoder[_]]
+      val bits = Util.collect_n(nbits-1, () => col.bits(Random.nextInt(col.bits.size))).toVector
+      //val bits =  col.bits.takeRight(nbits - 1)
+       bits:+ col.isNotNullBit
+    }
+    //println(bitsCollection)
+    bitsCollection.reduce(_ ++ _)
+  }
+  override def decode_dim(q_bits: IndexedSeq[Int]): Seq[Seq[String]] = super.decode_dim(q_bits)
 }
 
+class DynamicSchema2 extends Schema2() {
+  val root = DynBD2()
+  implicit val bitPosRegistry = new BitPosRegistry
+  def columnVector: Vector[LD2[_]] = root.children.values.toVector
+  override def n_bits: Int = bitPosRegistry.n_bits
+  def reset() = {
+    bitPosRegistry.reset()
+    root.reset()
+  }
+  def encode_tuple(t: Seq[(String, Any)]): BigBinary = {
+    val cols = Profiler("EncodeColumn") { (t.map { case (key, v) => encode_column(key, v) }) }
+    Profiler("ColumnSum") { cols.sum }
+  }
 
+  /** stores integers efficiently using NatCol and a sign bit;
+   *everything else is represented by MemCol[Option[String]].
+   */
+  protected def encode_column(key: String, v: Any) =
+
+    if (v.isInstanceOf[Int]) {
+      val vi: Int = v.asInstanceOf[Int]
+      // create a bit for the sign, where 0 is nonnegative
+      val sgn_enc = if (vi < 0) {
+        val sgn_key = "-" + key
+        val sgn_c = root.getOrAdd(sgn_key, new NatCol())
+        sgn_c.encode_any(1)
+      } else BigBinary(0)
+
+      val c = root.getOrAdd(key, new NatCol())
+      c.encode_any(math.abs(vi)) + sgn_enc
+    }
+    else {
+      val c = root.getOrAdd(key, new MemCol[String](2))
+      c.encode_any(v)
+    }
+  def save(filename: String): Unit = {
+    val file = new File("cubedata/" + filename + "/" + filename + ".sch")
+    if (!file.exists())
+      file.getParentFile.mkdirs()
+    val oos = new ObjectOutputStream(new FileOutputStream(file))
+    oos.writeObject(this)
+    oos.close()
+  }
+}
+
+object DynamicSchema2 {
+  def load(filename: String): DynamicSchema2 = {
+    val file = new File("cubedata/" + filename + "/" + filename + ".sch")
+    val ois = new ObjectInputStream(new FileInputStream(file)) {
+      override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+        try {Class.forName(desc.getName, false, getClass.getClassLoader) }
+        catch {case ex: ClassNotFoundException => super.resolveClass(desc)}
+      }
+    }
+    val sch = ois.readObject.asInstanceOf[DynamicSchema2]
+    ois.close()
+    sch
+  }
+}
 

@@ -9,6 +9,9 @@ class BitPosRegistry  extends  Serializable {
     bitpos += n
     bitposorig
   }
+  def reset(): Unit = {
+    bitpos = 0
+  }
 }
 
 /** manages an expanding collection of global bit indexes. */

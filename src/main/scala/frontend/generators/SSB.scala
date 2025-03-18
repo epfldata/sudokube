@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import breeze.io.CSVReader
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{BD2, LD2, Schema2, StaticSchema2}
@@ -9,10 +10,11 @@ import java.io.FileReader
 import java.util.Date
 import scala.concurrent.ExecutionContext
 
-case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
+case class SSB(sf: Int)(implicit backend: CBackend) extends CubeGenerator(s"SSB-sf$sf") {
   val folder = s"tabledata/SSB/sf${sf}"
 
-  override def schema(): Schema2 = {
+  override val measureName: String = "Amount"
+  override def schema(): StaticSchema2 = {
     def uniq(table: String)(i: Int) = s"$folder/uniq/$table.$i.uniq"
     import StaticDateCol._
     val louniqs = uniq("lineorder") _
@@ -21,7 +23,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     //3 -> custkey
     //4 -> partkey
     //5 -> suppkey
-    val orderDateCol = LD2[Date]("order_date", StaticDateCol.fromFile(louniqs(6),simpleDateFormat("yyyyMMdd"), true, true, true))
+    val orderDateCol = LD2[Date]("order_date", StaticDateCol.fromFile(louniqs(6), simpleDateFormat("yyyyMMdd"), true, true, true))
     val oprioCol = LD2[String]("ord_priority", new LazyMemCol(louniqs(7)))
     val shiprioCol = LD2[String]("ship_priority", new LazyMemCol(louniqs(8)))
     val qtyCol = LD2[Int]("quantity", StaticNatCol.fromFile(louniqs(9)))
@@ -58,7 +60,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val suppNationCol = LD2[String]("supp_nation", new LazyMemCol(suppuniqs(5)))
     val suppRegionCol = LD2[String]("supp_region", new LazyMemCol(suppuniqs(6)))
     //6 -> Phone
-    val suppDims= BD2("Supplier", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
+    val suppDims = BD2("Supplier", Vector(suppCityCol, suppNationCol, suppRegionCol), false)
     //val suppDims = BD2("Supplier", Vector(suppLocation), true)
 
 
@@ -82,12 +84,12 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
 
     val partuniqs = uniq("part") _
 
-     //val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
+    //val pidCol = LD2[String]("part_key", new LazyMemCol(partuniqs(1)))
     // 2 -> name
-     val mfgrCol = LD2[String]("mfgr", new LazyMemCol(partuniqs(3)))
-     val catCol = LD2[String]("category", new LazyMemCol(partuniqs(4)))
+    val mfgrCol = LD2[String]("mfgr", new LazyMemCol(partuniqs(3)))
+    val catCol = LD2[String]("category", new LazyMemCol(partuniqs(4)))
     val brandCol = LD2[String]("brand", new LazyMemCol(partuniqs(5)))
-     val colorCol = LD2[String]("color", new LazyMemCol(partuniqs(6)))
+    val colorCol = LD2[String]("color", new LazyMemCol(partuniqs(6)))
     val typeCol = LD2[String]("type", new LazyMemCol(partuniqs(7)))
     val sizeCol = LD2[Int]("size", StaticNatCol.fromFile(partuniqs(8)))
     val containerCol = LD2[String]("container", new LazyMemCol(partuniqs(9)))
@@ -128,7 +130,7 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
     val parts = readTbl("part", Vector(0, 2, 3, 4, 5, 6, 7, 8))._2.map(d => d.head -> d.tail).toMap
     val supps = readTbl("supplier", Vector(0, 3, 4, 5))._2.map(d => d.head -> d.tail).toMap
 
-    val sch = schemaInstance
+    val sch = schemaInstance.asInstanceOf[StaticSchema2]
 
     def joinFunc(r: IndexedSeq[String]) = {
       val oid = r(0)
@@ -173,31 +175,81 @@ case class SSB(sf: Int) extends CubeGenerator(s"SSB-sf$sf") {
   }
 }
 
+class SSBSample(d0: Int)(implicit backend: CBackend) extends SSB(1) {
+  override val inputname: String = "SSBSample_"+d0
+  val numlines = (1 << d0) / 10
+  assert(d0 >= 4 && d0 < 23)
+  override def readTbl(name: String, colIdx: Vector[Int]) = {
+    if (name.startsWith("lineorder")) {
+      Profiler.noprofile(s"readTbl$name") {
+        val size = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').take(numlines).size
+        val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').take(numlines)
+        size -> tbl.map { r => colIdx.map(i => r(i)) }
+      }
+    } else {
+      val size = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|').size
+      val tbl = CSVReader.iterator(new FileReader(s"$folder/${name}.tbl"), '|')
+      size -> tbl.map { r => colIdx.map(i => r(i)) }
+    }
+  }
+}
 object SSBGen {
   def main(args: Array[String])  {
-    val cg = SSB(100)
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
 
 
     val arg = args.lift(0).getOrElse("all")
-    val params = List((15, 14))
+
+    val params = List(
+      //(15, 18),
+      (15, 14),
+      (15, 10), (15, 6),
+      (12, 14), (9, 14)
+    )
     val maxD = 30 // >15+14, so never passes threshold
 
     if ((arg equals "base") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
+      implicit val backend = CBackend.default
+      val cg = SSB(100)
       if(resetSeed) scala.util.Random.setSeed(seedValue)
       params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
+    }
+
+    if ((arg equals "RMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = SSB(100)
+      //params.foreach { case (logN, minD) =>
+        val dc = cg.loadRMS(15, 14, maxD)
+        dc.loadPrimaryMoments(cg.baseName)
+        dc.saveAsTrie(20)
+        backend.reset
+      //}
+    }
+    if ((arg equals "SMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = SSB(100)
+      //params.foreach { case (logN, minD) =>
+        val dc = cg.loadSMS(15, 14, maxD)
+        dc.loadPrimaryMoments(cg.baseName)
+        dc.saveAsTrie(20)
+        backend.reset
+      //}
     }
   }
 }

@@ -10,6 +10,7 @@ import core.cube.ArrayCuboidIndexFactory
 import core.materialization.{MaterializationStrategy, MaterializationStrategyInfo, OldRandomizedMaterializationStrategy}
 import core.solver.{Rational, RationalTools, SolverTools}
 import core.solver.lpp.{Interval, SliceSparseSolver}
+import frontend.schema.Schema2
 import generators._
 
 import scala.util.Random
@@ -34,7 +35,11 @@ object Tools {
 
   def qq(qsize: Int) = (0 to qsize - 1)
   def rand_q(n: Int, qsize: Int) = Random.shuffle((0 until n).toVector).take(qsize).sorted
-
+  def generateQuery(isPrefix: Boolean, sch: Schema2, qsize: Int) = if(isPrefix) {
+    sch.root.samplePrefix(qsize).sorted
+  } else {
+    rand_q(sch.n_bits, qsize)
+  }
   def avg(n_it: Int, sample: () => Double) = {
     var a = 0.0
     for(i <- 1 to n_it) a += sample()
@@ -44,7 +49,7 @@ object Tools {
   class JailBrokenDataCube(
     m: MaterializationStrategy,
     fc: Cuboid
-  ) extends DataCube with Serializable {
+  ) extends DataCube()(CBackend.default) with Serializable {
     build(fc, m)
 
     /// here one can access the cuboids directly
@@ -56,7 +61,7 @@ object Tools {
            base: Double,
            n_rows: Long,
            sampling_f: Int => Int = Sampling.f1,
-           be: Backend[_] = CBackend.b,
+           be: Backend[Payload] = CBackend.default,
            vg: ValueGenerator = RandomValueGenerator(10)
           ) = {
     val sch = schema.StaticSchema.mk(n_bits)
@@ -65,7 +70,7 @@ object Tools {
     val fc = Profiler("Full Cube"){be.mk(n_bits, R)}
     println("...done")
     val m = OldRandomizedMaterializationStrategy(n_bits, rf, base)
-    val dc = new DataCube();
+    val dc = new DataCube()(be);
     Profiler("Projections"){dc.build(fc, m)}
     //    val dc = new JailBrokenDataCube(m, fc)
     //    assert(dc.getCuboids.last == fc)

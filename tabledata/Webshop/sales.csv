@@ -1,0 +1,175 @@
+RowId,year,quarter,month,week,day,id,name,category_label,product_label,continent_code,continent_name,country_code,country_name,quantity,price_total
+1,2014,2,7,27,13,1,Wayne Enterprises,Sports,Tent for extreme weather,europe,Europe,spain,Spain,3,190.05
+2,2015,2,5,20,24,2,Flowers By Irene,Sports,Snowboard table,europe,Europe,denmark,Denmark,1,261.9
+3,2015,4,12,50,18,3,Mammoth Pictures,Sports,Mountain Bike,south_america,South America,ecuador,Ecuador,1,257.75
+4,2015,1,2,6,14,4,Transworld Consortium,Sports,Mountain Bike,north_america,North America,united_states_of_america,United States of America,1,242.1
+5,2014,1,2,5,5,5,Demo Company,Sports,Snowboard table,south_america,South America,uruguay,Uruguay,2,241.5
+6,2014,1,3,11,23,6,Powell Motors,Sports,Mountain Bike,europe,Europe,spain,Spain,1,236.5
+7,2014,3,9,38,27,7,Industrial Automation,Sports,Mountain Bike,europe,Europe,spain,Spain,1,236.5
+8,2014,2,6,24,20,8,Wentworth Industries,Various,Various,europe,Europe,ireland,Ireland,1,242.5
+9,2015,1,1,2,15,9,"Acme, inc.",Sports,Mountain Bike,europe,Europe,spain,Spain,1,217.0
+10,2014,2,5,19,16,10,Ankh-Sto Associates,Sports,Mountain Bike,europe,Europe,spain,Spain,1,197.29
+11,2015,2,6,24,16,11,ABC Telecom,Sports,Snowboard boots,south_america,South America,guatemala,Guatemala,1,168.38
+12,2015,2,7,28,17,12,ZiffCorp,Sports,Snowboard boots,north_america,North America,united_states_of_america,United States of America,1,167.24
+13,2015,4,12,49,12,13,Omni Consimer Products,Sports,Mountain Bike,europe,Europe,germany,Germany,1,209.45
+14,2014,1,2,6,16,14,Keedsler Motors,Sports,Mountain Bike,europe,Europe,netherlands,Netherlands,1,209.45
+15,2015,3,9,36,8,15,Strickland Propane,Videos,Repair your own cross bike (2011),south_america,South America,brazil,Brazil,1,157.8
+16,2014,3,9,35,4,4,Transworld Consortium,Sports,Mountain Bike,north_america,North America,united_states_of_america,United States of America,1,162.71
+17,2014,4,12,52,30,9,"Acme, inc.",Sports,Snowboard boots,europe,Europe,spain,Spain,1,52.5
+18,2015,3,8,33,17,16,Incom Corporation,Sports,Snowboard table,europe,Europe,spain,Spain,1,105.75
+19,2014,2,4,15,16,17,Allied Biscuit,Books,Bicycle Wheel,north_america,North America,united_states_of_america,United States of America,1,50.5325
+20,2015,2,7,30,28,18,Corellian Engineering Corporation,Books,Build your own bicycle,europe,Europe,spain,Spain,1,50.2403
+21,2015,3,10,41,14,19,Leeding Engines Ltd.,Books,Build your own bicycle,europe,Europe,spain,Spain,1,50.2396
+22,2015,1,3,9,8,7,Industrial Automation,Sports,Climbing equipment,europe,Europe,spain,Spain,1,193.609
+23,2015,1,2,7,16,20,Gringotts,Sports,Climbing equipment,south_america,South America,ecuador,Ecuador,1,193.421
+24,2014,3,9,35,1,21,Smith and Co.,Books,Build your own bicycle,europe,Europe,spain,Spain,1,49.95
+25,2015,1,2,6,14,17,Allied Biscuit,Books,Bicycle Wheel,north_america,North America,united_states_of_america,United States of America,1,49.95
+26,2015,1,3,10,14,10,Ankh-Sto Associates,Books,Build your own bicycle,europe,Europe,spain,Spain,1,49.95
+27,2015,2,7,26,5,22,Mr. Sparkle,Books,Bicycle Wheel,europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,49.95
+28,2015,3,8,31,5,23,Globex Corporation,Books,Bicycle Wheel,europe,Europe,slovakia_slovak_republic,Slovakia (Slovak Republic),1,49.95
+29,2015,2,6,25,27,2,Flowers By Irene,Books,Bicycle Wheel,europe,Europe,denmark,Denmark,1,49.95
+30,2014,3,8,31,5,24,Osato Chemicals,Books,Bicycle Wheel,north_america,North America,united_states_of_america,United States of America,1,49.95
+31,2015,1,3,12,23,5,Demo Company,Books,Bicycle Wheel,south_america,South America,uruguay,Uruguay,1,49.95
+32,2014,1,2,5,8,10,Ankh-Sto Associates,Books,Build your own bicycle,europe,Europe,spain,Spain,1,49.95
+33,2014,2,4,15,15,25,Galaxy Corp,Books,Bicycle Wheel,africa,Africa,south_africa,South Africa,1,49.95
+34,2014,2,5,19,16,26,Globo-Chem,Books,Bicycle Wheel,north_america,North America,canada,Canada,1,49.95
+35,2015,1,3,11,20,20,Gringotts,Books,Build your own bicycle,south_america,South America,ecuador,Ecuador,1,49.95
+36,2015,2,4,13,5,27,United Fried Chicken,Books,Bicycle Wheel,south_america,South America,brazil,Brazil,1,49.95
+37,2015,1,1,0,4,14,Keedsler Motors,Books,Build your own bicycle,europe,Europe,netherlands,Netherlands,1,49.95
+38,2014,3,9,37,15,28,Sample Company,Books,Bicycle Wheel,europe,Europe,switzerland,Switzerland,1,49.95
+39,2014,2,6,23,11,23,Globex Corporation,Books,Bicycle Wheel,europe,Europe,slovakia_slovak_republic,Slovakia (Slovak Republic),1,49.95
+40,2015,2,5,18,5,12,ZiffCorp,Books,Bicycle Wheel,north_america,North America,united_states_of_america,United States of America,1,49.95
+41,2014,2,4,14,8,29,Kumatsu Motors,Books,Build your own bicycle,south_america,South America,brazil,Brazil,1,49.95
+42,2015,2,7,29,23,16,Incom Corporation,Books,Bicycle Wheel,europe,Europe,spain,Spain,1,49.95
+43,2015,3,8,33,18,30,General Products,Books,Bicycle Wheel,europe,Europe,spain,Spain,1,49.95
+44,2014,3,9,37,19,31,QWERTY Logistics,Sports,Trial Bike,europe,Europe,portugal,Portugal,1,49.5
+45,2014,3,11,47,27,32,Tessier-Ashpool,Sports,Trial Bike,europe,Europe,portugal,Portugal,1,49.5
+46,2015,2,7,28,16,33,Fake Brothers,Sports,Trial Bike,north_america,North America,united_states_of_america,United States of America,1,49.5
+47,2014,1,1,1,10,34,123 Warehousing,Sports,Trial Bike,north_america,North America,united_states_of_america,United States of America,1,49.5
+48,2015,2,6,22,5,26,Globo-Chem,Books,Bicycle Wheel,north_america,North America,canada,Canada,1,49.3507
+49,2014,2,4,13,1,5,Demo Company,Books,Build your own bicycle,south_america,South America,uruguay,Uruguay,1,47.9592
+50,2014,1,2,7,18,35,"Sample, inc",Sports,Snowboard table,europe,Europe,switzerland,Switzerland,1,155.4
+51,2015,4,12,50,14,36,Widget Corp,Sports,Trial Bike,europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,45.99
+52,2014,1,3,10,12,37,Extensive Enterprise,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,45.83
+53,2014,2,5,19,12,14,Keedsler Motors,Sports,Trial Bike,europe,Europe,netherlands,Netherlands,1,45.75
+54,2014,2,4,15,14,2,Flowers By Irene,Sports,Trial Bike,europe,Europe,denmark,Denmark,1,45.52
+55,2015,4,12,48,4,38,Sombra Corporation,Sports,Trial Bike,europe,Europe,france,France,1,45.37
+56,2015,2,5,20,18,39,Foo Bars,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,45.3
+57,2015,3,8,31,9,40,LuthorCorp,Sports,Trial Bike,europe,Europe,hungary,Hungary,1,45.27
+58,2015,2,7,27,9,41,LexCorp,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,45.2676
+59,2015,3,9,35,4,41,LexCorp,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,149.57
+60,2014,2,5,18,8,42,Sto Plains Holdings,Sports,Tent for extreme weather,europe,Europe,france,France,1,145.5
+61,2015,2,5,18,5,43,Virtucon,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,44.8709
+62,2015,4,12,48,5,29,Kumatsu Motors,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,44.87
+63,2014,4,12,51,26,33,Fake Brothers,Sports,Trial Bike,north_america,North America,united_states_of_america,United States of America,1,44.08
+64,2015,1,3,10,10,34,123 Warehousing,Sports,Trial Bike,north_america,North America,united_states_of_america,United States of America,1,44.03
+65,2015,1,2,6,10,36,Widget Corp,Sports,Trial Bike,europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,44.0279
+66,2014,3,11,46,20,44,U.S. Robotics and Mechanical Men,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,120.75
+67,2015,1,1,2,18,3,Mammoth Pictures,Sports,Snowboard table,south_america,South America,ecuador,Ecuador,1,120.75
+68,2015,2,5,19,12,45,Three Waters,Sports,Snowboard table,south_america,South America,ecuador,Ecuador,1,120.75
+69,2014,4,12,49,12,43,Virtucon,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,42.07
+70,2015,3,8,32,13,31,QWERTY Logistics,Sports,Tent for extreme weather,europe,Europe,portugal,Portugal,1,115.8
+71,2015,3,11,44,8,46,North Central Positronics,Various,Various,europe,Europe,spain,Spain,1,41.32
+72,2014,1,1,2,15,47,Praxis Corporation,Various,Various,europe,Europe,spain,Spain,1,41.32
+73,2014,4,12,51,27,1,Wayne Enterprises,Various,Various,europe,Europe,spain,Spain,1,41.32
+74,2015,3,9,38,25,12,ZiffCorp,Sports,Mountain Bike,north_america,North America,united_states_of_america,United States of America,1,171.25
+75,2014,1,3,9,5,21,Smith and Co.,Sports,Tent for extreme weather,europe,Europe,spain,Spain,1,171.25
+76,2015,2,5,18,10,25,Galaxy Corp,Sports,Snowboard table,africa,Africa,south_africa,South Africa,1,160.77
+77,2015,3,10,40,5,48,Thatherton Fuels,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+78,2015,4,12,48,6,49,Water and Power,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+79,2015,3,9,36,8,50,Western Gas & Electric,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+80,2015,3,10,41,12,3,Mammoth Pictures,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+81,2015,3,11,45,15,51,Mooby Corp,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+82,2015,4,12,50,16,20,Gringotts,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+83,2015,2,5,20,23,52,Thrift Bank,Sports,Rafting Boat,south_america,South America,ecuador,Ecuador,1,155.8
+84,2014,3,10,43,27,53,Sirius Cybernetics Corporation,Sports,Snowboard table,europe,Europe,spain,Spain,1,146.5
+85,2014,2,5,18,10,54,The Legitimate Businessmens Club,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,146.5
+86,2015,3,8,31,8,56,Bluth Company,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,94.52
+87,2015,1,1,4,27,36,Widget Corp,Sports,Snowboard table,europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,91.67
+88,2015,3,8,34,27,8,Wentworth Industries,Sports,Termic Jacket ,europe,Europe,ireland,Ireland,3,80.01
+89,2015,4,12,48,4,57,Acme Corp,Sports,Snowboard table,europe,Europe,netherlands,Netherlands,1,73.687
+90,2015,1,2,5,4,56,Bluth Company,Videos,Communicate your skills (2009),south_america,South America,brazil,Brazil,2,26.95
+91,2015,1,3,9,5,1,Wayne Enterprises,Sports,Snowboard table,europe,Europe,spain,Spain,1,152.45
+92,2014,1,3,11,18,57,Acme Corp,Videos,"Climb higher, faster, better (2010)",europe,Europe,netherlands,Netherlands,1,140.1
+93,2015,2,4,14,8,48,Thatherton Fuels,Videos,"Climb higher, faster, better (2010)",south_america,South America,ecuador,Ecuador,1,108.25
+94,2014,2,6,22,5,24,Osato Chemicals,Videos,"Climb higher, faster, better (2010)",north_america,North America,united_states_of_america,United States of America,1,108.25
+95,2015,2,6,23,14,54,The Legitimate Businessmens Club,Sports,Mountain Bike,south_america,South America,brazil,Brazil,1,155.3
+96,2015,1,1,1,6,17,Allied Biscuit,Videos,"Climb higher, faster, better (2010)",north_america,North America,united_states_of_america,United States of America,1,92.233
+97,2015,2,4,14,12,53,Sirius Cybernetics Corporation,Sports,Climbing boots,europe,Europe,spain,Spain,1,137.751
+98,2015,1,1,2,16,51,Mooby Corp,Sports,Climbing boots,south_america,South America,ecuador,Ecuador,1,137.699
+99,2015,2,6,25,28,58,Colonial Movers,Sports,Mountain Bike,europe,Europe,spain,Spain,1,155.51
+100,2015,3,11,45,14,9,"Acme, inc.",Sports,Snowboard boots,europe,Europe,spain,Spain,1,115.54
+101,2014,1,3,10,14,25,Galaxy Corp,Sports,Snowboard boots,africa,Africa,south_africa,South Africa,1,115.24
+102,2015,2,5,19,15,44,U.S. Robotics and Mechanical Men,Sports,Mountain Bike,south_america,South America,brazil,Brazil,1,144.1
+103,2015,2,4,15,18,21,Smith and Co.,Sports,Snowboard boots,europe,Europe,spain,Spain,1,114.18
+104,2014,3,11,46,19,11,ABC Telecom,Sports,Snowboard boots,south_america,South America,guatemala,Guatemala,1,110.37
+105,2014,3,10,41,19,59,"Demo, inc.",Sports,Snowboard boots,south_america,South America,brazil,Brazil,1,110.37
+106,2015,1,2,8,25,34,123 Warehousing,Sports,Mountain Bike,north_america,North America,united_states_of_america,United States of America,1,75.5
+107,2015,3,9,38,24,30,General Products,Sports,Mountain Bike,europe,Europe,spain,Spain,1,39.96
+108,2014,1,1,2,15,29,Kumatsu Motors,Sports,Snowboard boots,south_america,South America,brazil,Brazil,1,101.58
+109,2015,2,7,28,14,24,Osato Chemicals,Various,Various,north_america,North America,united_states_of_america,United States of America,1,50.0
+110,2015,3,11,44,7,47,Praxis Corporation,Various,Various,europe,Europe,spain,Spain,1,270.0
+111,2015,4,12,50,17,35,"Sample, inc",Sports,Mountain Bike,europe,Europe,switzerland,Switzerland,1,195.0
+112,2015,2,4,13,5,8,Wentworth Industries,Sports,Mountain Bike,europe,Europe,ireland,Ireland,1,195.0
+113,2014,2,5,17,4,11,ABC Telecom,Sports,Tent for extreme weather,south_america,South America,guatemala,Guatemala,2,90.0
+114,2015,3,11,46,17,28,Sample Company,Videos,Living on a windsurf table (2010),europe,Europe,switzerland,Switzerland,5,80.0
+115,2014,1,2,6,14,37,Extensive Enterprise,Sports,Mountain Bike,south_america,South America,brazil,Brazil,1,71.0
+116,2015,3,11,44,4,45,Three Waters,Sports,Mountain Bike,south_america,South America,ecuador,Ecuador,1,59.0
+117,2014,3,10,42,21,39,Foo Bars,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,49.0
+118,2015,1,1,3,24,57,Acme Corp,Sports,Snowboard table,europe,Europe,netherlands,Netherlands,1,49.0
+119,2015,3,10,41,13,28,Sample Company,Sports,Tent for extreme weather,europe,Europe,switzerland,Switzerland,1,49.0
+120,2015,3,11,46,20,15,Strickland Propane,Sports,Snowboard table,south_america,South America,brazil,Brazil,1,49.0
+121,2015,1,2,6,13,51,Mooby Corp,Sports,Snowboard table,south_america,South America,ecuador,Ecuador,1,49.0
+122,2015,1,2,5,6,6,Powell Motors,Sports,Tent for extreme weather,europe,Europe,spain,Spain,1,49.0
+123,2014,2,7,27,8,31,QWERTY Logistics,Sports,Tent for extreme weather,europe,Europe,portugal,Portugal,1,49.0
+124,2015,3,9,36,7,46,North Central Positronics,Sports,Tent for extreme weather,europe,Europe,spain,Spain,1,49.0
+125,2015,1,2,6,10,32,Tessier-Ashpool,Sports,Tent for extreme weather,europe,Europe,portugal,Portugal,1,49.0
+126,2015,3,10,41,15,49,Water and Power,Sports,Climbing equipment,south_america,South America,ecuador,Ecuador,1,49.0
+127,2014,1,2,5,4,27,United Fried Chicken,Sports,Tent for extreme weather,south_america,South America,brazil,Brazil,1,49.0
+128,2014,1,1,2,15,6,Powell Motors,Sports,Snowboard table,europe,Europe,spain,Spain,1,49.0
+129,2014,1,2,7,18,7,Industrial Automation,Sports,Mountain Bike,europe,Europe,spain,Spain,1,49.0
+130,2015,2,6,23,14,18,Corellian Engineering Corporation,Videos,Extreme mountain bike sessions (2012),europe,Europe,spain,Spain,5,49.0
+131,2014,2,4,15,14,26,Globo-Chem,Sports,Mountain Bike,north_america,North America,canada,Canada,1,47.0
+132,2014,2,5,19,14,22,Mr. Sparkle,Sports,Mountain Bike,europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,47.0
+133,2015,2,4,15,17,52,Thrift Bank,Sports,Paddle Tennis Set,south_america,South America,ecuador,Ecuador,3,36.0
+134,2014,2,6,22,6,33,Fake Brothers,Sports,Termic Jacket ,north_america,North America,united_states_of_america,United States of America,2,28.0
+135,2014,3,8,31,8,18,Corellian Engineering Corporation,Sports,Trial Bike,europe,Europe,spain,Spain,1,25.0
+136,2014,3,9,36,8,16,Incom Corporation,Sports,Trial Bike,europe,Europe,spain,Spain,1,25.0
+137,2015,1,3,9,6,15,Strickland Propane,Videos,Best windsurf Videos of the year (2013),south_america,South America,brazil,Brazil,11,22.0
+138,2015,3,9,36,13,59,"Demo, inc.",Sports,Termic Jacket ,south_america,South America,brazil,Brazil,1,14.0
+139,2015,3,11,44,5,35,"Sample, inc",Sports,Termic Jacket ,europe,Europe,switzerland,Switzerland,1,14.0
+140,2015,4,12,50,20,48,Thatherton Fuels,Sports,Termic Jacket ,south_america,South America,ecuador,Ecuador,1,14.0
+141,2014,2,4,13,5,39,Foo Bars,Sports,Termic Jacket ,south_america,South America,brazil,Brazil,1,14.0
+142,2014,3,8,32,12,59,"Demo, inc.",Sports,Termic Jacket ,south_america,South America,brazil,Brazil,1,14.0
+143,2015,3,10,40,7,13,Omni Consimer Products,Sports,Termic Jacket ,europe,Europe,germany,Germany,1,14.0
+144,2015,1,1,2,14,42,Sto Plains Holdings,Sports,Termic Jacket ,europe,Europe,france,France,1,14.0
+145,2015,3,11,46,18,50,Western Gas & Electric,Sports,Climbing boots,south_america,South America,ecuador,Ecuador,1,14.0
+146,2014,1,3,9,6,43,Virtucon,Sports,Termic Jacket ,south_america,South America,brazil,Brazil,1,14.0
+147,2015,1,3,11,18,53,Sirius Cybernetics Corporation,Sports,Mountain Bike,europe,Europe,spain,Spain,1,14.0
+148,2015,2,4,15,16,44,U.S. Robotics and Mechanical Men,Sports,Mountain Bike,south_america,South America,brazil,Brazil,1,14.0
+149,2015,2,5,19,16,58,Colonial Movers,Sports,Mountain Bike,europe,Europe,spain,Spain,1,14.0
+150,2014,2,6,22,8,32,Tessier-Ashpool,Sports,Termic Jacket ,europe,Europe,portugal,Portugal,1,126.0
+151,2014,4,12,50,17,58,Colonial Movers,Sports,Snowboard boots,europe,Europe,spain,Spain,1,70.0
+152,2014,3,10,43,30,30,General Products,Sports,Snowboard boots,europe,Europe,spain,Spain,1,70.0
+153,2015,3,10,40,6,40,LuthorCorp,Videos,Living on a windsurf table (2010),europe,Europe,hungary,Hungary,1,68.0
+154,2015,2,4,15,14,60,Chasers,Videos,Extreme mountain bike sessions (2012),south_america,South America,brazil,Brazil,7,60.0
+155,2015,2,7,30,27,61,Gizmonic Institute,Videos,Extreme mountain bike sessions (2012),south_america,South America,brazil,Brazil,7,60.0
+156,2014,3,11,47,30,62,Initrode,Sports,Snowboard boots,europe,Europe,spain,Spain,1,42.0
+157,2014,2,7,26,5,63,Taggart Transcontinental,Sports,Trial Bike,north_america,North America,united_states_of_america,United States of America,1,29.0
+158,2014,3,8,31,5,64,Atlantic Northern,Sports,Trial Bike,south_america,South America,brazil,Brazil,1,29.0
+159,2014,3,9,37,16,65,Niagular,Videos,Best windsurf Videos of the year (2013),europe,Europe,france,France,1,20.0
+160,2014,3,10,42,23,66,Plow King,Videos,Best windsurf Videos of the year (2013),europe,Europe,france,France,1,20.0
+161,2014,2,6,25,23,67,Big Kahuna Burger,Videos,Best windsurf Videos of the year (2013),europe,Europe,united_kingdom_of_great_britain_northern_ireland,United Kingdom of Great Britain & Northern Ireland,1,20.0
+162,2014,2,7,29,27,68,Big T Burgers and Fries,Videos,Best windsurf Videos of the year (2013),europe,Europe,slovakia_slovak_republic,Slovakia (Slovak Republic),1,20.0
+163,2014,3,8,34,27,69,Chez Quis,Videos,Best windsurf Videos of the year (2013),south_america,South America,brazil,Brazil,1,20.0
+164,2014,3,9,37,20,70,Chotchkies,Videos,Best windsurf Videos of the year (2013),europe,Europe,hungary,Hungary,1,20.0
+165,2014,3,10,41,17,71,The Frying Dutchman,Videos,Best windsurf Videos of the year (2013),europe,Europe,spain,Spain,1,20.0
+166,2014,3,11,44,8,72,Klimpys,Videos,Best windsurf Videos of the year (2013),south_america,South America,brazil,Brazil,1,20.0
+167,2014,1,2,5,8,73,The Krusty Krab,Videos,Best windsurf Videos of the year (2013),europe,Europe,hungary,Hungary,1,20.0
+168,2014,1,3,12,27,74,Monks Diner,Videos,Best windsurf Videos of the year (2013),europe,Europe,spain,Spain,1,20.0
+169,2014,2,4,16,27,75,Milliways,Videos,Best windsurf Videos of the year (2013),europe,Europe,germany,Germany,1,20.0
+170,2014,2,5,20,20,76,Minuteman Cafe,Videos,Best windsurf Videos of the year (2013),europe,Europe,spain,Spain,1,20.0
+171,2014,2,4,15,17,77,Taco Grande,Videos,Best windsurf Videos of the year (2013),europe,Europe,france,France,1,20.0
+172,2014,3,10,40,6,78,Tip Top Cafe,Sports,Snowboard boots,south_america,South America,brazil,Brazil,1,10.0
+173,2014,3,11,44,8,79,Moes Tavern,Sports,Snowboard boots,south_america,South America,brazil,Brazil,1,10.0
+174,2015,1,3,10,14,80,Central Perk,Sports,Snowboard boots,south_america,South America,ecuador,Ecuador,1,10.0

@@ -1,60 +1,28 @@
 package core.solver.iterativeProportionalFittingSolver
 
-import util.{BitUtils, Profiler}
+import util.Profiler
 
 /**
  * Effective iterative proportional fitting, based on junction tree (or clique tree).
- * TODO: Confirm about the uses of collection data structures (Set, Map, Seq)
  * @author Zhekai Jiang
  * @param querySize Total number of dimensions queried.
+ * @param solverName The name of the concrete method (e.g. "Effective IPF", "Entropy-Based Dropout Effective IPF"), "EffectiveIPF" by default,
+ *                   to be used in the messages to be printed to the console and as part of the names in the profiler.
  */
-class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver(querySize) {
+class EffectiveIPFSolver(override val querySize: Int, override val solverName: String = "Effective IPF") extends GraphicalIPFSolver(querySize, solverName) {
 
   /**
-   * Add a new known marginal distribution as a cluster.
-   * Create network graph for elimination (triangulation to generate clique tree).
-   * @param marginalVariables Sequence of marginal variables.
-   * @param marginalDistribution Marginal distribution as a one-dimensional array (values encoded as bits of 1 in index).
-   */
-  def add(marginalVariables: Seq[Int], marginalDistribution: Array[Double]): Unit = {
-    normalizationFactor = marginalDistribution.sum
-    val cluster = Cluster(BitUtils.SetToInt(marginalVariables), marginalDistribution.map(_ / normalizationFactor))
-    clusters = cluster :: clusters
-    graphicalModel.connectNodesCompletely(marginalVariables.map(graphicalModel.nodes(_)).toSet, cluster)
-  }
-
-  /**
-   * Solve for the total distribution
-   * TODO: confirm about convergence criteria (new idea – compare directly with previous distribution / compare to given marginal distributions?)
-   * @return totalDistribution as a one-dimensional array (values encoded as bits of 1 in index).
+   * Solve for the total distribution.
+   * @return Solution (un-normalized) as a one-dimensional array (values encoded as bits of 1 in index).
    */
   def solve(): Array[Double] = {
-    Profiler("Effective IPF Junction Tree Construction") {
+    Profiler(s"$solverName Graphical Model Construction") {
+      constructGraphicalModel()
+    }
+    Profiler(s"$solverName Junction Tree Construction") {
       constructJunctionTree()
     }
-
-    junctionGraph.printAllCliquesAndSeparators()
-
-    val totalNumUpdates = junctionGraph.cliques.foldLeft(0)((acc, clique) => acc + clique.N * clique.clusters.size)
-    println(s"\t\t\tEffective IPF number of updates per iteration (sum of |C|*2^|alpha| across all cliques): $totalNumUpdates")
-
-    var totalDelta: Double = 0
-    var numIterations: Int = 0
-    Profiler("Effective IPF Iterations") {
-      do {
-        numIterations += 1
-        println(s"\t\t\tEffective IPF Iteration $numIterations")
-        totalDelta = iterativeUpdate()
-      } while (totalDelta >= convergenceThreshold * totalNumUpdates)
-    }
-    println(s"\t\t\tEffective IPF number of iterations $numIterations")
-
-    Profiler("Effective IPF Solution Derivation") {
-      getTotalDistribution
-      getSolution
-    }
-
-    solution
+    solveWithJunctionGraph()
   }
 
   /**
@@ -68,5 +36,11 @@ class EffectiveIPFSolver(override val querySize: Int) extends GraphicalIPFSolver
     junctionGraph.deleteNonMaximalCliques()
     junctionGraph.connectAllCliquesCompletely()
     junctionGraph.constructMaximumSpanningTree()
+
+    if (oneDimMarginals != null) {
+      junctionGraph.fixOneDimensionalMarginals(oneDimMarginals)
+    }
+
+    //junctionGraph.printAllCliquesAndSeparators()
   }
 }

@@ -45,7 +45,7 @@ import util._
     (result, maxDimFetch)
   }
 
-  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: IndexedSeq[Int]): Unit = {
+  def run(dc: DataCube, dcname: String, qu: IndexedSeq[Int], trueResult: Array[Double], output: Boolean = true, qname: String = "", sliceValues: Seq[(Int, Int)]): Unit = {
     val q = qu.sorted
     //println(s"\nQuery size = ${q.size} \nQuery = " + qu)
     Profiler.resetAll()

@@ -1,0 +1,32 @@
+experiments.tods.DataCubeStatExperiment nyc-prefix
+experiments.tods.DataCubeStatExperiment nyc-random
+experiments.tods.DataCubeStatExperiment ssb-prefix
+experiments.tods.DataCubeStatExperiment ssb-random
+
+experiments.tods.CuboidDistribution ssb
+
+experiments.tods.NaiveSolverExperiment qsize-nyc-prefix
+experiments.tods.NaiveSolverExperiment qsize-nyc-random
+
+experiments.tods.FetchDistributionExperiment qsize-nyc-prefix
+experiments.tods.FetchDistributionExperiment qsize-nyc-random
+
+experiments.tods.AllSolverExperiment qsize-nyc-prefix
+experiments.tods.AllSolverExperiment qsize-nyc-random
+
+experiments.tods.AllSolverOnlineExperiment nyc-prefix
+experiments.tods.AllSolverOnlineExperiment nyc-random
+
+
+experiments.tods.AllSolverOnlineExperiment manual-nyc-prefix-queries
+experiments.tods.AllSolverOnlineExperiment manual-ssb-prefix-queries
+experiments.tods.AllSolverOnlineExperiment manual-nyc-prefix-solvers
+experiments.tods.AllSolverOnlineExperiment manual-ssb-prefix-solvers
+experiments.tods.AllSolverOnlineExperiment manual-nyc-prefix-matparams
+experiments.tods.AllSolverOnlineExperiment manual-ssb-prefix-matparams
+
+experiments.tods.IPFSolversBatchExperiment qsize-ssb-prefix
+experiments.tods.IPFSolversBatchExperiment qsize-ssb-random
+
+experiments.tods.AllSolverExperiment qsize-ssb-prefix
+experiments.tods.AllSolverExperiment qsize-ssb-random

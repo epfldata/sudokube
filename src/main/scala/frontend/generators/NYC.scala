@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import frontend.schema.encoders.{LazyMemCol, StaticDateCol, StaticNatCol}
 import frontend.schema.{LD2, Schema2, StaticSchema2}
 import util.BigBinary
@@ -7,8 +8,10 @@ import util.BigBinary
 import java.util.Date
 import scala.io.Source
 
-object NYC extends CubeGenerator("NYC") {
+case class NYC()(implicit backend: CBackend) extends CubeGenerator("NYC") {
+  override lazy val schemaInstance = schema()
 
+  override val measureName: String = "Count"
   override def generatePartitions(): IndexedSeq[(Int, Iterator[(BigBinary, Long)])] = {
     val join = (0 until 1000).map { i =>
       val num = String.format("%03d", Int.box(i))
@@ -19,7 +22,7 @@ object NYC extends CubeGenerator("NYC") {
     join
   }
 
-  override def schema(): Schema2 = {
+  override def schema(): StaticSchema2 = {
 
     def uniq(i: Int) = s"tabledata/nyc/uniq/all.$i.uniq"
     import StaticDateCol._
@@ -93,36 +96,68 @@ object NYC extends CubeGenerator("NYC") {
     val data = Source.fromFile(filename, "utf-8").getLines().map(_.split("\t").tail) //ignore summons_number
     data
   }
+}
+
+object NYC {
 
   def main(args: Array[String]): Unit = {
-    println("Loading Schema")
-    val cg = this
 
     val resetSeed = true //for reproducing the same set of materialization decisions
     val seedValue = 0L
 
     val arg = args.lift(0).getOrElse("all")
     val params = List(
-      (17, 10), (13, 10),
-      (15, 6), (15, 10), (15, 14)
+      (15, 18),
+      (15, 14), (15, 10),
+      (12, 18), (9, 18),
     )
-    val maxD = 30 // >15+14, so never passes threshold for any of the cuboids
-
+    val maxD = 40
 
     if ((arg equals "base") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
+      implicit val backend = CBackend.default
+      val cg = new NYC()
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
       cg.saveBase()
     }
 
     if ((arg equals "RMS") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
-      params.foreach { case (logN, minD) => cg.saveRMS(logN, minD, maxD) }
+      implicit val backend = CBackend.default
+      val cg = new NYC()
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) =>
+        cg.saveRMS(logN, minD, maxD)
+        backend.reset
+      }
     }
 
     if ((arg equals "SMS") || (arg equals "all")) {
-      if(resetSeed) scala.util.Random.setSeed(seedValue)
-      params.foreach { case (logN, minD) => cg.saveSMS(logN, minD, maxD) }
+      implicit val backend = CBackend.default
+      val cg = new NYC()
+      if (resetSeed) scala.util.Random.setSeed(seedValue)
+      params.foreach { case (logN, minD) =>
+        cg.saveSMS(logN, minD, maxD)
+        backend.reset
+      }
     }
 
+    if ((arg equals "RMSTrie") || (arg equals "all")) {
+      //params.foreach { case (logN, minD) =>
+      implicit val backend = CBackend.triestore
+      val cg = new NYC()
+      val dc = cg.loadRMS(15, 18, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
+      //}
+    }
+    if ((arg equals "SMSTrie") || (arg equals "all")) {
+      implicit val backend = CBackend.triestore
+      val cg = new NYC()
+      val dc = cg.loadSMS(15, 18, maxD)
+      dc.loadPrimaryMoments(cg.baseName)
+      dc.saveAsTrie(20)
+      backend.reset
+      //}
+    }
   }
 }

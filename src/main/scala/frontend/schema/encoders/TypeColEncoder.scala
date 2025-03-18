@@ -15,7 +15,7 @@ class TypeColEncoder[T](init_size: Int = 1
 
     var encode_map = new collection.mutable.OpenHashMap[String, Int](math.max(2, init_size))
     var decode_map = new collection.mutable.ArrayBuffer[String](init_size)
-    register.registerIdx(init_size)
+    register.registerIdx(init_size - 1)
 
     /**
      * Decode to NULL or NOT_NULL

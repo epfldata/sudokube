@@ -1,5 +1,6 @@
 package frontend.generators
 
+import backend.CBackend
 import frontend.schema.encoders.{DateCol, MemCol, NestedMemCol, PositionCol}
 import frontend.schema.{BD2, BitPosRegistry, LD2, Schema2, StructuredDynamicSchema}
 
@@ -7,7 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import scala.io.Source
 
-object Iowa extends CubeGenerator("IowaAll") {
+case class Iowa()(implicit backend: CBackend) extends CubeGenerator("IowaAll") {
   lazy val schemaAndData = read(inputname)
   def generatePartitions() = {
     val data = schemaAndData._2

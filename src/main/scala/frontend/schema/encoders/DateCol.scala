@@ -89,7 +89,7 @@ class DateCol(referenceYear: Int, maxYear: Int, allocateMonth: Boolean = false, 
 @SerialVersionUID(2557280452500488239L)
 class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  allocateMonth: Boolean = false, allocateDay: Boolean = false, allocateHr: Boolean = false, allocateMin: Boolean = false, allocateSec: Boolean = false) extends StaticColEncoder[Date] {
   val yearCol = new StaticNatCol(minYear, maxYear, _.asInstanceOf[Option[Date]].map(_.getYear))
-  val quarterCol = new StaticNatCol(0, 3, _.asInstanceOf[Option[Date]].map(_.getMonth/4))
+  val quarterCol = new StaticNatCol(0, 3, _.asInstanceOf[Option[Date]].map(_.getMonth/4), false) //we want exactly 2 bits for quarter
   val monthCol = new StaticNatCol(0, 11, _.asInstanceOf[Option[Date]].map(_.getMonth))
   val dayCol = new StaticNatCol(1, 31, _.asInstanceOf[Option[Date]].map(_.getDate))
   //val dayOfWeekCol = new StaticNatCol(0, 6, _.asInstanceOf[Option[Date]].map(_.getDay))
@@ -160,6 +160,16 @@ class StaticDateCol(map_f: Any => Option[Date], minYear: Int, maxYear: Int,  all
   override def decode_locally(i: Int): Date = ???
   override def maxIdx: Int = ???
 
+  override def decode(b: BigBinary): Date = {
+    val yD = yearCol.decode(b)
+    val m = monthCol.decode(b)
+    val d = dayCol.decode(b)
+    val hrs = hourCol.decode(b)
+    val min = minuteCol.decode(b)
+    val sec = secondsCol.decode(b)
+    new Date(yD , m, d, hrs, min, sec)
+  }
+
   def queries(): Set[IndexedSeq[Int]] = {
     val ybits = yearCol.bits
     val ymbits = monthCol.bits ++ ybits
@@ -189,7 +199,7 @@ object StaticDateCol {
   def simpleDateFormat(f: String) = {
     val parser = new SimpleDateFormat(f)
     (v: Any) => v match {
-      case s: String => Try(parser.parse(s)).toOption
+      case s: String => parser.synchronized{Try(parser.parse(s))}.toOption
     }
   }
 

@@ -1,5 +1,6 @@
 //package ch.epfl.data.sudokube
 package core.solver
+
 import core.DataCube
 import core.solver.lpp.Interval
 import util.{ProgressIndicator, Util}
@@ -24,29 +25,16 @@ object SolverTools {
   }
 
   //q is assumed to be sorted
-  def preparePrimaryMomentsForQuery[T](q: Seq[Int], primaryMoments:(Long, Array[Long]))(implicit num: Fractional[T]) : Seq[(Int, T)] = {
+  def preparePrimaryMomentsForQuery[T](q: Seq[Int], primaryMoments: (Long, Array[Long]))(implicit num: Fractional[T]): Seq[(Int, T)] = {
 
-    val m1D = q.zipWithIndex.map{case (b,i) => (1 << i) -> Util.fromLong(primaryMoments._2(b))}
+    val m1D = q.zipWithIndex.map { case (b, i) => (1 << i) -> Util.fromLong(primaryMoments._2(b)) }
     (0 -> Util.fromLong(primaryMoments._1)) +: m1D
   }
-
-  def fastMoments(naive: Array[Double]): Array[Double] = {
-    val result = naive.clone()
-    val N = naive.size
-    var h = 1
-    while (h < N) {
-      (0 until N by h * 2).foreach { i =>
-        (i until i + h).foreach { j =>
-          val sum = result(j) + result(j + h)
-          result(j) = sum
-        }
-      }
-      h *= 2
-    }
-    result
+  def intervalPrecision[T](trueResult: Array[Double], bounds: IndexedSeq[Interval[T]])(implicit num: Fractional[T]) = {
+    val cumulativeSpan = num.toDouble(bounds.map { i => num.minus(i.ub.get, i.lb.get) }.sum)
+    val total = trueResult.sum
+    cumulativeSpan / total
   }
-
-
   def error[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
     //assumes naive values can fit in Long without any fraction or overflow
     val length = naive.length
@@ -54,12 +42,65 @@ object SolverTools {
     import Util.fromLong
     val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).sum
     val sum = naive.sum
-    num.toDouble(deviation)/sum
+    if (sum == 0) num.toDouble(deviation) else num.toDouble(deviation) / sum
   }
 
+  def errorMax[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
+    val length = naive.length
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).max
+    //val sum = naive.sum
+    num.toDouble(deviation)
+  }
+
+  def errorPlus[T](naive: Array[Double], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
+    val length = naive.length
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(fromLong(naive(i).toLong), solver(i)))).sum
+    val maxNormalizedDeviation = (0 until length).map { i =>
+      val numNaive = fromLong(naive(i).toLong)
+      val dev = num.abs(num.minus(numNaive, solver(i)))
+      val ratio = num.div(dev, num.max(numNaive, num.one))
+      (naive(i), num.toDouble(solver(i)), num.toDouble(dev), ratio)
+    }.sortBy(_._4).last
+    val nd = maxNormalizedDeviation
+    val totalDev = num.toDouble(deviation)
+    val sum = naive.sum
+    val error = totalDev / (1.0 max sum)
+    s"$sum, ${num.toDouble(solver.sum)}, $totalDev, $error, ${nd._1}, ${nd._2}, ${nd._3}, ${nd._4}"
+  }
+
+
+  def errorTT[T](naive: Array[T], solver: Array[T])(implicit num: Fractional[T]) = {
+    //assumes naive values can fit in Long without any fraction or overflow
+    val length = naive.length
+    assert(solver.length == length)
+    import Util.fromLong
+    val deviation = (0 until length).map(i => num.abs(num.minus(naive(i), solver(i)))).sum
+    val sum = naive.sum
+    if (sum equals num.zero) 0.0 else num.toDouble(num.div(deviation, sum))
+  }
+
+  def entropyBase2(result: Array[Double]) = {
+    import math.log
+    val sum = result.sum
+    val ps = result.map(x => x / sum).map(p => if (p == 0.0) 0.0 else p * log(p) / log(2))
+    -ps.sum
+  }
+  def normalizedEntropyBase2(result: Array[Double]) = {
+    import math.log
+    val sum = result.sum
+    val ps = result.map(x => x / sum).map(p => if (p == 0.0) 0.0 else p * log(p) / log(2))
+    val maxEntropy = log(result.size) / log(2)
+    -ps.sum / maxEntropy
+  }
   def entropy(result: Array[Double]) = {
     val sum = result.sum
-    val ps = result.map(x => x/sum).map(p => if(p == 0.0) 0.0 else p * math.log(p))
+    val ps = result.map(x => x / sum).map(p => if (p == 0.0) 0.0 else p * math.log(p))
     -ps.sum
   }
   /// creates initial intervals [0, +\infty) for each variable.
@@ -91,9 +132,9 @@ object SolverTools {
    * Note that the sums 1-6 here do not make much sense.
    */
   def mk_constraints[PayloadT](
-                                n_bits: Int,
-                                projections: Seq[Int],
-                                v: Seq[PayloadT]): Seq[(Seq[Int], PayloadT)] =
+    n_bits: Int,
+    projections: Seq[Int],
+    v: Seq[PayloadT]): Seq[(Seq[Int], PayloadT)] =
     projections.map(util.BitUtils.group_values_Int(_, n_bits).map(
       x => x.map(_.toInt))).flatten.zip(v)
 } // end SolverTools
